@@ -53,6 +53,7 @@ import PlaygamaPlatformBridge from './platform-bridges/PlaygamaPlatformBridge'
 import PlayDeckPlatformBridge from './platform-bridges/PlayDeckPlatformBridge'
 import WortalPlatformBridge from './platform-bridges/WortalPlatformBridge'
 import TelegramPlatformBridge from './platform-bridges/TelegramPlatformBridge'
+import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -295,6 +296,12 @@ class PlaygamaBridge {
             case PLATFORM_ID.TELEGRAM: {
                 this.#platformBridge = new TelegramPlatformBridge(
                     this._options && this._options.platforms && this._options.platforms[PLATFORM_ID.TELEGRAM],
+                )
+                break
+            }
+            case PLATFORM_ID.QA_TOOL: {
+                this.#platformBridge = new QaToolPlatformBridge(
+                    this._options && this._options.platforms && this._options.platforms[PLATFORM_ID.QA_TOOL],
                 )
                 break
             }

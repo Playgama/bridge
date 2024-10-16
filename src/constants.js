@@ -28,6 +28,7 @@ export const PLATFORM_ID = {
     PLAYDECK: 'playdeck',
     TELEGRAM: 'telegram',
     MOCK: 'mock',
+    QA_TOOL: 'qa_tool',
 }
 
 export const MODULE_NAME = {
