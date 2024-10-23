@@ -128,7 +128,7 @@ class VkPlatformBridge extends PlatformBridgeBase {
 
     // leaderboard
     get isLeaderboardSupported() {
-        return true
+        return this.deviceType === DEVICE_TYPE.MOBILE
     }
 
     get isLeaderboardNativePopupSupported() {

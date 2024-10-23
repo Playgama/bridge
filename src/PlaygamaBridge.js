@@ -54,6 +54,7 @@ import PlayDeckPlatformBridge from './platform-bridges/PlayDeckPlatformBridge'
 import WortalPlatformBridge from './platform-bridges/WortalPlatformBridge'
 import TelegramPlatformBridge from './platform-bridges/TelegramPlatformBridge'
 import Y8PlatformBridge from './platform-bridges/Y8PlatformBridge'
+import LaggedPlatformBridge from './platform-bridges/LaggedPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -214,6 +215,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.CRAZY_GAMES
             } else if (url.hostname.includes('gamedistribution.com')) {
                 platformId = PLATFORM_ID.GAME_DISTRIBUTION
+            } else if (url.hostname.includes('lagged.')) {
+                platformId = PLATFORM_ID.LAGGED
             } else if (url.hostname.includes('wortal.ai')) {
                 platformId = PLATFORM_ID.WORTAL
             } else if ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key'))
@@ -283,6 +286,11 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.Y8: {
                 this.#platformBridge = new Y8PlatformBridge(_options)
+                break
+            }
+
+            case PLATFORM_ID.LAGGED: {
+                this.#platformBridge = new LaggedPlatformBridge(_options)
                 break
             }
             default: {
