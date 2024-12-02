@@ -48,6 +48,9 @@ const ACTION_NAME_QA = {
     CHECK_ADBLOCK: 'check_adblock',
     CLIPBOARD_READ: 'clipboard_read',
     LIVENESS_PING: 'ping',
+    UNLOCK_ACHIEVEMENT: 'unlock_achievement',
+    GET_ACHIEVEMENTS: 'get_achievements',
+    SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -87,6 +90,9 @@ const SUPPORTED_FEATURES = {
     STORAGE_LOCAL: 'isStorageLocalSupported',
     BANNER: 'isBannerSupported',
     CLIPBOARD: 'isClipboardSupported',
+    ACHIEVEMENTS: 'isAchievementsSupported',
+    ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
+    ACHIEVEMENTS_NATIVE_POPUP: 'isAchievementsNativePopupSupported',
 }
 
 class QaToolPlatformBridge extends PlatformBridgeBase {
@@ -178,6 +184,19 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     // clipboard
     get isClipboardSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.CLIPBOARD)
+    }
+
+    // achievements
+    get isAchievementsSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS)
+    }
+
+    get isGetAchievementsListSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_ACHIEVEMENTS_LIST)
+    }
+
+    get isAchievementsNativePopupSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_NATIVE_POPUP)
     }
 
     #messageBroker = new MessageBroker()
@@ -969,6 +988,68 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // achievements
+    unlockAchievement(options) {
+        return new Promise((resolve) => {
+            const messageId = this.#messageBroker.generateMessageId()
+
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === MODULE_NAME.ACHIEVEMENTS
+                    && data.action === ACTION_NAME_QA.UNLOCK_ACHIEVEMENT
+                    && data.id === messageId
+                ) {
+                    resolve(data.result)
+                    this.#messageBroker.removeListener(messageHandler)
+                }
+            }
+
+            this.#messageBroker.addListener(messageHandler)
+
+            this.#messageBroker.send({
+                type: MODULE_NAME.ACHIEVEMENTS,
+                action: ACTION_NAME_QA.UNLOCK_ACHIEVEMENT,
+                id: messageId,
+                options,
+            })
+        })
+    }
+
+    getAchievementsList(options) {
+        return new Promise((resolve) => {
+            const messageId = this.#messageBroker.generateMessageId()
+
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === MODULE_NAME.ACHIEVEMENTS
+                    && data.action === ACTION_NAME_QA.GET_ACHIEVEMENTS
+                    && data.id === messageId
+                ) {
+                    resolve(data.result)
+                    this.#messageBroker.removeListener(messageHandler)
+                }
+            }
+
+            this.#messageBroker.addListener(messageHandler)
+
+            this.#messageBroker.send({
+                type: MODULE_NAME.ACHIEVEMENTS,
+                action: ACTION_NAME_QA.GET_ACHIEVEMENTS,
+                id: messageId,
+                options,
+            })
+        })
+    }
+
+    showAchievementsNativePopup() {
+        this.#messageBroker.send({
+            type: MODULE_NAME.ACHIEVEMENTS,
+            action: ACTION_NAME_QA.SHOW_ACHIEVEMENTS_NATIVE_POPUP,
+        })
+
+        return Promise.resolve()
     }
 }
 
