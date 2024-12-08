@@ -1,5 +1,5 @@
 # Playgama Bridge
-One SDK for cross-platform publishing HTML5 games.
+One SDK for cross-platform publishing HTML5 games!
 
 ## Supported platforms
 + [Playgama](https://playgama.com)
