@@ -237,6 +237,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.TELEGRAM
             } else if (url.hostname.includes('y8')) {
                 platformId = PLATFORM_ID.Y8
+            } else if (url.hostname.includes('fbsbx')) {
+                platformId = PLATFORM_ID.FACEBOOK
             }
         }
 
