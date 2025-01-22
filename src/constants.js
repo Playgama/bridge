@@ -29,6 +29,7 @@ export const PLATFORM_ID = {
     Y8: 'y8',
     LAGGED: 'lagged',
     FACEBOOK: 'facebook',
+    POKI: 'poki',
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
 }
