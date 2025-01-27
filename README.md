@@ -24,6 +24,8 @@ One SDK for cross-platform publishing HTML5 games.
 + [Godot 3](https://github.com/playgama/bridge-godot)
 + [Godot 4](https://github.com/playgama/bridge-godot-4)
 + [Game Maker](https://github.com/playgama/bridge-gamemaker)
++ [Defold](https://github.com/playgama/bridge-defold)
++ [GDevelop](https://github.com/playgama/bridge-gdevelop)
 
 ## Useful links
 + [Documentation](https://wiki.playgama.com/)
