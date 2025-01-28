@@ -125,6 +125,42 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         return super.isStorageAvailable(storageType)
     }
 
+    setDataToStorage(storageType, key, value) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            const data = {}
+
+            if (Array.isArray(key)) {
+                key.forEach((k, i) => {
+                    data[k] = value[i]
+                })
+            } else {
+                data[key] = value
+            }
+
+            return this._platformSdk.setDataAsync(data)
+        }
+
+        return super.setDataToStorage(storageType, key, value)
+    }
+
+    getDataFromStorage(storageType, key) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return new Promise((resolve, reject) => {
+                this._platformSdk.getDataAsync(key)
+                    .then((data) => {
+                        if (Array.isArray(key)) {
+                            resolve(key.map((k) => data[k]))
+                        } else {
+                            resolve(data[key])
+                        }
+                    })
+                    .catch(reject)
+            })
+        }
+
+        return super.getDataFromStorage(storageType, key)
+    }
+
     // advertisement
     showInterstitial() {
         this._advertisementPlayType = 'INTERSTITIAL'
