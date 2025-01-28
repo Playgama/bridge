@@ -58,6 +58,7 @@ import LaggedPlatformBridge from './platform-bridges/LaggedPlatformBridge'
 import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
+import SamsungPlatformBridge from './platform-bridges/SamsungPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -242,6 +243,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.FACEBOOK
             } else if (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content')) {
                 platformId = PLATFORM_ID.POKI
+            } else if (url.hostname.includes('samsungapps.com')) {
+                platformId = PLATFORM_ID.SAMSUNG
             }
         }
 
@@ -308,6 +311,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.POKI: {
                 this.#platformBridge = new PokiPlatformBridge(_options)
+                break
+            }
+            case PLATFORM_ID.SAMSUNG: {
+                this.#platformBridge = new SamsungPlatformBridge(_options)
                 break
             }
             case PLATFORM_ID.QA_TOOL: {

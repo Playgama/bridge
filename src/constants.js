@@ -30,6 +30,7 @@ export const PLATFORM_ID = {
     LAGGED: 'lagged',
     FACEBOOK: 'facebook',
     POKI: 'poki',
+    SAMSUNG: 'samsung',
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
 }
@@ -137,6 +138,7 @@ export const ERROR = {
     Y8_GAME_PARAMS_NOT_FOUND: { message: 'Y8 Game params are not found' },
     OK_GAME_PARAMS_NOT_FOUND: { message: 'OK Game params are not found' },
     LAGGED_GAME_PARAMS_NOT_FOUND: { message: 'Lagged Game params are not found' },
+    SAMSUNG_GAME_PARAMS_NOT_FOUND: { message: 'Samsung Game params are not found' },
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
 }
