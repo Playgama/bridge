@@ -103,11 +103,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
-        return this._platformLanguage || super.platformLanguage
+        return this._platformLanguage
     }
 
     get platformTld() {
-        return this._platformTld || super.platformTld
+        return this._platformTld
     }
 
     // player
@@ -210,7 +210,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get isStorageRemoteLocalSupported() {
+    get #isStorageRemoteLocalSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_REMOTE_LOCAL)
     }
 
@@ -231,7 +231,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             const messageHandler = ({ data }) => {
                 if (data?.type === MODULE_NAME.PLATFORM && data.action === ACTION_NAME.INITIALIZE) {
-                    this._supportedFeatures = data.supportedFeatures
+                    this._supportedFeatures = data.supportedFeatures || []
                     this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
 
                     // config
@@ -413,7 +413,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     getDataFromStorage(key, storageType, tryParseJson) {
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.isStorageRemoteLocalSupported)
+            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.#isStorageRemoteLocalSupported)
         ) {
             const messageId = this.#messageBroker.generateMessageId()
 
@@ -459,7 +459,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.isStorageRemoteLocalSupported)
+            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.#isStorageRemoteLocalSupported)
         ) {
             return Promise.resolve()
         }
@@ -476,7 +476,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.isStorageRemoteLocalSupported)
+            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.#isStorageRemoteLocalSupported)
         ) {
             return Promise.resolve()
         }
