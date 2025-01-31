@@ -96,8 +96,17 @@ const SUPPORTED_FEATURES = {
 }
 
 class QaToolPlatformBridge extends PlatformBridgeBase {
+    // platform
     get platformId() {
         return PLATFORM_ID.QA_TOOL
+    }
+
+    get platformLanguage() {
+        return this._platformLanguage || super.platformLanguage
+    }
+
+    get platformTld() {
+        return this._platformTld || super.platformTld
     }
 
     // player
@@ -218,6 +227,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 if (data?.type === MODULE_NAME.PLATFORM && data.action === ACTION_NAME.INITIALIZE) {
                     this._supportedFeatures = data.supportedFeatures
                     this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+                    this._platformLanguage = data.config?.platformLanguage ?? super.platformLanguage
+                    this._platformTld = data.config?.platformTld ?? super.platformTld
 
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
