@@ -35,14 +35,6 @@
                 padding: 20px;
                 margin: 10px;
             }
-
-            #banner-container {
-                position: absolute;
-                bottom: 0px;
-                width: 100%;
-                height: 100px;
-                display: none;
-            }
         </style>
     </head>
 
@@ -256,7 +248,6 @@
                 <button id="clipboard-write-button">Write</button>
             </div>
         </div>
-        <div id="banner-container"></div>
 
         <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
         <script>eruda.init()</script>
@@ -612,28 +603,18 @@
                 })
 
                 advertisementShowBannerButton.addEventListener('click', () => {
-                    if (bridge.platform.id === bridge.PLATFORM_ID.CRAZY_GAMES || bridge.platform.id === bridge.PLATFORM_ID.GAME_DISTRIBUTION) {
-                        let bannerContainer = document.getElementById('banner-container')
-                        bannerContainer.style.display = 'block'
-                    }
-
                     let options = {
                         'crazy_games': {
-                            containerId: 'banner-container'
+                            position: 'top'
                         },
                         'game_distribution': {
-                            containerId: 'banner-container'
+                            position: 'right'
                         }
                     }
                     bridge.advertisement.showBanner(options)
                 })
 
                 advertisementHideBannerButton.addEventListener('click', () => {
-                    if (bridge.platform.id === bridge.PLATFORM_ID.CRAZY_GAMES || bridge.platform.id === bridge.PLATFORM_ID.GAME_DISTRIBUTION) {
-                        let bannerContainer = document.getElementById('banner-container')
-                        bannerContainer.style.display = 'none'
-                    }
-
                     bridge.advertisement.hideBanner()
                 })
 
