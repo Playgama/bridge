@@ -192,10 +192,6 @@ class PlaygamaBridge {
                     this.#isInitialized = true
                     console.info(`%c PlaygamaBridge v.${this.version} initialized. `, 'background: #01A5DA; color: white')
 
-                    if (this.#getPlatformId() === PLATFORM_ID.GAME_DISTRIBUTION) {
-                        this.#modules[MODULE_NAME.ADVERTISEMENT].showInterstitial()
-                    }
-
                     if (this.#initializationPromiseDecorator) {
                         this.#initializationPromiseDecorator.resolve()
                         this.#initializationPromiseDecorator = null
