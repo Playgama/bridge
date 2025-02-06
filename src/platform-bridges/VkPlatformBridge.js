@@ -114,10 +114,6 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isCreatePostSupported() {
-        return true
-    }
-
     get isAddToHomeScreenSupported() {
         return this.#platform === 'html5_android'
     }
@@ -460,19 +456,6 @@ class VkPlatformBridge extends PlatformBridgeBase {
         }
 
         return this.#sendRequestToVKBridge(ACTION_NAME.SHARE, 'VKWebAppShare', parameters, 'type')
-    }
-
-    createPost(options) {
-        const parameters = { }
-        if (options && options.message) {
-            parameters.message = options.message
-        }
-
-        if (options && options.attachments) {
-            parameters.attachments = options.attachments
-        }
-
-        return this.#sendRequestToVKBridge(ACTION_NAME.CREATE_POST, 'VKWebAppShowWallPostBox', parameters, 'post_id')
     }
 
     addToHomeScreen() {
