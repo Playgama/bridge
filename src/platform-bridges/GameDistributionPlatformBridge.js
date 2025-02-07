@@ -63,6 +63,8 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
                                 self._platformSdk = window.gdsdk
                                 self._platformSdk.preloadAd('rewarded')
                                 self._isInitialized = true
+
+                                self.showInterstitial()
                                 self._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                                 break
                             case 'SDK_GAME_START':
