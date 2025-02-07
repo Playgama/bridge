@@ -22,6 +22,8 @@ import {
     ACTION_NAME,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    STORAGE_TYPE,
+    ERROR,
 } from '../constants'
 
 const SDK_URL = 'https://developer.playgama.com/sdk/v1.js'
@@ -64,6 +66,41 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // storage
+    setDataToStorage(key, value, storageType) {
+        switch (storageType) {
+            case STORAGE_TYPE.LOCAL_STORAGE: {
+                const data = {}
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        data[key[i]] = (typeof value[i] !== 'string') ? JSON.stringify(value[i]) : value[i]
+                    }
+                } else {
+                    data[key] = (typeof value !== 'string') ? JSON.stringify(value) : value
+                }
+
+                this._platformSdk.storageApi.setItems(data)
+                return Promise.resolve()
+            }
+            default: {
+                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            }
+        }
+    }
+
+    deleteDataFromStorage(key, storageType) {
+        switch (storageType) {
+            case STORAGE_TYPE.LOCAL_STORAGE: {
+                this._platformSdk.storageApi.deleteItems(Array.isArray(key) ? key : [key])
+                return Promise.resolve()
+            }
+            default: {
+                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            }
+        }
+    }
+
+    // advertisement
     showInterstitial() {
         this._platformSdk.advService.showInterstitial({
             onOpen: () => {
