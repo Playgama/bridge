@@ -80,7 +80,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 }
 
                 this._platformSdk.storageApi.setItems(data)
-                return Promise.resolve()
+                return super.setDataToStorage(key, value, storageType)
             }
             default: {
                 return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
@@ -92,7 +92,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         switch (storageType) {
             case STORAGE_TYPE.LOCAL_STORAGE: {
                 this._platformSdk.storageApi.deleteItems(Array.isArray(key) ? key : [key])
-                return Promise.resolve()
+                return super.deleteDataFromStorage(key, storageType)
             }
             default: {
                 return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
