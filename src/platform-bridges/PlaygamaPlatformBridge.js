@@ -22,6 +22,8 @@ import {
     ACTION_NAME,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    STORAGE_TYPE,
+    ERROR,
 } from '../constants'
 
 const SDK_URL = 'https://developer.playgama.com/sdk/v1.js'
@@ -37,6 +39,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // player
+    get isPlayerAuthorizationSupported() {
+        return true
+    }
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -48,8 +55,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             addJavaScript(SDK_URL).then(() => {
                 waitFor('PLAYGAMA_SDK').then(() => {
                     this._platformSdk = window.PLAYGAMA_SDK
-                    this._isInitialized = true
-                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                    this.#getPlayer().then(() => {
+                        this._isInitialized = true
+                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                    })
                 })
             })
         }
@@ -57,6 +66,41 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // storage
+    setDataToStorage(key, value, storageType) {
+        switch (storageType) {
+            case STORAGE_TYPE.LOCAL_STORAGE: {
+                const data = {}
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        data[key[i]] = (typeof value[i] !== 'string') ? JSON.stringify(value[i]) : value[i]
+                    }
+                } else {
+                    data[key] = (typeof value !== 'string') ? JSON.stringify(value) : value
+                }
+
+                this._platformSdk.storageApi.setItems(data)
+                return super.setDataToStorage(key, value, storageType)
+            }
+            default: {
+                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            }
+        }
+    }
+
+    deleteDataFromStorage(key, storageType) {
+        switch (storageType) {
+            case STORAGE_TYPE.LOCAL_STORAGE: {
+                this._platformSdk.storageApi.deleteItems(Array.isArray(key) ? key : [key])
+                return super.deleteDataFromStorage(key, storageType)
+            }
+            default: {
+                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            }
+        }
+    }
+
+    // advertisement
     showInterstitial() {
         this._platformSdk.advService.showInterstitial({
             onOpen: () => {
@@ -91,6 +135,48 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             onError: () => {
                 this._setRewardedState(REWARDED_STATE.FAILED)
             },
+        })
+    }
+
+    authorizePlayer(options) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+
+            if (this._isPlayerAuthorized) {
+                this.#getPlayer(options)
+                    .then(() => {
+                        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    })
+            } else {
+                this._platformSdk.userService.authorizeUser()
+                    .then(() => {
+                        this.#getPlayer(options)
+                            .then(() => {
+                                this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                            })
+                    })
+                    .catch((error) => {
+                        this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, error)
+                    })
+            }
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #getPlayer() {
+        return new Promise((resolve) => {
+            this._platformSdk.userService.getUser()
+                .then((player) => {
+                    this._playerId = player.id
+                    this._isPlayerAuthorized = player.isAuthorized
+                    this._playerName = player.name
+                    this._playerPhotos = player.photos
+                })
+                .finally(() => {
+                    resolve()
+                })
         })
     }
 }

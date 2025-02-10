@@ -57,6 +57,7 @@ import Y8PlatformBridge from './platform-bridges/Y8PlatformBridge'
 import LaggedPlatformBridge from './platform-bridges/LaggedPlatformBridge'
 import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
+import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -170,31 +171,41 @@ class PlaygamaBridge {
 
         if (!this.#initializationPromiseDecorator) {
             this.#initializationPromiseDecorator = new PromiseDecorator()
-            this._options = { ...options }
-            this.#createPlatformBridge()
-            this.#platformBridge
-                .initialize()
-                .then(() => {
-                    this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.STORAGE] = new StorageModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
 
-                    this.#isInitialized = true
-                    console.info(`%c PlaygamaBridge v.${this.version} initialized. `, 'background: #01A5DA; color: white')
+            fetch('./playgama-bridge-config.json')
+                .then((response) => response.json())
+                .then((data) => {
+                    this._options = { ...data }
+                })
+                .catch(() => {
+                    this._options = { ...options }
+                })
+                .finally(() => {
+                    this.#createPlatformBridge()
+                    this.#platformBridge
+                        .initialize()
+                        .then(() => {
+                            this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.STORAGE] = new StorageModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
+                            this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
 
-                    if (this.#initializationPromiseDecorator) {
-                        this.#initializationPromiseDecorator.resolve()
-                        this.#initializationPromiseDecorator = null
-                    }
+                            this.#isInitialized = true
+                            console.info(`%c PlaygamaBridge v.${this.version} initialized. `, 'background: #01A5DA; color: white')
+
+                            if (this.#initializationPromiseDecorator) {
+                                this.#initializationPromiseDecorator.resolve()
+                                this.#initializationPromiseDecorator = null
+                            }
+                        })
                 })
         }
 
@@ -239,6 +250,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.Y8
             } else if (url.hostname.includes('fbsbx')) {
                 platformId = PLATFORM_ID.FACEBOOK
+            } else if (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content')) {
+                platformId = PLATFORM_ID.POKI
             }
         }
 
@@ -301,6 +314,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.FACEBOOK: {
                 this.#platformBridge = new FacebookPlatformBridge(_options)
+                break
+            }
+            case PLATFORM_ID.POKI: {
+                this.#platformBridge = new PokiPlatformBridge(_options)
                 break
             }
             case PLATFORM_ID.QA_TOOL: {
