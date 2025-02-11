@@ -29,7 +29,7 @@ One SDK for cross-platform publishing HTML5 games.
 + [GDevelop](https://github.com/playgama/bridge-gdevelop)
 
 ## Useful links
-+ [Documentation](https://wiki.playgama.com/)
++ [Documentation](https://wiki.playgama.com/?utm_source=github&utm_medium=bridge)
 + [Discord](https://discord.gg/pzqd2upxr8)
 + [Game Publishing](https://developer.playgama.com/?utm_source=github&utm_medium=bridge)
 
