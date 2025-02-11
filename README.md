@@ -2,7 +2,7 @@
 One SDK for cross-platform publishing HTML5 games.
 
 ## Supported platforms
-+ [Playgama](https://playgama.com)
++ [Playgama](https://playgama.com/?utm_source=github&utm_medium=bridge)
 + [Game Distribution](https://gamedistribution.com)
 + [Crazy Games](https://crazygames.com)
 + [Yandex Games](https://yandex.com/games)
