@@ -217,7 +217,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                 const keys = Array.isArray(key) ? key : [key]
 
                 const getDataHandler = ({ data }) => {
-                    if (!data || !data.playdeck) {
+                    if (!data || !data.playdeck || data.playdeck.method !== 'getData' || !keys.includes(data.playdeck.key)) {
                         return
                     }
 
