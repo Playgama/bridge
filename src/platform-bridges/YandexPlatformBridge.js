@@ -302,55 +302,23 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                 return Promise.reject()
             }
 
-            return new Promise((resolve, reject) => {
-                if (this._platformStorageCachedData) {
-                    if (Array.isArray(key)) {
-                        const values = []
+            return new Promise((resolve) => {
+                if (Array.isArray(key)) {
+                    const values = []
 
-                        for (let i = 0; i < key.length; i++) {
-                            const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                                ? null
-                                : this._platformStorageCachedData[key[i]]
+                    for (let i = 0; i < key.length; i++) {
+                        const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
+                            ? null
+                            : this._platformStorageCachedData[key[i]]
 
-                            values.push(value)
-                        }
-
-                        resolve(values)
-                        return
+                        values.push(value)
                     }
 
-                    resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
+                    resolve(values)
                     return
                 }
 
-                if (this.#yandexPlayer) {
-                    this.#yandexPlayer.getData()
-                        .then((data) => {
-                            this._platformStorageCachedData = data
-
-                            if (Array.isArray(key)) {
-                                const values = []
-
-                                for (let i = 0; i < key.length; i++) {
-                                    const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                                        ? null
-                                        : this._platformStorageCachedData[key[i]]
-
-                                    values.push(value)
-                                }
-
-                                resolve(values)
-                                return
-                            }
-
-                            resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
-                        })
-                        .catch((error) => {
-                            reject(error)
-                        })
-                } else {
-                    reject()
-                }
+                resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
             })
         }
 
@@ -854,6 +822,11 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this.#yandexPlayer = player
+
+                    return player.getData()
+                })
+                .then((data) => {
+                    this._platformStorageCachedData = data
                 })
                 .finally(() => {
                     resolve()
