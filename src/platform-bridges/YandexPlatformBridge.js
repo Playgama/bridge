@@ -327,31 +327,31 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
     setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
             return new Promise((resolve, reject) => {
-                if (this.#yandexPlayer) {
-                    const data = this._platformStorageCachedData !== null
-                        ? { ...this._platformStorageCachedData }
-                        : {}
+                const data = this._platformStorageCachedData !== null
+                    ? { ...this._platformStorageCachedData }
+                    : {}
 
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            data[key[i]] = value[i]
-                        }
-                    } else {
-                        data[key] = value
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        data[key[i]] = value[i]
                     }
-
-                    this.#yandexPlayer.setData(data)
-                        .then(() => {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        })
-                        .catch((error) => {
-                            reject(error)
-                        })
                 } else {
-                    reject()
+                    data[key] = value
                 }
+
+                this.#yandexPlayer.setData(data)
+                    .then(() => {
+                        this._platformStorageCachedData = data
+                        resolve()
+                    })
+                    .catch((error) => {
+                        reject(error)
+                    })
             })
         }
 
@@ -360,31 +360,31 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
     deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
             return new Promise((resolve, reject) => {
-                if (this.#yandexPlayer) {
-                    const data = this._platformStorageCachedData !== null
-                        ? { ...this._platformStorageCachedData }
-                        : {}
+                const data = this._platformStorageCachedData !== null
+                    ? { ...this._platformStorageCachedData }
+                    : {}
 
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            delete data[key[i]]
-                        }
-                    } else {
-                        delete data[key]
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        delete data[key[i]]
                     }
-
-                    this.#yandexPlayer.setData(data)
-                        .then(() => {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        })
-                        .catch((error) => {
-                            reject(error)
-                        })
                 } else {
-                    reject()
+                    delete data[key]
                 }
+
+                this.#yandexPlayer.setData(data)
+                    .then(() => {
+                        this._platformStorageCachedData = data
+                        resolve()
+                    })
+                    .catch((error) => {
+                        reject(error)
+                    })
             })
         }
 
