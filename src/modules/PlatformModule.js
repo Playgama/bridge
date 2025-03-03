@@ -41,6 +41,10 @@ class PlatformModule extends ModuleBase {
         return this._platformBridge.platformTld
     }
 
+    get isGetAllGamesSupported() {
+        return this._platformBridge.isGetAllGamesSupported
+    }
+
     sendMessage(message) {
         if (message === PLATFORM_MESSAGE.GAME_READY) {
             if (this.#isGameReadyMessageSent) {
@@ -55,6 +59,10 @@ class PlatformModule extends ModuleBase {
 
     getServerTime() {
         return this._platformBridge.getServerTime()
+    }
+
+    getAllGames() {
+        return this._platformBridge.getAllGames()
     }
 }
 

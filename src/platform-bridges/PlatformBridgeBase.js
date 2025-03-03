@@ -219,6 +219,10 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isGetAllGamesSupported() {
+        return false
+    }
+
     _isInitialized = false
 
     _platformSdk = null
@@ -291,6 +295,10 @@ class PlatformBridgeBase {
                     reject()
                 })
         })
+    }
+
+    getAllGames() {
+        return Promise.reject()
     }
 
     // player

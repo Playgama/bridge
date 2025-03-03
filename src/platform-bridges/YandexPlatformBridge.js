@@ -251,6 +251,16 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         })
     }
 
+    getAllGames() {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.features.GamesAPI.getAllGames()
+                .then(({ games }) => {
+                    resolve(games)
+                })
+                .catch(reject)
+        })
+    }
+
     // player
     authorizePlayer(options) {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
