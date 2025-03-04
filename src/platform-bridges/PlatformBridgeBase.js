@@ -301,6 +301,10 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
+    getGameById() {
+        return Promise.reject()
+    }
+
     // player
     authorizePlayer() {
         return Promise.reject()
