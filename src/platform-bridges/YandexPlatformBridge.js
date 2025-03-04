@@ -269,9 +269,13 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    getGameById(gameId) {
+    getGameById(options) {
+        if (!options?.gameId) {
+            return Promise.reject(new Error('Provide gameId'))
+        }
+
         return new Promise((resolve, reject) => {
-            this._platformSdk.features.GamesAPI.getGameByID(gameId)
+            this._platformSdk.features.GamesAPI.getGameByID(options?.gameId)
                 .then((game) => {
                     resolve(game)
                 })
