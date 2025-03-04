@@ -57,6 +57,14 @@ class PlatformBridgeBase {
         return null
     }
 
+    get isPlatformGetAllGamesSupported() {
+        return false
+    }
+
+    get isPlatformGetGameByIdSupported() {
+        return false
+    }
+
     // game
     get visibilityState() {
         return this._visibilityState

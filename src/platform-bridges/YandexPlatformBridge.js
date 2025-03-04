@@ -52,6 +52,14 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return super.platformTld
     }
 
+    get isPlatformGetAllGamesSupported() {
+        return true
+    }
+
+    get isPlatformGetGameByIdSupported() {
+        return true
+    }
+
     // device
     get deviceType() {
         switch (this._platformSdk && this._platformSdk.deviceInfo.type) {

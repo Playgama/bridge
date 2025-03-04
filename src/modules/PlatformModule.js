@@ -42,7 +42,11 @@ class PlatformModule extends ModuleBase {
     }
 
     get isGetAllGamesSupported() {
-        return this._platformBridge.isGetAllGamesSupported
+        return this._platformBridge.isPlatformGetAllGamesSupported
+    }
+
+    get isGetGameByIdSupported() {
+        return this._platformBridge.isPlatformGetGameByIdSupported
     }
 
     sendMessage(message) {
