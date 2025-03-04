@@ -69,8 +69,8 @@ class PlatformModule extends ModuleBase {
         return this._platformBridge.getAllGames()
     }
 
-    getGameById(gameId) {
-        return this._platformBridge.getGameById(gameId)
+    getGameByID(gameId) {
+        return this._platformBridge.getGameByID(gameId)
     }
 }
 
