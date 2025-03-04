@@ -309,7 +309,7 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    getGameByID() {
+    getGameById() {
         return Promise.reject()
     }
 
