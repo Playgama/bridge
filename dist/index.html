@@ -588,7 +588,7 @@
                 platformGetGameByIdButton.addEventListener('click', () => {
                     bridge
                         .platform
-                        .getGameByID(platformGameByIdInput.value)
+                        .getGameById(platformGameByIdInput.value)
                         .then((game) => {
                             platformGameByIdContainer.innerText = JSON.stringify(game, undefined, 2)
                         })
