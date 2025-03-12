@@ -70,6 +70,13 @@ class PlatformModule extends ModuleBase {
     }
 
     getGameById(options) {
+        if (options) {
+            const platformDependedOptions = options[this._platformBridge.platformId]
+            if (platformDependedOptions) {
+                return this.getGameById(platformDependedOptions)
+            }
+        }
+
         return this._platformBridge.getGameById(options)
     }
 }
