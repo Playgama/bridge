@@ -61,6 +61,18 @@
                 <button id="platform-send-message-button">
                     Send Message
                 </button>
+                <hr>
+                <p>Is Get All Games Supported: <span id="platform-is-get-all-games-supported-text"></span></p>
+                <p>Is Get Game By ID Supported: <span id="platform-is-get-game-by-id-supported-text"></span></p>
+                <p id="platform-all-games-container"></p>
+                <button id="platform-get-all-games-button">
+                    Get All Games
+                </button>
+                <p id="platform-game-by-id-container"></p>
+                <input type="text" id="platform-game-by-id-input" placeholder="Game ID" />
+                <button id="platform-get-game-by-id-button">
+                    Get Game By ID
+                </button>
             </div>
 
             <div class="section" id="device-section" style="display: none">
@@ -300,6 +312,13 @@
                 const platformServerTimeButton = document.getElementById('platform-server-time-button')
                 const platformMessageInput = document.getElementById('platform-send-message-input')
                 const platformMessageButton = document.getElementById('platform-send-message-button')
+                const platformIsGetAllGamesSupportedText = document.getElementById('platform-is-get-all-games-supported-text')
+                const platformIsGetGameByIdSupportedText = document.getElementById('platform-is-get-game-by-id-supported-text')
+                const platformAllGamesContainer = document.getElementById('platform-all-games-container')
+                const platformGetAllGamesButton = document.getElementById('platform-get-all-games-button')
+                const platformGameByIdInput = document.getElementById('platform-game-by-id-input')
+                const platformGameByIdContainer = document.getElementById('platform-game-by-id-container')
+                const platformGetGameByIdButton = document.getElementById('platform-get-game-by-id-button')
 
                 const deviceTypeText = document.getElementById('device-type-text')
 
@@ -442,6 +461,8 @@
                         platformLanguageText.innerText = bridge.platform.language
                         platformPayloadText.innerText = bridge.platform.payload
                         platformTldText.innerText = bridge.platform.tld
+                        platformIsGetAllGamesSupportedText.innerText = bridge.platform.isGetAllGamesSupported
+                        platformIsGetGameByIdSupportedText.innerText = bridge.platform.isGetGameByIdSupported
 
                         deviceTypeText.innerText = bridge.device.type
 
@@ -549,6 +570,30 @@
                         })
                         .catch((error) => {
                             platformSendMessageStatus.innerText = 'Failed: ' + error;
+                        })
+                })
+
+                platformGetAllGamesButton.addEventListener('click', () => {
+                    bridge
+                        .platform
+                        .getAllGames()
+                        .then((games) => {
+                            platformAllGamesContainer.innerText = JSON.stringify(games, undefined, 2)
+                        })
+                        .catch((error) => {
+                            platformAllGamesContainer.innerText = 'Failed: ' + error;
+                        })
+                })
+
+                platformGetGameByIdButton.addEventListener('click', () => {
+                    bridge
+                        .platform
+                        .getGameById(platformGameByIdInput.value)
+                        .then((game) => {
+                            platformGameByIdContainer.innerText = JSON.stringify(game, undefined, 2)
+                        })
+                        .catch((error) => {
+                            platformGameByIdContainer.innerText = 'Failed: ' + error;
                         })
                 })
 
