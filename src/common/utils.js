@@ -66,3 +66,8 @@ export const waitFor = function waitFor(...args) {
         }, 100)
     })
 }
+
+export const isBase64Image = function isBase64Image(str) {
+    const base64ImageRegex = /^data:image\/(png|jpeg|jpg|gif|bmp|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/
+    return base64ImageRegex.test(str)
+}
