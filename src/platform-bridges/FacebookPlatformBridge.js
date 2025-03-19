@@ -127,7 +127,11 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     _contextId = null
 
-    _placementId = null
+    _bannerPlacementId = null
+
+    _interstitialPlacementId = null
+
+    _rewardedPlacementId = null
 
     _leaderboardId = null
 
@@ -151,7 +155,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     return this._platformSdk.initializeAsync()
                 })
                 .then(() => {
-                    this._placementId = this._options.placementId
+                    this._bannerPlacementId = this._options.bannerPlacementId
+                    this._interstitialPlacementId = this._options.interstitialPlacementId
+                    this._rewardedPlacementId = this._options.rewardedPlacementId
 
                     this._playerId = this._platformSdk.player.getID()
                     this._playerName = this._platformSdk.player.getName()
@@ -277,7 +283,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showBanner(options) {
-        this._platformSdk.loadBannerAdAsync(this._placementId, options)
+        this._platformSdk.loadBannerAdAsync(this._bannerPlacementId, options)
             .then(() => {
                 this._setBannerState(BANNER_STATE.SHOWN)
             })
@@ -571,7 +577,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
         let preloadedInterstitial = null
 
-        this.#preloadedInterstitialPromise = this._platformSdk.getInterstitialAdAsync(this._placementId)
+        this.#preloadedInterstitialPromise = this._platformSdk.getInterstitialAdAsync(this._interstitialPlacementId)
             .then((interstitial) => {
                 preloadedInterstitial = interstitial
                 return interstitial.loadAsync()
@@ -594,7 +600,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
         let preloadedRewarded = null
 
-        this.#preloadedRewardedPromise = this._platformSdk.getRewardedVideoAsync(this._placementId)
+        this.#preloadedRewardedPromise = this._platformSdk.getRewardedVideoAsync(this._rewardedPlacementId)
             .then((rewarded) => {
                 preloadedRewarded = rewarded
                 return rewarded.loadAsync()
