@@ -16,7 +16,9 @@
           "publisherId": ""
     },
       "facebook": {
-          "placementId": ""
+          "bannerPlacementId": "",
+          "interstitialPlacementId": "",
+          "rewardedPlacementId": ""
     }
   }
 }
