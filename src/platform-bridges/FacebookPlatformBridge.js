@@ -526,6 +526,12 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
 
             this._platformSdk.inviteAsync(options)
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INVITE_FRIENDS, error)
+                })
         }
 
         return promiseDecorator.promise
@@ -540,10 +546,20 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             return Promise.reject(new Error('Image is not base64'))
         }
 
-        return new Promise((resolve) => {
-            this._platform.shareAsync(options)
-                .then(resolve)
-        })
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+
+            this._platformSdk.shareAsync(options)
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.SHARE, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 
     #preloadedInterstitialPromise = null
