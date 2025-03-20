@@ -127,17 +127,21 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     _contextId = null
 
-    _bannerPlacementId = null
+    _bannerPlacements = []
 
-    _interstitialPlacementId = null
+    _interstitialPlacements = []
 
-    _rewardedPlacementId = null
+    _rewardedPlacements = []
 
     _leaderboardId = null
 
     _isPlayerAuthorized = true
 
     _supportedApis = []
+
+    _preloadedInterstitialPromises = {}
+
+    _preloadedRewardedPromises = {}
 
     initialize() {
         if (this._isInitialized) {
@@ -155,9 +159,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     return this._platformSdk.initializeAsync()
                 })
                 .then(() => {
-                    this._bannerPlacementId = this._options.bannerPlacementId
-                    this._interstitialPlacementId = this._options.interstitialPlacementId
-                    this._rewardedPlacementId = this._options.rewardedPlacementId
+                    this._bannerPlacements = this._options.bannerPlacements || []
+                    this._interstitialPlacements = this._options.interstitialPlacements || []
+                    this._rewardedPlacements = this._options.rewardedPlacements || []
 
                     this._playerId = this._platformSdk.player.getID()
                     this._playerName = this._platformSdk.player.getName()
@@ -170,8 +174,15 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
                     this._isInitialized = true
 
-                    this.#preloadInterstitial()
-                    this.#preloadRewarded()
+                    for (let i = 0; i < this._interstitialPlacements.length; i++) {
+                        const interstitialPlacement = this._interstitialPlacements[i]
+                        this.#preloadInterstitial(interstitialPlacement.id)
+                    }
+
+                    for (let i = 0; i < this._rewardedPlacements.length; i++) {
+                        const rewardedPlacement = this._rewardedPlacements[i]
+                        this.#preloadRewarded(rewardedPlacement.id)
+                    }
 
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -302,8 +313,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
     }
 
-    showInterstitial() {
-        this.#preloadInterstitial()
+    showInterstitial(placementId) {
+        this.#preloadInterstitial(placementId)
             .then((preloadedInterstitial) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                 return preloadedInterstitial.showAsync()
@@ -315,12 +326,12 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
             })
             .finally(() => {
-                this.#preloadInterstitial(true)
+                this.#preloadInterstitial(placementId, true)
             })
     }
 
-    showRewarded() {
-        this.#preloadRewarded()
+    showRewarded(placementId) {
+        this.#preloadRewarded(placementId)
             .then((preloadedRewarded) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
                 return preloadedRewarded.showAsync()
@@ -333,7 +344,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.FAILED)
             })
             .finally(() => {
-                this.#preloadRewarded(true)
+                this.#preloadRewarded(placementId, true)
             })
     }
 
@@ -568,50 +579,46 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #preloadedInterstitialPromise = null
-
-    #preloadInterstitial(forciblyPreload = false) {
-        if (!forciblyPreload && this.#preloadedInterstitialPromise) {
-            return this.#preloadedInterstitialPromise
+    #preloadInterstitial(placementId, forciblyPreload = false) {
+        if (!forciblyPreload && this._preloadedInterstitialPromises[placementId]) {
+            return this._preloadedInterstitialPromises[placementId]
         }
 
         let preloadedInterstitial = null
 
-        this.#preloadedInterstitialPromise = this._platformSdk.getInterstitialAdAsync(this._interstitialPlacementId)
+        this._preloadedInterstitialPromises[placementId] = this._platformSdk.getInterstitialAdAsync(placementId)
             .then((interstitial) => {
                 preloadedInterstitial = interstitial
                 return interstitial.loadAsync()
             })
             .then(() => preloadedInterstitial)
             .catch(() => {
-                this.#preloadedInterstitialPromise = null
+                this._preloadedInterstitialPromises[placementId] = null
                 return Promise.reject()
             })
 
-        return this.#preloadedInterstitialPromise
+        return this._preloadedInterstitialPromises[placementId]
     }
 
-    #preloadedRewardedPromise = null
-
-    #preloadRewarded(forciblyPreload = false) {
-        if (!forciblyPreload && this.#preloadedRewardedPromise) {
-            return this.#preloadedRewardedPromise
+    #preloadRewarded(placementId, forciblyPreload = false) {
+        if (!forciblyPreload && this._preloadedRewardedPromises[placementId]) {
+            return this._preloadedRewardedPromises[placementId]
         }
 
         let preloadedRewarded = null
 
-        this.#preloadedRewardedPromise = this._platformSdk.getRewardedVideoAsync(this._rewardedPlacementId)
+        this._preloadedRewardedPromises[placementId] = this._platformSdk.getRewardedVideoAsync(placementId)
             .then((rewarded) => {
                 preloadedRewarded = rewarded
                 return rewarded.loadAsync()
             })
             .then(() => preloadedRewarded)
             .catch(() => {
-                this.#preloadedRewardedPromise = null
+                this._preloadedRewardedPromises[placementId] = null
                 return Promise.reject()
             })
 
-        return this.#preloadedRewardedPromise
+        return this._preloadedRewardedPromises[placementId]
     }
 }
 
