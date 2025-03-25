@@ -231,29 +231,18 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
             const messageHandler = ({ data }) => {
-                if (data?.type === MODULE_NAME.PLATFORM && data.action === ACTION_NAME.INITIALIZE) {
-                    this._supportedFeatures = data.supportedFeatures || []
-                    this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+                if (!data?.type) return
 
-                    // config
-                    this._platformLanguage = data.config?.platformLanguage ?? super.platformLanguage
-                    this._platformTld = data.config?.platformTld ?? super.platformTld
+                if (data.type === MODULE_NAME.PLATFORM) {
+                    if (data.action === ACTION_NAME.INITIALIZE) {
+                        this.#handleInitializeResponse(data)
+                    }
 
-                    this._isInitialized = true
-                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-
-                    this.#messageBroker.send({
-                        type: MODULE_NAME_QA.LIVENESS,
-                        action: ACTION_NAME_QA.LIVENESS_PING,
-                        options: { version: PLUGIN_VERSION },
-                    })
-                }
-
-                if (data.type === MODULE_NAME.PLATFORM
-                    && data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
-                    const messageId = this.#messageBroker.generateMessageId()
-                    const requestedProps = data?.options?.resources || []
-                    this.#getPerformanceResources(messageId, requestedProps)
+                    if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
+                        const messageId = this.#messageBroker.generateMessageId()
+                        const requestedProps = data?.options?.resources || []
+                        this.#getPerformanceResources(messageId, requestedProps)
+                    }
                 }
             }
 
@@ -265,6 +254,23 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #handleInitializeResponse(data) {
+        this._supportedFeatures = data.supportedFeatures || []
+        this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+
+        this._platformLanguage = data.config?.platformLanguage ?? super.platformLanguage
+        this._platformTld = data.config?.platformTld ?? super.platformTld
+
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+
+        this.#messageBroker.send({
+            type: MODULE_NAME_QA.LIVENESS,
+            action: ACTION_NAME_QA.LIVENESS_PING,
+            options: { version: PLUGIN_VERSION },
+        })
     }
 
     #getPerformanceResources(messageId, requestedProps = []) {
