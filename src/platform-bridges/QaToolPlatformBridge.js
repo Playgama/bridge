@@ -111,6 +111,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._platformTld
     }
 
+    get deviceType() {
+        return this._deviceType
+    }
+
+    get platformPayload() {
+        return this._platformPayload
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.PLAYER_AUTHORIZATION)
@@ -260,8 +268,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this._supportedFeatures = data.supportedFeatures || []
         this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
 
-        this._platformLanguage = data.config?.platformLanguage ?? super.platformLanguage
-        this._platformTld = data.config?.platformTld ?? super.platformTld
+        const { config = {} } = data
+        this._deviceType = config.deviceType ?? super.deviceType
+        this._platformLanguage = config.platformLanguage ?? super.platformLanguage
+        this._platformTld = config.platformTld ?? super.platformTld
+        this._platformPayload = config.platformPayload ?? super.platformPayload
 
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
