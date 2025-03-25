@@ -51,6 +51,7 @@ const ACTION_NAME_QA = {
     UNLOCK_ACHIEVEMENT: 'unlock_achievement',
     GET_ACHIEVEMENTS: 'get_achievements',
     SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
+    GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -247,6 +248,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         options: { version: PLUGIN_VERSION },
                     })
                 }
+
+                if (data.type === MODULE_NAME.PLATFORM
+                    && data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
+                    const messageId = this.#messageBroker.generateMessageId()
+                    const requestedProps = data?.options?.resources || []
+                    this.#getPerformanceResources(messageId, requestedProps)
+                }
             }
 
             this.#messageBroker.addListener(messageHandler)
@@ -257,6 +265,32 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #getPerformanceResources(messageId, requestedProps = []) {
+        const props = Array.isArray(requestedProps) ? requestedProps : []
+        const resources = performance.getEntriesByType('resource') || []
+        const defaultProps = ['name', 'initiatorType']
+        const propsToExtract = props.length > 0 ? props : defaultProps
+
+        const serializableResources = resources.map((resource) => {
+            const extracted = {}
+            propsToExtract.forEach((prop) => {
+                if (prop in resource) {
+                    extracted[prop] = resource[prop]
+                }
+            })
+            return extracted
+        })
+
+        this.#messageBroker.send({
+            type: MODULE_NAME.PLATFORM,
+            action: ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES,
+            id: messageId,
+            options: { resources: serializableResources },
+        })
+
+        return Promise.resolve(resources)
     }
 
     // player
