@@ -51,6 +51,7 @@ const ACTION_NAME_QA = {
     UNLOCK_ACHIEVEMENT: 'unlock_achievement',
     GET_ACHIEVEMENTS: 'get_achievements',
     SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
+    GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -108,6 +109,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     get platformTld() {
         return this._platformTld
+    }
+
+    get deviceType() {
+        return this._deviceType
+    }
+
+    get platformPayload() {
+        return this._platformPayload
     }
 
     // player
@@ -230,22 +239,18 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
             const messageHandler = ({ data }) => {
-                if (data?.type === MODULE_NAME.PLATFORM && data.action === ACTION_NAME.INITIALIZE) {
-                    this._supportedFeatures = data.supportedFeatures || []
-                    this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+                if (!data?.type) return
 
-                    // config
-                    this._platformLanguage = data.config?.platformLanguage ?? super.platformLanguage
-                    this._platformTld = data.config?.platformTld ?? super.platformTld
+                if (data.type === MODULE_NAME.PLATFORM) {
+                    if (data.action === ACTION_NAME.INITIALIZE) {
+                        this.#handleInitializeResponse(data)
+                    }
 
-                    this._isInitialized = true
-                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-
-                    this.#messageBroker.send({
-                        type: MODULE_NAME_QA.LIVENESS,
-                        action: ACTION_NAME_QA.LIVENESS_PING,
-                        options: { version: PLUGIN_VERSION },
-                    })
+                    if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
+                        const messageId = this.#messageBroker.generateMessageId()
+                        const requestedProps = data?.options?.resources || []
+                        this.#getPerformanceResources(messageId, requestedProps)
+                    }
                 }
             }
 
@@ -257,6 +262,52 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #handleInitializeResponse(data) {
+        this._supportedFeatures = data.supportedFeatures || []
+        this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+
+        const { config = {} } = data
+        this._deviceType = config.deviceType ?? super.deviceType
+        this._platformLanguage = config.platformLanguage ?? super.platformLanguage
+        this._platformTld = config.platformTld ?? super.platformTld
+        this._platformPayload = config.platformPayload ?? super.platformPayload
+
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+
+        this.#messageBroker.send({
+            type: MODULE_NAME_QA.LIVENESS,
+            action: ACTION_NAME_QA.LIVENESS_PING,
+            options: { version: PLUGIN_VERSION },
+        })
+    }
+
+    #getPerformanceResources(messageId, requestedProps = []) {
+        const props = Array.isArray(requestedProps) ? requestedProps : []
+        const resources = performance.getEntriesByType('resource') || []
+        const defaultProps = ['name', 'initiatorType']
+        const propsToExtract = props.length > 0 ? props : defaultProps
+
+        const serializableResources = resources.map((resource) => {
+            const extracted = {}
+            propsToExtract.forEach((prop) => {
+                if (prop in resource) {
+                    extracted[prop] = resource[prop]
+                }
+            })
+            return extracted
+        })
+
+        this.#messageBroker.send({
+            type: MODULE_NAME.PLATFORM,
+            action: ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES,
+            id: messageId,
+            options: { resources: serializableResources },
+        })
+
+        return Promise.resolve(resources)
     }
 
     // player
