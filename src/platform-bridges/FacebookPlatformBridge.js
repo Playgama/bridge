@@ -127,7 +127,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     _contextId = null
 
-    _bannerPlacements = []
+    _bannerPlacementId = null
 
     _interstitialPlacements = []
 
@@ -159,7 +159,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     return this._platformSdk.initializeAsync()
                 })
                 .then(() => {
-                    this._bannerPlacements = this._options.bannerPlacements || []
+                    this._bannerPlacementId = this._options.bannerPlacementId || null
                     this._interstitialPlacements = this._options.interstitialPlacements || []
                     this._rewardedPlacements = this._options.rewardedPlacements || []
 
