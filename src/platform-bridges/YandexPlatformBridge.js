@@ -52,6 +52,14 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return super.platformTld
     }
 
+    get isPlatformGetAllGamesSupported() {
+        return true
+    }
+
+    get isPlatformGetGameByIdSupported() {
+        return true
+    }
+
     // device
     get deviceType() {
         switch (this._platformSdk && this._platformSdk.deviceInfo.type) {
@@ -248,6 +256,30 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return new Promise((resolve) => {
             const ts = this._platformSdk.serverTime()
             resolve(ts)
+        })
+    }
+
+    getAllGames() {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.features.GamesAPI.getAllGames()
+                .then(({ games }) => {
+                    resolve(games)
+                })
+                .catch(reject)
+        })
+    }
+
+    getGameById(options) {
+        if (!options?.gameId) {
+            return Promise.reject(new Error('Provide gameId'))
+        }
+
+        return new Promise((resolve, reject) => {
+            this._platformSdk.features.GamesAPI.getGameByID(options?.gameId)
+                .then(({ game, isAvailable }) => {
+                    resolve({ ...game, isAvailable })
+                })
+                .catch(reject)
         })
     }
 

@@ -41,6 +41,14 @@ class PlatformModule extends ModuleBase {
         return this._platformBridge.platformTld
     }
 
+    get isGetAllGamesSupported() {
+        return this._platformBridge.isPlatformGetAllGamesSupported
+    }
+
+    get isGetGameByIdSupported() {
+        return this._platformBridge.isPlatformGetGameByIdSupported
+    }
+
     sendMessage(message) {
         if (message === PLATFORM_MESSAGE.GAME_READY) {
             if (this.#isGameReadyMessageSent) {
@@ -55,6 +63,21 @@ class PlatformModule extends ModuleBase {
 
     getServerTime() {
         return this._platformBridge.getServerTime()
+    }
+
+    getAllGames() {
+        return this._platformBridge.getAllGames()
+    }
+
+    getGameById(options) {
+        if (options) {
+            const platformDependedOptions = options[this._platformBridge.platformId]
+            if (platformDependedOptions) {
+                return this.getGameById(platformDependedOptions)
+            }
+        }
+
+        return this._platformBridge.getGameById(options)
     }
 }
 
