@@ -67,8 +67,109 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
+    isStorageSupported(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageSupported(storageType)
+    }
+
+    isStorageAvailable(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return this._isPlayerAuthorized
+        }
+
+        return super.isStorageAvailable(storageType)
+    }
+
+    getDataFromStorage(key, storageType, tryParseJson) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
+            return new Promise((resolve, reject) => {
+                if (this._platformStorageCachedData) {
+                    if (Array.isArray(key)) {
+                        const values = []
+
+                        for (let i = 0; i < key.length; i++) {
+                            const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
+                                ? null
+                                : this._platformStorageCachedData[key[i]]
+
+                            values.push(value)
+                        }
+
+                        resolve(values)
+                        return
+                    }
+
+                    resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
+                    return
+                }
+
+                this.platformSdk.cloudSaveApi.getState()
+                    .then((data) => {
+                        this._platformStorageCachedData = data
+
+                        if (Array.isArray(key)) {
+                            const values = []
+
+                            for (let i = 0; i < key.length; i++) {
+                                const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
+                                    ? null
+                                    : this._platformStorageCachedData[key[i]]
+
+                                values.push(value)
+                            }
+
+                            resolve(values)
+                            return
+                        }
+
+                        resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
+                    })
+                    .catch((error) => {
+                        reject(error)
+                    })
+            })
+        }
+
+        return super.getDataFromStorage(key, storageType, tryParseJson)
+    }
+
     setDataToStorage(key, value, storageType) {
         switch (storageType) {
+            case STORAGE_TYPE.PLATFORM_INTERNAL: {
+                if (!this._isPlayerAuthorized) {
+                    return Promise.reject()
+                }
+
+                return new Promise((resolve, reject) => {
+                    const data = this._platformStorageCachedData !== null
+                        ? { ...this._platformStorageCachedData }
+                        : {}
+
+                    if (Array.isArray(key)) {
+                        for (let i = 0; i < key.length; i++) {
+                            data[key[i]] = value[i]
+                        }
+                    } else {
+                        data[key] = value
+                    }
+
+                    this.platformSdk.cloudSaveApi.setItems(data)
+                        .then(() => {
+                            this._platformStorageCachedData = data
+                            resolve()
+                        })
+                        .catch((error) => {
+                            reject(error)
+                        })
+                })
+            }
             case STORAGE_TYPE.LOCAL_STORAGE: {
                 const data = {}
                 if (Array.isArray(key)) {
@@ -90,6 +191,30 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     deleteDataFromStorage(key, storageType) {
         switch (storageType) {
+            case STORAGE_TYPE.PLATFORM_INTERNAL: {
+                return new Promise((resolve, reject) => {
+                    const data = this._platformStorageCachedData !== null
+                        ? { ...this._platformStorageCachedData }
+                        : {}
+
+                    if (Array.isArray(key)) {
+                        for (let i = 0; i < key.length; i++) {
+                            delete data[key[i]]
+                        }
+                    } else {
+                        delete data[key]
+                    }
+
+                    this.platformSdk.cloudSaveApi.setItems(data)
+                        .then(() => {
+                            this._platformStorageCachedData = data
+                            resolve()
+                        })
+                        .catch((error) => {
+                            reject(error)
+                        })
+                })
+            }
             case STORAGE_TYPE.LOCAL_STORAGE: {
                 this._platformSdk.storageApi.deleteItems(Array.isArray(key) ? key : [key])
                 return super.deleteDataFromStorage(key, storageType)
@@ -173,6 +298,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     this._isPlayerAuthorized = player.isAuthorized
                     this._playerName = player.name
                     this._playerPhotos = player.photos
+                    this._defaultStorageType = this._isPlayerAuthorized
+                        ? STORAGE_TYPE.PLATFORM_INTERNAL
+                        : STORAGE_TYPE.LOCAL_STORAGE
                 })
                 .finally(() => {
                     resolve()
