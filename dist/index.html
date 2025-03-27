@@ -75,6 +75,11 @@
                 </button>
             </div>
 
+            <div class="section" id="game-section" style="display: none">
+                <h2>Game</h2>
+                <p>Visibility States: <span id="game-visibility-states-text"></span></p>
+            </div>
+
             <div class="section" id="device-section" style="display: none">
                 <h2>Device</h2>
                 <p>Type: <span id="device-type-text"></span></p>
@@ -280,6 +285,7 @@
             function runAfterScriptLoad() {
                 const optionsSection = document.getElementById('options-section')
                 const platformSection = document.getElementById('platform-section')
+                const gameSection = document.getElementById('game-section')
                 const deviceSection = document.getElementById('device-section')
                 const playerSection = document.getElementById('player-section')
                 const storageSection = document.getElementById('storage-section')
@@ -292,6 +298,7 @@
                 const clipboardSection = document.getElementById('clipboard-section')
 
                 platformSection.style.display = 'none'
+                gameSection.style.display = 'none'
                 deviceSection.style.display = 'none'
                 playerSection.style.display = 'none'
                 storageSection.style.display = 'none'
@@ -319,6 +326,8 @@
                 const platformGameByIdInput = document.getElementById('platform-game-by-id-input')
                 const platformGameByIdContainer = document.getElementById('platform-game-by-id-container')
                 const platformGetGameByIdButton = document.getElementById('platform-get-game-by-id-button')
+
+                const gameVisibilityStatesText = document.getElementById('game-visibility-states-text')
 
                 const deviceTypeText = document.getElementById('device-type-text')
 
@@ -424,6 +433,7 @@
                 const clipboardReadButton = document.getElementById('clipboard-read-button')
                 const clipboardWriteButton = document.getElementById('clipboard-write-button')
 
+                var gameVisibilityStates = []
                 var lastInterstitialStates = []
                 var lastRewardedStates = []
                 var lastBannerStates = []
@@ -492,6 +502,14 @@
                         advertisementBannerStateText.innerText = bridge.advertisement.bannerState
                         advertisementMinimumDelayBetweenInterstitialInput.value = bridge.advertisement.minimumDelayBetweenInterstitial
 
+                        gameVisibilityStates.push(bridge.game.visibilityState)
+                        gameVisibilityStatesText.innerText = gameVisibilityStates.join(' → ')
+
+                        bridge.game.on('visibility_state_changed', state => {
+                            gameVisibilityStates.push(state)
+                            gameVisibilityStatesText.innerText = gameVisibilityStates.join(' → ')
+                        })
+
                         bridge.advertisement.on('interstitial_state_changed', state => {
                             lastInterstitialStates.push(state)
 
@@ -541,6 +559,7 @@
                         clipboardIsSupportedText.innerText = bridge.clipboard.isSupported
 
                         platformSection.style.display = 'block'
+                        gameSection.style.display = 'block'
                         deviceSection.style.display = 'block'
                         playerSection.style.display = 'block'
                         storageSection.style.display = 'block'

@@ -266,11 +266,18 @@ class PlatformBridgeBase {
             // Nothing we can do with it
         }
 
-        this._visibilityState = document.visibilityState === 'visible' ? VISIBILITY_STATE.VISIBLE : VISIBILITY_STATE.HIDDEN
+        this._visibilityState = document.visibilityState
 
         document.addEventListener('visibilitychange', () => {
-            this._visibilityState = document.visibilityState === 'visible' ? VISIBILITY_STATE.VISIBLE : VISIBILITY_STATE.HIDDEN
-            this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, this._visibilityState)
+            this._setVisibilityState(document.visibilityState)
+        })
+
+        window.addEventListener('blur', () => {
+            this._setVisibilityState(VISIBILITY_STATE.HIDDEN)
+        })
+
+        window.addEventListener('focus', () => {
+            this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
         })
 
         if (options) {
@@ -586,6 +593,15 @@ class PlatformBridgeBase {
 
     _deleteDataFromLocalStorage(key) {
         this._localStorage.removeItem(key)
+    }
+
+    _setVisibilityState(state) {
+        if (this._visibilityState === state) {
+            return
+        }
+
+        this._visibilityState = state
+        this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, this._visibilityState)
     }
 
     _setInterstitialState(state) {
