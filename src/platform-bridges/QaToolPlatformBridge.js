@@ -59,12 +59,14 @@ const INTERSTITIAL_STATUS = {
     OPEN: 'open',
     SHOW: 'show',
     CLOSE: 'close',
+    FAILED: 'failed',
 }
 const REWARD_STATUS = {
     START: 'start',
     OPEN: 'open',
     REWARDED: 'rewarded',
     CLOSE: 'close',
+    FAILED: 'failed',
 }
 
 const SUPPORTED_FEATURES = {
@@ -549,6 +551,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 case INTERSTITIAL_STATUS.OPEN:
                     this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                     break
+                case INTERSTITIAL_STATUS.FAILED:
+                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    break
                 case INTERSTITIAL_STATUS.CLOSE:
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                     this.#messageBroker.removeListener(showInterstitialHandler)
@@ -578,6 +583,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     break
                 case REWARD_STATUS.OPEN:
                     this._setRewardedState(REWARDED_STATE.OPENED)
+                    break
+                case REWARD_STATUS.FAILED:
+                    this._setRewardedState(REWARDED_STATE.FAILED)
                     break
                 case REWARD_STATUS.REWARDED:
                     this._setRewardedState(REWARDED_STATE.REWARDED)
