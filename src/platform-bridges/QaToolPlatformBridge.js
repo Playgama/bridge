@@ -131,6 +131,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
     }
 
+    get isPaymentsAvailable() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
+    }
+
     get isGetCatalogSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_CATALOG)
     }

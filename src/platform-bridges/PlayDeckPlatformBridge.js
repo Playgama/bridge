@@ -54,6 +54,10 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isPaymentsAvailable() {
+        return true
+    }
+
     #language
 
     #urlParams

@@ -1,6 +1,6 @@
 {
     "name": "playgama-bridge",
-    "version": "1.20.0",
+    "version": "1.21.0",
     "description": "One SDK for cross-platform publishing HTML5 games",
     "main": "index.js",
     "scripts": {
@@ -18,8 +18,7 @@
     },
     "homepage": "https://github.com/playgama/bridge",
     "dependencies": {
-        "event-lite": "^0.1.2",
-        "jwt-decode": "^4.0.0"
+        "event-lite": "^0.1.2"
     },
     "devDependencies": {
         "@babel/core": "^7.17.8",

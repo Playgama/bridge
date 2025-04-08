@@ -22,6 +22,10 @@ class PaymentsModule extends ModuleBase {
         return this._platformBridge.isPaymentsSupported
     }
 
+    get isAvailable() {
+        return this._platformBridge.isPaymentsAvailable
+    }
+
     get isGetCatalogSupported() {
         return this._platformBridge.isGetCatalogSupported
     }

@@ -192,6 +192,10 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isPaymentsAvailable() {
+        return false
+    }
+
     get isGetCatalogSupported() {
         return false
     }
