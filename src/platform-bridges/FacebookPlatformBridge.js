@@ -108,15 +108,15 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('payments.purchaseAsync')
     }
 
-    get isGetCatalogSupported() {
+    get isPaymentsGetCatalogSupported() {
         return this._supportedApis.includes('payments.getCatalogAsync')
     }
 
-    get isGetPurchasesSupported() {
+    get isPaymentsGetPurchasesSupported() {
         return this._supportedApis.includes('payments.getPurchasesAsync')
     }
 
-    get isConsumePurchaseSupported() {
+    get isPaymentsConsumePurchaseSupported() {
         return this._supportedApis.includes('payments.consumePurchaseAsync')
     }
 
@@ -454,7 +454,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    purchase(options) {
+    paymentsPurchase(options) {
         if (!options.productID) {
             return Promise.reject()
         }
@@ -478,7 +478,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getPaymentsPurchases() {
+    paymentsGetPurchases() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
@@ -495,7 +495,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getPaymentsCatalog() {
+    paymentsGetCatalog() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
@@ -512,7 +512,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    consumePurchase(options) {
+    paymentsConsumePurchase(options) {
         if (!options.purchaseToken) {
             return Promise.reject()
         }

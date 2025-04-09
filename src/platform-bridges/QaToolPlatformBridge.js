@@ -135,15 +135,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
     }
 
-    get isGetCatalogSupported() {
+    get isPaymentsGetCatalogSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_CATALOG)
     }
 
-    get isGetPurchasesSupported() {
+    get isPaymentsGetPurchasesSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_PURCHASES)
     }
 
-    get isConsumePurchaseSupported() {
+    get isPaymentsConsumePurchaseSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.CONSUME_PURCHASE)
     }
 
@@ -754,7 +754,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    purchase() {
+    paymentsPurchase() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -789,7 +789,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getPaymentsPurchases() {
+    paymentsGetPurchases() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
@@ -819,7 +819,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getPaymentsCatalog() {
+    paymentsGetCatalog() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
@@ -849,7 +849,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    consumePurchase() {
+    paymentsConsumePurchase() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)

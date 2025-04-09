@@ -27,15 +27,15 @@ class PaymentsModule extends ModuleBase {
     }
 
     get isGetCatalogSupported() {
-        return this._platformBridge.isGetCatalogSupported
+        return this._platformBridge.isPaymentsGetCatalogSupported
     }
 
     get isGetPurchasesSupported() {
-        return this._platformBridge.isGetPurchasesSupported
+        return this._platformBridge.isPaymentsGetPurchasesSupported
     }
 
     get isConsumePurchaseSupported() {
-        return this._platformBridge.isConsumePurchaseSupported
+        return this._platformBridge.isPaymentsConsumePurchaseSupported
     }
 
     purchase(options) {
@@ -46,15 +46,15 @@ class PaymentsModule extends ModuleBase {
             }
         }
 
-        return this._platformBridge.purchase(options)
+        return this._platformBridge.paymentsPurchase(options)
     }
 
     getPurchases() {
-        return this._platformBridge.getPaymentsPurchases()
+        return this._platformBridge.paymentsGetPurchases()
     }
 
     getCatalog() {
-        return this._platformBridge.getPaymentsCatalog()
+        return this._platformBridge.paymentsGetCatalog()
     }
 
     consumePurchase(options) {
@@ -65,7 +65,7 @@ class PaymentsModule extends ModuleBase {
             }
         }
 
-        return this._platformBridge.consumePurchase(options)
+        return this._platformBridge.paymentsConsumePurchase(options)
     }
 }
 

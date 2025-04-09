@@ -330,7 +330,7 @@ class PlaygamaBridge {
                 break
             }
             default: {
-                this.#platformBridge = new PlatformBridgeBase()
+                this.#platformBridge = new PlatformBridgeBase(_options)
                 break
             }
         }

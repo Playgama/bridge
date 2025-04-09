@@ -129,15 +129,15 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isGetCatalogSupported() {
+    get isPaymentsGetCatalogSupported() {
         return true
     }
 
-    get isGetPurchasesSupported() {
+    get isPaymentsGetPurchasesSupported() {
         return true
     }
 
-    get isConsumePurchaseSupported() {
+    get isPaymentsConsumePurchaseSupported() {
         return true
     }
 
@@ -668,7 +668,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    purchase(options) {
+    paymentsPurchase(options) {
         if (!this.#payments || !options.id) {
             return Promise.reject()
         }
@@ -689,7 +689,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getPaymentsPurchases() {
+    paymentsGetPurchases() {
         if (!this.#payments) {
             return Promise.reject()
         }
@@ -716,7 +716,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getPaymentsCatalog() {
+    paymentsGetCatalog() {
         if (!this.#payments) {
             return Promise.reject()
         }
@@ -747,7 +747,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    consumePurchase(options) {
+    paymentsConsumePurchase(options) {
         if (!this.#payments || !options.purchaseToken) {
             return Promise.reject()
         }

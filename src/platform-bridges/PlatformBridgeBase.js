@@ -196,15 +196,15 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isGetCatalogSupported() {
+    get isPaymentsGetCatalogSupported() {
+        return !!this._options?.payments?.catalog
+    }
+
+    get isPaymentsGetPurchasesSupported() {
         return false
     }
 
-    get isGetPurchasesSupported() {
-        return false
-    }
-
-    get isConsumePurchaseSupported() {
+    get isPaymentsConsumePurchaseSupported() {
         return false
     }
 
@@ -228,10 +228,6 @@ class PlatformBridgeBase {
     }
 
     get isAchievementsNativePopupSupported() {
-        return false
-    }
-
-    get isGetAllGamesSupported() {
         return false
     }
 
@@ -526,19 +522,23 @@ class PlatformBridgeBase {
     }
 
     // payments
-    purchase() {
+    paymentsPurchase() {
         return Promise.reject()
     }
 
-    getPaymentsPurchases() {
+    paymentsGetPurchases() {
         return Promise.reject()
     }
 
-    getPaymentsCatalog() {
+    paymentsGetCatalog() {
+        if (this._options?.payments?.catalog) {
+            return Promise.resolve(this._options.payments.catalog)
+        }
+
         return Promise.reject()
     }
 
-    consumePurchase() {
+    paymentsConsumePurchase() {
         return Promise.reject()
     }
 

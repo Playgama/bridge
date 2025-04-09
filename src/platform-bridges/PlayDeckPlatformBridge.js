@@ -288,7 +288,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    purchase(options) {
+    paymentsPurchase(options) {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
