@@ -140,6 +140,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
             })
             .catch(() => {
                 this._setBannerState(BANNER_STATE.FAILED)
+                container.style.display = 'none'
             })
     }
 
