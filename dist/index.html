@@ -438,34 +438,8 @@
                 var lastRewardedStates = []
                 var lastBannerStates = []
 
-                let options = {
-                    'platforms': {
-                        'game_distribution': {
-                            gameId: ''
-                        },
-                        'telegram': {
-                            adsgramBlockId: ''
-                        },
-                        'y8': {
-                            gameId: '',
-                            adsenseId: '',
-                            channelId: '',
-                        },
-                        'lagged': {
-                            devId: '',
-                            publisherId: ''
-                            
-                        },
-                        'facebook': {
-                            bannerPlacementId: "",
-                            interstitialPlacements: [],
-                            rewardedPlacements: []
-                        }
-                    }
-                }
-
                 bridge
-                    .initialize(options)
+                    .initialize()
                     .then(() => {
                         optionsSection.style.display = 'none'
 
