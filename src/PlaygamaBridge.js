@@ -172,7 +172,12 @@ class PlaygamaBridge {
         if (!this.#initializationPromiseDecorator) {
             this.#initializationPromiseDecorator = new PromiseDecorator()
 
-            fetch('./playgama-bridge-config.json')
+            let configFilePath = './playgama-bridge-config.json'
+            if (options && options.configFilePath) {
+                configFilePath = options.configFilePath
+            }
+
+            fetch(configFilePath)
                 .then((response) => response.json())
                 .then((data) => {
                     this._options = { ...data }
