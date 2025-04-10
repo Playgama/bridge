@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor, getKeysFromObject } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -83,58 +83,21 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return super.isStorageAvailable(storageType)
     }
 
+    async getDataFromPlatformStorage(key) {
+        if (!this._platformStorageCachedData) {
+            this._platformStorageCachedData = await this.platformSdk.cloudSaveApi.getState()
+        }
+
+        return getKeysFromObject(this._platformStorageCachedData, key)
+    }
+
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (!this._isPlayerAuthorized) {
                 return Promise.reject()
             }
 
-            return new Promise((resolve, reject) => {
-                if (this._platformStorageCachedData) {
-                    if (Array.isArray(key)) {
-                        const values = []
-
-                        for (let i = 0; i < key.length; i++) {
-                            const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                                ? null
-                                : this._platformStorageCachedData[key[i]]
-
-                            values.push(value)
-                        }
-
-                        resolve(values)
-                        return
-                    }
-
-                    resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
-                    return
-                }
-
-                this.platformSdk.cloudSaveApi.getState()
-                    .then((data) => {
-                        this._platformStorageCachedData = data
-
-                        if (Array.isArray(key)) {
-                            const values = []
-
-                            for (let i = 0; i < key.length; i++) {
-                                const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                                    ? null
-                                    : this._platformStorageCachedData[key[i]]
-
-                                values.push(value)
-                            }
-
-                            resolve(values)
-                            return
-                        }
-
-                        resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            })
+            return this.getDataFromPlatformStorage(key)
         }
 
         return super.getDataFromStorage(key, storageType, tryParseJson)
@@ -301,6 +264,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     this._defaultStorageType = this._isPlayerAuthorized
                         ? STORAGE_TYPE.PLATFORM_INTERNAL
                         : STORAGE_TYPE.LOCAL_STORAGE
+                    if (this._isPlayerAuthorized) {
+                        return this.getDataFromPlatformStorage([])
+                    }
+
+                    return Promise.resolve()
                 })
                 .finally(() => {
                     resolve()
