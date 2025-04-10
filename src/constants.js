@@ -32,6 +32,7 @@ export const PLATFORM_ID = {
     POKI: 'poki',
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
+    MSN: 'msn',
 }
 
 export const MODULE_NAME = {

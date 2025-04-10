@@ -53,8 +53,8 @@ class PaymentsModule extends ModuleBase {
         return this._platformBridge.paymentsGetPurchases()
     }
 
-    getCatalog() {
-        return this._platformBridge.paymentsGetCatalog()
+    getCatalog(options) {
+        return this._platformBridge.paymentsGetCatalog(options)
     }
 
     consumePurchase(options) {

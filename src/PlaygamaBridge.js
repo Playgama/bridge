@@ -58,6 +58,7 @@ import LaggedPlatformBridge from './platform-bridges/LaggedPlatformBridge'
 import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
+import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -242,8 +243,7 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.LAGGED
             } else if (url.hostname.includes('wortal.ai')) {
                 platformId = PLATFORM_ID.WORTAL
-            } else if ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key'))
-                || url.searchParams.has('vk_app_id')) {
+            } else if ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key')) || url.searchParams.has('vk_app_id')) {
                 platformId = PLATFORM_ID.VK
             } else if (url.searchParams.has('app_id') && url.searchParams.has('player_id') && url.searchParams.has('game_sid') && url.searchParams.has('auth_key')) {
                 platformId = PLATFORM_ID.ABSOLUTE_GAMES
@@ -257,6 +257,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.FACEBOOK
             } else if (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content')) {
                 platformId = PLATFORM_ID.POKI
+            } else if (url.hostname.includes('msn.') || url.hostname.includes('start.gg')) {
+                platformId = PLATFORM_ID.MSN
             }
         }
 
@@ -327,6 +329,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.QA_TOOL: {
                 this.#platformBridge = new QaToolPlatformBridge(_options)
+                break
+            }
+            case PLATFORM_ID.MSN: {
+                this.#platformBridge = new MsnPlatformBridge(_options)
                 break
             }
             default: {
