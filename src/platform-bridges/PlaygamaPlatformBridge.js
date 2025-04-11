@@ -170,23 +170,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #getPlayer() {
-        return new Promise((resolve) => {
-            this._platformSdk.userService.getUser()
-                .then((player) => {
-                    this._playerId = player.id
-                    this._isPlayerAuthorized = player.isAuthorized
-                    this._playerName = player.name
-                    this._playerPhotos = player.photos
-                })
-                .finally(() => {
-                    resolve()
-                })
-        })
-    }
-
     // payments
-    purchase(options) {
+    paymentsPurchase(options) {
         if (!this._platformSdk || !options.amount) {
             return Promise.reject()
         }
@@ -205,6 +190,21 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #getPlayer() {
+        return new Promise((resolve) => {
+            this._platformSdk.userService.getUser()
+                .then((player) => {
+                    this._playerId = player.id
+                    this._isPlayerAuthorized = player.isAuthorized
+                    this._playerName = player.name
+                    this._playerPhotos = player.photos
+                })
+                .finally(() => {
+                    resolve()
+                })
+        })
     }
 }
 

@@ -192,10 +192,6 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isPaymentsAvailable() {
-        return false
-    }
-
     get isPaymentsGetCatalogSupported() {
         return !!this._options?.payments?.catalog
     }
