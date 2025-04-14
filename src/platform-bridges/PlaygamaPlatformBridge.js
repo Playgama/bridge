@@ -44,6 +44,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // payments
+    get isPaymentsSupported() {
+        return true
+    }
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -248,6 +253,28 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, error)
                     })
             }
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // payments
+    paymentsPurchase(options) {
+        if (!this._platformSdk || !options.amount) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            this._platformSdk.inGamePaymentsApi.purchase(options)
+                .then((result) => {
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, result)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
         }
 
         return promiseDecorator.promise

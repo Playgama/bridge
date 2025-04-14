@@ -125,10 +125,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isPaymentsAvailable() {
-        return true
-    }
-
     get isPaymentsGetCatalogSupported() {
         return true
     }
