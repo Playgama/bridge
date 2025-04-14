@@ -83,12 +83,12 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return super.isStorageAvailable(storageType)
     }
 
-    async getDataFromPlatformStorage(key) {
+    async getDataFromPlatformStorage(key, tryParseJson = false) {
         if (!this._platformStorageCachedData) {
             this._platformStorageCachedData = await this.platformSdk.cloudSaveApi.getState()
         }
 
-        return getKeysFromObject(this._platformStorageCachedData, key)
+        return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
     }
 
     getDataFromStorage(key, storageType, tryParseJson) {
@@ -97,7 +97,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 return Promise.reject()
             }
 
-            return this.getDataFromPlatformStorage(key)
+            return this.getDataFromPlatformStorage(key, tryParseJson)
         }
 
         return super.getDataFromStorage(key, storageType, tryParseJson)

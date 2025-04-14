@@ -74,10 +74,17 @@ export const isBase64Image = function isBase64Image(str) {
 
 export const getKeyOrNull = (obj, key) => (obj[key] === undefined ? null : obj[key])
 
-export function getKeysFromObject(keys, data) {
+export function getKeysFromObject(keys, data, tryParseJson = false) {
     if (Array.isArray(keys)) {
         return keys.reduce((res, key, i) => {
             res[i] = getKeyOrNull(data, key)
+            if (tryParseJson) {
+                try {
+                    res[i] = JSON.parse(res[i])
+                } catch (e) {
+                    console.error(e)
+                }
+            }
             return res
         }, new Array(keys.length))
     }
