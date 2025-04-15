@@ -88,21 +88,13 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return super.isStorageAvailable(storageType)
     }
 
-    async getDataFromPlatformStorage(key, tryParseJson = false) {
-        if (!this._platformStorageCachedData) {
-            this._platformStorageCachedData = await this.platformSdk.cloudSaveApi.getState()
-        }
-
-        return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
-    }
-
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (!this._isPlayerAuthorized) {
                 return Promise.reject()
             }
 
-            return this.getDataFromPlatformStorage(key, tryParseJson)
+            return this.#getDataFromPlatformStorage(key, tryParseJson)
         }
 
         return super.getDataFromStorage(key, storageType, tryParseJson)
@@ -259,16 +251,21 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(options) {
-        if (!this._platformSdk || !options.amount) {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
             return Promise.reject()
+        }
+
+        if (!product.externalId) {
+            product.externalId = this._paymentsGenerateTransactionId(id)
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.inGamePaymentsApi.purchase(options)
+            this._platformSdk.inGamePaymentsApi.purchase(product)
                 .then((result) => {
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, result)
                 })
@@ -278,6 +275,23 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        const updatedProducts = products.map((product) => ({
+            commonId: product.commonId,
+            price: `${product.amount} Golden Fennec`,
+            priceCurrencyCode: 'Golden Fennec',
+            priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
+            priceValue: product.amount,
+        }))
+
+        return Promise.resolve(updatedProducts)
     }
 
     #getPlayer() {
@@ -292,7 +306,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         ? STORAGE_TYPE.PLATFORM_INTERNAL
                         : STORAGE_TYPE.LOCAL_STORAGE
                     if (this._isPlayerAuthorized) {
-                        return this.getDataFromPlatformStorage([])
+                        return this.#getDataFromPlatformStorage([])
                     }
 
                     return Promise.resolve()
@@ -301,6 +315,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     resolve()
                 })
         })
+    }
+
+    async #getDataFromPlatformStorage(key, tryParseJson = false) {
+        if (!this._platformStorageCachedData) {
+            this._platformStorageCachedData = await this.platformSdk.cloudSaveApi.getState()
+        }
+
+        return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
     }
 }
 

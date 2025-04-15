@@ -527,10 +527,6 @@ class PlatformBridgeBase {
     }
 
     paymentsGetCatalog() {
-        if (this._options?.payments?.catalog) {
-            return Promise.resolve(this._options.payments.catalog)
-        }
-
         return Promise.reject()
     }
 
@@ -653,6 +649,40 @@ class PlatformBridgeBase {
             this.#promiseDecorators[id].reject(error)
             delete this.#promiseDecorators[id]
         }
+    }
+
+    _paymentsGetProductsPlatformData() {
+        if (!this._options.payments) {
+            return null
+        }
+
+        return this._options.payments
+            .filter((product) => Object.prototype.hasOwnProperty.call(product, this.platformId))
+            .map((product) => ({
+                commonId: product.commonId,
+                ...product[this.platformId],
+            }))
+    }
+
+    _paymentsGetProductPlatformData(id) {
+        const products = this._options.payments
+        if (!products) {
+            return null
+        }
+
+        const product = products.find((p) => p.commonId === id)
+        if (!product) {
+            return null
+        }
+
+        return {
+            commonId: product.commonId,
+            ...product[this.platformId],
+        }
+    }
+
+    _paymentsGenerateTransactionId(id) {
+        return `${id}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
     }
 }
 

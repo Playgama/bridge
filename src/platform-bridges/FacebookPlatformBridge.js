@@ -456,8 +456,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(options) {
-        if (!options.productID) {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
             return Promise.reject()
         }
 
@@ -465,10 +466,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.payments.purchaseAsync({
-                productID: options.productID,
-                developerPayload: options.developerPayload ? JSON.stringify(options.developerPayload) : undefined,
-            })
+            this._platformSdk.payments.purchaseAsync(product)
                 .then((result) => {
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, result)
                 })
@@ -498,13 +496,33 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
             this._platformSdk.payments.getCatalogAsync()
-                .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, result)
+                .then((facebookProducts) => {
+                    const mergedProducts = products.map((product) => {
+                        const facebookProduct = facebookProducts.find((p) => p.productID === product.productID)
+
+                        return {
+                            commonId: product.commonId,
+                            productID: facebookProduct.productID,
+                            description: facebookProduct.description,
+                            imageURI: facebookProduct.imageURI,
+                            price: facebookProduct.price,
+                            priceCurrencyCode: facebookProduct.priceCurrencyCode,
+                            priceValue: facebookProduct.priceAmount,
+                            title: facebookProduct.title,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)

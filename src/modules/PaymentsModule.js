@@ -34,34 +34,20 @@ class PaymentsModule extends ModuleBase {
         return this._platformBridge.isPaymentsConsumePurchaseSupported
     }
 
-    purchase(options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.purchase(platformDependedOptions)
-            }
-        }
-
-        return this._platformBridge.paymentsPurchase(options)
+    purchase(id) {
+        return this._platformBridge.paymentsPurchase(id)
     }
 
     getPurchases() {
         return this._platformBridge.paymentsGetPurchases()
     }
 
-    getCatalog(options) {
-        return this._platformBridge.paymentsGetCatalog(options)
+    getCatalog() {
+        return this._platformBridge.paymentsGetCatalog()
     }
 
-    consumePurchase(options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.consumePurchase(platformDependedOptions)
-            }
-        }
-
-        return this._platformBridge.paymentsConsumePurchase(options)
+    consumePurchase(id) {
+        return this._platformBridge.paymentsConsumePurchase(id)
     }
 }
 

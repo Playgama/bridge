@@ -214,18 +214,17 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(options) {
-        if (!options?.productId) {
-            return Promise.reject(new Error('`productId` option is required'))
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.iap.purchaseAsync({
-                productId: options.productId,
-            })
+            this._platformSdk.iap.purchaseAsync(product)
                 .then((result) => {
                     if (result.code === 'IAP_PURCHASE_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, result)
@@ -271,24 +270,41 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsGetCatalog(options) {
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
-            this._platformSdk.iap.getAllAddOnsAsync(options)
-                .then((result) => {
-                    if (result.code === 'IAP_GET_ALL_ADD_ONS_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, result)
+            this._platformSdk.iap.getAllAddOnsAsync()
+                .then((msnProducts) => {
+                    if (msnProducts.code === 'IAP_GET_ALL_ADD_ONS_FAILURE') {
+                        this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, msnProducts.description)
                         return
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, result.map(({ price, ...product }) => ({
-                        ...product,
-                        price: price.listPrice,
-                        currencyCode: price.currencyCode,
-                        msrp: price.msrp,
-                    })))
+                    const mergedProducts = products.map((product) => {
+                        const msnProduct = msnProducts.find((p) => p.productId === product.productId)
+
+                        return {
+                            commonId: product.commonId,
+                            productId: msnProduct.productId,
+                            title: msnProduct.title,
+                            description: msnProduct.description,
+                            publisherName: msnProduct.publisherName,
+                            inAppOfferToken: msnProduct.inAppOfferToken,
+                            isConsumable: msnProduct.isConsumable,
+                            price: `${msnProduct.price.listPrice} ${msnProduct.price.currencyCode} `,
+                            priceCurrencyCode: msnProduct.price.currencyCode,
+                            priceValue: msnProduct.price.listPrice,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)

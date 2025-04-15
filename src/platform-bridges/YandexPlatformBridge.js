@@ -664,8 +664,9 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(options) {
-        if (!this.#payments || !options.id) {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!this.#payments || !product) {
             return Promise.reject()
         }
 
@@ -673,7 +674,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this.#payments.purchase(options)
+            this.#payments.purchase(product)
                 .then((result) => {
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, result)
                 })
@@ -713,7 +714,8 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsGetCatalog() {
-        if (!this.#payments) {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!this.#payments || !products) {
             return Promise.reject()
         }
 
@@ -722,18 +724,24 @@ class YandexPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
             this.#payments.getCatalog()
-                .then((result) => {
-                    const catalog = result.map((i) => ({
-                        id: i.id,
-                        description: i.description,
-                        imageURI: i.imageURI,
-                        price: i.price,
-                        priceCurrencyCode: i.priceCurrencyCode,
-                        priceValue: i.priceValue,
-                        priceCurrencyImage: i.getPriceCurrencyImage('medium'),
-                        title: i.title,
-                    }))
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, catalog)
+                .then((yandexProducts) => {
+                    const mergedProducts = products.map((product) => {
+                        const yandexProduct = yandexProducts.find((p) => p.id === product.id)
+
+                        return {
+                            commonId: product.commonId,
+                            id: yandexProduct.id,
+                            title: yandexProduct.title,
+                            description: yandexProduct.description,
+                            imageURI: yandexProduct.imageURI,
+                            price: yandexProduct.price,
+                            priceCurrencyCode: yandexProduct.priceCurrencyCode,
+                            priceValue: yandexProduct.priceValue,
+                            priceCurrencyImage: yandexProduct.getPriceCurrencyImage?.('medium'),
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)

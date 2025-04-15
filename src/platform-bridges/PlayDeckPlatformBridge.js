@@ -284,7 +284,16 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(options) {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        if (!product.externalId) {
+            product.externalId = this._paymentsGenerateTransactionId(id)
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -330,12 +339,28 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
             window.parent.postMessage({
                 playdeck: {
                     method: 'requestPayment',
-                    value: options,
+                    value: product,
                 },
             }, '*')
         }
 
         return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        const updatedProducts = products.map((product) => ({
+            commonId: product.commonId,
+            price: `${product.amount} Stars`,
+            priceCurrencyCode: 'Stars',
+            priceValue: product.amount,
+        }))
+
+        return Promise.resolve(updatedProducts)
     }
 }
 
