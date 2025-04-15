@@ -143,6 +143,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     _preloadedRewardedPromises = {}
 
+    _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -186,7 +188,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
-                .catch((e) => this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, e))
+                .catch((e) => this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e))
         }
 
         return promiseDecorator.promise
@@ -314,7 +316,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     showInterstitial(placementId) {
-        this.#preloadInterstitial(placementId)
+        const _placementId = placementId || this._interstitialPlacements[0]?.id
+
+        this.#preloadInterstitial(_placementId)
             .then((preloadedInterstitial) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                 return preloadedInterstitial.showAsync()
@@ -326,12 +330,14 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
             })
             .finally(() => {
-                this.#preloadInterstitial(placementId, true)
+                this.#preloadInterstitial(_placementId, true)
             })
     }
 
     showRewarded(placementId) {
-        this.#preloadRewarded(placementId)
+        const _placementId = placementId || this._rewardedPlacements[0]?.id
+
+        this.#preloadRewarded(_placementId)
             .then((preloadedRewarded) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
                 return preloadedRewarded.showAsync()
@@ -344,7 +350,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.FAILED)
             })
             .finally(() => {
-                this.#preloadRewarded(placementId, true)
+                this.#preloadRewarded(_placementId, true)
             })
     }
 
