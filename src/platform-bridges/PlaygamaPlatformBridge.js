@@ -266,8 +266,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
             this._platformSdk.inGamePaymentsApi.purchase(product)
-                .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, result)
+                .then((purchase) => {
+                    if (purchase.status === 'PAID') {
+                        const mergedPurchase = { commonId: id, ...purchase }
+                        this._paymentsPurchases.push(mergedPurchase)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.error)
+                    }
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)

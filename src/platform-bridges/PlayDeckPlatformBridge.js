@@ -324,7 +324,9 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                 if (playdeck.method === 'invoiceClosed') {
                     if (playdeck.value.status === 'paid') {
                         window.removeEventListener('message', invoiceClosedHandler)
-                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, playdeck.value)
+                        const mergedPurchase = { commonId: id, ...playdeck.value }
+                        this._paymentsPurchases.push(mergedPurchase)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else if (playdeck.value.status === 'cancelled' || playdeck.value.status === 'failed') {
                         window.removeEventListener('message', invoiceClosedHandler)
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, playdeck.value)
