@@ -543,7 +543,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)

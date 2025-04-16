@@ -664,7 +664,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
             this.#yandexPayments.purchase(product)
                 .then((purchase) => {
-                    const mergedPurchase = { commonId: id, ...purchase }
+                    const mergedPurchase = { commonId: id, ...purchase.purchaseData }
                     this._paymentsPurchases.push(mergedPurchase)
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
@@ -758,11 +758,11 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                         const product = products.find((p) => p.id === purchase.productID)
                         return {
                             commonId: product.commonId,
-                            ...purchase,
+                            ...purchase.purchaseData,
                         }
                     })
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)

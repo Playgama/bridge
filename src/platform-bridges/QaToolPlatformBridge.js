@@ -738,7 +738,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase() {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -756,8 +761,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         return
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, data.purchase)
+                    const mergedPurchase = { commonId: id, ...data.purchase }
+                    this._paymentsPurchases.push(mergedPurchase)
+
                     this.#messageBroker.removeListener(messageHandler)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 }
             }
 
@@ -773,7 +781,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase() {
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
@@ -786,8 +799,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.CONSUME_PURCHASE
                     && data.id === messageId
                 ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
                     this.#messageBroker.removeListener(messageHandler)
+
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
                 }
             }
 
@@ -807,6 +822,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
+            const products = this._paymentsGetProductsPlatformData()
             const messageId = this.#messageBroker.generateMessageId()
 
             const messageHandler = ({ data }) => {
@@ -815,8 +831,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.GET_CATALOG
                     && data.id === messageId
                 ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, data.catalog)
+                    const mergedProducts = products.map((product) => ({
+                        commonId: product.commonId,
+                        price: `${product.amount} Golden Fennec`,
+                        priceCurrencyCode: 'Golden Fennec',
+                        priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
+                        priceValue: product.amount,
+                    }))
+
                     this.#messageBroker.removeListener(messageHandler)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 }
             }
 
@@ -845,8 +869,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.GET_PURCHASES
                     && data.id === messageId
                 ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, data.purchases)
+                    this._paymentsPurchases = this._paymentsPurchases.map((purchase) => {
+                        const qaToolPurchase = data.purchases.find((p) => p.id === purchase.id)
+                        return {
+                            commonId: purchase.commonId,
+                            ...qaToolPurchase,
+                        }
+                    })
+
                     this.#messageBroker.removeListener(messageHandler)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 }
             }
 
