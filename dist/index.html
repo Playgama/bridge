@@ -215,22 +215,18 @@
             <div class="section" id="payments-section" style="display: none">
                 <h2>Payments</h2>
                 <p>Is Supported: <span id="payments-is-supported-text"></span></p>
-                <p>Is Get Catalog Supported: <span id="payments-is-get-catalog-supported-text"></span></p>
-                <p>Is Get Purchases Supported: <span id="payments-is-get-purchases-supported-text"></span></p>
-                <p>Is Consume Purchase Supported: <span id="payments-is-consume-purchase-supported-text"></span></p>
                 <hr>
                 <button id="payments-get-purchases-button">Get Purchases</button>
                 <pre id="payments-purchases-container"></pre>
                 <button id="payments-get-catalog-button">Get Catalog</button>
                 <pre id="payments-catalog-container"></pre>
                 <hr>
-                <input type="text" id="payments-id-input" placeholder="Yandex ID">
+                <input type="text" id="payments-id-input" placeholder="ID">
                 <button id="payments-purchase-button">Purchase</button>
+                <button id="payments-consume-button">Consume</button>
                 <br>
                 <p>Purchase Status: <span id="payments-purchase-status"></span></p>
-                <br>
-                <input type="text" id="payments-token-input" placeholder="Yandex Token">
-                <button id="payments-consume-button">Consume</button>
+
             </div>
             <div class="section" id="achievements-section" style="display: none">
                 <h2>Achievements</h2>
@@ -402,9 +398,6 @@
                 const leaderboardEntriesContainer = document.getElementById('leaderboard-entries-container')
 
                 const paymentsIsSupportedText = document.getElementById('payments-is-supported-text')
-                const paymentsIsGetCatalogSupportedText = document.getElementById('payments-is-get-catalog-supported-text')
-                const paymentsIsGetPurchasesSupportedText = document.getElementById('payments-is-get-purchases-supported-text')
-                const paymentsIsConsumePurchaseSupportedText = document.getElementById('payments-is-consume-purchase-supported-text')
                 const paymentsGetPurchasesButton = document.getElementById('payments-get-purchases-button')
                 const paymentPurchasesContainer = document.getElementById('payments-purchases-container')
                 const paymentsGetCatalogButton = document.getElementById('payments-get-catalog-button')
@@ -526,9 +519,6 @@
                         achievementsIsNativePopupSupportedText.innerText = bridge.achievements.isNativePopupSupported
 
                         paymentsIsSupportedText.innerText = bridge.payments.isSupported
-                        paymentsIsGetCatalogSupportedText.innerText = bridge.payments.isGetCatalogSupported
-                        paymentsIsGetPurchasesSupportedText.innerText = bridge.payments.isGetPurchasesSupported
-                        paymentsIsConsumePurchaseSupportedText.innerText = bridge.payments.isConsumePurchaseSupported
                         remoteConfigIsSupportedText.innerText = bridge.remoteConfig.isSupported
                         clipboardIsSupportedText.innerText = bridge.clipboard.isSupported
 
@@ -796,39 +786,22 @@
                 })
 
                 paymentsPurchaseButton.addEventListener('click', () => {
-                    bridge.payments.purchase({
-                        'yandex': document.getElementById('payments-id-input').value,
-                        'playdeck': {
-                            'amount': 1,
-                            'description': 'your description',
-                            'externalId': 'unique order',
-                            'photoUrl': 'optional field'
-                        },
-                        'playgama': {
-                            'amount': 2,
-                            'description': 'your description',
-                            'externalId': 'unique order'
-                        }
-                    })
-                    .then(result => {
-                            purchaseStatusContainer.innerText = result.status
-                        })
-                        .catch((error) => {
-                            purchaseStatusContainer.innerText = error.status
-                            console.log(error)
-                        })
+                    bridge.payments.purchase(document.getElementById('payments-id-input').value)
+                        .then((result) => { purchaseStatusContainer.innerText = JSON.stringify(result) })
+                        .catch((error) => { purchaseStatusContainer.innerText = JSON.stringify(error) })
                 })
 
                 paymentsConsumeButton.addEventListener('click', () => {
-                    bridge.payments.consumePurchase({ 'yandex': document.getElementById('payments-token-input').value })
-                        .catch((error) => console.log(error))
+                    bridge.payments.consumePurchase(document.getElementById('payments-id-input').value)
+                        .then((result) => { purchaseStatusContainer.innerText = JSON.stringify(result) })
+                        .catch((error) => { purchaseStatusContainer.innerText = JSON.stringify(error) })
                 })
 
                 achievementsShowNativeButton.addEventListener('click', () => {
                     bridge.achievements.showNativePopup()
                         .catch((error) => console.log(error))
                 })
-                
+
                 achievementsGetListButton.addEventListener('click', () => {
                     bridge.achievements.getList()
                         .then((list) => achievementListContainer.innerText = JSON.stringify(list))
@@ -850,7 +823,7 @@
                                 achievementkey: achievementsIdInput.value,
                             }
                             break;
-                        default: 
+                        default:
                             break;
                     }
 

@@ -62,18 +62,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isPaymentsGetCatalogSupported() {
-        return true
-    }
-
-    get isPaymentsGetPurchasesSupported() {
-        return true
-    }
-
-    get isPaymentsConsumePurchaseSupported() {
-        return true
-    }
-
     _preloadedInterstitialPromise = null
 
     _preloadedRewardedPromise = null
@@ -225,16 +213,19 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
             this._platformSdk.iap.purchaseAsync(product)
-                .then((result) => {
-                    if (result.code === 'IAP_PURCHASE_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, result)
+                .then((purchase) => {
+                    if (purchase.code === 'IAP_PURCHASE_FAILURE') {
+                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.description)
                         return
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, {
-                        ...result.receipt,
-                        signature: result.receiptSignature,
-                    })
+                    const mergedPurchase = {
+                        commonId: id,
+                        ...purchase.receipt,
+                        receiptSignature: purchase.receiptSignature,
+                    }
+                    this._paymentsPurchases.push(mergedPurchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
@@ -244,29 +235,33 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsGetPurchases(options) {
-        if (!options?.productId) {
-            return Promise.reject(new Error('`productId` option is required'))
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
         }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            this._platformSdk.iap.getPurchasesAsync(options)
-                .then((result) => {
-                    if (result.code === 'IAP_GET_PURCHASES_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, result)
+            this._platformSdk.iap.consumeAsync(this._paymentsPurchases[purchaseIndex].productId)
+                .then((response) => {
+                    if (response.code === 'IAP_CONSUME_FAILURE') {
+                        this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, response.description)
                         return
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, [result])
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, {
+                        ...response.consumptionReceipt,
+                        consumptionSignature: response.consumptionSignature,
+                    })
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
                 })
         }
-
         return promiseDecorator.promise
     }
 
@@ -314,30 +309,35 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase(options) {
-        if (!options?.productId) {
-            return Promise.reject(new Error('`productId` option is required'))
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this._platformSdk.iap.consumeAsync(options.productId)
-                .then((response) => {
-                    if (response.code === 'IAP_CONSUME_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, response)
+            this._platformSdk.iap.getPurchasesAsync()
+                .then((purchases) => {
+                    if (purchases.code === 'IAP_GET_PURCHASES_FAILURE') {
+                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases.description)
                         return
                     }
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, {
-                        ...response.consumptionReceipt,
-                        signature: response.consumptionSignature,
+
+                    const products = this._paymentsGetProductsPlatformData()
+                    this._paymentsPurchases = purchases.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.productID)
+                        return {
+                            commonId: product.commonId,
+                            ...purchase.receipt,
+                            receiptSignature: purchase.receiptSignature,
+                        }
                     })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
                 })
         }
+
         return promiseDecorator.promise
     }
 

@@ -192,18 +192,6 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isPaymentsGetCatalogSupported() {
-        return !!this._options?.payments?.catalog
-    }
-
-    get isPaymentsGetPurchasesSupported() {
-        return false
-    }
-
-    get isPaymentsConsumePurchaseSupported() {
-        return false
-    }
-
     // config
     get isRemoteConfigSupported() {
         return false
@@ -254,6 +242,8 @@ class PlatformBridgeBase {
     _rewardedState = null
 
     _bannerState = null
+
+    _paymentsPurchases = []
 
     #promiseDecorators = { }
 
@@ -518,19 +508,42 @@ class PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase() {
+    paymentsPurchase(id) {
+        if (this.isPaymentsSupported) {
+            this._paymentsPurchases.push({ commonId: id })
+            return Promise.resolve()
+        }
+
         return Promise.reject()
     }
 
-    paymentsGetPurchases() {
+    paymentsConsumePurchase(id) {
+        if (this.isPaymentsSupported) {
+            const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+            if (purchaseIndex < 0) {
+                return Promise.reject()
+            }
+
+            this._paymentsPurchases.splice(purchaseIndex, 1)
+            return Promise.resolve()
+        }
+
         return Promise.reject()
     }
 
     paymentsGetCatalog() {
+        if (this.isPaymentsSupported) {
+            return this._paymentsGetProductsPlatformData()
+        }
+
         return Promise.reject()
     }
 
-    paymentsConsumePurchase() {
+    paymentsGetPurchases() {
+        if (this.isPaymentsSupported) {
+            return this._paymentsPurchases
+        }
+
         return Promise.reject()
     }
 
@@ -653,7 +666,7 @@ class PlatformBridgeBase {
 
     _paymentsGetProductsPlatformData() {
         if (!this._options.payments) {
-            return null
+            return []
         }
 
         return this._options.payments

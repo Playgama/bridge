@@ -104,18 +104,6 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('payments.purchaseAsync')
     }
 
-    get isPaymentsGetCatalogSupported() {
-        return this._supportedApis.includes('payments.getCatalogAsync')
-    }
-
-    get isPaymentsGetPurchasesSupported() {
-        return this._supportedApis.includes('payments.getPurchasesAsync')
-    }
-
-    get isPaymentsConsumePurchaseSupported() {
-        return this._supportedApis.includes('payments.consumePurchaseAsync')
-    }
-
     // social
     get isInviteFriendsSupported() {
         return this._supportedApis.includes('inviteAsync')
@@ -132,8 +120,6 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     _interstitialPlacements = []
 
     _rewardedPlacements = []
-
-    _leaderboardId = null
 
     _isPlayerAuthorized = true
 
@@ -467,8 +453,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
             this._platformSdk.payments.purchaseAsync(product)
-                .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, result)
+                .then((purchase) => {
+                    const mergedPurchase = { commonId: id, ...purchase }
+                    this._paymentsPurchases.push(mergedPurchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
@@ -478,17 +466,23 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsGetPurchases() {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
+        }
 
-            this._platformSdk.payments.getPurchasesAsync()
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+
+            this._platformSdk.payments.consumePurchaseAsync(this._paymentsPurchases[purchaseIndex].purchaseToken)
                 .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, result)
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
                 })
         }
 
@@ -532,23 +526,30 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase(options) {
-        if (!options.purchaseToken) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this._platformSdk.payments.consumePurchaseAsync(options.purchaseToken)
-                .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            this._platformSdk.payments.getPurchasesAsync()
+                .then((purchases) => {
+                    const products = this._paymentsGetProductsPlatformData()
+
+                    this._paymentsPurchases = purchases.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.productID)
+                        return {
+                            commonId: product.commonId,
+                            ...purchase,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
                 })
         }
+
         return promiseDecorator.promise
     }
 

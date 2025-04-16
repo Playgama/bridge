@@ -131,18 +131,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
     }
 
-    get isPaymentsGetCatalogSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_CATALOG)
-    }
-
-    get isPaymentsGetPurchasesSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_PURCHASES)
-    }
-
-    get isPaymentsConsumePurchaseSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CONSUME_PURCHASE)
-    }
-
     // config
     get isRemoteConfigSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.REMOTE_CONFIG)
@@ -785,20 +773,20 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsGetPurchases() {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+    paymentsConsumePurchase() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
             const messageId = this.#messageBroker.generateMessageId()
 
             const messageHandler = ({ data }) => {
                 if (
                     data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.GET_PURCHASES
+                    && data.action === ACTION_NAME.CONSUME_PURCHASE
                     && data.id === messageId
                 ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, data.purchases)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
                     this.#messageBroker.removeListener(messageHandler)
                 }
             }
@@ -807,11 +795,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.GET_PURCHASES,
+                action: ACTION_NAME.CONSUME_PURCHASE,
                 id: messageId,
             })
         }
-
         return promiseDecorator.promise
     }
 
@@ -845,20 +832,20 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase() {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
             const messageId = this.#messageBroker.generateMessageId()
 
             const messageHandler = ({ data }) => {
                 if (
                     data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.CONSUME_PURCHASE
+                    && data.action === ACTION_NAME.GET_PURCHASES
                     && data.id === messageId
                 ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, data.purchases)
                     this.#messageBroker.removeListener(messageHandler)
                 }
             }
@@ -867,10 +854,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.CONSUME_PURCHASE,
+                action: ACTION_NAME.GET_PURCHASES,
                 id: messageId,
             })
         }
+
         return promiseDecorator.promise
     }
 
