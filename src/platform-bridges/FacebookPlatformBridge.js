@@ -301,10 +301,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
     }
 
-    showInterstitial(placementId) {
-        const _placementId = placementId || this._interstitialPlacements[0]?.id
+    showInterstitial(options = {}) {
+        const placementId = options.placementId || this._interstitialPlacements[0]?.id
 
-        this.#preloadInterstitial(_placementId)
+        this.#preloadInterstitial(placementId)
             .then((preloadedInterstitial) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                 return preloadedInterstitial.showAsync()
@@ -316,14 +316,14 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
             })
             .finally(() => {
-                this.#preloadInterstitial(_placementId, true)
+                this.#preloadInterstitial(placementId, true)
             })
     }
 
-    showRewarded(placementId) {
-        const _placementId = placementId || this._rewardedPlacements[0]?.id
+    showRewarded(options = {}) {
+        const placementId = options.placementId || this._rewardedPlacements[0]?.id
 
-        this.#preloadRewarded(_placementId)
+        this.#preloadRewarded(placementId)
             .then((preloadedRewarded) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
                 return preloadedRewarded.showAsync()
@@ -336,7 +336,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.FAILED)
             })
             .finally(() => {
-                this.#preloadRewarded(_placementId, true)
+                this.#preloadRewarded(placementId, true)
             })
     }
 
