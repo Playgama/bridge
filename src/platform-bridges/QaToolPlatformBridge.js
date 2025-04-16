@@ -785,7 +785,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         this.#messageBroker.removeListener(messageHandler)
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
-                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, data.purchase.status.error)
+                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, data.purchase.error)
                     }
                 }
             }
@@ -820,10 +820,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.CONSUME_PURCHASE
                     && data.id === messageId
                 ) {
-                    this._paymentsPurchases.splice(purchaseIndex, 1)
-                    this.#messageBroker.removeListener(messageHandler)
+                    if (data.purchase.status) {
+                        this._paymentsPurchases.splice(purchaseIndex, 1)
+                        this.#messageBroker.removeListener(messageHandler)
 
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.purchase.error)
+                    }
                 }
             }
 
