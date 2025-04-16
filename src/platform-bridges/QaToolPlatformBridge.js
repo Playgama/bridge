@@ -72,9 +72,6 @@ const REWARD_STATUS = {
 const SUPPORTED_FEATURES = {
     PLAYER_AUTHORIZATION: 'isPlayerAuthorizationSupported',
     PAYMENTS: 'isPaymentsSupported',
-    GET_CATALOG: 'isGetCatalogSupported',
-    GET_PURCHASES: 'isGetPurchasesSupported',
-    CONSUME_PURCHASE: 'isConsumePurchaseSupported',
     REMOTE_CONFIG: 'isRemoteConfigSupported',
     INVITE_FRIENDS: 'isInviteFriendsSupported',
     JOIN_COMMUNITY: 'isJoinCommunitySupported',
@@ -129,18 +126,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     // payments
     get isPaymentsSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
-    }
-
-    get isGetCatalogSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_CATALOG)
-    }
-
-    get isGetPurchasesSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_PURCHASES)
-    }
-
-    get isConsumePurchaseSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CONSUME_PURCHASE)
     }
 
     // config
