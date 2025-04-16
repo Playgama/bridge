@@ -25,7 +25,7 @@ import {
     REWARDED_STATE,
 } from '../constants'
 
-const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.19.min.js'
+const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
 
 class MsnPlatformBridge extends PlatformBridgeBase {
     // platform
