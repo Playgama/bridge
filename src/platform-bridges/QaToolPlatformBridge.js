@@ -72,9 +72,6 @@ const REWARD_STATUS = {
 const SUPPORTED_FEATURES = {
     PLAYER_AUTHORIZATION: 'isPlayerAuthorizationSupported',
     PAYMENTS: 'isPaymentsSupported',
-    GET_CATALOG: 'isGetCatalogSupported',
-    GET_PURCHASES: 'isGetPurchasesSupported',
-    CONSUME_PURCHASE: 'isConsumePurchaseSupported',
     REMOTE_CONFIG: 'isRemoteConfigSupported',
     INVITE_FRIENDS: 'isInviteFriendsSupported',
     JOIN_COMMUNITY: 'isJoinCommunitySupported',
@@ -301,7 +298,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
-    authorizePlayer() {
+    authorizePlayer(options) {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -314,28 +311,33 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.AUTHORIZE_PLAYER
                     && data.id === messageId
                 ) {
-                    const { player } = data
+                    const { player, auth } = data
 
-                    this._isPlayerAuthorized = true
+                    if (auth.status === 'success') {
+                        this._isPlayerAuthorized = true
 
-                    this._playerId = player.userId
-                    this._playerName = player.name
+                        this._playerId = player.userId
+                        this._playerName = player.name
 
-                    if (player.profilePictureUrl) {
-                        this._playerPhotos = [player.profilePictureUrl]
+                        if (player.profilePictureUrl) {
+                            this._playerPhotos = [player.profilePictureUrl]
+                        }
+
+                        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, auth.error)
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                     this.#messageBroker.removeListener(messageHandler)
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PLAYER,
                 action: ACTION_NAME.AUTHORIZE_PLAYER,
                 id: messageId,
+                options,
             })
         }
 
@@ -761,20 +763,24 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         return
                     }
 
-                    const mergedPurchase = { commonId: id, ...data.purchase }
-                    this._paymentsPurchases.push(mergedPurchase)
+                    if (data.purchase.status) {
+                        const mergedPurchase = { commonId: id, ...data.purchase }
+                        this._paymentsPurchases.push(mergedPurchase)
 
-                    this.#messageBroker.removeListener(messageHandler)
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                        this.#messageBroker.removeListener(messageHandler)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, data.purchase.error)
+                    }
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.PURCHASE,
                 id: messageId,
+                options: { product },
             })
         }
 
@@ -799,19 +805,23 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.CONSUME_PURCHASE
                     && data.id === messageId
                 ) {
-                    this._paymentsPurchases.splice(purchaseIndex, 1)
-                    this.#messageBroker.removeListener(messageHandler)
+                    if (data.purchase.status) {
+                        this._paymentsPurchases.splice(purchaseIndex, 1)
+                        this.#messageBroker.removeListener(messageHandler)
 
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.purchase.error)
+                    }
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.CONSUME_PURCHASE,
                 id: messageId,
+                options: { purchase: this._paymentsPurchases[purchaseIndex] },
             })
         }
         return promiseDecorator.promise
@@ -845,7 +855,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.GET_CATALOG,
@@ -883,7 +892,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.GET_PURCHASES,
