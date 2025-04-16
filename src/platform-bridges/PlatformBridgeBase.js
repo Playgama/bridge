@@ -533,7 +533,7 @@ class PlatformBridgeBase {
 
     paymentsGetCatalog() {
         if (this.isPaymentsSupported) {
-            return this._paymentsGetProductsPlatformData()
+            return Promise.resolve(this._paymentsGetProductsPlatformData())
         }
 
         return Promise.reject()
@@ -541,7 +541,7 @@ class PlatformBridgeBase {
 
     paymentsGetPurchases() {
         if (this.isPaymentsSupported) {
-            return this._paymentsPurchases
+            return Promise.resolve(this._paymentsPurchases)
         }
 
         return Promise.reject()
