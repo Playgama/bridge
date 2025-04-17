@@ -177,9 +177,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
-                .catch((e) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
-                })
+                .catch((e) => this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e))
         }
 
         return promiseDecorator.promise
