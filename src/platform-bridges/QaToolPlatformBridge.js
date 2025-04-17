@@ -769,7 +769,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     if (data.purchase?.status) {
                         const mergedPurchase = { commonId: id, ...data.purchase.purchaseData }
                         this._paymentsPurchases.push(mergedPurchase)
-
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
                         this._rejectPromiseDecorator(
@@ -862,6 +861,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 ) {
                     const mergedProducts = products.map((product) => ({
                         commonId: product.commonId,
+                        id: product.id,
                         price: `${product.amount} Golden Fennec`,
                         priceCurrencyCode: 'Golden Fennec',
                         priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
@@ -899,11 +899,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 ) {
                     const products = this._paymentsGetProductsPlatformData()
 
-                    this._paymentsPurchases = this._paymentsPurchases.map((purchase) => {
-                        const qaToolPurchase = products.find((p) => p.id === purchase.id)
+                    this._paymentsPurchases = data.purchases.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.id)
                         return {
-                            commonId: purchase.commonId,
-                            ...qaToolPurchase,
+                            commonId: product.commonId,
+                            ...purchase.purchaseData,
                         }
                     })
 
@@ -917,7 +917,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.GET_PURCHASES,
                 id: messageId,
-                options: { purchases: this._paymentsPurchases },
             })
         }
 
