@@ -897,8 +897,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.GET_PURCHASES
                     && data.id === messageId
                 ) {
+                    const products = this._paymentsGetProductsPlatformData()
+
                     this._paymentsPurchases = this._paymentsPurchases.map((purchase) => {
-                        const qaToolPurchase = data.purchases.find((p) => p.commonId === purchase.commonId)
+                        const qaToolPurchase = products.find((p) => p.id === purchase.id)
                         return {
                             commonId: purchase.commonId,
                             ...qaToolPurchase,
