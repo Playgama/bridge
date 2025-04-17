@@ -261,6 +261,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this._platformTld = config.platformTld ?? super.platformTld
         this._platformPayload = config.platformPayload ?? super.platformPayload
 
+        this._paymentsPurchases = data.purchases || []
+
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
 
@@ -760,18 +762,23 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 ) {
                     if (!data.purchase || typeof data.purchase !== 'object') {
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, new Error('Invalid purchase'))
+                        this.#messageBroker.removeListener(messageHandler)
                         return
                     }
 
-                    if (data.purchase.status) {
-                        const mergedPurchase = { commonId: id, ...data.purchase }
+                    if (data.purchase?.status) {
+                        const mergedPurchase = { commonId: id, ...data.purchase.purchaseData }
                         this._paymentsPurchases.push(mergedPurchase)
 
-                        this.#messageBroker.removeListener(messageHandler)
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
-                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, data.purchase.error)
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.PURCHASE,
+                            data.purchase?.error || new Error('Unknown purchase error'),
+                        )
                     }
+
+                    this.#messageBroker.removeListener(messageHandler)
                 }
             }
 
@@ -787,8 +794,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase(id) {
-        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+    paymentsConsumePurchase(purchaseId) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === purchaseId)
         if (purchaseIndex < 0) {
             return Promise.reject()
         }
@@ -805,14 +812,26 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.CONSUME_PURCHASE
                     && data.id === messageId
                 ) {
-                    if (data.purchase.status) {
-                        this._paymentsPurchases.splice(purchaseIndex, 1)
+                    if (!data.purchase || typeof data.purchase !== 'object') {
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.CONSUME_PURCHASE,
+                            new Error('Invalid purchase'),
+                        )
                         this.#messageBroker.removeListener(messageHandler)
+                        return
+                    }
 
+                    if (data.purchase?.status) {
+                        this._paymentsPurchases.splice(purchaseIndex, 1)
                         this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
                     } else {
-                        this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.purchase.error)
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.CONSUME_PURCHASE,
+                            data.purchase?.error || new Error('Unknown consume purchase error'),
+                        )
                     }
+
+                    this.#messageBroker.removeListener(messageHandler)
                 }
             }
 
@@ -821,7 +840,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.CONSUME_PURCHASE,
                 id: messageId,
-                options: { purchase: this._paymentsPurchases[purchaseIndex] },
+                options: { product: this._paymentsPurchases[purchaseIndex] },
             })
         }
         return promiseDecorator.promise
@@ -879,7 +898,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.id === messageId
                 ) {
                     this._paymentsPurchases = this._paymentsPurchases.map((purchase) => {
-                        const qaToolPurchase = data.purchases.find((p) => p.id === purchase.id)
+                        const qaToolPurchase = data.purchases.find((p) => p.commonId === purchase.commonId)
                         return {
                             commonId: purchase.commonId,
                             ...qaToolPurchase,
@@ -896,6 +915,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.GET_PURCHASES,
                 id: messageId,
+                options: { purchases: this._paymentsPurchases },
             })
         }
 
