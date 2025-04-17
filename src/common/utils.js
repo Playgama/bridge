@@ -66,3 +66,28 @@ export const waitFor = function waitFor(...args) {
         }, 100)
     })
 }
+
+export const isBase64Image = function isBase64Image(str) {
+    const base64ImageRegex = /^data:image\/(png|jpeg|jpg|gif|bmp|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/
+    return base64ImageRegex.test(str)
+}
+
+export const getKeyOrNull = (obj, key) => (obj[key] === undefined ? null : obj[key])
+
+export function getKeysFromObject(keys, data, tryParseJson = false) {
+    if (Array.isArray(keys)) {
+        return keys.reduce((res, key, i) => {
+            res[i] = getKeyOrNull(data, key)
+            if (tryParseJson) {
+                try {
+                    res[i] = JSON.parse(res[i])
+                } catch (e) {
+                    console.error(e)
+                }
+            }
+            return res
+        }, new Array(keys.length))
+    }
+
+    return getKeyOrNull(data, keys)
+}

@@ -15,7 +15,6 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { jwtDecode } from 'jwt-decode'
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, waitFor } from '../common/utils'
 import {
@@ -173,7 +172,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
+            return this._isPlayerAuthorized
         }
 
         return super.isStorageAvailable(storageType)
@@ -302,6 +301,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             })
             .catch(() => {
                 this._setBannerState(BANNER_STATE.FAILED)
+                container.style.display = 'none'
             })
     }
 
@@ -364,24 +364,24 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         return new Promise((resolve, reject) => {
-            this._platformSdk.user.getUserToken()
-                .then((token) => {
-                    const player = jwtDecode(token)
-                    this._isPlayerAuthorized = true
+            this._platformSdk.user.getUser()
+                .then((user) => {
+                    if (!user) {
+                        reject()
+                        return
+                    }
 
+                    this._isPlayerAuthorized = true
                     this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
-                    if (player.userId) {
-                        this._playerId = player.userId
+                    if (user.username) {
+                        this._playerName = user.username
                     }
 
-                    if (player.username) {
-                        this._playerName = player.username
+                    if (user.profilePictureUrl) {
+                        this._playerPhotos = [user.profilePictureUrl]
                     }
 
-                    if (player.profilePictureUrl) {
-                        this._playerPhotos = [player.profilePictureUrl]
-                    }
                     resolve()
                 })
                 .catch((error) => {

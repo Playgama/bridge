@@ -217,7 +217,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                 const keys = Array.isArray(key) ? key : [key]
 
                 const getDataHandler = ({ data }) => {
-                    if (!data || !data.playdeck) {
+                    if (!data || !data.playdeck || data.playdeck.method !== 'getData' || !keys.includes(data.playdeck.key)) {
                         return
                     }
 
@@ -284,7 +284,16 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    purchase(options) {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        if (!product.externalId) {
+            product.externalId = this._paymentsGenerateTransactionId(id)
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -315,7 +324,9 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                 if (playdeck.method === 'invoiceClosed') {
                     if (playdeck.value.status === 'paid') {
                         window.removeEventListener('message', invoiceClosedHandler)
-                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, playdeck.value)
+                        const mergedPurchase = { commonId: id, ...playdeck.value }
+                        this._paymentsPurchases.push(mergedPurchase)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else if (playdeck.value.status === 'cancelled' || playdeck.value.status === 'failed') {
                         window.removeEventListener('message', invoiceClosedHandler)
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, playdeck.value)
@@ -330,12 +341,28 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
             window.parent.postMessage({
                 playdeck: {
                     method: 'requestPayment',
-                    value: options,
+                    value: product,
                 },
             }, '*')
         }
 
         return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        const updatedProducts = products.map((product) => ({
+            commonId: product.commonId,
+            price: `${product.amount} Stars`,
+            priceCurrencyCode: 'Stars',
+            priceValue: product.amount,
+        }))
+
+        return Promise.resolve(updatedProducts)
     }
 }
 

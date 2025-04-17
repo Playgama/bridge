@@ -141,6 +141,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             this._platformSdk.login((response) => {
                 this.#updatePlayerInfo(response)
                 if (response.status === 'ok') {
+                    this._platformStorageCachedData = null
                     resolve()
                 } else {
                     reject()
@@ -169,7 +170,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return new Promise((resolve, reject) => {
-                this.#getUserDataFromStorage()
+                this.#getUserData()
                     .then((userData) => {
                         const keys = Array.isArray(key) ? key : [key]
                         const data = keys.map((_key) => {
@@ -189,7 +190,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return new Promise((resolve, reject) => {
-                this.#getUserDataFromStorage()
+                this.#getUserData()
                     .then((userData) => {
                         const newData = { ...userData }
 
@@ -203,6 +204,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
 
                         this._platformSdk.api('user_data/submit', 'POST', { key: USERDATA_KEY, value: JSON.stringify(newData) }, ((response) => {
                             if (response.status === 'ok') {
+                                this._platformStorageCachedData = newData
                                 resolve()
                             } else {
                                 reject(response)
@@ -219,7 +221,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return new Promise((resolve, reject) => {
-                this.#getUserDataFromStorage()
+                this.#getUserData()
                     .then((userData) => {
                         const newData = { ...userData }
 
@@ -233,6 +235,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
 
                         this._platformSdk.api('user_data/submit', 'POST', { key: USERDATA_KEY, value: JSON.stringify(newData) }, ((response) => {
                             if (response.status === 'ok') {
+                                this._platformStorageCachedData = newData
                                 resolve()
                             } else {
                                 reject(response)
@@ -433,27 +436,32 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    #getUserDataFromStorage() {
+    #getUserData() {
         return new Promise((resolve, reject) => {
-            this._platformSdk.api('user_data/retrieve', 'POST', { key: USERDATA_KEY }, ((response) => {
-                if (response.error) {
-                    if (response.error !== NOT_FOUND_ERROR) {
-                        reject(response)
+            if (this._platformStorageCachedData) {
+                resolve(this._platformStorageCachedData)
+            } else {
+                this._platformSdk.api('user_data/retrieve', 'POST', { key: USERDATA_KEY }, ((response) => {
+                    if (response.error) {
+                        if (response.error !== NOT_FOUND_ERROR) {
+                            reject(response)
+                        }
                     }
-                }
 
-                let userData = {}
+                    let userData = {}
 
-                try {
-                    if (response.jsondata) {
-                        userData = JSON.parse(response.jsondata)
+                    try {
+                        if (response.jsondata) {
+                            userData = JSON.parse(response.jsondata)
+                        }
+                    } catch (e) {
+                        // keep value string or null
                     }
-                } catch (e) {
-                    // keep value string or null
-                }
 
-                resolve(userData)
-            }))
+                    this._platformStorageCachedData = userData
+                    resolve(userData)
+                }))
+            }
         })
     }
 

@@ -51,6 +51,7 @@ const ACTION_NAME_QA = {
     UNLOCK_ACHIEVEMENT: 'unlock_achievement',
     GET_ACHIEVEMENTS: 'get_achievements',
     SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
+    GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -58,20 +59,19 @@ const INTERSTITIAL_STATUS = {
     OPEN: 'open',
     SHOW: 'show',
     CLOSE: 'close',
+    FAILED: 'failed',
 }
 const REWARD_STATUS = {
     START: 'start',
     OPEN: 'open',
     REWARDED: 'rewarded',
     CLOSE: 'close',
+    FAILED: 'failed',
 }
 
 const SUPPORTED_FEATURES = {
     PLAYER_AUTHORIZATION: 'isPlayerAuthorizationSupported',
     PAYMENTS: 'isPaymentsSupported',
-    GET_CATALOG: 'isGetCatalogSupported',
-    GET_PURCHASES: 'isGetPurchasesSupported',
-    CONSUME_PURCHASE: 'isConsumePurchaseSupported',
     REMOTE_CONFIG: 'isRemoteConfigSupported',
     INVITE_FRIENDS: 'isInviteFriendsSupported',
     JOIN_COMMUNITY: 'isJoinCommunitySupported',
@@ -110,6 +110,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._platformTld
     }
 
+    get deviceType() {
+        return this._deviceType
+    }
+
+    get platformPayload() {
+        return this._platformPayload
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.PLAYER_AUTHORIZATION)
@@ -118,18 +126,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     // payments
     get isPaymentsSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
-    }
-
-    get isGetCatalogSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_CATALOG)
-    }
-
-    get isGetPurchasesSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.GET_PURCHASES)
-    }
-
-    get isConsumePurchaseSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CONSUME_PURCHASE)
     }
 
     // config
@@ -230,22 +226,18 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
             const messageHandler = ({ data }) => {
-                if (data?.type === MODULE_NAME.PLATFORM && data.action === ACTION_NAME.INITIALIZE) {
-                    this._supportedFeatures = data.supportedFeatures || []
-                    this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+                if (!data?.type) return
 
-                    // config
-                    this._platformLanguage = data.config?.platformLanguage ?? super.platformLanguage
-                    this._platformTld = data.config?.platformTld ?? super.platformTld
+                if (data.type === MODULE_NAME.PLATFORM) {
+                    if (data.action === ACTION_NAME.INITIALIZE) {
+                        this.#handleInitializeResponse(data)
+                    }
 
-                    this._isInitialized = true
-                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-
-                    this.#messageBroker.send({
-                        type: MODULE_NAME_QA.LIVENESS,
-                        action: ACTION_NAME_QA.LIVENESS_PING,
-                        options: { version: PLUGIN_VERSION },
-                    })
+                    if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
+                        const messageId = this.#messageBroker.generateMessageId()
+                        const requestedProps = data?.options?.resources || []
+                        this.#getPerformanceResources(messageId, requestedProps)
+                    }
                 }
             }
 
@@ -259,8 +251,56 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    #handleInitializeResponse(data) {
+        this._supportedFeatures = data.supportedFeatures || []
+        this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+
+        const { config = {} } = data
+        this._deviceType = config.deviceType ?? super.deviceType
+        this._platformLanguage = config.platformLanguage ?? super.platformLanguage
+        this._platformTld = config.platformTld ?? super.platformTld
+        this._platformPayload = config.platformPayload ?? super.platformPayload
+
+        this._paymentsPurchases = data.purchases || []
+
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+
+        this.#messageBroker.send({
+            type: MODULE_NAME_QA.LIVENESS,
+            action: ACTION_NAME_QA.LIVENESS_PING,
+            options: { version: PLUGIN_VERSION },
+        })
+    }
+
+    #getPerformanceResources(messageId, requestedProps = []) {
+        const props = Array.isArray(requestedProps) ? requestedProps : []
+        const resources = performance.getEntriesByType('resource') || []
+        const defaultProps = ['name', 'initiatorType']
+        const propsToExtract = props.length > 0 ? props : defaultProps
+
+        const serializableResources = resources.map((resource) => {
+            const extracted = {}
+            propsToExtract.forEach((prop) => {
+                if (prop in resource) {
+                    extracted[prop] = resource[prop]
+                }
+            })
+            return extracted
+        })
+
+        this.#messageBroker.send({
+            type: MODULE_NAME.PLATFORM,
+            action: ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES,
+            id: messageId,
+            options: { resources: serializableResources },
+        })
+
+        return Promise.resolve(resources)
+    }
+
     // player
-    authorizePlayer() {
+    authorizePlayer(options) {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -273,28 +313,33 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.AUTHORIZE_PLAYER
                     && data.id === messageId
                 ) {
-                    const { player } = data
+                    const { player, auth } = data
 
-                    this._isPlayerAuthorized = true
+                    if (auth.status === 'success') {
+                        this._isPlayerAuthorized = true
 
-                    this._playerId = player.userId
-                    this._playerName = player.name
+                        this._playerId = player.userId
+                        this._playerName = player.name
 
-                    if (player.profilePictureUrl) {
-                        this._playerPhotos = [player.profilePictureUrl]
+                        if (player.profilePictureUrl) {
+                            this._playerPhotos = [player.profilePictureUrl]
+                        }
+
+                        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, auth.error)
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                     this.#messageBroker.removeListener(messageHandler)
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PLAYER,
                 action: ACTION_NAME.AUTHORIZE_PLAYER,
                 id: messageId,
+                options,
             })
         }
 
@@ -498,6 +543,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 case INTERSTITIAL_STATUS.OPEN:
                     this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                     break
+                case INTERSTITIAL_STATUS.FAILED:
+                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    break
                 case INTERSTITIAL_STATUS.CLOSE:
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                     this.#messageBroker.removeListener(showInterstitialHandler)
@@ -527,6 +575,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     break
                 case REWARD_STATUS.OPEN:
                     this._setRewardedState(REWARDED_STATE.OPENED)
+                    break
+                case REWARD_STATUS.FAILED:
+                    this._setRewardedState(REWARDED_STATE.FAILED)
                     break
                 case REWARD_STATUS.REWARDED:
                     this._setRewardedState(REWARDED_STATE.REWARDED)
@@ -691,7 +742,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    purchase() {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -706,87 +762,43 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 ) {
                     if (!data.purchase || typeof data.purchase !== 'object') {
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, new Error('Invalid purchase'))
+                        this.#messageBroker.removeListener(messageHandler)
                         return
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, data.purchase)
+                    if (data.purchase?.status) {
+                        const mergedPurchase = { commonId: id, ...data.purchase.purchaseData }
+                        this._paymentsPurchases.push(mergedPurchase)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    } else {
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.PURCHASE,
+                            data.purchase?.error || new Error('Unknown purchase error'),
+                        )
+                    }
+
                     this.#messageBroker.removeListener(messageHandler)
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.PURCHASE,
                 id: messageId,
+                options: { product },
             })
         }
 
         return promiseDecorator.promise
     }
 
-    getPaymentsPurchases() {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
-
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.GET_PURCHASES
-                    && data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, data.purchases)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.GET_PURCHASES,
-                id: messageId,
-            })
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
         }
 
-        return promiseDecorator.promise
-    }
-
-    getPaymentsCatalog() {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
-
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.GET_CATALOG
-                    && data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, data.catalog)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.GET_CATALOG,
-                id: messageId,
-            })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    consumePurchase() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
@@ -799,19 +811,115 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.action === ACTION_NAME.CONSUME_PURCHASE
                     && data.id === messageId
                 ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                    if (!data.purchase || typeof data.purchase !== 'object') {
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.CONSUME_PURCHASE,
+                            new Error('Invalid purchase'),
+                        )
+                        this.#messageBroker.removeListener(messageHandler)
+                        return
+                    }
+
+                    if (data.purchase?.status) {
+                        this._paymentsPurchases.splice(purchaseIndex, 1)
+                        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                    } else {
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.CONSUME_PURCHASE,
+                            data.purchase?.error || new Error('Unknown consume purchase error'),
+                        )
+                    }
+
                     this.#messageBroker.removeListener(messageHandler)
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
                 type: MODULE_NAME.PAYMENTS,
                 action: ACTION_NAME.CONSUME_PURCHASE,
                 id: messageId,
+                options: { product: this._paymentsPurchases[purchaseIndex] },
             })
         }
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
+            const products = this._paymentsGetProductsPlatformData()
+            const messageId = this.#messageBroker.generateMessageId()
+
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === MODULE_NAME.PAYMENTS
+                    && data.action === ACTION_NAME.GET_CATALOG
+                    && data.id === messageId
+                ) {
+                    const mergedProducts = products.map((product) => ({
+                        commonId: product.commonId,
+                        id: product.id,
+                        price: `${product.amount} Golden Fennec`,
+                        priceCurrencyCode: 'Golden Fennec',
+                        priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
+                        priceValue: product.amount,
+                    }))
+
+                    this.#messageBroker.removeListener(messageHandler)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+                }
+            }
+
+            this.#messageBroker.addListener(messageHandler)
+            this.#messageBroker.send({
+                type: MODULE_NAME.PAYMENTS,
+                action: ACTION_NAME.GET_CATALOG,
+                id: messageId,
+            })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+
+            const messageId = this.#messageBroker.generateMessageId()
+
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === MODULE_NAME.PAYMENTS
+                    && data.action === ACTION_NAME.GET_PURCHASES
+                    && data.id === messageId
+                ) {
+                    const products = this._paymentsGetProductsPlatformData()
+
+                    this._paymentsPurchases = data.purchases.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.id)
+                        return {
+                            commonId: product.commonId,
+                            ...purchase.purchaseData,
+                        }
+                    })
+
+                    this.#messageBroker.removeListener(messageHandler)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                }
+            }
+
+            this.#messageBroker.addListener(messageHandler)
+            this.#messageBroker.send({
+                type: MODULE_NAME.PAYMENTS,
+                action: ACTION_NAME.GET_PURCHASES,
+                id: messageId,
+            })
+        }
+
         return promiseDecorator.promise
     }
 

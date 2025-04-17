@@ -120,12 +120,14 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
             container.style.left = 0
             container.style.top = 0
             container.style.height = '100%'
-            container.style.width = '90px'
+            container.style.minHeight = '600px'
+            container.style.width = '120px'
         } else if (options?.position === 'right') {
             container.style.right = 0
             container.style.top = 0
             container.style.height = '100%'
-            container.style.width = '90px'
+            container.style.minHeight = '600px'
+            container.style.width = '120px'
         } else {
             container.style.bottom = 0
             container.style.height = '90px'
@@ -140,6 +142,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
             })
             .catch(() => {
                 this._setBannerState(BANNER_STATE.FAILED)
+                container.style.display = 'none'
             })
     }
 

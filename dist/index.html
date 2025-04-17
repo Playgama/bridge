@@ -61,6 +61,23 @@
                 <button id="platform-send-message-button">
                     Send Message
                 </button>
+                <hr>
+                <p>Is Get All Games Supported: <span id="platform-is-get-all-games-supported-text"></span></p>
+                <p>Is Get Game By ID Supported: <span id="platform-is-get-game-by-id-supported-text"></span></p>
+                <p id="platform-all-games-container"></p>
+                <button id="platform-get-all-games-button">
+                    Get All Games
+                </button>
+                <p id="platform-game-by-id-container"></p>
+                <input type="text" id="platform-game-by-id-input" placeholder="Game ID" />
+                <button id="platform-get-game-by-id-button">
+                    Get Game By ID
+                </button>
+            </div>
+
+            <div class="section" id="game-section" style="display: none">
+                <h2>Game</h2>
+                <p>Visibility States: <span id="game-visibility-states-text"></span></p>
             </div>
 
             <div class="section" id="device-section" style="display: none">
@@ -198,22 +215,18 @@
             <div class="section" id="payments-section" style="display: none">
                 <h2>Payments</h2>
                 <p>Is Supported: <span id="payments-is-supported-text"></span></p>
-                <p>Is Get Catalog Supported: <span id="payments-is-get-catalog-supported-text"></span></p>
-                <p>Is Get Purchases Supported: <span id="payments-is-get-purchases-supported-text"></span></p>
-                <p>Is Consume Purchase Supported: <span id="payments-is-consume-purchase-supported-text"></span></p>
                 <hr>
                 <button id="payments-get-purchases-button">Get Purchases</button>
                 <pre id="payments-purchases-container"></pre>
                 <button id="payments-get-catalog-button">Get Catalog</button>
                 <pre id="payments-catalog-container"></pre>
                 <hr>
-                <input type="text" id="payments-id-input" placeholder="Yandex ID">
+                <input type="text" id="payments-id-input" placeholder="ID">
                 <button id="payments-purchase-button">Purchase</button>
-                <br>
-                <p>Purchase Status: <span id="payments-purchase-status"></span></p>
-                <br>
-                <input type="text" id="payments-token-input" placeholder="Yandex Token">
                 <button id="payments-consume-button">Consume</button>
+                <br>
+                <p>Response: <span id="payments-purchase-status"></span></p>
+
             </div>
             <div class="section" id="achievements-section" style="display: none">
                 <h2>Achievements</h2>
@@ -268,6 +281,7 @@
             function runAfterScriptLoad() {
                 const optionsSection = document.getElementById('options-section')
                 const platformSection = document.getElementById('platform-section')
+                const gameSection = document.getElementById('game-section')
                 const deviceSection = document.getElementById('device-section')
                 const playerSection = document.getElementById('player-section')
                 const storageSection = document.getElementById('storage-section')
@@ -280,6 +294,7 @@
                 const clipboardSection = document.getElementById('clipboard-section')
 
                 platformSection.style.display = 'none'
+                gameSection.style.display = 'none'
                 deviceSection.style.display = 'none'
                 playerSection.style.display = 'none'
                 storageSection.style.display = 'none'
@@ -300,6 +315,15 @@
                 const platformServerTimeButton = document.getElementById('platform-server-time-button')
                 const platformMessageInput = document.getElementById('platform-send-message-input')
                 const platformMessageButton = document.getElementById('platform-send-message-button')
+                const platformIsGetAllGamesSupportedText = document.getElementById('platform-is-get-all-games-supported-text')
+                const platformIsGetGameByIdSupportedText = document.getElementById('platform-is-get-game-by-id-supported-text')
+                const platformAllGamesContainer = document.getElementById('platform-all-games-container')
+                const platformGetAllGamesButton = document.getElementById('platform-get-all-games-button')
+                const platformGameByIdInput = document.getElementById('platform-game-by-id-input')
+                const platformGameByIdContainer = document.getElementById('platform-game-by-id-container')
+                const platformGetGameByIdButton = document.getElementById('platform-get-game-by-id-button')
+
+                const gameVisibilityStatesText = document.getElementById('game-visibility-states-text')
 
                 const deviceTypeText = document.getElementById('device-type-text')
 
@@ -374,9 +398,6 @@
                 const leaderboardEntriesContainer = document.getElementById('leaderboard-entries-container')
 
                 const paymentsIsSupportedText = document.getElementById('payments-is-supported-text')
-                const paymentsIsGetCatalogSupportedText = document.getElementById('payments-is-get-catalog-supported-text')
-                const paymentsIsGetPurchasesSupportedText = document.getElementById('payments-is-get-purchases-supported-text')
-                const paymentsIsConsumePurchaseSupportedText = document.getElementById('payments-is-consume-purchase-supported-text')
                 const paymentsGetPurchasesButton = document.getElementById('payments-get-purchases-button')
                 const paymentPurchasesContainer = document.getElementById('payments-purchases-container')
                 const paymentsGetCatalogButton = document.getElementById('payments-get-catalog-button')
@@ -405,36 +426,13 @@
                 const clipboardReadButton = document.getElementById('clipboard-read-button')
                 const clipboardWriteButton = document.getElementById('clipboard-write-button')
 
+                var gameVisibilityStates = []
                 var lastInterstitialStates = []
                 var lastRewardedStates = []
                 var lastBannerStates = []
 
-                let options = {
-                    'platforms': {
-                        'game_distribution': {
-                            gameId: ''
-                        },
-                        'telegram': {
-                            adsgramBlockId: ''
-                        },
-                        'y8': {
-                            gameId: '',
-                            adsenseId: '',
-                            channelId: '',
-                        },
-                        'lagged': {
-                            devId: '',
-                            publisherId: ''
-                            
-                        },
-                        'facebook': {
-                            placementId: ''
-                        }
-                    }
-                }
-
                 bridge
-                    .initialize(options)
+                    .initialize()
                     .then(() => {
                         optionsSection.style.display = 'none'
 
@@ -442,6 +440,8 @@
                         platformLanguageText.innerText = bridge.platform.language
                         platformPayloadText.innerText = bridge.platform.payload
                         platformTldText.innerText = bridge.platform.tld
+                        platformIsGetAllGamesSupportedText.innerText = bridge.platform.isGetAllGamesSupported
+                        platformIsGetGameByIdSupportedText.innerText = bridge.platform.isGetGameByIdSupported
 
                         deviceTypeText.innerText = bridge.device.type
 
@@ -468,6 +468,14 @@
                         advertisementIsBannerSupportedText.innerText = bridge.advertisement.isBannerSupported
                         advertisementBannerStateText.innerText = bridge.advertisement.bannerState
                         advertisementMinimumDelayBetweenInterstitialInput.value = bridge.advertisement.minimumDelayBetweenInterstitial
+
+                        gameVisibilityStates.push(bridge.game.visibilityState)
+                        gameVisibilityStatesText.innerText = gameVisibilityStates.join(' → ')
+
+                        bridge.game.on('visibility_state_changed', state => {
+                            gameVisibilityStates.push(state)
+                            gameVisibilityStatesText.innerText = gameVisibilityStates.join(' → ')
+                        })
 
                         bridge.advertisement.on('interstitial_state_changed', state => {
                             lastInterstitialStates.push(state)
@@ -511,13 +519,11 @@
                         achievementsIsNativePopupSupportedText.innerText = bridge.achievements.isNativePopupSupported
 
                         paymentsIsSupportedText.innerText = bridge.payments.isSupported
-                        paymentsIsGetCatalogSupportedText.innerText = bridge.payments.isGetCatalogSupported
-                        paymentsIsGetPurchasesSupportedText.innerText = bridge.payments.isGetPurchasesSupported
-                        paymentsIsConsumePurchaseSupportedText.innerText = bridge.payments.isConsumePurchaseSupported
                         remoteConfigIsSupportedText.innerText = bridge.remoteConfig.isSupported
                         clipboardIsSupportedText.innerText = bridge.clipboard.isSupported
 
                         platformSection.style.display = 'block'
+                        gameSection.style.display = 'block'
                         deviceSection.style.display = 'block'
                         playerSection.style.display = 'block'
                         storageSection.style.display = 'block'
@@ -549,6 +555,30 @@
                         })
                         .catch((error) => {
                             platformSendMessageStatus.innerText = 'Failed: ' + error;
+                        })
+                })
+
+                platformGetAllGamesButton.addEventListener('click', () => {
+                    bridge
+                        .platform
+                        .getAllGames()
+                        .then((games) => {
+                            platformAllGamesContainer.innerText = JSON.stringify(games, undefined, 2)
+                        })
+                        .catch((error) => {
+                            platformAllGamesContainer.innerText = 'Failed: ' + error;
+                        })
+                })
+
+                platformGetGameByIdButton.addEventListener('click', () => {
+                    bridge
+                        .platform
+                        .getGameById(platformGameByIdInput.value)
+                        .then((game) => {
+                            platformGameByIdContainer.innerText = JSON.stringify(game, undefined, 2)
+                        })
+                        .catch((error) => {
+                            platformGameByIdContainer.innerText = 'Failed: ' + error;
                         })
                 })
 
@@ -756,34 +786,22 @@
                 })
 
                 paymentsPurchaseButton.addEventListener('click', () => {
-                    bridge.payments.purchase({
-                        'yandex': document.getElementById('payments-id-input').value,
-                        'playdeck': {
-                            'amount': 1,
-                            'description': 'your description',
-                            'externalId': 'unique order',
-                            'photoUrl': 'optional field'
-                        }
-                    })
-                    .then(result => {
-                            purchaseStatusContainer.innerText = result.status
-                        })
-                        .catch((error) => {
-                            purchaseStatusContainer.innerText = error.status
-                            console.log(error)
-                        })
+                    bridge.payments.purchase(document.getElementById('payments-id-input').value)
+                        .then((result) => { purchaseStatusContainer.innerText = JSON.stringify(result) })
+                        .catch((error) => { purchaseStatusContainer.innerText = JSON.stringify(error) })
                 })
 
                 paymentsConsumeButton.addEventListener('click', () => {
-                    bridge.payments.consumePurchase({ 'yandex': document.getElementById('payments-token-input').value })
-                        .catch((error) => console.log(error))
+                    bridge.payments.consumePurchase(document.getElementById('payments-id-input').value)
+                        .then((result) => { purchaseStatusContainer.innerText = JSON.stringify(result) })
+                        .catch((error) => { purchaseStatusContainer.innerText = JSON.stringify(error) })
                 })
 
                 achievementsShowNativeButton.addEventListener('click', () => {
                     bridge.achievements.showNativePopup()
                         .catch((error) => console.log(error))
                 })
-                
+
                 achievementsGetListButton.addEventListener('click', () => {
                     bridge.achievements.getList()
                         .then((list) => achievementListContainer.innerText = JSON.stringify(list))
@@ -805,7 +823,7 @@
                                 achievementkey: achievementsIdInput.value,
                             }
                             break;
-                        default: 
+                        default:
                             break;
                     }
 

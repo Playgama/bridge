@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, isBase64Image, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -35,7 +35,7 @@ const Platform = {
     MOBILE_WEB: 'MOBILE_WEB',
 }
 
-const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.7.1.js'
+const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 
 class FacebookPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -104,18 +104,6 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('payments.purchaseAsync')
     }
 
-    get isGetCatalogSupported() {
-        return this._supportedApis.includes('payments.getCatalogAsync')
-    }
-
-    get isGetPurchasesSupported() {
-        return this._supportedApis.includes('payments.getPurchasesAsync')
-    }
-
-    get isConsumePurchaseSupported() {
-        return this._supportedApis.includes('payments.consumePurchaseAsync')
-    }
-
     // social
     get isInviteFriendsSupported() {
         return this._supportedApis.includes('inviteAsync')
@@ -127,13 +115,21 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     _contextId = null
 
-    _placementId = null
+    _bannerPlacementId = null
 
-    _leaderboardId = null
+    _interstitialPlacements = []
+
+    _rewardedPlacements = []
 
     _isPlayerAuthorized = true
 
     _supportedApis = []
+
+    _preloadedInterstitialPromises = {}
+
+    _preloadedRewardedPromises = {}
+
+    _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     initialize() {
         if (this._isInitialized) {
@@ -151,21 +147,37 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     return this._platformSdk.initializeAsync()
                 })
                 .then(() => {
-                    this._placementId = this._options.placementId
+                    this._bannerPlacementId = this._options.bannerPlacementId || null
+                    this._interstitialPlacements = this._options.interstitialPlacements || []
+                    this._rewardedPlacements = this._options.rewardedPlacements || []
 
                     this._playerId = this._platformSdk.player.getID()
-                    this._playerName = this._platformSdk.player.getName()
-                    this._playerPhotos.push(this._platformSdk.player.getPhoto())
 
                     this._contextId = this._platformSdk.context.getID()
-                    this._platformLanguage = this._platformSdk.getLocale()
+
+                    const language = this._platformSdk.getLocale()
+
+                    if (language && language.length > 2) {
+                        this._platformLanguage = language.substring(0, 2).toLowerCase()
+                    }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
 
                     this._isInitialized = true
+
+                    for (let i = 0; i < this._interstitialPlacements.length; i++) {
+                        const interstitialPlacement = this._interstitialPlacements[i]
+                        this.#preloadInterstitial(interstitialPlacement.id)
+                    }
+
+                    for (let i = 0; i < this._rewardedPlacements.length; i++) {
+                        const rewardedPlacement = this._rewardedPlacements[i]
+                        this.#preloadRewarded(rewardedPlacement.id)
+                    }
+
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
-                .catch((e) => this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, e))
+                .catch((e) => this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e))
         }
 
         return promiseDecorator.promise
@@ -273,7 +285,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showBanner(options) {
-        this._platformSdk.loadBannerAdAsync(this._placementId, options)
+        this._platformSdk.loadBannerAdAsync(this._bannerPlacementId, options)
             .then(() => {
                 this._setBannerState(BANNER_STATE.SHOWN)
             })
@@ -292,14 +304,11 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
     }
 
-    showInterstitial() {
-        let preloadedInterstitial
-        this._platformSdk.getInterstitialAdAsync(this._placementId)
-            .then((interstitial) => {
-                preloadedInterstitial = interstitial
-                return interstitial.loadAsync()
-            })
-            .then(() => {
+    showInterstitial(placementId) {
+        const _placementId = placementId || this._interstitialPlacements[0]?.id
+
+        this.#preloadInterstitial(_placementId)
+            .then((preloadedInterstitial) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                 return preloadedInterstitial.showAsync()
             })
@@ -309,16 +318,16 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
             })
+            .finally(() => {
+                this.#preloadInterstitial(_placementId, true)
+            })
     }
 
-    showRewarded() {
-        let preloadedRewarded
-        this._platformSdk.getRewardedVideoAsync(this._placementId)
-            .then((rewarded) => {
-                preloadedRewarded = rewarded
-                return rewarded.loadAsync()
-            })
-            .then(() => {
+    showRewarded(placementId) {
+        const _placementId = placementId || this._rewardedPlacements[0]?.id
+
+        this.#preloadRewarded(_placementId)
+            .then((preloadedRewarded) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
                 return preloadedRewarded.showAsync()
             })
@@ -328,6 +337,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
             .catch(() => {
                 this._setRewardedState(REWARDED_STATE.FAILED)
+            })
+            .finally(() => {
+                this.#preloadRewarded(_placementId, true)
             })
     }
 
@@ -433,8 +445,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    purchase(options) {
-        if (!options.productID) {
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
             return Promise.reject()
         }
 
@@ -442,12 +455,11 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.payments.purchaseAsync({
-                productID: options.productID,
-                developerPayload: options.developerPayload ? JSON.stringify(options.developerPayload) : undefined,
-            })
-                .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, result)
+            this._platformSdk.payments.purchaseAsync(product)
+                .then((purchase) => {
+                    const mergedPurchase = { commonId: id, ...purchase }
+                    this._paymentsPurchases.push(mergedPurchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
@@ -457,31 +469,57 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getPaymentsPurchases() {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
+        }
 
-            this._platformSdk.payments.getPurchasesAsync()
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+
+            this._platformSdk.payments.consumePurchaseAsync(this._paymentsPurchases[purchaseIndex].purchaseToken)
                 .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, result)
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
                 })
         }
 
         return promiseDecorator.promise
     }
 
-    getPaymentsCatalog() {
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
             this._platformSdk.payments.getCatalogAsync()
-                .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, result)
+                .then((facebookProducts) => {
+                    const mergedProducts = products.map((product) => {
+                        const facebookProduct = facebookProducts.find((p) => p.productID === product.productID)
+
+                        return {
+                            commonId: product.commonId,
+                            productID: facebookProduct.productID,
+                            description: facebookProduct.description,
+                            imageURI: facebookProduct.imageURI,
+                            price: facebookProduct.price,
+                            priceCurrencyCode: facebookProduct.priceCurrencyCode,
+                            priceValue: facebookProduct.priceAmount,
+                            title: facebookProduct.title,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
@@ -491,23 +529,30 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    consumePurchase(options) {
-        if (!options.purchaseToken) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this._platformSdk.payments.consumePurchaseAsync(options.purchaseToken)
-                .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            this._platformSdk.payments.getPurchasesAsync()
+                .then((purchases) => {
+                    const products = this._paymentsGetProductsPlatformData()
+
+                    this._paymentsPurchases = purchases.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.productID)
+                        return {
+                            commonId: product.commonId,
+                            ...purchase,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
                 })
         }
+
         return promiseDecorator.promise
     }
 
@@ -517,10 +562,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        try {
-            window.btoa(options.image)
-        } catch (e) {
-            return Promise.reject(e)
+        if (!isBase64Image(options.image)) {
+            return Promise.reject(new Error('Image is not base64'))
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
@@ -528,26 +571,82 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
 
             this._platformSdk.inviteAsync(options)
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INVITE_FRIENDS, error)
+                })
         }
 
         return promiseDecorator.promise
     }
 
     share(options) {
-        if (!options.image || !options.media || !options.text) {
+        if (!options.image || !options.text) {
             return Promise.reject()
         }
 
-        try {
-            window.btoa(options.image)
-        } catch (e) {
-            return Promise.reject(e)
+        if (!isBase64Image(options.image)) {
+            return Promise.reject(new Error('Image is not base64'))
         }
 
-        return new Promise((resolve) => {
-            this._platform.shareAsync(options)
-                .then(resolve)
-        })
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+
+            this._platformSdk.shareAsync(options)
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.SHARE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #preloadInterstitial(placementId, forciblyPreload = false) {
+        if (!forciblyPreload && this._preloadedInterstitialPromises[placementId]) {
+            return this._preloadedInterstitialPromises[placementId]
+        }
+
+        let preloadedInterstitial = null
+
+        this._preloadedInterstitialPromises[placementId] = this._platformSdk.getInterstitialAdAsync(placementId)
+            .then((interstitial) => {
+                preloadedInterstitial = interstitial
+                return interstitial.loadAsync()
+            })
+            .then(() => preloadedInterstitial)
+            .catch(() => {
+                this._preloadedInterstitialPromises[placementId] = null
+                return Promise.reject()
+            })
+
+        return this._preloadedInterstitialPromises[placementId]
+    }
+
+    #preloadRewarded(placementId, forciblyPreload = false) {
+        if (!forciblyPreload && this._preloadedRewardedPromises[placementId]) {
+            return this._preloadedRewardedPromises[placementId]
+        }
+
+        let preloadedRewarded = null
+
+        this._preloadedRewardedPromises[placementId] = this._platformSdk.getRewardedVideoAsync(placementId)
+            .then((rewarded) => {
+                preloadedRewarded = rewarded
+                return rewarded.loadAsync()
+            })
+            .then(() => preloadedRewarded)
+            .catch(() => {
+                this._preloadedRewardedPromises[placementId] = null
+                return Promise.reject()
+            })
+
+        return this._preloadedRewardedPromises[placementId]
     }
 }
 

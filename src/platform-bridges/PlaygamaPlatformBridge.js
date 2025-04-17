@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor, getKeysFromObject } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -44,6 +44,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // payments
+    get isPaymentsSupported() {
+        return true
+    }
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -67,8 +72,64 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
+    isStorageSupported(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageSupported(storageType)
+    }
+
+    isStorageAvailable(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return this._isPlayerAuthorized
+        }
+
+        return super.isStorageAvailable(storageType)
+    }
+
+    getDataFromStorage(key, storageType, tryParseJson) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
+            return this.#getDataFromPlatformStorage(key, tryParseJson)
+        }
+
+        return super.getDataFromStorage(key, storageType, tryParseJson)
+    }
+
     setDataToStorage(key, value, storageType) {
         switch (storageType) {
+            case STORAGE_TYPE.PLATFORM_INTERNAL: {
+                if (!this._isPlayerAuthorized) {
+                    return Promise.reject()
+                }
+
+                return new Promise((resolve, reject) => {
+                    const data = this._platformStorageCachedData !== null
+                        ? { ...this._platformStorageCachedData }
+                        : {}
+
+                    if (Array.isArray(key)) {
+                        for (let i = 0; i < key.length; i++) {
+                            data[key[i]] = value[i]
+                        }
+                    } else {
+                        data[key] = value
+                    }
+
+                    this.platformSdk.cloudSaveApi.setItems(data)
+                        .then(() => {
+                            this._platformStorageCachedData = data
+                            resolve()
+                        })
+                        .catch((error) => {
+                            reject(error)
+                        })
+                })
+            }
             case STORAGE_TYPE.LOCAL_STORAGE: {
                 const data = {}
                 if (Array.isArray(key)) {
@@ -90,6 +151,30 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     deleteDataFromStorage(key, storageType) {
         switch (storageType) {
+            case STORAGE_TYPE.PLATFORM_INTERNAL: {
+                return new Promise((resolve, reject) => {
+                    const data = this._platformStorageCachedData !== null
+                        ? { ...this._platformStorageCachedData }
+                        : {}
+
+                    if (Array.isArray(key)) {
+                        for (let i = 0; i < key.length; i++) {
+                            delete data[key[i]]
+                        }
+                    } else {
+                        delete data[key]
+                    }
+
+                    this.platformSdk.cloudSaveApi.setItems(data)
+                        .then(() => {
+                            this._platformStorageCachedData = data
+                            resolve()
+                        })
+                        .catch((error) => {
+                            reject(error)
+                        })
+                })
+            }
             case STORAGE_TYPE.LOCAL_STORAGE: {
                 this._platformSdk.storageApi.deleteItems(Array.isArray(key) ? key : [key])
                 return super.deleteDataFromStorage(key, storageType)
@@ -165,6 +250,56 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // payments
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        if (!product.externalId) {
+            product.externalId = this._paymentsGenerateTransactionId(id)
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            this._platformSdk.inGamePaymentsApi.purchase(product)
+                .then((purchase) => {
+                    if (purchase.status === 'PAID') {
+                        const mergedPurchase = { commonId: id, ...purchase }
+                        this._paymentsPurchases.push(mergedPurchase)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.error)
+                    }
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        const updatedProducts = products.map((product) => ({
+            commonId: product.commonId,
+            price: `${product.amount} Golden Fennec`,
+            priceCurrencyCode: 'Golden Fennec',
+            priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
+            priceValue: product.amount,
+        }))
+
+        return Promise.resolve(updatedProducts)
+    }
+
     #getPlayer() {
         return new Promise((resolve) => {
             this._platformSdk.userService.getUser()
@@ -173,11 +308,27 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     this._isPlayerAuthorized = player.isAuthorized
                     this._playerName = player.name
                     this._playerPhotos = player.photos
+                    this._defaultStorageType = this._isPlayerAuthorized
+                        ? STORAGE_TYPE.PLATFORM_INTERNAL
+                        : STORAGE_TYPE.LOCAL_STORAGE
+                    if (this._isPlayerAuthorized) {
+                        return this.#getDataFromPlatformStorage([])
+                    }
+
+                    return Promise.resolve()
                 })
                 .finally(() => {
                     resolve()
                 })
         })
+    }
+
+    async #getDataFromPlatformStorage(key, tryParseJson = false) {
+        if (!this._platformStorageCachedData) {
+            this._platformStorageCachedData = await this.platformSdk.cloudSaveApi.getState()
+        }
+
+        return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
     }
 }
 

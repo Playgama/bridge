@@ -57,6 +57,14 @@ class PlatformBridgeBase {
         return null
     }
 
+    get isPlatformGetAllGamesSupported() {
+        return false
+    }
+
+    get isPlatformGetGameByIdSupported() {
+        return false
+    }
+
     // game
     get visibilityState() {
         return this._visibilityState
@@ -184,18 +192,6 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isGetCatalogSupported() {
-        return false
-    }
-
-    get isGetPurchasesSupported() {
-        return false
-    }
-
-    get isConsumePurchaseSupported() {
-        return false
-    }
-
     // config
     get isRemoteConfigSupported() {
         return false
@@ -247,6 +243,8 @@ class PlatformBridgeBase {
 
     _bannerState = null
 
+    _paymentsPurchases = []
+
     #promiseDecorators = { }
 
     constructor(options) {
@@ -254,11 +252,18 @@ class PlatformBridgeBase {
             // Nothing we can do with it
         }
 
-        this._visibilityState = document.visibilityState === 'visible' ? VISIBILITY_STATE.VISIBLE : VISIBILITY_STATE.HIDDEN
+        this._visibilityState = document.visibilityState
 
         document.addEventListener('visibilitychange', () => {
-            this._visibilityState = document.visibilityState === 'visible' ? VISIBILITY_STATE.VISIBLE : VISIBILITY_STATE.HIDDEN
-            this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, this._visibilityState)
+            this._setVisibilityState(document.visibilityState)
+        })
+
+        window.addEventListener('blur', () => {
+            this._setVisibilityState(VISIBILITY_STATE.HIDDEN)
+        })
+
+        window.addEventListener('focus', () => {
+            this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
         })
 
         if (options) {
@@ -291,6 +296,14 @@ class PlatformBridgeBase {
                     reject()
                 })
         })
+    }
+
+    getAllGames() {
+        return Promise.reject()
+    }
+
+    getGameById() {
+        return Promise.reject()
     }
 
     // player
@@ -495,19 +508,42 @@ class PlatformBridgeBase {
     }
 
     // payments
-    purchase() {
+    paymentsPurchase(id) {
+        if (this.isPaymentsSupported) {
+            this._paymentsPurchases.push({ commonId: id })
+            return Promise.resolve()
+        }
+
         return Promise.reject()
     }
 
-    getPaymentsPurchases() {
+    paymentsConsumePurchase(id) {
+        if (this.isPaymentsSupported) {
+            const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+            if (purchaseIndex < 0) {
+                return Promise.reject()
+            }
+
+            this._paymentsPurchases.splice(purchaseIndex, 1)
+            return Promise.resolve()
+        }
+
         return Promise.reject()
     }
 
-    getPaymentsCatalog() {
+    paymentsGetCatalog() {
+        if (this.isPaymentsSupported) {
+            return Promise.resolve(this._paymentsGetProductsPlatformData())
+        }
+
         return Promise.reject()
     }
 
-    consumePurchase() {
+    paymentsGetPurchases() {
+        if (this.isPaymentsSupported) {
+            return Promise.resolve(this._paymentsPurchases)
+        }
+
         return Promise.reject()
     }
 
@@ -568,6 +604,15 @@ class PlatformBridgeBase {
         this._localStorage.removeItem(key)
     }
 
+    _setVisibilityState(state) {
+        if (this._visibilityState === state) {
+            return
+        }
+
+        this._visibilityState = state
+        this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, this._visibilityState)
+    }
+
     _setInterstitialState(state) {
         if (this._interstitialState === state && state !== INTERSTITIAL_STATE.FAILED) {
             return
@@ -617,6 +662,40 @@ class PlatformBridgeBase {
             this.#promiseDecorators[id].reject(error)
             delete this.#promiseDecorators[id]
         }
+    }
+
+    _paymentsGetProductsPlatformData() {
+        if (!this._options.payments) {
+            return []
+        }
+
+        return this._options.payments
+            .filter((product) => Object.prototype.hasOwnProperty.call(product, this.platformId))
+            .map((product) => ({
+                commonId: product.commonId,
+                ...product[this.platformId],
+            }))
+    }
+
+    _paymentsGetProductPlatformData(id) {
+        const products = this._options.payments
+        if (!products) {
+            return null
+        }
+
+        const product = products.find((p) => p.commonId === id)
+        if (!product) {
+            return null
+        }
+
+        return {
+            commonId: product.commonId,
+            ...product[this.platformId],
+        }
+    }
+
+    _paymentsGenerateTransactionId(id) {
+        return `${id}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
     }
 }
 
