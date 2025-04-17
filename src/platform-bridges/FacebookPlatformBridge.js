@@ -35,7 +35,7 @@ const Platform = {
     MOBILE_WEB: 'MOBILE_WEB',
 }
 
-const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.7.1.js'
+const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 
 class FacebookPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -152,11 +152,14 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     this._rewardedPlacements = this._options.rewardedPlacements || []
 
                     this._playerId = this._platformSdk.player.getID()
-                    this._playerName = this._platformSdk.player.getName()
-                    this._playerPhotos.push(this._platformSdk.player.getPhoto())
 
                     this._contextId = this._platformSdk.context.getID()
-                    this._platformLanguage = this._platformSdk.getLocale()
+
+                    const language = this._platformSdk.getLocale()
+
+                    if (language && language.length > 2) {
+                        this._platformLanguage = language.substring(0, 2).toLowerCase()
+                    }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
 
