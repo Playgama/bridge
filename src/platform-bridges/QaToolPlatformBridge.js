@@ -794,8 +794,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase(purchaseId) {
-        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === purchaseId)
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
         if (purchaseIndex < 0) {
             return Promise.reject()
         }
