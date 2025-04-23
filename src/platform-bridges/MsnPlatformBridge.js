@@ -212,7 +212,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.iap.purchaseAsync(product)
+            this._platformSdk.iap.purchaseAsync({ productId: id })
                 .then((purchase) => {
                     if (purchase.code === 'IAP_PURCHASE_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.description)
@@ -220,10 +220,12 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     }
 
                     const mergedPurchase = {
-                        commonId: id,
+                        id,
                         ...purchase.receipt,
                         receiptSignature: purchase.receiptSignature,
                     }
+                    delete mergedPurchase.productId
+
                     this._paymentsPurchases.push(mergedPurchase)
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
@@ -236,7 +238,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsConsumePurchase(id) {
-        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
         if (purchaseIndex < 0) {
             return Promise.reject()
         }
@@ -245,7 +247,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            this._platformSdk.iap.consumeAsync(this._paymentsPurchases[purchaseIndex].productId)
+            this._platformSdk.iap.consumeAsync({ productId: this._paymentsPurchases[purchaseIndex].id })
                 .then((response) => {
                     if (response.code === 'IAP_CONSUME_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, response.description)
@@ -253,10 +255,14 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._paymentsPurchases.splice(purchaseIndex, 1)
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, {
+                    const result = {
+                        id,
                         ...response.consumptionReceipt,
                         consumptionSignature: response.consumptionSignature,
-                    })
+                    }
+
+                    delete result.productId
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
@@ -283,11 +289,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     }
 
                     const mergedProducts = products.map((product) => {
-                        const msnProduct = msnProducts.find((p) => p.productId === product.productId)
+                        const msnProduct = msnProducts.find((p) => p.productId === product.id)
 
                         return {
-                            commonId: product.commonId,
-                            productId: msnProduct.productId,
+                            id: product.id,
                             title: msnProduct.title,
                             description: msnProduct.description,
                             publisherName: msnProduct.publisherName,
@@ -314,21 +319,24 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this._platformSdk.iap.getPurchasesAsync()
-                .then((purchases) => {
-                    if (purchases.code === 'IAP_GET_PURCHASES_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases.description)
+            this._platformSdk.iap.getAllPurchasesAsync()
+                .then((response) => {
+                    if (response.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
+                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, response.description)
                         return
                     }
 
                     const products = this._paymentsGetProductsPlatformData()
-                    this._paymentsPurchases = purchases.map((purchase) => {
-                        const product = products.find((p) => p.id === purchase.productID)
-                        return {
-                            commonId: product.commonId,
-                            ...purchase.receipt,
-                            receiptSignature: purchase.receiptSignature,
+                    this._paymentsPurchases = response.receipts.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.productId)
+                        const mergedPurchase = {
+                            id: product.id,
+                            ...purchase,
+                            receiptSignature: response.receiptSignature,
                         }
+
+                        delete mergedPurchase.productId
+                        return mergedPurchase
                     })
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)

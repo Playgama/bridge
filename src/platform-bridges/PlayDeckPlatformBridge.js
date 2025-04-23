@@ -324,7 +324,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                 if (playdeck.method === 'invoiceClosed') {
                     if (playdeck.value.status === 'paid') {
                         window.removeEventListener('message', invoiceClosedHandler)
-                        const mergedPurchase = { commonId: id, ...playdeck.value }
+                        const mergedPurchase = { id, ...playdeck.value }
                         this._paymentsPurchases.push(mergedPurchase)
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else if (playdeck.value.status === 'cancelled' || playdeck.value.status === 'failed') {
@@ -356,7 +356,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
         }
 
         const updatedProducts = products.map((product) => ({
-            commonId: product.commonId,
+            id: product.id,
             price: `${product.amount} Stars`,
             priceCurrencyCode: 'Stars',
             priceValue: product.amount,

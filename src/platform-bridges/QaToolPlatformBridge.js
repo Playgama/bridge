@@ -767,7 +767,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     }
 
                     if (data.purchase?.status) {
-                        const mergedPurchase = { commonId: id, ...data.purchase.purchaseData }
+                        const mergedPurchase = { id, ...data.purchase.purchaseData }
+                        delete mergedPurchase.commonId
                         this._paymentsPurchases.push(mergedPurchase)
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
@@ -794,7 +795,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsConsumePurchase(id) {
-        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
         if (purchaseIndex < 0) {
             return Promise.reject()
         }
@@ -821,8 +822,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     }
 
                     if (data.purchase?.status) {
+                        const result = {
+                            id,
+                            ...data.purchase,
+                        }
                         this._paymentsPurchases.splice(purchaseIndex, 1)
-                        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data.result)
+                        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
                     } else {
                         this._rejectPromiseDecorator(
                             ACTION_NAME.CONSUME_PURCHASE,
@@ -860,7 +865,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     && data.id === messageId
                 ) {
                     const mergedProducts = products.map((product) => ({
-                        commonId: product.commonId,
                         id: product.id,
                         price: `${product.amount} Golden Fennec`,
                         priceCurrencyCode: 'Golden Fennec',
@@ -902,7 +906,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._paymentsPurchases = data.purchases.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.id)
                         return {
-                            commonId: product.commonId,
+                            id: product.id,
                             ...purchase.purchaseData,
                         }
                     })

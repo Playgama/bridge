@@ -455,9 +455,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.payments.purchaseAsync(product)
+            this._platformSdk.payments.purchaseAsync({ productID: product.id })
                 .then((purchase) => {
-                    const mergedPurchase = { commonId: id, ...purchase }
+                    const mergedPurchase = { id, ...purchase }
+                    delete mergedPurchase.productID
                     this._paymentsPurchases.push(mergedPurchase)
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
                 })
@@ -470,7 +471,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsConsumePurchase(id) {
-        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
         if (purchaseIndex < 0) {
             return Promise.reject()
         }
@@ -480,9 +481,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
             this._platformSdk.payments.consumePurchaseAsync(this._paymentsPurchases[purchaseIndex].purchaseToken)
-                .then((result) => {
+                .then(() => {
                     this._paymentsPurchases.splice(purchaseIndex, 1)
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
@@ -505,17 +506,16 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.payments.getCatalogAsync()
                 .then((facebookProducts) => {
                     const mergedProducts = products.map((product) => {
-                        const facebookProduct = facebookProducts.find((p) => p.productID === product.productID)
+                        const facebookProduct = facebookProducts.find((p) => p.productID === product.id)
 
                         return {
-                            commonId: product.commonId,
-                            productID: facebookProduct.productID,
+                            id: product.id,
+                            title: facebookProduct.title,
                             description: facebookProduct.description,
                             imageURI: facebookProduct.imageURI,
                             price: facebookProduct.price,
                             priceCurrencyCode: facebookProduct.priceCurrencyCode,
                             priceValue: facebookProduct.priceAmount,
-                            title: facebookProduct.title,
                         }
                     })
 
@@ -540,10 +540,13 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
                     this._paymentsPurchases = purchases.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.productID)
-                        return {
-                            commonId: product.commonId,
+                        const mergedPurchase = {
+                            id: product.id,
                             ...purchase,
                         }
+
+                        delete mergedPurchase.productID
+                        return mergedPurchase
                     })
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)

@@ -268,7 +268,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.inGamePaymentsApi.purchase(product)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        const mergedPurchase = { commonId: id, ...purchase }
+                        const mergedPurchase = { id, ...purchase }
                         this._paymentsPurchases.push(mergedPurchase)
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
@@ -290,7 +290,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         const updatedProducts = products.map((product) => ({
-            commonId: product.commonId,
+            id: product.id,
             price: `${product.amount} Golden Fennec`,
             priceCurrencyCode: 'Golden Fennec',
             priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',

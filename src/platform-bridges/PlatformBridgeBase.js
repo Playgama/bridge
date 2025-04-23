@@ -510,8 +510,9 @@ class PlatformBridgeBase {
     // payments
     paymentsPurchase(id) {
         if (this.isPaymentsSupported) {
-            this._paymentsPurchases.push({ commonId: id })
-            return Promise.resolve()
+            const purchase = { id }
+            this._paymentsPurchases.push(purchase)
+            return Promise.resolve(purchase)
         }
 
         return Promise.reject()
@@ -519,13 +520,13 @@ class PlatformBridgeBase {
 
     paymentsConsumePurchase(id) {
         if (this.isPaymentsSupported) {
-            const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+            const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
             if (purchaseIndex < 0) {
                 return Promise.reject()
             }
 
             this._paymentsPurchases.splice(purchaseIndex, 1)
-            return Promise.resolve()
+            return Promise.resolve({ id })
         }
 
         return Promise.reject()
@@ -670,9 +671,8 @@ class PlatformBridgeBase {
         }
 
         return this._options.payments
-            .filter((product) => Object.prototype.hasOwnProperty.call(product, this.platformId))
             .map((product) => ({
-                commonId: product.commonId,
+                id: product.id,
                 ...product[this.platformId],
             }))
     }
@@ -683,13 +683,13 @@ class PlatformBridgeBase {
             return null
         }
 
-        const product = products.find((p) => p.commonId === id)
+        const product = products.find((p) => p.id === id)
         if (!product) {
             return null
         }
 
         return {
-            commonId: product.commonId,
+            id: product.id,
             ...product[this.platformId],
         }
     }

@@ -23,21 +23,11 @@
     },
     "payments": [
         {
-            "commonId": "test_product",
-            "yandex": {
-                "id": "test_product"
-            },
-            "facebook": {
-                "productID": "test_product"
-            },
-            "msn": {
-                "productId": "test_product"
-            },
+            "id": "test_product",
             "playgama": {
                 "amount": 1
             },
             "qa_tool": {
-                "id": "test_product",
                 "amount": 1
             },
             "playdeck": {

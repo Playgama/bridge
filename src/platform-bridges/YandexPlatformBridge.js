@@ -664,7 +664,9 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
             this.#yandexPayments.purchase(product)
                 .then((purchase) => {
-                    const mergedPurchase = { commonId: id, ...purchase.purchaseData }
+                    const mergedPurchase = { id, ...purchase.purchaseData }
+                    delete mergedPurchase.productID
+
                     this._paymentsPurchases.push(mergedPurchase)
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
@@ -681,7 +683,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.commonId === id)
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
         if (purchaseIndex < 0) {
             return Promise.reject()
         }
@@ -691,9 +693,9 @@ class YandexPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
             this.#yandexPayments.consumePurchase(this._paymentsPurchases[purchaseIndex].purchaseToken)
-                .then((result) => {
+                .then(() => {
                     this._paymentsPurchases.splice(purchaseIndex, 1)
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
@@ -719,8 +721,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                         const yandexProduct = yandexProducts.find((p) => p.id === product.id)
 
                         return {
-                            commonId: product.commonId,
-                            id: yandexProduct.id,
+                            id: product.id,
                             title: yandexProduct.title,
                             description: yandexProduct.description,
                             imageURI: yandexProduct.imageURI,
@@ -756,10 +757,13 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
                     this._paymentsPurchases = purchases.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.productID)
-                        return {
-                            commonId: product.commonId,
+                        const mergedPurchase = {
+                            id: product.id,
                             ...purchase.purchaseData,
                         }
+
+                        delete mergedPurchase.productID
+                        return mergedPurchase
                     })
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
