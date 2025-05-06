@@ -124,21 +124,26 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     }),
                 }))
                 .then((response) => response.json())
-                .then(({ access_token }) => this._platformSdk.commands.authenticate({
-                    access_token,
-                }))
+                .then(({ access_token }) => {
+                    this._accessToken = access_token
+
+                    return this._platformSdk.commands.authenticate({
+                        access_token,
+                    })
+                })
                 .then((auth) => {
                     if (auth === null) {
                         throw new Error('Authorization failed')
                     }
 
-                    this._accessToken = auth.access_token
                     this._isPlayerAuthorized = true
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
                     this.#fetchLocale()
                 })
                 .catch((error) => {
+                    this._accessToken = null
+
                     this._rejectPromiseDecorator(
                         ACTION_NAME.AUTHORIZE_PLAYER,
                         error,
