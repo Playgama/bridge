@@ -33,6 +33,7 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    DISCORD: 'discord',
 }
 
 export const MODULE_NAME = {
@@ -140,4 +141,5 @@ export const ERROR = {
     LAGGED_GAME_PARAMS_NOT_FOUND: { message: 'Lagged Game params are not found' },
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
+    DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
 }
