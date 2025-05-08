@@ -169,7 +169,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .then((adInstance) => this._platformSdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-
                 return adInstance.showAdsCompletedAsync
             })
             .then(() => this._setInterstitialState(INTERSTITIAL_STATE.CLOSED))
@@ -186,7 +185,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .then((adInstance) => this._platformSdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
-
                 return adInstance.showAdsCompletedAsync
             })
             .then(() => {
@@ -358,6 +356,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._preloadedRewardedPromise = null
             })
+
         return this._preloadedRewardedPromise
     }
 

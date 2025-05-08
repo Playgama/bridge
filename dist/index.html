@@ -124,11 +124,8 @@
 
             <div class="section" id="advertisement-section" style="display: none">
                 <h2>Advertisement</h2>
-                <input type="text" id="advertisement-minimum-delay-between-interstitial-input"
-                    placeholder="Minimum Delay Between Interstitial" />
-                <button id="advertisement-set-minimum-delay-between-interstitial-button">Set Minimum Delay Between
-                    Interstitial
-                </button>
+                <input type="text" id="advertisement-minimum-delay-between-interstitial-input" placeholder="Minimum Delay Between Interstitial" />
+                <button id="advertisement-set-minimum-delay-between-interstitial-button">Set Minimum Delay Between Interstitial </button>
                 <br><br>
                 <p>Is AdBlock Detected: <span id="advertisement-is-adblock-detected-text"></span></p>
                 <p>Is Banner Supported: <span id="advertisement-is-banner-supported-text"></span></p>
@@ -139,10 +136,8 @@
                 <button id="advertisement-show-banner-button">Show Banner</button>
                 <button id="advertisement-hide-banner-button">Hide Banner</button>
                 <button id="advertisement-show-interstitial-button">Show Interstitial</button>
-                <button id="advertisement-show-interstitial-ignore-delay-button">Show Interstitial (ignore delay)</button>
                 <button id="advertisement-show-rewarded-button">Show Rewarded</button>
                 <button id="advertisement-is-adblock-detected-button">Is AdBlock Detected</button>
-
             </div>
 
             <div class="section" id="social-section" style="display: none">
@@ -357,7 +352,6 @@
                 const advertisementShowBannerButton = document.getElementById('advertisement-show-banner-button')
                 const advertisementHideBannerButton = document.getElementById('advertisement-hide-banner-button')
                 const advertisementShowInterstitialButton = document.getElementById('advertisement-show-interstitial-button')
-                const advertisementShowInterstitialIgnoreDelayButton = document.getElementById('advertisement-show-interstitial-ignore-delay-button')
                 const advertisementShowRewardedButton = document.getElementById('advertisement-show-rewarded-button')
 
                 const socialIsShareSupportedText = document.getElementById('social-is-share-supported-text')
@@ -649,15 +643,13 @@
                 })
 
                 advertisementShowInterstitialButton.addEventListener('click', () => {
-                    bridge.advertisement.showInterstitial()
-                })
-
-                advertisementShowInterstitialIgnoreDelayButton.addEventListener('click', () => {
-                    bridge.advertisement.showInterstitial({ ignoreDelay: true })
+                    let placement = 'level-start'
+                    bridge.advertisement.showInterstitial(placement)
                 })
 
                 advertisementShowRewardedButton.addEventListener('click', () => {
-                    bridge.advertisement.showRewarded()
+                    let placement = 'double-rewards'
+                    bridge.advertisement.showRewarded(placement)
                 })
 
                 advertisementAdBlockDetectButton.addEventListener('click', () => {

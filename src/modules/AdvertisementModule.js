@@ -19,7 +19,7 @@ import EventLite from 'event-lite'
 import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import ModuleBase from './ModuleBase'
 import {
-    EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE, BANNER_STATE,
+    BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE,
 } from '../constants'
 
 class AdvertisementModule extends ModuleBase {
@@ -28,27 +28,44 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get bannerState() {
-        return this._platformBridge.bannerState
+        return this.#bannerState
     }
 
     get interstitialState() {
-        return this._platformBridge.interstitialState
+        return this.#interstitialState
+    }
+
+    get rewardedPlacement() {
+        return this.#rewardedPlacement
     }
 
     get rewardedState() {
-        return this._platformBridge.rewardedState
+        return this.#rewardedState
     }
 
     get minimumDelayBetweenInterstitial() {
         return this.#minimumDelayBetweenInterstitial
     }
 
+    #bannerState = BANNER_STATE.HIDDEN
+
+    #interstitialState = INTERSTITIAL_STATE.CLOSED
+
     #interstitialTimer
 
     #minimumDelayBetweenInterstitial = 60
 
+    #rewardedState = REWARDED_STATE.CLOSED
+
+    #rewardedPlacement = null
+
     constructor(platformBridge) {
         super(platformBridge)
+
+        this._platformBridge.on(
+            EVENT_NAME.BANNER_STATE_CHANGED,
+            (state) => this.#setBannerState(state),
+        )
 
         this._platformBridge.on(
             EVENT_NAME.INTERSTITIAL_STATE_CHANGED,
@@ -59,30 +76,17 @@ class AdvertisementModule extends ModuleBase {
                     }
                 }
 
-                this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, state)
+                this.#setInterstitialState(state)
             },
         )
 
         this._platformBridge.on(
             EVENT_NAME.REWARDED_STATE_CHANGED,
-            (state) => this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, state),
-        )
-
-        this._platformBridge.on(
-            EVENT_NAME.BANNER_STATE_CHANGED,
-            (state) => this.emit(EVENT_NAME.BANNER_STATE_CHANGED, state),
+            (state) => this.#setRewardedState(state),
         )
     }
 
     setMinimumDelayBetweenInterstitial(options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (typeof platformDependedOptions !== 'undefined') {
-                this.setMinimumDelayBetweenInterstitial(platformDependedOptions)
-                return
-            }
-        }
-
         const optionsType = typeof options
         let delay = this.#minimumDelayBetweenInterstitial
 
@@ -111,11 +115,11 @@ class AdvertisementModule extends ModuleBase {
         }
     }
 
-    showBanner(options) {
+    showBanner(position, options) {
         if (options) {
             const platformDependedOptions = options[this._platformBridge.platformId]
             if (platformDependedOptions) {
-                this.showBanner(platformDependedOptions)
+                this.showBanner(position, platformDependedOptions)
                 return
             }
         }
@@ -124,13 +128,13 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this._platformBridge._setBannerState(BANNER_STATE.LOADING)
+        this.#setBannerState(BANNER_STATE.LOADING)
         if (!this.isBannerSupported) {
-            this._platformBridge._setBannerState(BANNER_STATE.FAILED)
+            this.#setBannerState(BANNER_STATE.FAILED)
             return
         }
 
-        this._platformBridge.showBanner(options)
+        this._platformBridge.showBanner(position, options)
     }
 
     hideBanner() {
@@ -145,49 +149,29 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.hideBanner()
     }
 
-    showInterstitial(options) {
+    showInterstitial(placement) {
         if (this.#hasAdvertisementInProgress()) {
             return
         }
 
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                this.showInterstitial(platformDependedOptions)
-                return
-            }
-        }
+        this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
 
-        let ignoreDelay = false
-        if (options && typeof options.ignoreDelay === 'boolean') {
-            ignoreDelay = options.ignoreDelay
-        }
-
-        this._platformBridge._setInterstitialState(INTERSTITIAL_STATE.LOADING)
-
-        if (this.#interstitialTimer && this.#interstitialTimer.state !== TIMER_STATE.COMPLETED && !ignoreDelay) {
-            this._platformBridge._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+        if (this.#interstitialTimer && this.#interstitialTimer.state !== TIMER_STATE.COMPLETED) {
+            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
             return
         }
 
-        this._platformBridge.showInterstitial(options)
+        this._platformBridge.showInterstitial(placement)
     }
 
-    showRewarded(options) {
+    showRewarded(placement) {
         if (this.#hasAdvertisementInProgress()) {
             return
         }
 
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                this.showRewarded(platformDependedOptions)
-                return
-            }
-        }
-
-        this._platformBridge._setRewardedState(REWARDED_STATE.LOADING)
-        this._platformBridge.showRewarded(options)
+        this.#rewardedPlacement = placement
+        this.#setRewardedState(REWARDED_STATE.LOADING)
+        this._platformBridge.showRewarded(placement)
     }
 
     checkAdBlock() {
@@ -200,22 +184,45 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #hasAdvertisementInProgress() {
-        if (
-            this.interstitialState === INTERSTITIAL_STATE.LOADING
-            || this.interstitialState === INTERSTITIAL_STATE.OPENED
-        ) {
-            return true
-        }
+        const isInterstitialInProgress = [
+            INTERSTITIAL_STATE.LOADING,
+            INTERSTITIAL_STATE.OPENED,
+        ].includes(this.#interstitialState)
 
-        if ([
+        const isRewardedInProgress = [
             REWARDED_STATE.LOADING,
             REWARDED_STATE.OPENED,
             REWARDED_STATE.REWARDED,
-        ].includes(this.rewardedState)) {
-            return true
+        ].includes(this.#rewardedState)
+
+        return isInterstitialInProgress || isRewardedInProgress
+    }
+
+    #setBannerState(state) {
+        if (this.#bannerState === state) {
+            return
         }
 
-        return false
+        this.#bannerState = state
+        this.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
+    }
+
+    #setInterstitialState(state) {
+        if (this.#interstitialState === state) {
+            return
+        }
+
+        this.#interstitialState = state
+        this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
+    }
+
+    #setRewardedState(state) {
+        if (this.#rewardedState === state) {
+            return
+        }
+
+        this.#rewardedState = state
+        this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
     }
 }
 

@@ -188,22 +188,23 @@ class PlaygamaBridge {
                 })
                 .finally(() => {
                     this.#createPlatformBridge()
+
+                    this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.STORAGE] = new StorageModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
+
                     this.#platformBridge
                         .initialize()
                         .then(() => {
-                            this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.STORAGE] = new StorageModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
-
                             this.#isInitialized = true
                             console.info(`%c PlaygamaBridge v.${this.version} initialized. `, 'background: #01A5DA; color: white')
 

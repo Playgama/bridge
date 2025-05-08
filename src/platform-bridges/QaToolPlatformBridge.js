@@ -530,7 +530,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showInterstitial() {
+    showInterstitial(placement) {
         const showInterstitialHandler = ({ data }) => {
             if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
                 return
@@ -560,10 +560,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this.#messageBroker.send({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.INTERSTITIAL,
+            options: { placement },
         })
     }
 
-    showRewarded() {
+    showRewarded(placement) {
         const showRewardedHandler = ({ data }) => {
             if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
                 return
@@ -596,6 +597,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this.#messageBroker.send({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.REWARD,
+            options: { placement },
         })
     }
 

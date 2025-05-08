@@ -70,6 +70,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
                             case 'SDK_GAME_START':
                                 if (self.#currentAdvertisementIsRewarded) {
                                     self._setRewardedState(REWARDED_STATE.CLOSED)
+                                    self._platformSdk.preloadAd('rewarded')
                                 } else {
                                     self._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                                 }
