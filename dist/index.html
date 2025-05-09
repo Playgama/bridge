@@ -461,6 +461,8 @@
 
                         advertisementIsBannerSupportedText.innerText = bridge.advertisement.isBannerSupported
                         advertisementBannerStateText.innerText = bridge.advertisement.bannerState
+                        advertisementInterstitialStateText.innerText = bridge.advertisement.interstitialState
+                        advertisementRewardedStateText.innerText = bridge.advertisement.rewardedState
                         advertisementMinimumDelayBetweenInterstitialInput.value = bridge.advertisement.minimumDelayBetweenInterstitial
 
                         gameVisibilityStates.push(bridge.game.visibilityState)
@@ -627,15 +629,7 @@
                 })
 
                 advertisementShowBannerButton.addEventListener('click', () => {
-                    let options = {
-                        'crazy_games': {
-                            position: 'top'
-                        },
-                        'game_distribution': {
-                            position: 'right'
-                        }
-                    }
-                    bridge.advertisement.showBanner(options)
+                    bridge.advertisement.showBanner()
                 })
 
                 advertisementHideBannerButton.addEventListener('click', () => {
@@ -643,13 +637,11 @@
                 })
 
                 advertisementShowInterstitialButton.addEventListener('click', () => {
-                    let placement = 'level-start'
-                    bridge.advertisement.showInterstitial(placement)
+                    bridge.advertisement.showInterstitial()
                 })
 
                 advertisementShowRewardedButton.addEventListener('click', () => {
-                    let placement = 'double-rewards'
-                    bridge.advertisement.showRewarded(placement)
+                    bridge.advertisement.showRewarded()
                 })
 
                 advertisementAdBlockDetectButton.addEventListener('click', () => {

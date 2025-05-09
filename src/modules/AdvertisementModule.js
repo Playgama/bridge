@@ -19,7 +19,7 @@ import EventLite from 'event-lite'
 import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import ModuleBase from './ModuleBase'
 import {
-    BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE,
+    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE,
 } from '../constants'
 
 class AdvertisementModule extends ModuleBase {
@@ -115,15 +115,7 @@ class AdvertisementModule extends ModuleBase {
         }
     }
 
-    showBanner(position, options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                this.showBanner(position, platformDependedOptions)
-                return
-            }
-        }
-
+    showBanner(position = BANNER_POSITION.BOTTOM, placement = null) {
         if (this.bannerState === BANNER_STATE.LOADING || this.bannerState === BANNER_STATE.SHOWN) {
             return
         }
@@ -134,7 +126,7 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this._platformBridge.showBanner(position, options)
+        this._platformBridge.showBanner(position, placement)
     }
 
     hideBanner() {
@@ -149,7 +141,7 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.hideBanner()
     }
 
-    showInterstitial(placement) {
+    showInterstitial(placement = null) {
         if (this.#hasAdvertisementInProgress()) {
             return
         }
@@ -164,7 +156,7 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.showInterstitial(placement)
     }
 
-    showRewarded(placement) {
+    showRewarded(placement = null) {
         if (this.#hasAdvertisementInProgress()) {
             return
         }

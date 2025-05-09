@@ -261,8 +261,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showBanner(options) {
-        this._platformSdk.loadBannerAdAsync(this._bannerPlacementId, options)
+    showBanner(position, placement) {
+        this._platformSdk.loadBannerAdAsync(placement, position)
             .then(() => {
                 this._setBannerState(BANNER_STATE.SHOWN)
             })

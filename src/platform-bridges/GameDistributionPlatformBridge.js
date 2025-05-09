@@ -27,7 +27,6 @@ import {
 } from '../constants'
 
 const SDK_URL = 'https://html5.api.gamedistribution.com/main.min.js'
-const BANNER_CONTAINER_ID = 'banner-container'
 
 class GameDistributionPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -103,41 +102,15 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showBanner(options) {
-        let container = document.getElementById(BANNER_CONTAINER_ID)
-
+    showBanner(position) {
+        let container = document.getElementById(this._advertisementBannerContainerId)
         if (!container) {
-            container = document.createElement('div')
-            container.id = BANNER_CONTAINER_ID
-            container.style.position = 'absolute'
-            document.body.appendChild(container)
-        }
-
-        if (options?.position === 'top') {
-            container.style.top = 0
-            container.style.height = '90px'
-            container.style.width = '100%'
-        } else if (options?.position === 'left') {
-            container.style.left = 0
-            container.style.top = 0
-            container.style.height = '100%'
-            container.style.minHeight = '600px'
-            container.style.width = '120px'
-        } else if (options?.position === 'right') {
-            container.style.right = 0
-            container.style.top = 0
-            container.style.height = '100%'
-            container.style.minHeight = '600px'
-            container.style.width = '120px'
-        } else {
-            container.style.bottom = 0
-            container.style.height = '90px'
-            container.style.width = '100%'
+            container = this._advertisementCreateBannerContainer(position)
         }
 
         container.style.display = 'block'
 
-        this._platformSdk.showAd('display', { containerId: BANNER_CONTAINER_ID })
+        this._platformSdk.showAd('display', { containerId: this._advertisementBannerContainerId })
             .then(() => {
                 this._setBannerState(BANNER_STATE.SHOWN)
             })
@@ -148,7 +121,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
     }
 
     hideBanner() {
-        const container = document.getElementById(BANNER_CONTAINER_ID)
+        const container = document.getElementById(this._advertisementBannerContainerId)
         if (container) {
             container.style.display = 'none'
         }

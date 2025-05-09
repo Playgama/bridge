@@ -69,6 +69,10 @@ class PlaygamaBridge {
         return this.#isInitialized
     }
 
+    get options() {
+        return this.#options
+    }
+
     get platform() {
         return this.#getModule(MODULE_NAME.PLATFORM)
     }
@@ -165,6 +169,8 @@ class PlaygamaBridge {
 
     #modules = {}
 
+    #options = {}
+
     initialize(options) {
         if (this.#isInitialized) {
             return Promise.resolve()
@@ -181,10 +187,10 @@ class PlaygamaBridge {
             fetch(configFilePath)
                 .then((response) => response.json())
                 .then((data) => {
-                    this._options = { ...data }
+                    this.#options = { ...data }
                 })
                 .catch(() => {
-                    this._options = { ...options }
+                    this.#options = { ...options }
                 })
                 .finally(() => {
                     this.#createPlatformBridge()
@@ -222,14 +228,10 @@ class PlaygamaBridge {
     #createPlatformBridge() {
         let platformId = PLATFORM_ID.MOCK
 
-        if (!this._options) {
-            this._options = {}
-        }
-
         const url = new URL(window.location.href)
 
-        if (this._options.forciblySetPlatformId) {
-            platformId = this.#getPlatformId(this._options.forciblySetPlatformId.toLowerCase())
+        if (this.#options.forciblySetPlatformId) {
+            platformId = this.#getPlatformId(this.#options.forciblySetPlatformId.toLowerCase())
         } else {
             const yandexUrl = ['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')
             if (url.searchParams.has('platform_id')) {
@@ -263,81 +265,79 @@ class PlaygamaBridge {
             }
         }
 
-        const gameIdParam = url.searchParams.get('game_id')
-
-        if (!this._options.gameId && gameIdParam) {
-            this._options.gameId = gameIdParam
+        if (this.#options.platforms?.[platformId]) {
+            this.#options = { ...this.#options, ...this.#options.platforms[platformId] }
         }
 
-        const _options = this._options.platforms?.[platformId] || this._options
+        delete this.#options.platforms
 
         switch (platformId) {
             case PLATFORM_ID.VK: {
-                this.#platformBridge = new VkPlatformBridge(_options)
+                this.#platformBridge = new VkPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.YANDEX: {
-                this.#platformBridge = new YandexPlatformBridge(_options)
+                this.#platformBridge = new YandexPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.CRAZY_GAMES: {
-                this.#platformBridge = new CrazyGamesPlatformBridge(_options)
+                this.#platformBridge = new CrazyGamesPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.ABSOLUTE_GAMES: {
-                this.#platformBridge = new AbsoluteGamesPlatformBridge(_options)
+                this.#platformBridge = new AbsoluteGamesPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.GAME_DISTRIBUTION: {
-                this.#platformBridge = new GameDistributionPlatformBridge(_options)
+                this.#platformBridge = new GameDistributionPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.OK: {
-                this.#platformBridge = new OkPlatformBridge(_options)
+                this.#platformBridge = new OkPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.PLAYGAMA: {
-                this.#platformBridge = new PlaygamaPlatformBridge(_options)
+                this.#platformBridge = new PlaygamaPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.WORTAL: {
-                this.#platformBridge = new WortalPlatformBridge(_options)
+                this.#platformBridge = new WortalPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.PLAYDECK: {
-                this.#platformBridge = new PlayDeckPlatformBridge(_options)
+                this.#platformBridge = new PlayDeckPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.TELEGRAM: {
-                this.#platformBridge = new TelegramPlatformBridge(_options)
+                this.#platformBridge = new TelegramPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.Y8: {
-                this.#platformBridge = new Y8PlatformBridge(_options)
+                this.#platformBridge = new Y8PlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.LAGGED: {
-                this.#platformBridge = new LaggedPlatformBridge(_options)
+                this.#platformBridge = new LaggedPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.FACEBOOK: {
-                this.#platformBridge = new FacebookPlatformBridge(_options)
+                this.#platformBridge = new FacebookPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.POKI: {
-                this.#platformBridge = new PokiPlatformBridge(_options)
+                this.#platformBridge = new PokiPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.QA_TOOL: {
-                this.#platformBridge = new QaToolPlatformBridge(_options)
+                this.#platformBridge = new QaToolPlatformBridge(this.#options)
                 break
             }
             case PLATFORM_ID.MSN: {
-                this.#platformBridge = new MsnPlatformBridge(_options)
+                this.#platformBridge = new MsnPlatformBridge(this.#options)
                 break
             }
             default: {
-                this.#platformBridge = new PlatformBridgeBase(_options)
+                this.#platformBridge = new PlatformBridgeBase(this.#options)
                 break
             }
         }

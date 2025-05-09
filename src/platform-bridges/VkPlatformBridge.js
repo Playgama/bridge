@@ -336,27 +336,9 @@ class VkPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showBanner(options) {
-        let position = 'bottom'
-        let layoutType = 'resize'
-        let canClose = false
-
-        if (options) {
-            if (typeof options.position === 'string') {
-                position = options.position
-            }
-
-            if (typeof options.layoutType === 'string') {
-                layoutType = options.layoutType
-            }
-
-            if (typeof options.canClose === 'boolean') {
-                canClose = options.canClose
-            }
-        }
-
+    showBanner(position) {
         this._platformSdk
-            .send('VKWebAppShowBannerAd', { banner_location: position, layout_type: layoutType, can_close: canClose })
+            .send('VKWebAppShowBannerAd', { banner_location: position })
             .then((data) => {
                 if (data.result) {
                     this._setBannerState(BANNER_STATE.SHOWN)

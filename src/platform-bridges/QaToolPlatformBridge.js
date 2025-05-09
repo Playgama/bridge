@@ -601,13 +601,17 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    showBanner() {
+    showBanner(position, placement) {
         this._setBannerState(BANNER_STATE.SHOWN)
 
         this.#messageBroker.send({
             type: MODULE_NAME.ADVERTISEMENT,
             action: BANNER_STATE.SHOWN,
-            options: { type: ADVERTISEMENT_TYPE.BANNER },
+            options: {
+                type: ADVERTISEMENT_TYPE.BANNER,
+                position,
+                placement,
+            },
         })
     }
 
