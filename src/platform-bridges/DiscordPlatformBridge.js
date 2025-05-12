@@ -24,7 +24,7 @@ import {
     ERROR,
 } from '../constants'
 
-const SDK_URL = 'https://discord.playgama.com/sdk.js'
+const SDK_URL = 'https://bridge.playgama.com/discord/discord-v2.0.0.min.js'
 const APPLICATION_SERVER_PROXY_URL = '/.proxy/api/token'
 
 class DiscordPlatformBridge extends PlatformBridgeBase {
@@ -112,7 +112,9 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 response_type: 'code',
                 state: '',
                 prompt: 'none',
-                scope: this._scopes,
+                scope: [
+                    ...this._scopes,
+                ],
             })
                 .then(({ code }) => fetch(APPLICATION_SERVER_PROXY_URL, {
                     method: 'POST',
