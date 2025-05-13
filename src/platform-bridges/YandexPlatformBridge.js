@@ -138,6 +138,8 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
     #yandexPayments = null
 
+    #playerPromise = null
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -155,7 +157,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                 .then((sdk) => {
                                     this._platformSdk = sdk
 
-                                    const getPlayerPromise = this.#getPlayer()
+                                    this.#playerPromise = this.#getPlayer()
 
                                     const reportPluginEnginePromise = this._platformSdk
                                         .features
@@ -200,7 +202,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                         })
 
                                     Promise.all([
-                                        getPlayerPromise,
                                         reportPluginEnginePromise,
                                         checkAddToHomeScreenSupportedRacePromise,
                                         getLeaderboardsPromise,
@@ -278,17 +279,18 @@ class YandexPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
             if (this._isPlayerAuthorized) {
-                this.#getPlayer(options)
-                    .then(() => {
-                        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
-                    })
+                this.#playerPromise = this.#getPlayer(options)
+
+                this.#playerPromise.then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                })
             } else {
                 this._platformSdk.auth.openAuthDialog()
                     .then(() => {
-                        this.#getPlayer(options)
-                            .then(() => {
-                                this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
-                            })
+                        this.#playerPromise = this.#getPlayer(options)
+                        this.#playerPromise.then(() => {
+                            this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                        })
                     })
                     .catch((error) => {
                         this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, error)
@@ -322,7 +324,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                 return Promise.reject()
             }
 
-            return new Promise((resolve) => {
+            return this.#playerPromise.then(() => new Promise((resolve) => {
                 if (Array.isArray(key)) {
                     const values = []
 
@@ -339,7 +341,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                 }
 
                 resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
-            })
+            }))
         }
 
         return super.getDataFromStorage(key, storageType, tryParseJson)
@@ -351,7 +353,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                 return Promise.reject()
             }
 
-            return new Promise((resolve, reject) => {
+            return this.#playerPromise.then(() => new Promise((resolve, reject) => {
                 const data = this._platformStorageCachedData !== null
                     ? { ...this._platformStorageCachedData }
                     : {}
@@ -372,7 +374,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     .catch((error) => {
                         reject(error)
                     })
-            })
+            }))
         }
 
         return super.setDataToStorage(key, value, storageType)
@@ -384,7 +386,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                 return Promise.reject()
             }
 
-            return new Promise((resolve, reject) => {
+            return this.#playerPromise.then(() => new Promise((resolve, reject) => {
                 const data = this._platformStorageCachedData !== null
                     ? { ...this._platformStorageCachedData }
                     : {}
@@ -405,7 +407,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     .catch((error) => {
                         reject(error)
                     })
-            })
+            }))
         }
 
         return super.deleteDataFromStorage(key, storageType)
