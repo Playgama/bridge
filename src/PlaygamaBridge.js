@@ -218,6 +218,16 @@ class PlaygamaBridge {
                                 this.#initializationPromiseDecorator.resolve()
                                 this.#initializationPromiseDecorator = null
                             }
+
+                            if (this.#platformBridge.options?.advertisement?.interstitial?.preloadOnStart) {
+                                const placement = this.#platformBridge.options.advertisement.interstitial.preloadOnStart
+                                this.#modules[MODULE_NAME.ADVERTISEMENT].preloadInterstitial(placement)
+                            }
+
+                            if (this.#platformBridge.options?.advertisement?.rewarded?.preloadOnStart) {
+                                const placement = this.#platformBridge.options.advertisement.rewarded.preloadOnStart
+                                this.#modules[MODULE_NAME.ADVERTISEMENT].preloadRewarded(placement)
+                            }
                         })
                 })
         }

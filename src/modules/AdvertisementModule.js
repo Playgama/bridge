@@ -148,6 +148,17 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.hideBanner()
     }
 
+    preloadInterstitial(placement = null) {
+        let modifiedPlacement = placement
+        if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
+            if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
+                modifiedPlacement = this._platformBridge.options.advertisement.interstitial.placementFallback
+            }
+        }
+
+        this._platformBridge.preloadInterstitial(modifiedPlacement)
+    }
+
     showInterstitial(placement = null) {
         if (this.#hasAdvertisementInProgress()) {
             return
@@ -168,6 +179,17 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this._platformBridge.showInterstitial(modifiedPlacement)
+    }
+
+    preloadRewarded(placement = null) {
+        let modifiedPlacement = placement
+        if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
+            if (this._platformBridge.options?.advertisement?.rewarded?.placementFallback) {
+                modifiedPlacement = this._platformBridge.options.advertisement.rewarded.placementFallback
+            }
+        }
+
+        this._platformBridge.preloadRewarded(modifiedPlacement)
     }
 
     showRewarded(placement = null) {

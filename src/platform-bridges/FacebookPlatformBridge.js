@@ -281,6 +281,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
     }
 
+    preloadInterstitial(placement) {
+        this.#preloadInterstitial(placement)
+    }
+
     showInterstitial(placement) {
         this.#preloadInterstitial(placement)
             .then((preloadedInterstitial) => {
@@ -296,6 +300,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             .finally(() => {
                 this.#preloadInterstitial(placement, true)
             })
+    }
+
+    preloadRewarded(placement) {
+        this.#preloadRewarded(placement)
     }
 
     showRewarded(placement) {

@@ -83,8 +83,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     this._platformSdk.getSignedInUserAsync()
                         .then((data) => {
                             this.#updatePlayerInfo(data)
-                            this.#loadInterstitialAdsAsync(true)
-                            this.#loadRewardAdsAsync(true)
                         })
                         .finally(() => {
                             this._isInitialized = true
@@ -167,6 +165,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             })
     }
 
+    preloadInterstitial() {
+        this.#loadInterstitialAdsAsync(true)
+    }
+
     showInterstitial() {
         this.#loadInterstitialAdsAsync()
             .then((adInstance) => this._platformSdk.showAdsAsync(adInstance.instanceId))
@@ -181,6 +183,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .finally(() => {
                 this.#loadInterstitialAdsAsync(true)
             })
+    }
+
+    preloadRewarded() {
+        this.#loadRewardAdsAsync(true)
     }
 
     showRewarded() {
@@ -372,6 +378,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._preloadedInterstitialPromise = null
             })
+
         return this._preloadedInterstitialPromise
     }
 

@@ -16,6 +16,14 @@
             "publisherId": ""
         }
     },
+    "advertisement": {
+        "interstitial": {
+            "preloadOnStart": true
+        },
+        "rewarded": {
+            "preloadOnStart": true
+        }
+    },
     "payments": [
         {
             "id": "test_product",

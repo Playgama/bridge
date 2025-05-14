@@ -61,7 +61,6 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
                         switch (event.name) {
                             case 'SDK_READY':
                                 self._platformSdk = window.gdsdk
-                                self._platformSdk.preloadAd('rewarded')
                                 self._isInitialized = true
 
                                 self.showInterstitial()
@@ -142,6 +141,10 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
         } else {
             this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
         }
+    }
+
+    preloadRewarded() {
+        this._platformSdk.preloadAd('rewarded')
     }
 
     showRewarded() {

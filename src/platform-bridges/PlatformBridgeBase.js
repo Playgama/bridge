@@ -404,9 +404,13 @@ class PlatformBridgeBase {
         this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
+    preloadInterstitial() { }
+
     showInterstitial() {
         this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
     }
+
+    preloadRewarded() { }
 
     showRewarded() {
         this._setRewardedState(REWARDED_STATE.FAILED)
