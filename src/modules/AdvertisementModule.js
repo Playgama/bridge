@@ -71,9 +71,7 @@ class AdvertisementModule extends ModuleBase {
             EVENT_NAME.INTERSTITIAL_STATE_CHANGED,
             (state) => {
                 if (state === INTERSTITIAL_STATE.CLOSED) {
-                    if (this.#minimumDelayBetweenInterstitial > 0) {
-                        this.#startInterstitialTimer()
-                    }
+                    this.#startInterstitialTimer()
                 }
 
                 this.#setInterstitialState(state)
@@ -166,7 +164,7 @@ class AdvertisementModule extends ModuleBase {
 
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
 
-        if (this.#interstitialTimer && this.#interstitialTimer.state !== TIMER_STATE.COMPLETED) {
+        if (this.#interstitialTimer && this.#interstitialTimer.state === TIMER_STATE.STARTED) {
             this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
             return
         }
@@ -214,8 +212,10 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #startInterstitialTimer() {
-        this.#interstitialTimer = new Timer(this.#minimumDelayBetweenInterstitial)
-        this.#interstitialTimer.start()
+        if (this.#minimumDelayBetweenInterstitial > 0) {
+            this.#interstitialTimer = new Timer(this.#minimumDelayBetweenInterstitial)
+            this.#interstitialTimer.start()
+        }
     }
 
     #hasAdvertisementInProgress() {
