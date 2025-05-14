@@ -26,11 +26,14 @@ import {
     ERROR,
     VISIBILITY_STATE,
     DEVICE_TYPE,
-    BANNER_POSITION,
 } from '../constants'
 import PromiseDecorator from '../common/PromiseDecorator'
 
 class PlatformBridgeBase {
+    get options() {
+        return this._options
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.MOCK
@@ -227,8 +230,6 @@ class PlatformBridgeBase {
     _isBannerSupported = false
 
     _paymentsPurchases = []
-
-    _advertisementBannerContainerId = 'banner-container'
 
     #promiseDecorators = { }
 
@@ -666,29 +667,6 @@ class PlatformBridgeBase {
 
     _paymentsGenerateTransactionId(id) {
         return `${id}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
-    }
-
-    _advertisementCreateBannerContainer(position) {
-        const container = document.createElement('div')
-        container.id = this._advertisementBannerContainerId
-        container.style.position = 'absolute'
-        document.body.appendChild(container)
-
-        switch (position) {
-            case BANNER_POSITION.TOP:
-                container.style.top = '0px'
-                container.style.height = '90px'
-                container.style.width = '100%'
-                break
-            case BANNER_POSITION.BOTTOM:
-            default:
-                container.style.bottom = '0px'
-                container.style.height = '90px'
-                container.style.width = '100%'
-                break
-        }
-
-        return container
     }
 }
 

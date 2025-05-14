@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript } from '../common/utils'
+import { addJavaScript, createAdvertisementBannerContainer } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -24,6 +24,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE, ERROR,
+    BANNER_CONTAINER_ID,
 } from '../constants'
 
 const SDK_URL = 'https://html5.api.gamedistribution.com/main.min.js'
@@ -103,14 +104,14 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showBanner(position) {
-        let container = document.getElementById(this._advertisementBannerContainerId)
+        let container = document.getElementById(BANNER_CONTAINER_ID)
         if (!container) {
-            container = this._advertisementCreateBannerContainer(position)
+            container = createAdvertisementBannerContainer(position)
         }
 
         container.style.display = 'block'
 
-        this._platformSdk.showAd('display', { containerId: this._advertisementBannerContainerId })
+        this._platformSdk.showAd('display', { containerId: BANNER_CONTAINER_ID })
             .then(() => {
                 this._setBannerState(BANNER_STATE.SHOWN)
             })
@@ -121,7 +122,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
     }
 
     hideBanner() {
-        const container = document.getElementById(this._advertisementBannerContainerId)
+        const container = document.getElementById(BANNER_CONTAINER_ID)
         if (container) {
             container.style.display = 'none'
         }

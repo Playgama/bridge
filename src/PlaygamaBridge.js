@@ -70,7 +70,7 @@ class PlaygamaBridge {
     }
 
     get options() {
-        return this.#options
+        return this.#platformBridge.options
     }
 
     get platform() {
@@ -169,8 +169,6 @@ class PlaygamaBridge {
 
     #modules = {}
 
-    #options = {}
-
     initialize(options) {
         if (this.#isInitialized) {
             return Promise.resolve()
@@ -184,16 +182,18 @@ class PlaygamaBridge {
                 configFilePath = options.configFilePath
             }
 
+            let modifiedOptions
+
             fetch(configFilePath)
                 .then((response) => response.json())
                 .then((data) => {
-                    this.#options = { ...data }
+                    modifiedOptions = { ...data }
                 })
                 .catch(() => {
-                    this.#options = { ...options }
+                    modifiedOptions = { ...options }
                 })
                 .finally(() => {
-                    this.#createPlatformBridge()
+                    this.#createPlatformBridge(modifiedOptions)
 
                     this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
@@ -225,13 +225,13 @@ class PlaygamaBridge {
         return this.#initializationPromiseDecorator.promise
     }
 
-    #createPlatformBridge() {
+    #createPlatformBridge(options) {
         let platformId = PLATFORM_ID.MOCK
 
         const url = new URL(window.location.href)
 
-        if (this.#options.forciblySetPlatformId) {
-            platformId = this.#getPlatformId(this.#options.forciblySetPlatformId.toLowerCase())
+        if (options.forciblySetPlatformId) {
+            platformId = this.#getPlatformId(options.forciblySetPlatformId.toLowerCase())
         } else {
             const yandexUrl = ['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')
             if (url.searchParams.has('platform_id')) {
@@ -265,79 +265,80 @@ class PlaygamaBridge {
             }
         }
 
-        if (this.#options.platforms?.[platformId]) {
-            this.#options = { ...this.#options, ...this.#options.platforms[platformId] }
+        let modifiedOptions = options
+        if (modifiedOptions.platforms?.[platformId]) {
+            modifiedOptions = { ...modifiedOptions, ...modifiedOptions.platforms[platformId] }
         }
 
-        delete this.#options.platforms
+        delete modifiedOptions.platforms
 
         switch (platformId) {
             case PLATFORM_ID.VK: {
-                this.#platformBridge = new VkPlatformBridge(this.#options)
+                this.#platformBridge = new VkPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.YANDEX: {
-                this.#platformBridge = new YandexPlatformBridge(this.#options)
+                this.#platformBridge = new YandexPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.CRAZY_GAMES: {
-                this.#platformBridge = new CrazyGamesPlatformBridge(this.#options)
+                this.#platformBridge = new CrazyGamesPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.ABSOLUTE_GAMES: {
-                this.#platformBridge = new AbsoluteGamesPlatformBridge(this.#options)
+                this.#platformBridge = new AbsoluteGamesPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.GAME_DISTRIBUTION: {
-                this.#platformBridge = new GameDistributionPlatformBridge(this.#options)
+                this.#platformBridge = new GameDistributionPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.OK: {
-                this.#platformBridge = new OkPlatformBridge(this.#options)
+                this.#platformBridge = new OkPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.PLAYGAMA: {
-                this.#platformBridge = new PlaygamaPlatformBridge(this.#options)
+                this.#platformBridge = new PlaygamaPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.WORTAL: {
-                this.#platformBridge = new WortalPlatformBridge(this.#options)
+                this.#platformBridge = new WortalPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.PLAYDECK: {
-                this.#platformBridge = new PlayDeckPlatformBridge(this.#options)
+                this.#platformBridge = new PlayDeckPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.TELEGRAM: {
-                this.#platformBridge = new TelegramPlatformBridge(this.#options)
+                this.#platformBridge = new TelegramPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.Y8: {
-                this.#platformBridge = new Y8PlatformBridge(this.#options)
+                this.#platformBridge = new Y8PlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.LAGGED: {
-                this.#platformBridge = new LaggedPlatformBridge(this.#options)
+                this.#platformBridge = new LaggedPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.FACEBOOK: {
-                this.#platformBridge = new FacebookPlatformBridge(this.#options)
+                this.#platformBridge = new FacebookPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.POKI: {
-                this.#platformBridge = new PokiPlatformBridge(this.#options)
+                this.#platformBridge = new PokiPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.QA_TOOL: {
-                this.#platformBridge = new QaToolPlatformBridge(this.#options)
+                this.#platformBridge = new QaToolPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.MSN: {
-                this.#platformBridge = new MsnPlatformBridge(this.#options)
+                this.#platformBridge = new MsnPlatformBridge(modifiedOptions)
                 break
             }
             default: {
-                this.#platformBridge = new PlatformBridgeBase(this.#options)
+                this.#platformBridge = new PlatformBridgeBase(modifiedOptions)
                 break
             }
         }

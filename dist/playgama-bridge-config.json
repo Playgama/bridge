@@ -14,11 +14,6 @@
         "lagged": {
             "devId": "",
             "publisherId": ""
-        },
-        "facebook": {
-            "bannerPlacementId": "",
-            "interstitialPlacements": [],
-            "rewardedPlacements": []
         }
     },
     "payments": [

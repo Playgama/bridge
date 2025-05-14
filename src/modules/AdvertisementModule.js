@@ -126,7 +126,14 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this._platformBridge.showBanner(position, placement)
+        let modifiedPlacement = placement
+        if (!modifiedPlacement) {
+            if (this._platformBridge.options?.advertisement?.banner?.placementFallback) {
+                modifiedPlacement = this._platformBridge.options.advertisement.banner.placementFallback
+            }
+        }
+
+        this._platformBridge.showBanner(position, modifiedPlacement)
     }
 
     hideBanner() {
@@ -153,7 +160,14 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this._platformBridge.showInterstitial(placement)
+        let modifiedPlacement = placement
+        if (!modifiedPlacement) {
+            if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
+                modifiedPlacement = this._platformBridge.options.advertisement.interstitial.placementFallback
+            }
+        }
+
+        this._platformBridge.showInterstitial(modifiedPlacement)
     }
 
     showRewarded(placement = null) {
@@ -162,8 +176,15 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#rewardedPlacement = placement
+
+        if (!this.#rewardedPlacement) {
+            if (this._platformBridge.options?.advertisement?.rewarded?.placementFallback) {
+                this.#rewardedPlacement = this._platformBridge.options.advertisement.rewarded.placementFallback
+            }
+        }
+
         this.#setRewardedState(REWARDED_STATE.LOADING)
-        this._platformBridge.showRewarded(placement)
+        this._platformBridge.showRewarded(this.#rewardedPlacement)
     }
 
     checkAdBlock() {

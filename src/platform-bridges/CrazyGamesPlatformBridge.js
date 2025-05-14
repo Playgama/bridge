@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, createAdvertisementBannerContainer, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -26,6 +26,7 @@ import {
     STORAGE_TYPE,
     DEVICE_TYPE,
     PLATFORM_MESSAGE,
+    BANNER_CONTAINER_ID,
 } from '../constants'
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
@@ -263,14 +264,14 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showBanner(position) {
-        let container = document.getElementById(this._advertisementBannerContainerId)
+        let container = document.getElementById(BANNER_CONTAINER_ID)
         if (!container) {
-            container = this._advertisementCreateBannerContainer(position)
+            container = createAdvertisementBannerContainer(position)
         }
 
         container.style.display = 'block'
 
-        this._platformSdk.banner.requestResponsiveBanner([this._advertisementBannerContainerId])
+        this._platformSdk.banner.requestResponsiveBanner([BANNER_CONTAINER_ID])
             .then(() => {
                 this._setBannerState(BANNER_STATE.SHOWN)
             })
@@ -281,7 +282,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     hideBanner() {
-        const container = document.getElementById(this._advertisementBannerContainerId)
+        const container = document.getElementById(BANNER_CONTAINER_ID)
         if (container) {
             container.style.display = 'none'
         }
