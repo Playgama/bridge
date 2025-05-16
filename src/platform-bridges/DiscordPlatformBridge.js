@@ -24,8 +24,8 @@ import {
     ERROR,
 } from '../constants'
 
-const SDK_URL = 'https://bridge.playgama.com/discord/discord-v2.0.0.min.js'
-const APPLICATION_SERVER_PROXY_URL = '/.proxy/api/token'
+const SDK_URL = '/cdn/discord/discord-v2.0.0.min.js'
+const APPLICATION_SERVER_PROXY_URL = '/api'
 
 class DiscordPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -53,8 +53,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
 
     _appId = null
 
-    _scopes = []
-
     _accessToken = null
 
     _platformLanguage = null
@@ -69,20 +67,27 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
             if (
-                !this.options?.appId
+                !this._options?.appId
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
                     ERROR.DISCORD_GAME_PARAMS_NOT_FOUND,
                 )
             } else {
-                this._scopes = this.options.scopes || []
-                this._appId = this.options.appId
+                this._appId = this._options.appId
 
                 addJavaScript(SDK_URL).then(() => {
                     waitFor('discord', 'DiscordSDK')
                         .then(() => {
-                            this._platformSdk = new window.discord.DiscordSK(this.options.appId)
+                            this._platformSdk = new window.discord.DiscordSDK(this._appId)
+
+                            window.discord.patchUrlMappings(
+                                [
+                                    { prefix: '/', target: 'index.html' },
+                                    { prefix: '/oauth-callback', target: 'https://127.0.0.1' },
+                                ],
+                            )
+
                             return this._platformSdk.ready()
                         })
                         .then(() => {
@@ -108,15 +113,15 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
             this._platformSdk.commands.authorize({
-                client_id: !this.options?.appId,
+                client_id: this._appId,
                 response_type: 'code',
                 state: '',
                 prompt: 'none',
                 scope: [
-                    ...this._scopes,
+                    'identify',
                 ],
             })
-                .then(({ code }) => fetch(APPLICATION_SERVER_PROXY_URL, {
+                .then(({ code }) => fetch(`${APPLICATION_SERVER_PROXY_URL}/token`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

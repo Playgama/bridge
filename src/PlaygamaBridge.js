@@ -174,7 +174,8 @@ class PlaygamaBridge {
         if (!this.#initializationPromiseDecorator) {
             this.#initializationPromiseDecorator = new PromiseDecorator()
 
-            let configFilePath = './playgama-bridge-config.json'
+            // TODO: prefix
+            let configFilePath = '/.proxy/playgama-bridge-config.json'
             if (options && options.configFilePath) {
                 configFilePath = options.configFilePath
             }
@@ -260,7 +261,7 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.POKI
             } else if (url.hostname.includes('msn.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
-            } else if (url.hostname.includes('discord.')) {
+            } else if (url.hostname.includes('discordsays.com')) {
                 platformId = PLATFORM_ID.DISCORD
             }
         }
