@@ -164,9 +164,11 @@ class AdvertisementModule extends ModuleBase {
 
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
 
-        if (this.#interstitialTimer && this.#interstitialTimer.state === TIMER_STATE.STARTED) {
-            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            return
+        if (this._platformBridge.isMinimumDelayBetweenInterstitialEnabled) {
+            if (this.#interstitialTimer && this.#interstitialTimer.state === TIMER_STATE.STARTED) {
+                this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                return
+            }
         }
 
         let modifiedPlacement = placement
@@ -212,7 +214,7 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #startInterstitialTimer() {
-        if (this.#minimumDelayBetweenInterstitial > 0) {
+        if (this.#minimumDelayBetweenInterstitial > 0 && this._platformBridge.isMinimumDelayBetweenInterstitialEnabled) {
             this.#interstitialTimer = new Timer(this.#minimumDelayBetweenInterstitial)
             this.#interstitialTimer.start()
         }

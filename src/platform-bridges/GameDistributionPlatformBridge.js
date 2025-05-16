@@ -35,6 +35,11 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.GAME_DISTRIBUTION
     }
 
+    // advertisement
+    get isMinimumDelayBetweenInterstitialEnabled() {
+        return false
+    }
+
     // social
     get isExternalLinksAllowed() {
         return false

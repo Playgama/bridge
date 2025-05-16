@@ -105,6 +105,10 @@ class PlatformBridgeBase {
         return this._isBannerSupported
     }
 
+    get isMinimumDelayBetweenInterstitialEnabled() {
+        return true
+    }
+
     // social
     get isInviteFriendsSupported() {
         return false
