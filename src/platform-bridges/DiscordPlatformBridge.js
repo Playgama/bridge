@@ -1,0 +1,339 @@
+/* eslint-disable camelcase */
+/*
+ * This file is part of Playgama Bridge.
+ *
+ * Playgama Bridge is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ *
+ * Playgama Bridge is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import PlatformBridgeBase from './PlatformBridgeBase'
+import { addJavaScript, waitFor } from '../common/utils'
+import {
+    PLATFORM_ID,
+    ACTION_NAME,
+    ERROR,
+} from '../constants'
+
+const SDK_URL = 'https://discord.playgama.com/sdk.js'
+const APPLICATION_SERVER_PROXY_URL = '/.proxy/api/token'
+
+class DiscordPlatformBridge extends PlatformBridgeBase {
+    // platform
+    get platformId() {
+        return PLATFORM_ID.DISCORD
+    }
+
+    get platformLanguage() {
+        return this._platformLanguage
+    }
+
+    // player
+    get isPlayerAuthorizationSupported() {
+        return true
+    }
+
+    get isPlayerAuthorized() {
+        return this._isPlayerAuthorized
+    }
+
+    // payments
+    get isPaymentsSupported() {
+        return true
+    }
+
+    _appId = null
+
+    _scopes = []
+
+    _accessToken = null
+
+    _platformLanguage = null
+
+    initialize() {
+        if (this._isInitialized) {
+            return Promise.resolve()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            if (
+                !this.options?.appId
+            ) {
+                this._rejectPromiseDecorator(
+                    ACTION_NAME.INITIALIZE,
+                    ERROR.DISCORD_GAME_PARAMS_NOT_FOUND,
+                )
+            } else {
+                this._scopes = this.options.scopes || []
+                this._appId = this.options.appId
+
+                addJavaScript(SDK_URL).then(() => {
+                    waitFor('discord', 'DiscordSDK')
+                        .then(() => {
+                            this._platformSdk = new window.discord.DiscordSK(this.options.appId)
+                            return this._platformSdk.ready()
+                        })
+                        .then(() => {
+                            this._isInitialized = true
+                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        })
+                })
+            }
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // player
+
+    authorizePlayer() {
+        if (!this._isInitialized) {
+            return Promise.reject(ERROR.SDK_NOT_INITIALIZED)
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+
+            this._platformSdk.commands.authorize({
+                client_id: !this.options?.appId,
+                response_type: 'code',
+                state: '',
+                prompt: 'none',
+                scope: this._scopes,
+            })
+                .then(({ code }) => fetch(APPLICATION_SERVER_PROXY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code,
+                    }),
+                }))
+                .then((response) => response.json())
+                .then(({ access_token }) => {
+                    this._accessToken = access_token
+
+                    return this._platformSdk.commands.authenticate({
+                        access_token,
+                    })
+                })
+                .then((auth) => {
+                    if (auth === null) {
+                        throw new Error('Authorization failed')
+                    }
+
+                    this._isPlayerAuthorized = true
+                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+
+                    this.#fetchLocale()
+                })
+                .catch((error) => {
+                    this._accessToken = null
+
+                    this._rejectPromiseDecorator(
+                        ACTION_NAME.AUTHORIZE_PLAYER,
+                        error,
+                    )
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // payments
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            this._platformSdk.commands.startPurchase({ sku_id: product.id })
+                .then((purchase) => {
+                    if (!purchase) {
+                        throw new Error('Purchase failed')
+                    }
+
+                    const mergedPurchase = { id, ...purchase }
+                    this._paymentsPurchases.push(mergedPurchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+
+            fetch(`/applications/${this._appId}/entitlements/${this._paymentsPurchases[purchaseIndex].purchaseToken}/consume`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this._accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({}),
+            })
+                .then(() => {
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
+            this._platformSdk.commands.getSkus()
+                .then(({ skus: discordProducts }) => {
+                    const mergedProducts = products.map((product) => {
+                        const discordProduct = discordProducts.find((p) => p.id === product.id)
+
+                        return {
+                            id: product.id,
+                            title: discordProduct.name,
+                            price: discordProduct.price.amount,
+                            priceCurrencyCode: discordProduct.price.currency,
+                            priceValue: 1,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+
+            this._platformSdk.commands.getEntitlements()
+                .then((purchases) => {
+                    const products = this._paymentsGetProductsPlatformData()
+
+                    this._paymentsPurchases = purchases.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.id)
+                        const mergedPurchase = {
+                            id: product.id,
+                            ...purchase,
+                        }
+
+                        return mergedPurchase
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // social
+    inviteFriends() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
+
+            this._platformSdk.commands.openInviteDialog()
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INVITE_FRIENDS, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    share(options) {
+        if (!options.mediaUrl) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+
+            this._platformSdk.commands.openShareMomentDialog({
+                mediaUrl: options.mediaUrl,
+            })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.SHARE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    _userSettingsGetLocalePromise = null
+
+    #fetchLocale() {
+        if (this._userSettingsGetLocalePromise) {
+            return this._userSettingsGetLocalePromise
+        }
+
+        this._userSettingsGetLocalePromise = this._platformSdk.commands.userSettingsGetLocale()
+            .then(({ locale }) => {
+                this._platformLanguage = locale
+            })
+            .finally(() => {
+                this._userSettingsGetLocalePromise = null
+            })
+
+        return this._userSettingsGetLocalePromise
+    }
+}
+
+export default DiscordPlatformBridge
