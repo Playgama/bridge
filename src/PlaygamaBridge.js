@@ -270,7 +270,7 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.FACEBOOK
             } else if (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content')) {
                 platformId = PLATFORM_ID.POKI
-            } else if (url.hostname.includes('msn.') || url.hostname.includes('start.gg')) {
+            } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
             }
         }
