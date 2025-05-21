@@ -14,11 +14,14 @@
         "lagged": {
             "devId": "",
             "publisherId": ""
+        }
+    },
+    "advertisement": {
+        "interstitial": {
+            "preloadOnStart": true
         },
-        "facebook": {
-            "bannerPlacementId": "",
-            "interstitialPlacements": [],
-            "rewardedPlacements": []
+        "rewarded": {
+            "preloadOnStart": true
         }
     },
     "payments": [

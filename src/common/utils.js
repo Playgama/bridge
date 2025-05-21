@@ -15,6 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { BANNER_CONTAINER_ID, BANNER_POSITION } from '../constants'
+
 export const addJavaScript = function addJavaScript(src) {
     return new Promise((resolve) => {
         const script = document.createElement('script')
@@ -42,6 +44,29 @@ export const addAdsByGoogle = ({
     script.addEventListener('load', resolve)
     document.head.appendChild(script)
 })
+
+export function createAdvertisementBannerContainer(position) {
+    const container = document.createElement('div')
+    container.id = BANNER_CONTAINER_ID
+    container.style.position = 'absolute'
+    document.body.appendChild(container)
+
+    switch (position) {
+        case BANNER_POSITION.TOP:
+            container.style.top = '0px'
+            container.style.height = '90px'
+            container.style.width = '100%'
+            break
+        case BANNER_POSITION.BOTTOM:
+        default:
+            container.style.bottom = '0px'
+            container.style.height = '90px'
+            container.style.width = '100%'
+            break
+    }
+
+    return container
+}
 
 export const waitFor = function waitFor(...args) {
     if (args.length <= 0) {

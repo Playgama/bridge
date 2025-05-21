@@ -30,6 +30,10 @@ import {
 import PromiseDecorator from '../common/PromiseDecorator'
 
 class PlatformBridgeBase {
+    get options() {
+        return this._options
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.MOCK
@@ -101,16 +105,8 @@ class PlatformBridgeBase {
         return this._isBannerSupported
     }
 
-    get bannerState() {
-        return this._bannerState
-    }
-
-    get interstitialState() {
-        return this._interstitialState
-    }
-
-    get rewardedState() {
-        return this._rewardedState
+    get isMinimumDelayBetweenInterstitialEnabled() {
+        return true
     }
 
     // social
@@ -236,12 +232,6 @@ class PlatformBridgeBase {
     _platformStorageCachedData = null
 
     _isBannerSupported = false
-
-    _interstitialState = null
-
-    _rewardedState = null
-
-    _bannerState = null
 
     _paymentsPurchases = []
 
@@ -418,9 +408,13 @@ class PlatformBridgeBase {
         this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
+    preloadInterstitial() { }
+
     showInterstitial() {
         this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
     }
+
+    preloadRewarded() { }
 
     showRewarded() {
         this._setRewardedState(REWARDED_STATE.FAILED)
@@ -614,31 +608,16 @@ class PlatformBridgeBase {
         this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, this._visibilityState)
     }
 
-    _setInterstitialState(state) {
-        if (this._interstitialState === state && state !== INTERSTITIAL_STATE.FAILED) {
-            return
-        }
+    _setBannerState(state) {
+        this.emit(EVENT_NAME.BANNER_STATE_CHANGED, state)
+    }
 
-        this._interstitialState = state
-        this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this._interstitialState)
+    _setInterstitialState(state) {
+        this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, state)
     }
 
     _setRewardedState(state) {
-        if (this._rewardedState === state && state !== REWARDED_STATE.FAILED) {
-            return
-        }
-
-        this._rewardedState = state
-        this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this._rewardedState)
-    }
-
-    _setBannerState(state) {
-        if (this._bannerState === state && state !== BANNER_STATE.FAILED) {
-            return
-        }
-
-        this._bannerState = state
-        this.emit(EVENT_NAME.BANNER_STATE_CHANGED, this._bannerState)
+        this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, state)
     }
 
     _createPromiseDecorator(actionName) {

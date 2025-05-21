@@ -23,6 +23,7 @@ import {
     BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    BANNER_POSITION,
 } from '../constants'
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
@@ -82,8 +83,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     this._platformSdk.getSignedInUserAsync()
                         .then((data) => {
                             this.#updatePlayerInfo(data)
-                            this.#loadInterstitialAdsAsync(true)
-                            this.#loadRewardAdsAsync(true)
                         })
                         .finally(() => {
                             this._isInitialized = true
@@ -137,14 +136,20 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showBanner(options = {}) {
-        const position = options.position || 'top:728x90'
+    showBanner(position) {
+        let size
 
-        this._platformSdk.showDisplayAdsAsync(
-            !Array.isArray(position)
-                ? [position]
-                : position,
-        )
+        switch (position) {
+            case BANNER_POSITION.TOP:
+                size = 'top:728x90'
+                break
+            case BANNER_POSITION.BOTTOM:
+            default:
+                size = 'bottom:320x50'
+                break
+        }
+
+        this._platformSdk.showDisplayAdsAsync([size])
             .then(() => {
                 this._setBannerState(BANNER_STATE.SHOWN)
             })
@@ -154,14 +159,14 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     hideBanner() {
-        if (this._bannerState !== BANNER_STATE.SHOWN) {
-            return
-        }
-
         this._platformSdk.hideDisplayAdsAsync()
             .then(() => {
                 this._setBannerState(BANNER_STATE.HIDDEN)
             })
+    }
+
+    preloadInterstitial() {
+        this.#loadInterstitialAdsAsync(true)
     }
 
     showInterstitial() {
@@ -169,7 +174,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .then((adInstance) => this._platformSdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-
                 return adInstance.showAdsCompletedAsync
             })
             .then(() => this._setInterstitialState(INTERSTITIAL_STATE.CLOSED))
@@ -181,12 +185,15 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             })
     }
 
+    preloadRewarded() {
+        this.#loadRewardAdsAsync(true)
+    }
+
     showRewarded() {
         this.#loadRewardAdsAsync()
             .then((adInstance) => this._platformSdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
-
                 return adInstance.showAdsCompletedAsync
             })
             .then(() => {
@@ -358,6 +365,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._preloadedRewardedPromise = null
             })
+
         return this._preloadedRewardedPromise
     }
 
@@ -370,6 +378,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._preloadedInterstitialPromise = null
             })
+
         return this._preloadedInterstitialPromise
     }
 

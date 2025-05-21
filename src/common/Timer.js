@@ -47,24 +47,29 @@ class Timer {
     }
 
     start() {
-        if (this.#state === STATE.CREATED || this.#state === STATE.COMPLETED) {
-            this.#timeLeft = this.#time
-            this.#setState(STATE.STARTED)
-            this.#intervalId = setInterval(() => {
-                this.#timeLeft -= 1
-                this.emit(EVENT_NAME.TIME_LEFT_CHANGED, this.#timeLeft)
-
-                if (this.#timeLeft <= 0) {
-                    this.#clear()
-                    this.#setState(STATE.COMPLETED)
-                }
-            }, 1000)
+        if (this.#state === STATE.STARTED) {
+            return
         }
+
+        this.#timeLeft = this.#time
+        this.#setState(STATE.STARTED)
+        this.#intervalId = setInterval(() => {
+            this.#timeLeft -= 1
+            this.emit(EVENT_NAME.TIME_LEFT_CHANGED, this.#timeLeft)
+
+            if (this.#timeLeft <= 0) {
+                this.#clear()
+                this.#setState(STATE.COMPLETED)
+            }
+        }, 1000)
     }
 
     stop() {
         this.#clear()
-        this.#setState(STATE.STOPPED)
+
+        if (this.#state === STATE.STARTED) {
+            this.#setState(STATE.STOPPED)
+        }
     }
 
     #setState(value) {
@@ -73,8 +78,8 @@ class Timer {
     }
 
     #clear() {
-        this.#timeLeft = 0
         clearInterval(this.#intervalId)
+        this.#timeLeft = 0
     }
 }
 

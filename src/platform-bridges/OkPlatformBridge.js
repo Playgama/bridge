@@ -81,6 +81,8 @@ class OkPlatformBridge extends PlatformBridgeBase {
 
     _platformBannerOptions = {}
 
+    #advertisementBannerPosition = null
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -311,25 +313,9 @@ class OkPlatformBridge extends PlatformBridgeBase {
         }
     }
 
-    showBanner(options) {
-        const position = 'bottom'
-        if (options) {
-            if (typeof options.layoutType === 'string') {
-                this._platformBannerOptions = {
-                    ...options,
-                    layoutType: null,
-                }
-                this._platformSdk.invokeUIMethod('setBannerFormat', options.layoutType)
-                return
-            }
-
-            if (typeof options.position === 'string') {
-                this._platformSdk.invokeUIMethod('requestBannerAds', options.position)
-                return
-            }
-        }
-
-        this._platformSdk.invokeUIMethod('requestBannerAds', position)
+    showBanner(position) {
+        this.#advertisementBannerPosition = position
+        this._platformSdk.invokeUIMethod('requestBannerAds')
     }
 
     hideBanner() {
@@ -544,9 +530,10 @@ class OkPlatformBridge extends PlatformBridgeBase {
             this._setBannerState(BANNER_STATE.FAILED)
             return
         }
+
         switch (data) {
             case 'ad_loaded':
-                this._platformSdk.invokeUIMethod('showBannerAds')
+                this._platformSdk.invokeUIMethod('showBannerAds', this.#advertisementBannerPosition)
                 break
             case 'banner_shown':
             case 'ad_shown':

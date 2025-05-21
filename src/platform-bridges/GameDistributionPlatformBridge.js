@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript } from '../common/utils'
+import { addJavaScript, createAdvertisementBannerContainer } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -24,15 +24,20 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE, ERROR,
+    BANNER_CONTAINER_ID,
 } from '../constants'
 
 const SDK_URL = 'https://html5.api.gamedistribution.com/main.min.js'
-const BANNER_CONTAINER_ID = 'banner-container'
 
 class GameDistributionPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
         return PLATFORM_ID.GAME_DISTRIBUTION
+    }
+
+    // advertisement
+    get isMinimumDelayBetweenInterstitialEnabled() {
+        return false
     }
 
     // social
@@ -61,7 +66,6 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
                         switch (event.name) {
                             case 'SDK_READY':
                                 self._platformSdk = window.gdsdk
-                                self._platformSdk.preloadAd('rewarded')
                                 self._isInitialized = true
 
                                 self.showInterstitial()
@@ -70,6 +74,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
                             case 'SDK_GAME_START':
                                 if (self.#currentAdvertisementIsRewarded) {
                                     self._setRewardedState(REWARDED_STATE.CLOSED)
+                                    self._platformSdk.preloadAd('rewarded')
                                 } else {
                                     self._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                                 }
@@ -102,36 +107,10 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showBanner(options) {
+    showBanner(position) {
         let container = document.getElementById(BANNER_CONTAINER_ID)
-
         if (!container) {
-            container = document.createElement('div')
-            container.id = BANNER_CONTAINER_ID
-            container.style.position = 'absolute'
-            document.body.appendChild(container)
-        }
-
-        if (options?.position === 'top') {
-            container.style.top = 0
-            container.style.height = '90px'
-            container.style.width = '100%'
-        } else if (options?.position === 'left') {
-            container.style.left = 0
-            container.style.top = 0
-            container.style.height = '100%'
-            container.style.minHeight = '600px'
-            container.style.width = '120px'
-        } else if (options?.position === 'right') {
-            container.style.right = 0
-            container.style.top = 0
-            container.style.height = '100%'
-            container.style.minHeight = '600px'
-            container.style.width = '120px'
-        } else {
-            container.style.bottom = 0
-            container.style.height = '90px'
-            container.style.width = '100%'
+            container = createAdvertisementBannerContainer(position)
         }
 
         container.style.display = 'block'
@@ -167,6 +146,10 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
         } else {
             this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
         }
+    }
+
+    preloadRewarded() {
+        this._platformSdk.preloadAd('rewarded')
     }
 
     showRewarded() {

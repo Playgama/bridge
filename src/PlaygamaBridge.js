@@ -70,6 +70,10 @@ class PlaygamaBridge {
         return this.#isInitialized
     }
 
+    get options() {
+        return this.#platformBridge.options
+    }
+
     get platform() {
         return this.#getModule(MODULE_NAME.PLATFORM)
     }
@@ -180,38 +184,51 @@ class PlaygamaBridge {
                 configFilePath = options.configFilePath
             }
 
+            let modifiedOptions
+
             fetch(configFilePath)
                 .then((response) => response.json())
                 .then((data) => {
-                    this._options = { ...data }
+                    modifiedOptions = { ...data }
                 })
                 .catch(() => {
-                    this._options = { ...options }
+                    modifiedOptions = { ...options }
                 })
                 .finally(() => {
-                    this.#createPlatformBridge()
+                    this.#createPlatformBridge(modifiedOptions)
+
+                    this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.STORAGE] = new StorageModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
+
                     this.#platformBridge
                         .initialize()
                         .then(() => {
-                            this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.STORAGE] = new StorageModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
-                            this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
-
                             this.#isInitialized = true
                             console.info(`%c PlaygamaBridge v.${this.version} initialized. `, 'background: #01A5DA; color: white')
 
                             if (this.#initializationPromiseDecorator) {
                                 this.#initializationPromiseDecorator.resolve()
                                 this.#initializationPromiseDecorator = null
+                            }
+
+                            if (this.#platformBridge.options?.advertisement?.interstitial?.preloadOnStart) {
+                                const placement = this.#platformBridge.options.advertisement.interstitial.preloadOnStart
+                                this.#modules[MODULE_NAME.ADVERTISEMENT].preloadInterstitial(placement)
+                            }
+
+                            if (this.#platformBridge.options?.advertisement?.rewarded?.preloadOnStart) {
+                                const placement = this.#platformBridge.options.advertisement.rewarded.preloadOnStart
+                                this.#modules[MODULE_NAME.ADVERTISEMENT].preloadRewarded(placement)
                             }
                         })
                 })
@@ -220,17 +237,13 @@ class PlaygamaBridge {
         return this.#initializationPromiseDecorator.promise
     }
 
-    #createPlatformBridge() {
+    #createPlatformBridge(options) {
         let platformId = PLATFORM_ID.MOCK
-
-        if (!this._options) {
-            this._options = {}
-        }
 
         const url = new URL(window.location.href)
 
-        if (this._options.forciblySetPlatformId) {
-            platformId = this.#getPlatformId(this._options.forciblySetPlatformId.toLowerCase())
+        if (options.forciblySetPlatformId) {
+            platformId = this.#getPlatformId(options.forciblySetPlatformId.toLowerCase())
         } else {
             const yandexUrl = ['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')
             if (url.searchParams.has('platform_id')) {
@@ -266,77 +279,76 @@ class PlaygamaBridge {
             }
         }
 
-        const gameIdParam = url.searchParams.get('game_id')
-
-        if (!this._options.gameId && gameIdParam) {
-            this._options.gameId = gameIdParam
+        let modifiedOptions = options
+        if (modifiedOptions.platforms?.[platformId]) {
+            modifiedOptions = { ...modifiedOptions, ...modifiedOptions.platforms[platformId] }
         }
 
-        const _options = this._options.platforms?.[platformId] || this._options
+        delete modifiedOptions.platforms
 
         switch (platformId) {
             case PLATFORM_ID.VK: {
-                this.#platformBridge = new VkPlatformBridge(_options)
+                this.#platformBridge = new VkPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.YANDEX: {
-                this.#platformBridge = new YandexPlatformBridge(_options)
+                this.#platformBridge = new YandexPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.CRAZY_GAMES: {
-                this.#platformBridge = new CrazyGamesPlatformBridge(_options)
+                this.#platformBridge = new CrazyGamesPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.ABSOLUTE_GAMES: {
-                this.#platformBridge = new AbsoluteGamesPlatformBridge(_options)
+                this.#platformBridge = new AbsoluteGamesPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.GAME_DISTRIBUTION: {
-                this.#platformBridge = new GameDistributionPlatformBridge(_options)
+                this.#platformBridge = new GameDistributionPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.OK: {
-                this.#platformBridge = new OkPlatformBridge(_options)
+                this.#platformBridge = new OkPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.PLAYGAMA: {
-                this.#platformBridge = new PlaygamaPlatformBridge(_options)
+                this.#platformBridge = new PlaygamaPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.WORTAL: {
-                this.#platformBridge = new WortalPlatformBridge(_options)
+                this.#platformBridge = new WortalPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.PLAYDECK: {
-                this.#platformBridge = new PlayDeckPlatformBridge(_options)
+                this.#platformBridge = new PlayDeckPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.TELEGRAM: {
-                this.#platformBridge = new TelegramPlatformBridge(_options)
+                this.#platformBridge = new TelegramPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.Y8: {
-                this.#platformBridge = new Y8PlatformBridge(_options)
+                this.#platformBridge = new Y8PlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.LAGGED: {
-                this.#platformBridge = new LaggedPlatformBridge(_options)
+                this.#platformBridge = new LaggedPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.FACEBOOK: {
-                this.#platformBridge = new FacebookPlatformBridge(_options)
+                this.#platformBridge = new FacebookPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.POKI: {
-                this.#platformBridge = new PokiPlatformBridge(_options)
+                this.#platformBridge = new PokiPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.QA_TOOL: {
-                this.#platformBridge = new QaToolPlatformBridge(_options)
+                this.#platformBridge = new QaToolPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.MSN: {
-                this.#platformBridge = new MsnPlatformBridge(_options)
+                this.#platformBridge = new MsnPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.DISCORD: {
@@ -344,7 +356,7 @@ class PlaygamaBridge {
                 break
             }
             default: {
-                this.#platformBridge = new PlatformBridgeBase(_options)
+                this.#platformBridge = new PlatformBridgeBase(modifiedOptions)
                 break
             }
         }

@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, createAdvertisementBannerContainer, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -26,10 +26,10 @@ import {
     STORAGE_TYPE,
     DEVICE_TYPE,
     PLATFORM_MESSAGE,
+    BANNER_CONTAINER_ID,
 } from '../constants'
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
-const BANNER_CONTAINER_ID = 'banner-container'
 
 class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -263,34 +263,10 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showBanner(options) {
+    showBanner(position) {
         let container = document.getElementById(BANNER_CONTAINER_ID)
-
         if (!container) {
-            container = document.createElement('div')
-            container.id = BANNER_CONTAINER_ID
-            container.style.position = 'absolute'
-            document.body.appendChild(container)
-        }
-
-        if (options?.position === 'top') {
-            container.style.top = 0
-            container.style.height = '90px'
-            container.style.width = '100%'
-        } else if (options?.position === 'left') {
-            container.style.left = 0
-            container.style.top = 0
-            container.style.height = '100%'
-            container.style.width = '90px'
-        } else if (options?.position === 'right') {
-            container.style.right = 0
-            container.style.top = 0
-            container.style.height = '100%'
-            container.style.width = '90px'
-        } else {
-            container.style.bottom = 0
-            container.style.height = '90px'
-            container.style.width = '100%'
+            container = createAdvertisementBannerContainer(position)
         }
 
         container.style.display = 'block'

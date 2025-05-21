@@ -85,6 +85,13 @@ export const BANNER_STATE = {
     FAILED: 'failed',
 }
 
+export const BANNER_POSITION = {
+    TOP: 'top',
+    BOTTOM: 'bottom',
+}
+
+export const BANNER_CONTAINER_ID = 'banner-container'
+
 export const STORAGE_TYPE = {
     LOCAL_STORAGE: 'local_storage',
     PLATFORM_INTERNAL: 'platform_internal',
