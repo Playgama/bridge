@@ -55,7 +55,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
 
     _accessToken = null
 
-    _platformLanguage = null
+    _platformLanguage = 'en'
 
     initialize() {
         if (this._isInitialized) {
@@ -80,13 +80,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     waitFor('discord', 'DiscordSDK')
                         .then(() => {
                             this._platformSdk = new window.discord.DiscordSDK(this._appId)
-
-                            window.discord.patchUrlMappings(
-                                [
-                                    { prefix: '/', target: 'index.html' },
-                                    { prefix: '/oauth-callback', target: 'https://127.0.0.1' },
-                                ],
-                            )
 
                             return this._platformSdk.ready()
                         })
