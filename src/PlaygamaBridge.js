@@ -51,7 +51,6 @@ import GameDistributionPlatformBridge from './platform-bridges/GameDistributionP
 import OkPlatformBridge from './platform-bridges/OkPlatformBridge'
 import PlaygamaPlatformBridge from './platform-bridges/PlaygamaPlatformBridge'
 import PlayDeckPlatformBridge from './platform-bridges/PlayDeckPlatformBridge'
-import WortalPlatformBridge from './platform-bridges/WortalPlatformBridge'
 import TelegramPlatformBridge from './platform-bridges/TelegramPlatformBridge'
 import Y8PlatformBridge from './platform-bridges/Y8PlatformBridge'
 import LaggedPlatformBridge from './platform-bridges/LaggedPlatformBridge'
@@ -254,8 +253,6 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.GAME_DISTRIBUTION
             } else if (url.hostname.includes('lagged.')) {
                 platformId = PLATFORM_ID.LAGGED
-            } else if (url.hostname.includes('wortal.ai')) {
-                platformId = PLATFORM_ID.WORTAL
             } else if ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key')) || url.searchParams.has('vk_app_id')) {
                 platformId = PLATFORM_ID.VK
             } else if (url.searchParams.has('app_id') && url.searchParams.has('player_id') && url.searchParams.has('game_sid') && url.searchParams.has('auth_key')) {
@@ -309,10 +306,6 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.PLAYGAMA: {
                 this.#platformBridge = new PlaygamaPlatformBridge(modifiedOptions)
-                break
-            }
-            case PLATFORM_ID.WORTAL: {
-                this.#platformBridge = new WortalPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.PLAYDECK: {
