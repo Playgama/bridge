@@ -655,9 +655,13 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
     // payments
     paymentsPurchase(id) {
-        const product = this._paymentsGetProductPlatformData(id)
-        if (!this.#yandexPayments || !product) {
+        if (!this.#yandexPayments) {
             return Promise.reject()
+        }
+
+        let product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            product = { id }
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)

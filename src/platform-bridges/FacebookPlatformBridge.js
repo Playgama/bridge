@@ -427,9 +427,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // payments
     paymentsPurchase(id) {
-        const product = this._paymentsGetProductPlatformData(id)
+        let product = this._paymentsGetProductPlatformData(id)
         if (!product) {
-            return Promise.reject()
+            product = { id }
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
