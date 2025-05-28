@@ -7,7 +7,6 @@ One SDK for cross-platform publishing HTML5 games.
 + [Crazy Games](https://crazygames.com)
 + [Yandex Games](https://yandex.com/games)
 + [Y8](https://y8.com)
-+ [Wortal](https://wortal.ai)
 + [PlayDeck](https://playdeck.io)
 + [Telegram](https://core.telegram.org/bots/webapps)
 + [VK](https://vk.com)
