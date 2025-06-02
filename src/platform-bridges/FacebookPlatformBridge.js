@@ -569,7 +569,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
 
-            this._platformSdk.shareAsync(options)
+            this._platformSdk.shareAsync({
+                intent: 'REQUEST',
+                ...options,
+            })
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.SHARE)
                 })
