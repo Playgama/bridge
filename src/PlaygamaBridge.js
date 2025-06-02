@@ -58,6 +58,7 @@ import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
+import HuaweiPlatformBridge from './platform-bridges/HuaweiPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -338,6 +339,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.MSN: {
                 this.#platformBridge = new MsnPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.HUAWEI: {
+                this.#platformBridge = new HuaweiPlatformBridge(modifiedOptions)
                 break
             }
             default: {
