@@ -33,6 +33,7 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    HUAWEI: 'huawei',
 }
 
 export const MODULE_NAME = {
