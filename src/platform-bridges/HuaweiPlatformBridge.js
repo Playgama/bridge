@@ -19,6 +19,7 @@ import PlatformBridgeBase from './PlatformBridgeBase'
 import {
     PLATFORM_ID,
     ACTION_NAME,
+    ERROR,
 } from '../constants'
 
 class HuaweiPlatformBridge extends PlatformBridgeBase {
@@ -27,11 +28,16 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.HUAWEI
     }
 
+    // player
+    get isPlayerAuthorizationSupported() {
+        return true
+    }
+
     get _isChineseDevice() {
         return typeof window.HwFastappObject === 'object'
     }
 
-    initialize() {
+    async initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
         }
@@ -39,9 +45,83 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            if (
+                !this._options
+                || !this._options.appid
+            ) {
+                this._rejectPromiseDecorator(
+                    ACTION_NAME.INITIALIZE,
+                    ERROR.HUAWEI_GAME_PARAMS_NOT_FOUND,
+                )
+            } else {
+                this._appId = this._options.appid
+
+                if (this._isChineseDevice) {
+                    promiseDecorator.resolve()
+
+                    this._platformSdk = window.HwFastappObject
+                } else {
+                    // Fallback for non-Chinese devices
+
+                    promiseDecorator.resolve()
+                }
+            }
         }
 
         return promiseDecorator.promise
+    }
+
+    authorizePlayer() {
+        if (this._isChineseDevice) {
+            return Promise.resolve()
+        }
+
+        return new Promise((resolve, reject) => {
+            if (!this._platformSdk) {
+                reject(ERROR.SDK_NOT_INITIALIZED)
+                return
+            }
+
+            this._platformSdk.onGameLoginResult = function onGameLoginResult({
+                code,
+                data,
+                gameUserData,
+            }) {
+                if (code === 0) {
+                    const {
+                        playerId,
+                        displayName,
+                        // playerLevel,
+                        // ts,
+                        // gameAuthSign,
+                        hiResImageUri,
+                        imageUri,
+                    } = gameUserData
+
+                    this._playerId = playerId
+                    this._playerName = displayName
+
+                    if (imageUri) {
+                        this._playerPhotos.push(imageUri)
+                    }
+
+                    if (hiResImageUri) {
+                        this._playerPhotos.push(hiResImageUri)
+                    }
+
+                    this._isPlayerAuthorized = true
+                    resolve()
+                } else {
+                    reject(JSON.stringify({ data, code }))
+                }
+            }
+
+            this._platformSdk.gameLogin(JSON.stringify({
+                appid: this._appId,
+                forceLogin: '1',
+            }))
+        })
     }
 }
 
