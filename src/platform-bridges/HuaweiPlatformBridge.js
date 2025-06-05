@@ -20,6 +20,8 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     ERROR,
+    INTERSTITIAL_STATE,
+    REWARDED_STATE,
 } from '../constants'
 
 class HuaweiPlatformBridge extends PlatformBridgeBase {
@@ -30,6 +32,11 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
     // player
     get isPlayerAuthorizationSupported() {
+        return true
+    }
+
+    // advertisement
+    get isAdvertisementSupported() {
         return true
     }
 
@@ -122,6 +129,49 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                 forceLogin: '1',
             }))
         })
+    }
+
+    // advertisement
+    showInterstitial() {
+        const messageHandler = (event) => {
+            if (event.message !== 'nativeAdReady') {
+                return
+            }
+
+            if (event.error) {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.SHOWN)
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+            }
+
+            window.removeEventListener('message', messageHandler)
+        }
+
+        window.addEventListener('message', messageHandler)
+
+        window.parent.postMessage({ message: 'requestNativeAd' }, '*')
+    }
+
+    showRewarded() {
+        const messageHandler = (event) => {
+            if (event.message !== 'rewardedAdReady') {
+                return
+            }
+
+            if (event.error) {
+                this._setInterstitialState(REWARDED_STATE.FAILED)
+            } else {
+                this._setInterstitialState(REWARDED_STATE.SHOWN)
+                this._setInterstitialState(REWARDED_STATE.CLOSED)
+            }
+
+            window.removeEventListener('message', messageHandler)
+        }
+
+        window.addEventListener('message', messageHandler)
+
+        window.parent.postMessage({ message: 'requestRewardedAd' }, '*')
     }
 }
 
