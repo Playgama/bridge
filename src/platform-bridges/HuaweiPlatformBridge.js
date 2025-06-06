@@ -55,14 +55,14 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
             if (
                 !this._options
-                || !this._options.appid
+                || !this._options.appId
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
                     ERROR.HUAWEI_GAME_PARAMS_NOT_FOUND,
                 )
             } else {
-                this._appId = this._options.appid
+                this._appId = this._options.appId
 
                 if (this._isChineseDevice) {
                     promiseDecorator.resolve()
@@ -150,6 +150,8 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
         window.addEventListener('message', messageHandler)
 
+        // eslint-disable-next-line no-console
+        console.log('window.parent', window.parent)
         window.parent.postMessage({ message: 'requestNativeAd' }, '*')
     }
 
