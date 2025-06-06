@@ -80,28 +80,28 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // leaderboard
     get isLeaderboardSupported() {
-        return this._supportedApis.includes('getLeaderboardAsync')
+        return true
     }
 
     get isLeaderboardMultipleBoardsSupported() {
-        return this._supportedApis.includes('getLeaderboardAsync')
+        return true
     }
 
     get isLeaderboardSetScoreSupported() {
-        return this._supportedApis.includes('getLeaderboardAsync')
+        return true
     }
 
     get isLeaderboardGetScoreSupported() {
-        return this._supportedApis.includes('getLeaderboardAsync')
+        return true
     }
 
     get isLeaderboardGetEntriesSupported() {
-        return this._supportedApis.includes('getLeaderboardAsync')
+        return true
     }
 
     // payments
     get isPaymentsSupported() {
-        return this._supportedApis.includes('payments.purchaseAsync')
+        return true
     }
 
     // social
@@ -183,7 +183,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     // storage
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._supportedApis.includes('getDataAsync')
+            return this._supportedApis.includes('player.getDataAsync')
         }
 
         return super.isStorageSupported(storageType)
@@ -338,13 +338,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
 
-            this._platformSdk.getLeaderboardAsync(options.leaderboardName)
-                .then((leaderboard) => leaderboard.setScoreAsync(
-                    options.score,
-                    options.extraData
-                        ? JSON.stringify(options.extraData)
-                        : null,
-                ))
+            this._platformSdk.globalLeaderboards.setScoreAsync(
+                options.leaderboardName,
+                options.score,
+            )
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
                 })
@@ -369,10 +366,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE)
 
-            this._platformSdk.getLeaderboardAsync(options.leaderboardName)
-                .then((leaderboard) => leaderboard.getPlayerEntryAsync())
+            this._platformSdk.globalLeaderboards.getScoreAsync(options.leaderboardName)
                 .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, result.getScore())
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, result)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, error)
@@ -391,13 +387,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
 
-            const parameters = [
-                options.count ?? 5,
-                options.offset ?? 0,
-            ]
-
-            this._platformSdk.getLeaderboardAsync(options.leaderboardName)
-                .then((leaderboard) => leaderboard.getConnectedPlayerEntriesAsync(...parameters))
+            this._platformSdk.globalLeaderboards.getTopEntriesAsync(options.leaderboardName, options.count)
                 .then((result) => {
                     let entries = null
 
@@ -579,7 +569,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
 
-            this._platformSdk.shareAsync(options)
+            this._platformSdk.shareAsync({
+                intent: 'REQUEST',
+                ...options,
+            })
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.SHARE)
                 })
