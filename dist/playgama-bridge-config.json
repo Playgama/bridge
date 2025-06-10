@@ -16,8 +16,10 @@
             "publisherId": ""
         },
         "msn": {
-            "advertisementBackfillId": "",
-            "gameId": ""
+            "gameId": "",
+            "advertisement": {
+                "backfillId": ""
+            }
         }
     },
     "advertisement": {
@@ -26,7 +28,8 @@
         },
         "rewarded": {
             "preloadOnStart": true
-        }
+        },
+        "useBuiltInErrorPopup": true
     },
     "payments": [
         {

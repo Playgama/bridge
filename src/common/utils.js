@@ -212,3 +212,23 @@ export function getKeysFromObject(keys, data, tryParseJson = false) {
 
     return getKeyOrNull(data, keys)
 }
+
+export function deepMerge(firstObject, secondObject) {
+    const result = { ...firstObject }
+    const keys = Object.keys(secondObject)
+
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]
+        if (
+            key in firstObject
+            && secondObject[key] instanceof Object
+            && firstObject[key] instanceof Object
+        ) {
+            result[key] = deepMerge(firstObject[key], secondObject[key])
+        } else {
+            result[key] = secondObject[key]
+        }
+    }
+
+    return result
+}

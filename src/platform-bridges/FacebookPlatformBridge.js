@@ -294,9 +294,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             .then(() => {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             })
-            .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            })
+            .catch(() => this._advertisementShowErrorPopup(false))
             .finally(() => {
                 this.#preloadInterstitial(placement, true)
             })
@@ -316,9 +314,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.REWARDED)
                 this._setRewardedState(REWARDED_STATE.CLOSED)
             })
-            .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            })
+            .catch(() => this._advertisementShowErrorPopup(true))
             .finally(() => {
                 this.#preloadRewarded(placement, true)
             })

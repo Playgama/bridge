@@ -58,6 +58,7 @@ import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
+import { deepMerge } from './common/utils'
 
 class PlaygamaBridge {
     get version() {
@@ -274,7 +275,7 @@ class PlaygamaBridge {
 
         let modifiedOptions = options
         if (modifiedOptions.platforms?.[platformId]) {
-            modifiedOptions = { ...modifiedOptions, ...modifiedOptions.platforms[platformId] }
+            modifiedOptions = deepMerge(modifiedOptions, modifiedOptions.platforms[platformId])
         }
 
         delete modifiedOptions.platforms

@@ -28,6 +28,7 @@ import {
     DEVICE_TYPE,
 } from '../constants'
 import PromiseDecorator from '../common/PromiseDecorator'
+import { showInfoPopup } from '../common/utils'
 
 class PlatformBridgeBase {
     get options() {
@@ -675,6 +676,28 @@ class PlatformBridgeBase {
 
     _paymentsGenerateTransactionId(id) {
         return `${id}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
+    }
+
+    _advertisementShowErrorPopup(isRewarded) {
+        const useBuiltInErrorPopup = this._options?.advertisement?.useBuiltInErrorPopup
+        if (useBuiltInErrorPopup) {
+            return showInfoPopup('Oops! It looks like you closed the ad too early, or it isn\'t available right now.')
+                .then(() => {
+                    if (isRewarded) {
+                        this._setRewardedState(REWARDED_STATE.FAILED)
+                    } else {
+                        this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    }
+                })
+        }
+
+        if (isRewarded) {
+            this._setRewardedState(REWARDED_STATE.FAILED)
+        } else {
+            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+        }
+
+        return Promise.resolve()
     }
 }
 
