@@ -18,6 +18,10 @@
         "msn": {
             "advertisementBackfillId": "",
             "gameId": ""
+        },
+        "gamepush": {
+            "projectId": "22258",
+            "publicToken": "B4plspGLPbZxpn21t4LqxOZ1ywxBHaAQ"
         }
     },
     "advertisement": {

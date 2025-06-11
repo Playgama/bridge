@@ -58,6 +58,7 @@ import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
+import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -269,6 +270,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.POKI
             } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
+            } else if (url.hostname.includes('eponesh.')) {
+                platformId = PLATFORM_ID.GAMEPUSH
             }
         }
 
@@ -338,6 +341,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.MSN: {
                 this.#platformBridge = new MsnPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.GAMEPUSH: {
+                this.#platformBridge = new GamePushPlatformBridge(modifiedOptions)
                 break
             }
             default: {
