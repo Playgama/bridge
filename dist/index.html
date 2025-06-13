@@ -430,6 +430,7 @@
                 bridge
                     .initialize()
                     .then(() => {
+                        bridge.onProgress(100)
                         optionsSection.style.display = 'none'
 
                         platformIdText.innerText = bridge.platform.id
