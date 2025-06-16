@@ -231,6 +231,17 @@ class PlaygamaBridge {
                                 this.#modules[MODULE_NAME.ADVERTISEMENT].preloadRewarded(placement)
                             }
                         })
+                        .finally(() => {
+                            // TODO: fix it
+                            setTimeout(() => {
+                                if (!this._onProgressCalled) {
+                                    // eslint-disable-next-line no-console
+                                    console.log('PlaygamaBridge initialization completed')
+
+                                    this.onProgress(100)
+                                }
+                            }, 100)
+                        })
                 })
         }
 
@@ -373,61 +384,61 @@ class PlaygamaBridge {
         const style = document.createElement('style')
         style.textContent = `
             .fullscreen {
-            background: #242424;
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0px;
-            left: 0px;
+                background: #242424;
+                width: 100%;
+                height: 100%;
+                position: absolute;
+                top: 0px;
+                left: 0px;
             }
 
             #loading-overlay {
-            font-size: 20px;
-            z-index: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+                font-size: 20px;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
             }
 
             #logo {
-            width: 10%;
-            max-width: 300px;
-            min-width: 120px;
-            overflow: visible;
+                width: 10%;
+                max-width: 300px;
+                min-width: 120px;
+                overflow: visible;
             }
 
             .fill-rect {
-            transform: translateY(100%);
-            transition: transform 0.3s ease-out;
+                transform: translateY(100%);
+                transition: transform 0.3s ease-out;
             }
 
             #gradientMover {
-            display: none;
+                display: none;
             }
 
             .gradient-mover {
-            animation: moveGradient 0.4s linear;
+                animation: moveGradient 0.4s linear;
             }
 
             @keyframes moveGradient {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-250%); }
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-250%); }
             }
 
             .logo-fade-out {
-            animation: logoFadeOut 1s linear;
+                animation: logoFadeOut 1s linear;
             }
 
             .logo-fade-out path {
-            fill: white;
-            stroke: white;
+                fill: white;
+                stroke: white;
             }
 
             @keyframes logoFadeOut {
-            0% { opacity: 1; }
-            50% { opacity: 0; }
-            100% { opacity: 0; }
+                0% { opacity: 1; }
+                50% { opacity: 0; }
+                100% { opacity: 0; }
             }
         `
         document.head.appendChild(style)
@@ -541,7 +552,10 @@ class PlaygamaBridge {
         overlay.appendChild(svg)
     }
 
+    _onProgressCalled = false
+
     onProgress(percent) {
+        this._onProgressCalled = true
         const fill = document.getElementById('fillRect')
         const gradientMover = document.getElementById('gradientMover')
         const logo = document.getElementById('logo')
@@ -553,7 +567,7 @@ class PlaygamaBridge {
 
         if (_percent === 100) {
             setTimeout(() => {
-                fill.style.display = 'none'
+                // fill.style.display = 'none'
                 gradientMover.style.display = 'block'
                 gradientMover.classList.add('gradient-mover')
             }, 400)
