@@ -22,6 +22,7 @@ import {
     ACTION_NAME,
     STORAGE_TYPE,
     ERROR,
+    BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../constants'
@@ -64,28 +65,34 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                     ERROR.GAMEPUSH_GAME_PARAMS_NOT_FOUND,
                 )
             } else {
-                const SDK_URL = `https://gamepush.com/sdk/game-score.js?projectId=${this._options.projectId}&publicToken=${this._options.publicToken}&callback=onGPInit`
+                const SDK_URL = `https://gamepush.com/sdk/game-score.js?projectId=${this._options.projectId}&publicToken=${this._options.publicToken}`
+                // const SDK_URL = 'https://gamepush.com/sdk/gamepush.js?projectId=22358&publicToken=D0sXTf35TVaXyBztl6aZrlJIXTLRYLQ7'
+                console.info('Added Gamepush script')
                 addJavaScript(SDK_URL).then(() => {
-                    waitFor('gp').then(() => {
-                        console.info(window.gp)
-                        console.info('gp initialized')
-                        this._platformSdk = window.gp
-
-                        this._platformSdk.init(this._options.devId, this._options.publisherId)
-
-                        this._platformSdk.User.get((response) => {
-                            const { id, name, avatar } = response?.user ?? {}
-
-                            if (id > 0) {
-                                this._playerId = id
-                                this._playerName = name
-                                this._playerPhotos.push(avatar)
-                                this._isPlayerAuthorized = true
-                            }
-
-                            this._isInitialized = true
-                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-                        })
+                    console.info('After AddJavascript', window);
+                    waitFor('GamePush').then(() => {
+                        console.info(window.GamePush)
+                        console.info('Gamepush initialized')
+                        this._platformSdk = window.GamePush
+                        const player = this._platformSdk?.player
+                        if (player) {
+                            const { id = null, name = '', avatar = '' } = player;
+                            this._playerId = id;
+                            this._playerName = name;
+                            if (avatar) this._playerPhotos.push(avatar);
+                            this._isPlayerAuthorized = true;
+                            this._isBannerSupported = true
+                            console.info('[Player Init] ID:', this._playerId);
+                            console.info('[Player Init] Name:', this._playerName);
+                            console.info('[Player Init] Avatar:', avatar);
+                            console.info('[Player Init] Photos:', this._playerPhotos);
+                            console.info('[Player Init] Authorized:', this._isPlayerAuthorized);
+                        } else {
+                            console.warn('[Player Init] platformSdk.player is not available');
+                        }
+                        console.info('Init Bridge')
+                        this._isInitialized = true
+                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
                 })
             }
@@ -111,90 +118,156 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return super.isStorageAvailable(storageType)
     }
 
-    // advertisement
-    showInterstitial() {
-        this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+    getDataFromStorage(key, storageType, tryParseJson) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return new Promise((resolve) => {
+                if (Array.isArray(key)) {
+                    const values = []
+                    key.forEach((k) => {
+                        let value = this._platformSdk.player.get(k)
 
-        this._platformSdk.APIAds.show(() => {
-            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-        })
-    }
+                        if (tryParseJson) {
+                            try {
+                                value = JSON.parse(value)
+                            } catch (e) {
+                                // keep value string or null
+                            }
+                        }
+                        values.push(value)
+                    })
 
-    showRewarded() {
-        this._setRewardedState(REWARDED_STATE.OPENED)
-        const canShowReward = (success, showAdFn) => {
-            if (success) {
-                showAdFn()
-            } else {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            }
-        }
-
-        const rewardSuccess = (success) => {
-            if (success) {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-                this._setRewardedState(REWARDED_STATE.CLOSED)
-            } else {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            }
-        }
-
-        this._platformSdk.GEvents.reward(canShowReward, rewardSuccess)
-    }
-
-    // leaderboard
-    setLeaderboardScore(options) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        if (typeof options?.score === 'undefined' || !options?.boardId) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
-
-            const params = {
-                score: typeof options.score === 'string'
-                    ? parseInt(options.score, 10)
-                    : options.score,
-                board: options.boardId,
-            }
-
-            this._platformSdk.Scores.save(params, (response) => {
-                if (response.success) {
-                    this._resolvePromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
-                } else {
-                    this._rejectPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE, response.errormsg)
+                    resolve(values)
+                    return
                 }
+
+                let value = this._platformSdk.player.get(key)
+
+                if (tryParseJson) {
+                    try {
+                        value = JSON.parse(value)
+                    } catch (e) {
+                        // keep value string or null
+                    }
+                }
+                resolve(value)
             })
         }
 
-        return promiseDecorator.promise
+        return super.getDataFromStorage(key, storageType, tryParseJson)
     }
 
-    // achievements
-    unlockAchievement(options) {
-        if (!options.achievement) {
-            return Promise.reject()
+    setDataToStorage(key, value, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return new Promise((resolve) => {
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        let valueData = value[i]
+
+                        if (typeof value[i] !== 'string') {
+                            valueData = JSON.stringify(value[i])
+                        }
+
+                        this._platformSdk.player.set(key[i], valueData)
+                    }
+
+                    resolve()
+                    return
+                }
+
+                let valueData = value
+
+                if (typeof value !== 'string') {
+                    valueData = JSON.stringify(value)
+                }
+
+                this._platformSdk.player.set(key, valueData)
+                resolve()
+            })
         }
 
-        return new Promise((resolve, reject) => {
-            this._platformSdk.Achievements.save(
-                Array.isArray(options.achievement)
-                    ? options.achievement
-                    : [options.achievement],
-                (response) => {
-                    if (response.success) {
-                        resolve(response)
-                    } else {
-                        reject(response.errormsg)
-                    }
-                },
-            )
-        })
+        return super.setDataToStorage(key, value, storageType)
+    }
+
+    deleteDataFromStorage(key, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (Array.isArray(key)) {
+                key.forEach((k) => this._platformSdk.data.removeItem(k))
+                return Promise.resolve()
+            }
+
+            this._platformSdk.data.removeItem(key)
+            return Promise.resolve()
+        }
+
+        return super.deleteDataFromStorage(key, storageType)
+    }
+
+
+    // advertisement
+    showInterstitial() {
+        // Set state when ad starts
+        this._platformSdk.ads.on('fullscreen:start', () => {
+            this._setInterstitialState(INTERSTITIAL_STATE.OPENED);
+        });
+        // Set state when ad ends
+        this._platformSdk.ads.on('fullscreen:close', () => {
+            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED);
+        });
+        // Actually show the interstitial ad
+        this._platformSdk.ads.showFullscreen();
+    }
+
+    showRewarded() {
+        this._setRewardedState(REWARDED_STATE.OPENED);
+        this._platformSdk.ads.off('rewarded:close');
+        this._platformSdk.ads.off('rewarded:reward');
+        this._platformSdk.ads.off('rewarded:start');
+        this._platformSdk.ads.on('rewarded:start', () => {
+            console.info('Rewarded ad started');
+        });
+
+        this._platformSdk.ads.on('rewarded:close', (success) => {
+            if (!success) {
+                this._setRewardedState(REWARDED_STATE.FAILED);
+            } else {
+                this._setRewardedState(REWARDED_STATE.CLOSED);
+            }
+        });
+
+        this._platformSdk.ads.on('rewarded:reward', () => {
+            this._setRewardedState(REWARDED_STATE.REWARDED);
+        });
+
+        this._platformSdk.ads.showRewardedVideo().catch(() => {
+            this._setRewardedState(REWARDED_STATE.FAILED);
+        });
+    }
+
+    showBanner() {
+        this._platformSdk.ads.off('sticky:render');
+        this._platformSdk.ads.off('sticky:close');
+
+        this._platformSdk.ads.on('sticky:render', () => {
+            this._setBannerState(BANNER_STATE.SHOWN);
+        });
+
+        this._platformSdk.ads.on('sticky:close', () => {
+            this._setBannerState(BANNER_STATE.HIDDEN);
+        });
+
+        try {
+            this._platformSdk.ads.showSticky();
+        } catch (err) {
+            this._setBannerState(BANNER_STATE.FAILED);
+        }
+    }
+
+    hideBanner() {
+        try {
+            this._platformSdk.ads.closeSticky();
+        } catch (err) {
+            this._setBannerState(BANNER_STATE.FAILED);
+        }
     }
 }
 
