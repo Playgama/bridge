@@ -66,7 +66,6 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                 )
             } else {
                 const SDK_URL = `https://gamepush.com/sdk/game-score.js?projectId=${this._options.projectId}&publicToken=${this._options.publicToken}`
-                // const SDK_URL = 'https://gamepush.com/sdk/gamepush.js?projectId=22358&publicToken=D0sXTf35TVaXyBztl6aZrlJIXTLRYLQ7'
                 console.info('Added Gamepush script')
                 addJavaScript(SDK_URL).then(() => {
                     console.info('After AddJavascript', window);
@@ -80,7 +79,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                             this._playerId = id;
                             this._playerName = name;
                             if (avatar) this._playerPhotos.push(avatar);
-                            this._isPlayerAuthorized = true;
+                            // this._isPlayerAuthorized = true;
                             this._isBannerSupported = true
                             console.info('[Player Init] ID:', this._playerId);
                             console.info('[Player Init] Name:', this._playerName);
@@ -202,18 +201,13 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return super.deleteDataFromStorage(key, storageType)
     }
 
-
-    // advertisement
     showInterstitial() {
-        // Set state when ad starts
         this._platformSdk.ads.on('fullscreen:start', () => {
             this._setInterstitialState(INTERSTITIAL_STATE.OPENED);
         });
-        // Set state when ad ends
         this._platformSdk.ads.on('fullscreen:close', () => {
             this._setInterstitialState(INTERSTITIAL_STATE.CLOSED);
         });
-        // Actually show the interstitial ad
         this._platformSdk.ads.showFullscreen();
     }
 
@@ -268,6 +262,10 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         } catch (err) {
             this._setBannerState(BANNER_STATE.FAILED);
         }
+    }
+
+    checkAdBlock() {
+        return this._platformSdk.ads.isAdblockEnabled;
     }
 }
 
