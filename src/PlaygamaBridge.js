@@ -208,7 +208,9 @@ class PlaygamaBridge {
                     this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
 
-                    this.#createProgressLogo()
+                    if (!modifiedOptions.disableLoadingLogo) {
+                        this.#createProgressLogo()
+                    }
 
                     this.#platformBridge
                         .initialize()
@@ -232,15 +234,13 @@ class PlaygamaBridge {
                             }
                         })
                         .finally(() => {
-                            // TODO: fix it
-                            setTimeout(() => {
-                                if (!this._onProgressCalled) {
-                                    // eslint-disable-next-line no-console
-                                    console.log('PlaygamaBridge initialization completed')
-
-                                    this.onProgress(100)
-                                }
-                            }, 100)
+                            if (!modifiedOptions.disableLoadingLogo) {
+                                setTimeout(() => {
+                                    if (!this._setLoadingProgressCalled) {
+                                        this.setLoadingProgress(100)
+                                    }
+                                }, 700)
+                            }
                         })
                 })
         }
@@ -552,10 +552,10 @@ class PlaygamaBridge {
         overlay.appendChild(svg)
     }
 
-    _onProgressCalled = false
+    _setLoadingProgressCalled = false
 
-    onProgress(percent) {
-        this._onProgressCalled = true
+    setLoadingProgress(percent) {
+        this._setLoadingProgressCalled = true
         const fill = document.getElementById('fillRect')
         const gradientMover = document.getElementById('gradientMover')
         const logo = document.getElementById('logo')
@@ -567,7 +567,6 @@ class PlaygamaBridge {
 
         if (_percent === 100) {
             setTimeout(() => {
-                // fill.style.display = 'none'
                 gradientMover.style.display = 'block'
                 gradientMover.classList.add('gradient-mover')
             }, 400)
