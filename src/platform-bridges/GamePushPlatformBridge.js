@@ -33,19 +33,6 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.GAMEPUSH
     }
 
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
-    }
-
-    // achievements
-    get isAchievementsSupported() {
-        return true
-    }
-
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
