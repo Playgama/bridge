@@ -197,10 +197,7 @@ class PlaygamaBridge {
 
                     this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.GAME] = new GameModule(
-                        this.#platformBridge,
-                        modifiedOptions.disableLoadingLogo,
-                    )
+                    this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.STORAGE] = new StorageModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
@@ -233,7 +230,10 @@ class PlaygamaBridge {
                             }
                         })
                         .finally(() => {
-                            this.#modules[MODULE_NAME.GAME].completeLoadingProgress()
+                            setTimeout(
+                                () => this.#modules[MODULE_NAME.GAME].setLoadingProgress(100, true),
+                                700,
+                            )
                         })
                 })
         }

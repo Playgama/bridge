@@ -24,7 +24,7 @@ class GameModule extends ModuleBase {
         return this._platformBridge.visibilityState
     }
 
-    constructor(platformBridge, disableLoadingLogo = false) {
+    constructor(platformBridge) {
         super(platformBridge)
 
         this._platformBridge.on(
@@ -32,14 +32,12 @@ class GameModule extends ModuleBase {
             (state) => this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, state),
         )
 
-        this._disableLoadingLogo = disableLoadingLogo
-
-        if (!disableLoadingLogo) {
+        if (!this._platformBridge.options.disableLoadingLogo) {
             this.#createProgressLogo()
         }
     }
 
-    _setLoadingProgressCalled = false
+    _currentLoadingProgress = null
 
     _loadingProcessCompleted = false
 
@@ -217,13 +215,18 @@ class GameModule extends ModuleBase {
         overlay.appendChild(svg)
     }
 
-    setLoadingProgress(percent) {
+    setLoadingProgress(percent, isFallback = false) {
         if (this._loadingProcessCompleted) {
             console.warn('Loading process already completed. Ignoring further calls to setLoadingProgress.')
             return
         }
 
-        this._setLoadingProgressCalled = true
+        if (isFallback && this._currentLoadingProgress !== null) {
+            return
+        }
+
+        this._currentLoadingProgress = percent
+
         const fill = document.getElementById('fillRect')
         const gradientMover = document.getElementById('gradientMover')
         const logo = document.getElementById('logo')
@@ -244,16 +247,6 @@ class GameModule extends ModuleBase {
             setTimeout(() => loadingOverlay.remove(), 1400)
         } else {
             gradientMover.classList.remove('gradient-mover')
-        }
-    }
-
-    completeLoadingProgress() {
-        if (!this._disableLoadingLogo) {
-            setTimeout(() => {
-                if (!this._setLoadingProgressCalled) {
-                    this.setLoadingProgress(100)
-                }
-            }, 700)
         }
     }
 }
