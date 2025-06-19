@@ -252,7 +252,11 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     }
 
     checkAdBlock() {
-        return this._platformSdk.ads.isAdblockEnabled;
+        return new Promise((resolve) => {
+            this._platformSdk.ads.isAdblockEnabled().then((res) => {
+                resolve(res)
+            })
+        })
     }
 }
 
