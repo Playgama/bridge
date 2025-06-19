@@ -18,6 +18,7 @@
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME } from '../constants'
+import { createProgressLogo } from '../common/utils'
 
 class GameModule extends ModuleBase {
     get visibilityState() {
@@ -31,6 +32,57 @@ class GameModule extends ModuleBase {
             EVENT_NAME.VISIBILITY_STATE_CHANGED,
             (state) => this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, state),
         )
+
+        if (!this._platformBridge.options.disableLoadingLogo) {
+            createProgressLogo()
+        }
+    }
+
+    _currentLoadingProgress = null
+
+    _loadingProcessCompleted = false
+
+    _disableLoadingLogo = false
+
+    setLoadingProgress(percent, isFallback = false) {
+        if (this._loadingProcessCompleted) {
+            console.warn('Loading process already completed. Ignoring further calls to setLoadingProgress.')
+            return
+        }
+
+        if (isFallback && this._currentLoadingProgress !== null) {
+            return
+        }
+
+        const fill = document.getElementById('fillRect')
+        const gradientMover = document.getElementById('gradientMover')
+        const logo = document.getElementById('logo')
+        const loadingOverlay = document.getElementById('loading-overlay')
+
+        if (!fill || !gradientMover || !logo || !loadingOverlay) {
+            console.warn('Loading elements not found. Ensure the loading logo is properly initialized.')
+            return
+        }
+
+        this._currentLoadingProgress = percent
+
+        const _percent = Math.max(0, Math.min(100, percent))
+        const translateY = 100 - _percent
+        fill.style.transform = `translateY(${translateY}%)`
+
+        if (_percent === 100) {
+            this._loadingProcessCompleted = true
+
+            setTimeout(() => {
+                fill.style.display = 'none'
+                gradientMover.style.display = 'block'
+                gradientMover.classList.add('gradient-mover')
+            }, 400)
+            setTimeout(() => logo.classList.add('logo-fade-out'), 900)
+            setTimeout(() => loadingOverlay.remove(), 1400)
+        } else {
+            gradientMover.classList.remove('gradient-mover')
+        }
     }
 }
 
