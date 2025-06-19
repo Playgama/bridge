@@ -567,6 +567,7 @@ class PlaygamaBridge {
 
         if (_percent === 100) {
             setTimeout(() => {
+                fill.style.display = 'none'
                 gradientMover.style.display = 'block'
                 gradientMover.classList.add('gradient-mover')
             }, 400)
