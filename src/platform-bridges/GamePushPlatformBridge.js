@@ -66,17 +66,10 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                             this._playerId = id;
                             this._playerName = name;
                             if (avatar) this._playerPhotos.push(avatar);
-                            // this._isPlayerAuthorized = true;
                             this._isBannerSupported = true
-                            console.info('[Player Init] ID:', this._playerId);
-                            console.info('[Player Init] Name:', this._playerName);
-                            console.info('[Player Init] Avatar:', avatar);
-                            console.info('[Player Init] Photos:', this._playerPhotos);
-                            console.info('[Player Init] Authorized:', this._isPlayerAuthorized);
                         } else {
                             console.warn('[Player Init] platformSdk.player is not available');
                         }
-                        console.info('Init Bridge')
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
@@ -87,7 +80,6 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    // storage
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return false
@@ -189,12 +181,17 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     }
 
     showInterstitial() {
+        this._platformSdk.ads.off('fullscreen:start');
+        this._platformSdk.ads.off('fullscreen:close');
+    
         this._platformSdk.ads.on('fullscreen:start', () => {
             this._setInterstitialState(INTERSTITIAL_STATE.OPENED);
         });
+    
         this._platformSdk.ads.on('fullscreen:close', () => {
             this._setInterstitialState(INTERSTITIAL_STATE.CLOSED);
         });
+    
         this._platformSdk.ads.showFullscreen();
     }
 
@@ -227,7 +224,6 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     showBanner() {
         this._platformSdk.ads.off('sticky:render');
         this._platformSdk.ads.off('sticky:close');
-
         this._platformSdk.ads.on('sticky:render', () => {
             this._setBannerState(BANNER_STATE.SHOWN);
         });
