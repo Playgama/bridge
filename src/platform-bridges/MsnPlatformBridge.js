@@ -24,6 +24,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_POSITION,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
@@ -45,13 +46,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
     }
 
     // advertisement
@@ -134,14 +131,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    // leaderboard
-    setLeaderboardScore(options) {
-        if (!options?.score) {
-            return Promise.reject(new Error('`score` option is required'))
-        }
-
+    // leaderboards
+    leaderboardsSetScore(id, score) {
         return new Promise((resolve, reject) => {
-            this._platformSdk.submitGameResultsAsync(options.score)
+            this._platformSdk.submitGameResultsAsync(score)
                 .then(resolve)
                 .catch(reject)
         })
