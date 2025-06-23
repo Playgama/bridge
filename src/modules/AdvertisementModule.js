@@ -131,7 +131,9 @@ class AdvertisementModule extends ModuleBase {
             }
         }
 
-        this._platformBridge.showBanner(position, modifiedPlacement)
+        const placements = this._platformBridge.options?.advertisement?.banner?.placements
+        const platformPlacement = this.#getPlatformPlacement(modifiedPlacement, placements)
+        this._platformBridge.showBanner(position, platformPlacement)
     }
 
     hideBanner() {
@@ -154,7 +156,9 @@ class AdvertisementModule extends ModuleBase {
             }
         }
 
-        this._platformBridge.preloadInterstitial(modifiedPlacement)
+        const placements = this._platformBridge.options?.advertisement?.interstitial?.placements
+        const platformPlacement = this.#getPlatformPlacement(modifiedPlacement, placements)
+        this._platformBridge.preloadInterstitial(platformPlacement)
     }
 
     showInterstitial(placement = null) {
@@ -178,7 +182,9 @@ class AdvertisementModule extends ModuleBase {
             }
         }
 
-        this._platformBridge.showInterstitial(modifiedPlacement)
+        const placements = this._platformBridge.options?.advertisement?.interstitial?.placements
+        const platformPlacement = this.#getPlatformPlacement(modifiedPlacement, placements)
+        this._platformBridge.showInterstitial(platformPlacement)
     }
 
     preloadRewarded(placement = null) {
@@ -189,7 +195,9 @@ class AdvertisementModule extends ModuleBase {
             }
         }
 
-        this._platformBridge.preloadRewarded(modifiedPlacement)
+        const placements = this._platformBridge.options?.advertisement?.rewarded?.placements
+        const platformPlacement = this.#getPlatformPlacement(modifiedPlacement, placements)
+        this._platformBridge.preloadRewarded(platformPlacement)
     }
 
     showRewarded(placement = null) {
@@ -198,15 +206,17 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#rewardedPlacement = placement
-
         if (!this.#rewardedPlacement) {
             if (this._platformBridge.options?.advertisement?.rewarded?.placementFallback) {
                 this.#rewardedPlacement = this._platformBridge.options.advertisement.rewarded.placementFallback
             }
         }
 
+        const placements = this._platformBridge.options?.advertisement?.rewarded?.placements
+        const platformPlacement = this.#getPlatformPlacement(this.#rewardedPlacement, placements)
+
         this.#setRewardedState(REWARDED_STATE.LOADING)
-        this._platformBridge.showRewarded(this.#rewardedPlacement)
+        this._platformBridge.showRewarded(platformPlacement)
     }
 
     checkAdBlock() {
@@ -260,6 +270,27 @@ class AdvertisementModule extends ModuleBase {
 
         this.#rewardedState = state
         this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
+    }
+
+    #getPlatformPlacement(id, placements) {
+        if (!id) {
+            return id
+        }
+
+        if (!placements) {
+            return id
+        }
+
+        const placement = placements.find((p) => p.id === id)
+        if (!placement) {
+            return id
+        }
+
+        if (placement[this._platformBridge.platformId]) {
+            return placement[this._platformBridge.platformId]
+        }
+
+        return id
     }
 }
 

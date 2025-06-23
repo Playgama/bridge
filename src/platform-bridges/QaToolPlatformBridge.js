@@ -1198,6 +1198,35 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         return Promise.resolve()
     }
+
+    _paymentsGetProductsPlatformData() {
+        if (!this._options.payments) {
+            return []
+        }
+
+        return this._options.payments
+            .map((product) => ({
+                id: product.id,
+                ...product.playgama,
+            }))
+    }
+
+    _paymentsGetProductPlatformData(id) {
+        const products = this._options.payments
+        if (!products) {
+            return null
+        }
+
+        const product = products.find((p) => p.id === id)
+        if (!product) {
+            return null
+        }
+
+        return {
+            id: product.id,
+            ...product.playgama,
+        }
+    }
 }
 
 export default QaToolPlatformBridge

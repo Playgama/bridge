@@ -14,6 +14,12 @@
         "lagged": {
             "devId": "",
             "publisherId": ""
+        },
+        "msn": {
+            "gameId": "",
+            "advertisement": {
+                "backfillId": ""
+            }
         }
     },
     "advertisement": {
@@ -22,15 +28,13 @@
         },
         "rewarded": {
             "preloadOnStart": true
-        }
+        },
+        "useBuiltInErrorPopup": true
     },
     "payments": [
         {
             "id": "test_product",
             "playgama": {
-                "amount": 1
-            },
-            "qa_tool": {
                 "amount": 1
             },
             "playdeck": {

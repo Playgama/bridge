@@ -68,6 +68,102 @@ export function createAdvertisementBannerContainer(position) {
     return container
 }
 
+export function showInfoPopup(message) {
+    if (!document.getElementById('bridge-info-popup-styles')) {
+        const style = document.createElement('style')
+        style.id = 'bridge-info-popup-styles'
+        style.textContent = `
+            #bridge-info-popup-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 9998;
+                display: none;
+            }
+
+            #bridge-info-popup {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: #2E3C75;
+                color: #fff;
+                padding: 20px;
+                z-index: 9999;
+                display: none;
+                border-radius: 10px;
+                box-shadow: 0 0 10px #2E3C75;
+                font-size: 24px;
+                font-family: 'Roboto', sans-serif;
+                text-align: center;
+                min-width: 250px;
+                max-width: 30%;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+
+            #bridge-info-popup-button {
+                margin-top: 24px;
+                width: 150px;
+                background-color: rgba(255, 255, 255, 0.2);
+                color: #fff;
+                border: none;
+                font-size: 24px;
+                padding: 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-family: 'Roboto', sans-serif;
+                display: block;
+            }
+
+            #bridge-info-popup-button:hover {
+                background-color: rgba(255, 255, 255, 0.3);
+            }`
+
+        document.head.appendChild(style)
+    }
+
+    let overlay = document.getElementById('bridge-info-popup-overlay')
+    if (!overlay) {
+        overlay = document.createElement('div')
+        overlay.id = 'bridge-info-popup-overlay'
+        document.body.appendChild(overlay)
+    }
+
+    let bridgeInfoPopup = document.getElementById('bridge-info-popup')
+    if (!bridgeInfoPopup) {
+        bridgeInfoPopup = document.createElement('div')
+        bridgeInfoPopup.id = 'bridge-info-popup'
+    }
+
+    bridgeInfoPopup.innerText = message
+
+    let bridgeInfoPopupButton = document.getElementById('bridge-info-popup-button')
+    if (!bridgeInfoPopupButton) {
+        bridgeInfoPopupButton = document.createElement('button')
+        bridgeInfoPopupButton.id = 'bridge-info-popup-button'
+        bridgeInfoPopupButton.innerText = 'OK'
+        bridgeInfoPopup.appendChild(bridgeInfoPopupButton)
+    }
+
+    document.body.appendChild(bridgeInfoPopup)
+
+    return new Promise((resolve) => {
+        bridgeInfoPopupButton.onclick = () => {
+            bridgeInfoPopup.style.display = 'none'
+            overlay.style.display = 'none'
+            resolve()
+        }
+
+        overlay.style.display = 'block'
+        bridgeInfoPopup.style.display = 'flex'
+    })
+}
+
 export const waitFor = function waitFor(...args) {
     if (args.length <= 0) {
         return Promise.resolve()
@@ -115,4 +211,24 @@ export function getKeysFromObject(keys, data, tryParseJson = false) {
     }
 
     return getKeyOrNull(data, keys)
+}
+
+export function deepMerge(firstObject, secondObject) {
+    const result = { ...firstObject }
+    const keys = Object.keys(secondObject)
+
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]
+        if (
+            key in firstObject
+            && secondObject[key] instanceof Object
+            && firstObject[key] instanceof Object
+        ) {
+            result[key] = deepMerge(firstObject[key], secondObject[key])
+        } else {
+            result[key] = secondObject[key]
+        }
+    }
+
+    return result
 }

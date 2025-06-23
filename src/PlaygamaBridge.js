@@ -51,7 +51,6 @@ import GameDistributionPlatformBridge from './platform-bridges/GameDistributionP
 import OkPlatformBridge from './platform-bridges/OkPlatformBridge'
 import PlaygamaPlatformBridge from './platform-bridges/PlaygamaPlatformBridge'
 import PlayDeckPlatformBridge from './platform-bridges/PlayDeckPlatformBridge'
-import WortalPlatformBridge from './platform-bridges/WortalPlatformBridge'
 import TelegramPlatformBridge from './platform-bridges/TelegramPlatformBridge'
 import Y8PlatformBridge from './platform-bridges/Y8PlatformBridge'
 import LaggedPlatformBridge from './platform-bridges/LaggedPlatformBridge'
@@ -60,6 +59,7 @@ import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
 import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
+import { deepMerge } from './common/utils'
 
 class PlaygamaBridge {
     get version() {
@@ -256,8 +256,6 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.GAME_DISTRIBUTION
             } else if (url.hostname.includes('lagged.')) {
                 platformId = PLATFORM_ID.LAGGED
-            } else if (url.hostname.includes('wortal.ai')) {
-                platformId = PLATFORM_ID.WORTAL
             } else if ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key')) || url.searchParams.has('vk_app_id')) {
                 platformId = PLATFORM_ID.VK
             } else if (url.searchParams.has('app_id') && url.searchParams.has('player_id') && url.searchParams.has('game_sid') && url.searchParams.has('auth_key')) {
@@ -272,7 +270,7 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.FACEBOOK
             } else if (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content')) {
                 platformId = PLATFORM_ID.POKI
-            } else if (url.hostname.includes('msn.') || url.hostname.includes('start.gg')) {
+            } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
             } else if (url.hostname.includes('discordsays.com')) {
                 platformId = PLATFORM_ID.DISCORD
@@ -281,7 +279,7 @@ class PlaygamaBridge {
 
         let modifiedOptions = options
         if (modifiedOptions.platforms?.[platformId]) {
-            modifiedOptions = { ...modifiedOptions, ...modifiedOptions.platforms[platformId] }
+            modifiedOptions = deepMerge(modifiedOptions, modifiedOptions.platforms[platformId])
         }
 
         delete modifiedOptions.platforms
@@ -313,10 +311,6 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.PLAYGAMA: {
                 this.#platformBridge = new PlaygamaPlatformBridge(modifiedOptions)
-                break
-            }
-            case PLATFORM_ID.WORTAL: {
-                this.#platformBridge = new WortalPlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.PLAYDECK: {
@@ -352,7 +346,7 @@ class PlaygamaBridge {
                 break
             }
             case PLATFORM_ID.DISCORD: {
-                this.#platformBridge = new DiscordPlatformBridge(_options)
+                this.#platformBridge = new DiscordPlatformBridge(modifiedOptions)
                 break
             }
             default: {
