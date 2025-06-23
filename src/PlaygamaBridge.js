@@ -36,7 +36,7 @@ import StorageModule from './modules/StorageModule'
 import AdvertisementModule from './modules/AdvertisementModule'
 import SocialModule from './modules/SocialModule'
 import DeviceModule from './modules/DeviceModule'
-import LeaderboardModule from './modules/LeaderboardModule'
+import LeaderboardsModule from './modules/LeaderboardsModule'
 import PaymentsModule from './modules/PaymentsModule'
 import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
@@ -102,7 +102,11 @@ class PlaygamaBridge {
     }
 
     get leaderboard() {
-        return this.#getModule(MODULE_NAME.LEADERBOARD)
+        return this.#getModule(MODULE_NAME.LEADERBOARDS)
+    }
+
+    get leaderboards() {
+        return this.#getModule(MODULE_NAME.LEADERBOARDS)
     }
 
     get payments() {
@@ -202,7 +206,7 @@ class PlaygamaBridge {
                     this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.LEADERBOARDS] = new LeaderboardsModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)

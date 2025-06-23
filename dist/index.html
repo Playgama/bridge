@@ -171,42 +171,17 @@
                 <button id="social-create-post-button">Create Post</button>
             </div>
 
-            <div class="section" id="leaderboard-section" style="display: none">
-                <h2>Leaderboard</h2>
-                <p>Is Supported: <span id="leaderboard-is-supported-text"></span></p>
-                <p>Is Native Popup Supported: <span id="leaderboard-is-native-popup-supported-text"></span></p>
-                <p>Is Multiple Boards Supported: <span id="leaderboard-is-multiple-boards-supported-text"></span></p>
-                <p>Is Set Score Supported: <span id="leaderboard-is-set-score-supported-text"></span></p>
-                <p>Is Get Score Supported: <span id="leaderboard-is-get-score-supported-text"></span></p>
-                <p>Is Get Entries Supported: <span id="leaderboard-is-get-entries-supported-text"></span></p>
+            <div class="section" id="leaderboards-section" style="display: none">
+                <h2>Leaderboards</h2>
+                <p>Type: <span id="leaderboards-type-text"></span></p>
                 <hr>
-                <br>
-                <input type="text" id="leaderboard-board-id-input" placeholder="Yandex: Board Name" />
-                <input type="text" id="leaderboard-score-input" placeholder="Score" />
-                <button id="leaderboard-set-score-button">Set Score</button>
-                <button id="leaderboard-get-score-button">Get Score</button>
-                <br><br>
+                <input type="text" id="leaderboards-id-input" placeholder="Leaderboard ID">
                 <hr>
-                <br>
-                <label for="leaderboard-vk-global-input">VK: Global</label>
-                <input type="checkbox" id="leaderboard-vk-global-input">
-                <br>
-                <br>
-                <button id="leaderboard-show-native-popup-button">Show Native Popup</button>
-                <br>
-                <br>
+                <input type="text" id="leaderboards-score-input" placeholder="Score" />
+                <button id="leaderboards-set-score-button">Set Score</button>
                 <hr>
-                <br>
-                <label for="leaderboard-yandex-include-user-input">Yandex: Include User</label>
-                <input type="checkbox" id="leaderboard-yandex-include-user-input">
-                <br>
-                <input type="text" id="leaderboard-yandex-quantity-around-input" placeholder="Yandex: Quantity Around">
-                <br>
-                <input type="text" id="leaderboard-yandex-quantity-top-input" placeholder="Yandex: Quantity Top">
-                <br>
-                <br>
-                <button id="leaderboard-get-entries-button">Get Entries</button>
-                <p id="leaderboard-entries-container"></p>
+                <button id="leaderboards-get-entries-button">Get Entries</button>
+                <p id="leaderboards-entries-container"></p>
             </div>
             <div class="section" id="payments-section" style="display: none">
                 <h2>Payments</h2>
@@ -283,7 +258,7 @@
                 const storageSection = document.getElementById('storage-section')
                 const advertisementSection = document.getElementById('advertisement-section')
                 const socialSection = document.getElementById('social-section')
-                const leaderboardSection = document.getElementById('leaderboard-section')
+                const leaderboardsSection = document.getElementById('leaderboards-section')
                 const paymentsSection = document.getElementById('payments-section')
                 const achievementsSection = document.getElementById('achievements-section')
                 const remoteConfigSection = document.getElementById('remote-config-section')
@@ -296,7 +271,7 @@
                 storageSection.style.display = 'none'
                 advertisementSection.style.display = 'none'
                 socialSection.style.display = 'none'
-                leaderboardSection.style.display = 'none'
+                leaderboardsSection.style.display = 'none'
                 paymentsSection.style.display = 'none'
                 achievementsSection.style.display = 'none'
                 remoteConfigSection.style.display = 'none'
@@ -375,23 +350,12 @@
                 const socialAddToFavoritesButton = document.getElementById('social-add-to-favorites-button')
                 const socialRateButton = document.getElementById('social-rate-button')
 
-                const leaderboardIsSupportedText = document.getElementById('leaderboard-is-supported-text')
-                const leaderboardIsNativePopupSupportedText = document.getElementById('leaderboard-is-native-popup-supported-text')
-                const leaderboardIsMultipleBoardsSupportedText = document.getElementById('leaderboard-is-multiple-boards-supported-text')
-                const leaderboardIsGetScoreSupportedText = document.getElementById('leaderboard-is-get-score-supported-text')
-                const leaderboardIsSetScoreSupportedText = document.getElementById('leaderboard-is-set-score-supported-text')
-                const leaderboardIsGetEntriesSupportedText = document.getElementById('leaderboard-is-get-entries-supported-text')
-                const leaderboardIdInput = document.getElementById('leaderboard-board-id-input')
-                const leaderboardScoreInput = document.getElementById('leaderboard-score-input')
-                const leaderboardSetScoreButton = document.getElementById('leaderboard-set-score-button')
-                const leaderboardGetScoreButton = document.getElementById('leaderboard-get-score-button')
-                const leaderboardVkGlobalInput = document.getElementById('leaderboard-vk-global-input')
-                const leaderboardShowNativePopupButton = document.getElementById('leaderboard-show-native-popup-button')
-                const leaderboardYandexIncludeUserInput = document.getElementById('leaderboard-yandex-include-user-input')
-                const leaderboardYandexQuantityAroundInput = document.getElementById('leaderboard-yandex-quantity-around-input')
-                const leaderboardYandexQuantityTopInput = document.getElementById('leaderboard-yandex-quantity-top-input')
-                const leaderboardGetEntriesButton = document.getElementById('leaderboard-get-entries-button')
-                const leaderboardEntriesContainer = document.getElementById('leaderboard-entries-container')
+                const leaderboardsIdInput = document.getElementById('leaderboards-id-input')
+                const leaderboardsTypeText = document.getElementById('leaderboards-type-text')
+                const leaderboardsScoreInput = document.getElementById('leaderboards-score-input')
+                const leaderboardsSetScoreButton = document.getElementById('leaderboards-set-score-button')
+                const leaderboardsGetEntriesButton = document.getElementById('leaderboards-get-entries-button')
+                const leaderboardsEntriesContainer = document.getElementById('leaderboards-entries-container')
 
                 const paymentsIsSupportedText = document.getElementById('payments-is-supported-text')
                 const paymentsGetPurchasesButton = document.getElementById('payments-get-purchases-button')
@@ -507,12 +471,7 @@
                             advertisementBannerStateText.innerText = lastBannerStates.join(' → ')
                         })
 
-                        leaderboardIsSupportedText.innerText = bridge.leaderboard.isSupported
-                        leaderboardIsNativePopupSupportedText.innerText = bridge.leaderboard.isNativePopupSupported
-                        leaderboardIsMultipleBoardsSupportedText.innerText = bridge.leaderboard.isMultipleBoardsSupported
-                        leaderboardIsGetScoreSupportedText.innerText = bridge.leaderboard.isGetScoreSupported
-                        leaderboardIsSetScoreSupportedText.innerText = bridge.leaderboard.isSetScoreSupported
-                        leaderboardIsGetEntriesSupportedText.innerText = bridge.leaderboard.isGetEntriesSupported
+                        leaderboardsTypeText.innerText = bridge.leaderboards.type
 
                         achievementsIsSupportedText.innerText = bridge.achievements.isSupported
                         achievementsIsGetListSupportedText.innerText = bridge.achievements.isGetListSupported
@@ -529,7 +488,7 @@
                         storageSection.style.display = 'block'
                         advertisementSection.style.display = 'block'
                         socialSection.style.display = 'block'
-                        leaderboardSection.style.display = 'block'
+                        leaderboardsSection.style.display = 'block'
                         paymentsSection.style.display = 'block'
                         achievementsSection.style.display = 'block'
                         remoteConfigSection.style.display = 'block'
@@ -701,61 +660,22 @@
                     bridge.social.rate()
                 })
 
-                leaderboardGetScoreButton.addEventListener('click', () => {
+                leaderboardsSetScoreButton.addEventListener('click', () => {
                     bridge
-                        .leaderboard
-                        .getScore({ yandex: { leaderboardName: leaderboardIdInput.value } })
-                        .then(score => {
-                            if (score) {
-                                leaderboardScoreInput.value = score
-                            }
-                        })
+                        .leaderboards
+                        .setScore(leaderboardsIdInput.value,  leaderboardsScoreInput.value)
                 })
 
-                leaderboardSetScoreButton.addEventListener('click', () => {
+                leaderboardsGetEntriesButton.addEventListener('click', () => {
                     bridge
-                        .leaderboard
-                        .setScore({
-                            yandex: {
-                                score: leaderboardScoreInput.value,
-                                leaderboardName: leaderboardIdInput.value
-                            }
-                        })
-                })
-
-                leaderboardShowNativePopupButton.addEventListener('click', () => {
-                    let score = leaderboardScoreInput.value
-                    if (!score) {
-                        score = 1
-                    }
-
-                    bridge
-                        .leaderboard
-                        .showNativePopup({
-                            vk: {
-                                userResult: score,
-                                global: leaderboardVkGlobalInput.checked
-                            }
-                        })
-                })
-
-                leaderboardGetEntriesButton.addEventListener('click', () => {
-                    bridge
-                        .leaderboard
-                        .getEntries({
-                            yandex: {
-                                leaderboardName: leaderboardIdInput.value,
-                                quantityTop: leaderboardYandexQuantityTopInput.value,
-                                includeUser: leaderboardYandexIncludeUserInput.checked,
-                                quantityAround: leaderboardYandexQuantityAroundInput.value
-                            }
-                        })
+                        .leaderboards
+                        .getEntries(leaderboardsIdInput.value)
                         .then(data => {
                             let text = ''
                             data.forEach(e => {
-                                text += 'ID: ' + e.id + ', name: ' + e.name + ', score: ' + e.score + ', rank: ' + e.rank + ', small photo: ' + e.photos[0]
+                                text += 'ID: ' + e.id + ', name: ' + e.name + ', score: ' + e.score + ', rank: ' + e.rank + ', photo: ' + e.photo
                             })
-                            leaderboardEntriesContainer.innerText = text
+                            leaderboardsEntriesContainer.innerText = text
                         })
                 })
 

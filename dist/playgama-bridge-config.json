@@ -16,10 +16,7 @@
             "publisherId": ""
         },
         "msn": {
-            "gameId": "",
-            "advertisement": {
-                "backfillId": ""
-            }
+            "gameId": ""
         }
     },
     "advertisement": {
@@ -29,18 +26,9 @@
         "rewarded": {
             "preloadOnStart": true
         },
-        "useBuiltInErrorPopup": true
+        "useBuiltInErrorPopup": true,
+        "backfillId": ""
     },
-    "payments": [
-        {
-            "id": "test_product",
-            "playgama": {
-                "amount": 1
-            },
-            "playdeck": {
-                "amount": 1,
-                "description": "TEST PRODUCT"
-            }
-        }
-    ]
+    "payments": [],
+    "leaderboards": []
 }
