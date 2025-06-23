@@ -33,6 +33,8 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.GAMEPUSH
     }
 
+    _isBannerSupported = true
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -55,22 +57,25 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                 const SDK_URL = `https://gamepush.com/sdk/game-score.js?projectId=${this._options.projectId}&publicToken=${this._options.publicToken}`
                 console.info('Added Gamepush script')
                 addJavaScript(SDK_URL).then(() => {
-                    console.info('After AddJavascript', window);
+                    console.info('After AddJavascript', window)
                     waitFor('GamePush').then(() => {
                         console.info(window.GamePush)
                         console.info('Gamepush initialized')
                         this._platformSdk = window.GamePush
                         const player = this._platformSdk?.player
                         if (player) {
-                            const { id = null, name = '', avatar = '' } = player;
-                            this._playerId = id;
-                            this._playerName = name;
-                            if (avatar) this._playerPhotos.push(avatar);
-                            this._isBannerSupported = true
+                            const { id = null, name = '', avatar = '' } = player
+                            this._playerId = id
+                            this._playerName = name
+                            if (avatar) this._playerPhotos.push(avatar)
                         } else {
-                            console.warn('[Player Init] platformSdk.player is not available');
+                            console.warn('[Player Init] platformSdk.player is not available')
                         }
                         this._isInitialized = true
+
+                        this.setupInterstitialHandlers()
+                        this.setupRewardedHandlers()
+
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
                 })
@@ -80,9 +85,38 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    setupRewardedHandlers() {
+        this._platformSdk.ads.on('rewarded:start', () => {
+            console.info('Rewarded ad started')
+        })
+
+        this._platformSdk.ads.on('rewarded:close', (success) => {
+            if (!success) {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            } else {
+                // this._setRewardedState(REWARDED_STATE.CLOSED)
+            }
+        })
+
+        this._platformSdk.ads.on('rewarded:reward', () => {
+            this._setRewardedState(REWARDED_STATE.REWARDED)
+            this._setRewardedState(REWARDED_STATE.CLOSED)
+        })
+    }
+
+    setupInterstitialHandlers() {
+        this._platformSdk.ads.on('fullscreen:start', () => {
+            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+        })
+
+        this._platformSdk.ads.on('fullscreen:close', () => {
+            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+        })
+    }
+
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return false
+            return this._platformSdk.player.isLoggedIn;
         }
 
         return super.isStorageSupported(storageType)
@@ -90,7 +124,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return false
+            return this._platformSdk.player.isLoggedIn
         }
 
         return super.isStorageAvailable(storageType)
@@ -159,6 +193,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                 }
 
                 this._platformSdk.player.set(key, valueData)
+                this._platformSdk.player.sync()
                 resolve()
             })
         }
@@ -181,69 +216,41 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     }
 
     showInterstitial() {
-        this._platformSdk.ads.off('fullscreen:start');
-        this._platformSdk.ads.off('fullscreen:close');
-    
-        this._platformSdk.ads.on('fullscreen:start', () => {
-            this._setInterstitialState(INTERSTITIAL_STATE.OPENED);
-        });
-    
-        this._platformSdk.ads.on('fullscreen:close', () => {
-            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED);
-        });
-    
-        this._platformSdk.ads.showFullscreen();
+        this._platformSdk.ads.showFullscreen()
     }
 
     showRewarded() {
-        this._setRewardedState(REWARDED_STATE.OPENED);
-        this._platformSdk.ads.off('rewarded:close');
-        this._platformSdk.ads.off('rewarded:reward');
-        this._platformSdk.ads.off('rewarded:start');
-        this._platformSdk.ads.on('rewarded:start', () => {
-            console.info('Rewarded ad started');
-        });
+        this._setRewardedState(REWARDED_STATE.OPENED)
 
-        this._platformSdk.ads.on('rewarded:close', (success) => {
-            if (!success) {
-                this._setRewardedState(REWARDED_STATE.FAILED);
-            } else {
-                this._setRewardedState(REWARDED_STATE.CLOSED);
-            }
-        });
-
-        this._platformSdk.ads.on('rewarded:reward', () => {
-            this._setRewardedState(REWARDED_STATE.REWARDED);
-        });
-
-        this._platformSdk.ads.showRewardedVideo().catch(() => {
-            this._setRewardedState(REWARDED_STATE.FAILED);
-        });
+        this._platformSdk.ads.showRewardedVideo()
+            .catch(() => {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            })
     }
 
     showBanner() {
-        this._platformSdk.ads.off('sticky:render');
-        this._platformSdk.ads.off('sticky:close');
+        this._platformSdk.ads.off('sticky:render')
+        this._platformSdk.ads.off('sticky:close')
         this._platformSdk.ads.on('sticky:render', () => {
-            this._setBannerState(BANNER_STATE.SHOWN);
-        });
+            this._setBannerState(BANNER_STATE.SHOWN)
+        })
 
         this._platformSdk.ads.on('sticky:close', () => {
-            this._setBannerState(BANNER_STATE.HIDDEN);
-        });
+            this._setBannerState(BANNER_STATE.HIDDEN)
+        })
 
         try {
-            this._platformSdk.ads.showSticky();
+            this._platformSdk.ads.showSticky()
         } catch (err) {
-            this._setBannerState(BANNER_STATE.FAILED);
+            this._setBannerState(BANNER_STATE.FAILED)
         }
     }
 
     hideBanner() {
         try {
-            this._platformSdk.ads.closeSticky();
+            this._platformSdk.ads.closeSticky()
         } catch (err) {
-            this._setBannerState(BANNER_STATE.FAILED);
+            this._setBannerState(BANNER_STATE.FAILED)
         }
     }
 
