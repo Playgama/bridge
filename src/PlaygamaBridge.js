@@ -274,6 +274,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.POKI
             } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
+            } else if (url.hostname.includes('bitquest.games')) {
+                platformId = PLATFORM_ID.BITQUEST
             }
         }
 
@@ -343,6 +345,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.MSN: {
                 this.#platformBridge = new MsnPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.BITQUEST: {
+                this.#platformBridge = new BitquestPlatformBridge(modifiedOptions)
                 break
             }
             default: {
