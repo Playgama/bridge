@@ -55,12 +55,8 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                 )
             } else {
                 const SDK_URL = `https://gamepush.com/sdk/game-score.js?projectId=${this._options.projectId}&publicToken=${this._options.publicToken}`
-                console.info('Added Gamepush script')
                 addJavaScript(SDK_URL).then(() => {
-                    console.info('After AddJavascript', window)
                     waitFor('GamePush').then(() => {
-                        console.info(window.GamePush)
-                        console.info('Gamepush initialized')
                         this._platformSdk = window.GamePush
                         const player = this._platformSdk?.player
                         if (player) {
