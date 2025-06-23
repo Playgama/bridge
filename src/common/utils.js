@@ -169,8 +169,8 @@ export function createProgressLogo() {
     style.textContent = `
         .fullscreen {
             background: #242424;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             position: absolute;
             top: 0px;
             left: 0px;
