@@ -28,7 +28,6 @@ import {
 } from '../constants'
 
 class GamePushPlatformBridge extends PlatformBridgeBase {
-    // platform
     get platformId() {
         return PLATFORM_ID.GAMEPUSH
     }
@@ -61,18 +60,20 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                         const player = this._platformSdk?.player
                         if (player) {
                             const { id = null, name = '', avatar = '' } = player
+                            this._isPlayerAuthorized = true
                             this._playerId = id
                             this._playerName = name
+
                             if (avatar) {
                                 this._playerPhotos.push(avatar)
                             }
-                        } else {
-                            console.warn('[Player Init] platformSdk.player is not available')
                         }
+
                         this._isInitialized = true
 
-                        this.setupInterstitialHandlers()
-                        this.setupRewardedHandlers()
+                        this.#setupInterstitialHandlers()
+                        this.#setupRewardedHandlers()
+                        this.#setupBannerHandlers()
 
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
@@ -83,16 +84,14 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    setupRewardedHandlers() {
+    #setupRewardedHandlers() {
         this._platformSdk.ads.on('rewarded:start', () => {
-            console.info('Rewarded ad started')
+            this._setRewardedState(REWARDED_STATE.OPENED)
         })
 
         this._platformSdk.ads.on('rewarded:close', (success) => {
             if (!success) {
                 this._setRewardedState(REWARDED_STATE.FAILED)
-            } else {
-                // this._setRewardedState(REWARDED_STATE.CLOSED)
             }
         })
 
@@ -102,7 +101,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    setupInterstitialHandlers() {
+    #setupInterstitialHandlers() {
         this._platformSdk.ads.on('fullscreen:start', () => {
             this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
         })
@@ -112,9 +111,19 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         })
     }
 
+    #setupBannerHandlers() {
+        this._platformSdk.ads.on('sticky:render', () => {
+            this._setBannerState(BANNER_STATE.SHOWN)
+        })
+
+        this._platformSdk.ads.on('sticky:close', () => {
+            this._setBannerState(BANNER_STATE.HIDDEN)
+        })
+    }
+
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn;
+            return this._platformSdk.player.isLoggedIn
         }
 
         return super.isStorageSupported(storageType)
@@ -140,7 +149,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                             try {
                                 value = JSON.parse(value)
                             } catch (e) {
-                                // keep value string or null
+                                // keep value as it is
                             }
                         }
                         values.push(value)
@@ -156,7 +165,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                     try {
                         value = JSON.parse(value)
                     } catch (e) {
-                        // keep value string or null
+                        // keep value as it is
                     }
                 }
                 resolve(value)
@@ -202,12 +211,12 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                key.forEach((k) => this._platformSdk.data.removeItem(k))
-                return Promise.resolve()
+                key.forEach((k) => this._platformSdk.player.set(k, null))
+                return this._platformSdk.player.sync()
             }
 
-            this._platformSdk.data.removeItem(key)
-            return Promise.resolve()
+            this._platformSdk.player.set(key, null)
+            return this._platformSdk.player.sync()
         }
 
         return super.deleteDataFromStorage(key, storageType)
@@ -227,16 +236,6 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     }
 
     showBanner() {
-        this._platformSdk.ads.off('sticky:render')
-        this._platformSdk.ads.off('sticky:close')
-        this._platformSdk.ads.on('sticky:render', () => {
-            this._setBannerState(BANNER_STATE.SHOWN)
-        })
-
-        this._platformSdk.ads.on('sticky:close', () => {
-            this._setBannerState(BANNER_STATE.HIDDEN)
-        })
-
         try {
             this._platformSdk.ads.showSticky()
         } catch (err) {
