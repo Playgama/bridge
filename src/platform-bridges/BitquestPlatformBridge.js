@@ -21,21 +21,21 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
-    ERROR,
     BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../constants'
 
-class GamePushPlatformBridge extends PlatformBridgeBase {
+class BitquestPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
-        return PLATFORM_ID.GAMEPUSH
+        return PLATFORM_ID.BITQUEST
     }
 
-    _isBannerSupported = true
+    _isBannerSupported = false
 
     initialize() {
+        console.info('BitQuest SDK initialize')
         if (this._isInitialized) {
             return Promise.resolve()
         }
@@ -44,38 +44,46 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            if (
-                !this._options
-                || !this._options.projectId
-                || !this._options.publicToken
-            ) {
-                this._rejectPromiseDecorator(
-                    ACTION_NAME.INITIALIZE,
-                    ERROR.GAMEPUSH_GAME_PARAMS_NOT_FOUND,
-                )
-            } else {
-                const SDK_URL = `https://games.bitquest.games/bqsdk.min.js`
-                
-                addJavaScript(SDK_URL).then(() => {
-                    waitFor('bq').then(() => {
-                        this._platformSdk = window.bq
-                        const player = this._platformSdk?.player
-                        if (player) {
-                            const { id = null, name = ''} = player
-                            this._playerId = id
-                            this._playerName = name
-                        } else {
-                            console.warn('[Player Init] platformSdk.player is not available')
-                        }
-                        this._isInitialized = true
+            console.info('Before BitQuest SDK URL')
+            const SDK_URL = 'https://games.bitquest.games/bqsdk.min.js'
+            console.info('BitQuest SDK URL')
+            console.info('Adding javascript')
 
-                        this.setupInterstitialHandlers()
-                        this.setupRewardedHandlers()
+            addJavaScript(SDK_URL).then(() => {
+                console.info('BitQuest SDK added')
+                waitFor('bq').then(async () => {
+                    console.info('BitQuest SDK available, initializing...')
 
-                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-                    })
+                    this._platformSdk = window.bq
+                    // Await bq.initialize()
+                    try {
+                        await this._platformSdk.initialize()
+                        console.info('BitQuest SDK fully initialized')
+                    } catch (e) {
+                        console.error('Error during bq.initialize():', e)
+                        this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
+                        return
+                    }
+
+                    this._platformSdk.platform.sendMessage('game_ready')
+
+                    const player = this._platformSdk?.player
+                    if (player) {
+                        const { id = null, name = '' } = player
+                        this._playerId = id
+                        this._playerName = name
+                    } else {
+                        console.warn('[Player Init] platformSdk.player is not available')
+                    }
+
+                    this._isInitialized = true
+
+                    // this.setupInterstitialHandlers()
+                    // this.setupRewardedHandlers()
+
+                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
-            }
+            })
         }
 
         return promiseDecorator.promise
@@ -112,7 +120,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
 
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn;
+            return this._platformSdk.player.isLoggedIn
         }
 
         return super.isStorageSupported(storageType)
@@ -259,4 +267,4 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     }
 }
 
-export default GamePushPlatformBridge
+export default BitquestPlatformBridge

@@ -58,6 +58,7 @@ import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
+import BitquestPlatformBridge from './platform-bridges/BitquestPlatformBridge'
 import { deepMerge } from './common/utils'
 
 class PlaygamaBridge {
@@ -264,8 +265,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.ABSOLUTE_GAMES
             } else if (url.searchParams.has('playdeck')) {
                 platformId = PLATFORM_ID.PLAYDECK
-            } else if (url.hash.includes('tgWebAppData')) {
-                platformId = PLATFORM_ID.TELEGRAM
+            // } else if (url.hash.includes('tgWebAppData')) {
+            //     platformId = PLATFORM_ID.TELEGRAM
             } else if (url.hostname.includes('y8')) {
                 platformId = PLATFORM_ID.Y8
             } else if (url.hostname.includes('fbsbx')) {
@@ -274,9 +275,20 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.POKI
             } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
-            } else if (url.hostname.includes('bitquest.games')) {
-                platformId = PLATFORM_ID.BITQUEST
+            } else if (url.hostname.includes('t.me') && url.pathname.includes('Stage_BitBit_bot')) {
+                platformId = PLATFORM_ID.BITQUEST;
+            } else if (url.hash.includes('customUrl_')) {
+                platformId = PLATFORM_ID.BITQUEST;
+            } else if (document.referrer.includes('bitquest.games')) {
+                platformId = PLATFORM_ID.BITQUEST;
             }
+
+            // platformId = PLATFORM_ID.BITQUEST;
+            console.info(url.hostname)
+            console.info(url.pathname)
+            console.info(url.hash)
+            console.info(url.searchParams)
+            console.info('Platform ID:', platformId)
         }
 
         let modifiedOptions = options
