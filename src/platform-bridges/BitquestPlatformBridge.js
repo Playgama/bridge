@@ -21,9 +21,6 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
-    BANNER_STATE,
-    INTERSTITIAL_STATE,
-    REWARDED_STATE,
 } from '../constants'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
@@ -80,6 +77,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
                     // this.setupInterstitialHandlers()
                     // this.setupRewardedHandlers()
+                    this.setupAdvertisementHandlers()
 
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -89,38 +87,39 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    setupRewardedHandlers() {
-        this._platformSdk.ads.on('rewarded:start', () => {
-            console.info('Rewarded ad started')
-        })
+    // setupRewardedHandlers() {
+    //     this._platformSdk.ads.on('rewarded:start', () => {
+    //         console.info('Rewarded ad started')
+    //     })
 
-        this._platformSdk.ads.on('rewarded:close', (success) => {
-            if (!success) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            } else {
-                // this._setRewardedState(REWARDED_STATE.CLOSED)
-            }
-        })
+    //     this._platformSdk.ads.on('rewarded:close', (success) => {
+    //         if (!success) {
+    //             this._setRewardedState(REWARDED_STATE.FAILED)
+    //         } else {
+    //             // this._setRewardedState(REWARDED_STATE.CLOSED)
+    //         }
+    //     })
 
-        this._platformSdk.ads.on('rewarded:reward', () => {
-            this._setRewardedState(REWARDED_STATE.REWARDED)
-            this._setRewardedState(REWARDED_STATE.CLOSED)
-        })
-    }
+    //     this._platformSdk.ads.on('rewarded:reward', () => {
+    //         this._setRewardedState(REWARDED_STATE.REWARDED)
+    //         this._setRewardedState(REWARDED_STATE.CLOSED)
+    //     })
+    // }
 
-    setupInterstitialHandlers() {
-        this._platformSdk.ads.on('fullscreen:start', () => {
-            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-        })
+    // setupInterstitialHandlers() {
+    //     this._platformSdk.ads.on('fullscreen:start', () => {
+    //         this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+    //     })
 
-        this._platformSdk.ads.on('fullscreen:close', () => {
-            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-        })
-    }
+    //     this._platformSdk.ads.on('fullscreen:close', () => {
+    //         this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+    //     })
+    // }
 
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn
+            // return this._platformSdk.player.isLoggedIn
+            return true
         }
 
         return super.isStorageSupported(storageType)
@@ -128,7 +127,8 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn
+            // return this._platformSdk.player.isLoggedIn
+            return true
         }
 
         return super.isStorageAvailable(storageType)
@@ -136,134 +136,135 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                if (Array.isArray(key)) {
-                    const values = []
-                    key.forEach((k) => {
-                        let value = this._platformSdk.player.get(k)
+            if (Array.isArray(key)) {
+                const promises = key.map((k) => this._platformSdk.storage.get(k, 'platform_internal').then((rawValue) => {
+                    let parsedValue = rawValue
 
-                        if (tryParseJson) {
-                            try {
-                                value = JSON.parse(value)
-                            } catch (e) {
-                                // keep value string or null
-                            }
+                    if (tryParseJson && typeof rawValue === 'string') {
+                        try {
+                            parsedValue = JSON.parse(rawValue)
+                        } catch (e) {
+                            // keep parsedValue as-is
                         }
-                        values.push(value)
-                    })
+                    }
 
-                    resolve(values)
-                    return
-                }
+                    return parsedValue
+                }))
 
-                let value = this._platformSdk.player.get(key)
+                return Promise.all(promises)
+            }
 
-                if (tryParseJson) {
+            return this._platformSdk.storage.get(key, 'platform_internal').then((rawValue) => {
+                let parsedValue = rawValue
+
+                if (tryParseJson && typeof rawValue === 'string') {
                     try {
-                        value = JSON.parse(value)
+                        parsedValue = JSON.parse(rawValue)
                     } catch (e) {
-                        // keep value string or null
+                        // keep parsedValue as-is
                     }
                 }
-                resolve(value)
+
+                return parsedValue
             })
         }
 
         return super.getDataFromStorage(key, storageType, tryParseJson)
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        let valueData = value[i]
-
-                        if (typeof value[i] !== 'string') {
-                            valueData = JSON.stringify(value[i])
-                        }
-
-                        this._platformSdk.player.set(key[i], valueData)
-                    }
-
-                    resolve()
-                    return
-                }
-
-                let valueData = value
-
-                if (typeof value !== 'string') {
-                    valueData = JSON.stringify(value)
-                }
-
-                this._platformSdk.player.set(key, valueData)
-                this._platformSdk.player.sync()
-                resolve()
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
-    }
-
-    deleteDataFromStorage(key, storageType) {
+    async setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                key.forEach((k) => this._platformSdk.data.removeItem(k))
-                return Promise.resolve()
+                console.info('[setDataToStorage] Detected array of keys')
+
+                if (!Array.isArray(value)) {
+                    console.warn('[setDataToStorage] Expected array of values for array of keys')
+                    throw new Error('Value must be an array if key is an array')
+                }
+
+                if (key.length !== value.length) {
+                    console.warn('[setDataToStorage] Mismatch between key and value lengths')
+                    throw new Error('Key and value arrays must have the same length')
+                }
+
+                /* eslint-disable no-await-in-loop */
+                for (let i = 0; i < key.length; i++) {
+                    console.info(`[setDataToStorage] Setting key: ${key[i]}, value:`, value[i])
+                    await this._platformSdk.storage.set(key[i], value[i], 'platform_internal')
+                }
+                /* eslint-enable no-await-in-loop */
+                return
             }
 
-            this._platformSdk.data.removeItem(key)
-            return Promise.resolve()
+            console.info(`[setDataToStorage] Setting single key: ${key}, value:`, value)
+            await this._platformSdk.storage.set(key, value, 'platform_internal')
+            return
         }
 
-        return super.deleteDataFromStorage(key, storageType)
+        // Assuming super.setDataToStorage is also an async method that returns a Promise,
+        // but your method is expected to return void, so don't return its result directly.
+        await super.setDataToStorage(key, value, storageType)
     }
 
-    showInterstitial() {
-        this._platformSdk.ads.showFullscreen()
+    async deleteDataFromStorage(key, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (Array.isArray(key)) {
+                console.info('[deleteDataFromStorage] Detected array of keys')
+
+                /* eslint-disable no-await-in-loop */
+                for (let i = 0; i < key.length; i++) {
+                    console.info(`[deleteDataFromStorage] Deleting key: ${key[i]}`)
+                    await this._platformSdk.storage.delete(key[i], 'platform_internal')
+                }
+                /* eslint-enable no-await-in-loop */
+
+                return // for consistent-return
+            }
+
+            console.info(`[deleteDataFromStorage] Deleting single key: ${key}`)
+            await this._platformSdk.storage.delete(key, 'platform_internal')
+            return
+        }
+
+        await super.deleteDataFromStorage(key, storageType)
+    }
+
+    setupAdvertisementHandlers() {
+        console.info('BitQuest SDK setupAdvertisementHandlers')
+        this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
+            console.info('[Ad State] Rewarded:', state)
+            this._setRewardedState?.(state)
+        })
+
+        this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
+            console.info('[Ad State] Interstitial:', state)
+            this._setInterstitialState?.(state)
+        })
+
+        this._platformSdk.advertisement.on('BANNER_STATE_CHANGED', (state) => {
+            console.info('[Ad State] Banner:', state)
+            this._setBannerState?.(state)
+        })
     }
 
     showRewarded() {
-        this._setRewardedState(REWARDED_STATE.OPENED)
+        console.info('BitQuest SDK showRewarded')
+        this._platformSdk.advertisement.showRewarded()
+    }
 
-        this._platformSdk.ads.showRewardedVideo()
-            .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            })
+    showInterstitial() {
+        console.info('BitQuest SDK showInterstitial')
+        this._platformSdk.advertisement.showInterstitial()
     }
 
     showBanner() {
-        this._platformSdk.ads.off('sticky:render')
-        this._platformSdk.ads.off('sticky:close')
-        this._platformSdk.ads.on('sticky:render', () => {
-            this._setBannerState(BANNER_STATE.SHOWN)
-        })
-
-        this._platformSdk.ads.on('sticky:close', () => {
-            this._setBannerState(BANNER_STATE.HIDDEN)
-        })
-
-        try {
-            this._platformSdk.ads.showSticky()
-        } catch (err) {
-            this._setBannerState(BANNER_STATE.FAILED)
-        }
+        console.info('BitQuest SDK showBanner')
+        this._platformSdk.advertisement.showBanner()
     }
 
     hideBanner() {
-        try {
-            this._platformSdk.ads.closeSticky()
-        } catch (err) {
-            this._setBannerState(BANNER_STATE.FAILED)
-        }
-    }
-
-    checkAdBlock() {
-        return new Promise((resolve) => {
-            this._platformSdk.ads.isAdblockEnabled().then((res) => {
-                resolve(res)
-            })
-        })
+        console.info('BitQuest SDK hideBanner')
+        this._platformSdk.advertisement.hideBanner()
     }
 }
 

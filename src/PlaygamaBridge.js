@@ -276,18 +276,17 @@ class PlaygamaBridge {
             } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
             } else if (url.hostname.includes('t.me') && url.pathname.includes('Stage_BitBit_bot')) {
-                platformId = PLATFORM_ID.BITQUEST;
+                platformId = PLATFORM_ID.BITQUEST
             } else if (url.hash.includes('customUrl_')) {
-                platformId = PLATFORM_ID.BITQUEST;
+                platformId = PLATFORM_ID.BITQUEST
             } else if (document.referrer.includes('bitquest.games')) {
-                platformId = PLATFORM_ID.BITQUEST;
+                platformId = PLATFORM_ID.BITQUEST
+            } else if (window.location.hostname.includes('bitquest') || new URLSearchParams(window.location.search).get('platform_id') === 'bitquest') {
+                platformId = PLATFORM_ID.BITQUEST
             }
 
-            // platformId = PLATFORM_ID.BITQUEST;
             console.info(url.hostname)
-            console.info(url.pathname)
             console.info(url.hash)
-            console.info(url.searchParams)
             console.info('Platform ID:', platformId)
         }
 
