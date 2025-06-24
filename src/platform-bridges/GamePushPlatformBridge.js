@@ -63,7 +63,9 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                             const { id = null, name = '', avatar = '' } = player
                             this._playerId = id
                             this._playerName = name
-                            if (avatar) this._playerPhotos.push(avatar)
+                            if (avatar) {
+                                this._playerPhotos.push(avatar)
+                            }
                         } else {
                             console.warn('[Player Init] platformSdk.player is not available')
                         }
