@@ -284,10 +284,6 @@ class PlaygamaBridge {
             } else if (window.location.hostname.includes('bitquest') || new URLSearchParams(window.location.search).get('platform_id') === 'bitquest') {
                 platformId = PLATFORM_ID.BITQUEST
             }
-
-            console.info(url.hostname)
-            console.info(url.hash)
-            console.info('Platform ID:', platformId)
         }
 
         let modifiedOptions = options
