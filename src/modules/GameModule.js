@@ -42,11 +42,8 @@ class GameModule extends ModuleBase {
 
     _loadingProcessCompleted = false
 
-    _disableLoadingLogo = false
-
     setLoadingProgress(percent, isFallback = false) {
         if (this._loadingProcessCompleted) {
-            console.warn('Loading process already completed. Ignoring further calls to setLoadingProgress.')
             return
         }
 
@@ -60,7 +57,6 @@ class GameModule extends ModuleBase {
         const loadingOverlay = document.getElementById('loading-overlay')
 
         if (!fill || !gradientMover || !logo || !loadingOverlay) {
-            console.warn('Loading elements not found. Ensure the loading logo is properly initialized.')
             return
         }
 
