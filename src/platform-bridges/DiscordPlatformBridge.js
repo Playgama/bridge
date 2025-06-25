@@ -82,6 +82,9 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                             return this._platformSdk.ready()
                         })
                         .then(() => {
+                            
+                        })
+                        .then(() => {
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -144,12 +147,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 })
                 .then((response) => response.json())
                 .then((user) => {
+                    this.playerId = user.id
                     this.playerName = user.username
                     if (user.avatar) {
                         this.playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
                     }
-
-                    this.#fetchLocale()
                 })
                 .catch((error) => {
                     this._accessToken = null
@@ -325,24 +327,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    _userSettingsGetLocalePromise = null
-
-    #fetchLocale() {
-        if (this._userSettingsGetLocalePromise) {
-            return this._userSettingsGetLocalePromise
-        }
-
-        this._userSettingsGetLocalePromise = this._platformSdk.commands.userSettingsGetLocale()
-            .then(({ locale }) => {
-                this._platformLanguage = locale
-            })
-            .finally(() => {
-                this._userSettingsGetLocalePromise = null
-            })
-
-        return this._userSettingsGetLocalePromise
     }
 }
 
