@@ -774,7 +774,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.getPlayer(parameters)
                 .then((player) => {
                     this._playerId = player.getUniqueID()
-                    this._isPlayerAuthorized = player.getMode() !== 'lite'
+                    this._isPlayerAuthorized = player.isAuthorized()
 
                     this._defaultStorageType = this._isPlayerAuthorized
                         ? STORAGE_TYPE.PLATFORM_INTERNAL

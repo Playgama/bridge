@@ -1034,19 +1034,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             const messageId = this.#messageBroker.generateMessageId()
 
-            const messageHandler = (event) => {
-                if (
-                    event.data?.type === MODULE_NAME.LEADERBOARDS
-                    && event.data.action === ACTION_NAME.LEADERBOARDS_GET_ENTRIES
-                    && event.data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, event.data.entries)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
             const options = {
                 id,
             }
@@ -1057,6 +1044,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 id: messageId,
                 options,
             })
+
+            this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, [])
         }
 
         return promiseDecorator.promise
