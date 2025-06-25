@@ -178,8 +178,7 @@ class PlaygamaBridge {
         if (!this.#initializationPromiseDecorator) {
             this.#initializationPromiseDecorator = new PromiseDecorator()
 
-            // TODO: prefix
-            let configFilePath = '/.proxy/playgama-bridge-config.json'
+            let configFilePath = './playgama-bridge-config.json'
             if (options && options.configFilePath) {
                 configFilePath = options.configFilePath
             }

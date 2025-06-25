@@ -66,9 +66,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            if (
-                !this._options?.appId
-            ) {
+            if (!this._options?.appId) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
                     ERROR.DISCORD_GAME_PARAMS_NOT_FOUND,
@@ -97,10 +95,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     // player
 
     authorizePlayer() {
-        if (!this._isInitialized) {
-            return Promise.reject(ERROR.SDK_NOT_INITIALIZED)
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -138,6 +132,22 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
 
                     this._isPlayerAuthorized = true
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+
+                    return fetch('/user/@me', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${this._accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({}),
+                    })
+                })
+                .then((response) => response.json())
+                .then((user) => {
+                    this.playerName = user.username
+                    if (user.avatar) {
+                        this.playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
+                    }
 
                     this.#fetchLocale()
                 })
@@ -231,9 +241,9 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                         return {
                             id: product.id,
                             title: discordProduct.name,
-                            price: discordProduct.price.amount,
+                            price: `${discordProduct.price.amount} ${discordProduct.price.currency}`,
                             priceCurrencyCode: discordProduct.price.currency,
-                            priceValue: 1,
+                            priceValue: discordProduct.price.amount,
                         }
                     })
 
