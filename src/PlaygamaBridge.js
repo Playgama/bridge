@@ -233,6 +233,12 @@ class PlaygamaBridge {
                                 this.#modules[MODULE_NAME.ADVERTISEMENT].preloadRewarded(placement)
                             }
                         })
+                        .finally(() => {
+                            setTimeout(
+                                () => this.#modules[MODULE_NAME.GAME].setLoadingProgress(100, true),
+                                700,
+                            )
+                        })
                 })
         }
 
