@@ -66,11 +66,11 @@ class GameModule extends ModuleBase {
 
         this._currentLoadingProgress = percent
 
-        const _percent = Math.max(0, Math.min(100, percent))
-        const translateY = 100 - _percent
+        const progress = Math.max(0, Math.min(100, percent))
+        const translateY = 100 - progress
         fill.style.transform = `translateY(${translateY}%)`
 
-        if (_percent === 100) {
+        if (progress === 100) {
             this._loadingProcessCompleted = true
 
             setTimeout(() => {
