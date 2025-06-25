@@ -123,7 +123,8 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
 
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn
+            // return this._platformSdk.player.isLoggedIn
+            return true;
         }
 
         return super.isStorageSupported(storageType)
@@ -131,7 +132,8 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn
+            // return this._platformSdk.player.isLoggedIn
+            return true;
         }
 
         return super.isStorageAvailable(storageType)
