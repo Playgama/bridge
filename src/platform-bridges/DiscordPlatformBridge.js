@@ -1,4 +1,3 @@
-/* eslint-disable camelcase */
 /*
  * This file is part of Playgama Bridge.
  *
@@ -82,9 +81,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                             return this._platformSdk.ready()
                         })
                         .then(() => {
-                            
-                        })
-                        .then(() => {
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -121,11 +117,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     }),
                 }))
                 .then((response) => response.json())
-                .then(({ access_token }) => {
-                    this._accessToken = access_token
+                .then((data) => {
+                    this._accessToken = data.access_token
 
                     return this._platformSdk.commands.authenticate({
-                        access_token,
+                        access_token: this._accessToken,
                     })
                 })
                 .then((auth) => {
@@ -136,7 +132,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     this._isPlayerAuthorized = true
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
-                    return fetch('/user/@me', {
+                    return fetch('/users/@me', {
                         method: 'POST',
                         headers: {
                             Authorization: `Bearer ${this._accessToken}`,
@@ -185,7 +181,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
 
                     const mergedPurchase = { id, ...purchase }
                     this._paymentsPurchases.push(mergedPurchase)
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
