@@ -848,8 +848,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 ) {
                     const mergedProducts = products.map((product) => ({
                         id: product.id,
-                        price: `${product.amount} Golden Fennec`,
-                        priceCurrencyCode: 'Golden Fennec',
+                        price: `${product.amount} Gam`,
+                        priceCurrencyCode: 'Gam',
                         priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
                         priceValue: product.amount,
                     }))
