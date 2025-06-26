@@ -16,7 +16,17 @@
             "publisherId": ""
         },
         "msn": {
+<<<<<<< feature/pb-167-discord
+            "gameId": "",
+            "advertisement": {
+                "backfillId": ""
+            }
+        },
+        "discord" : {
+            "appId": ""
+=======
             "gameId": ""
+>>>>>>> develop
         }
     },
     "advertisement": {

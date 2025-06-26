@@ -16,6 +16,7 @@ One SDK for cross-platform publishing HTML5 games.
 + [Facebook](https://www.facebook.com/games/instantgames)
 + [Poki](https://poki.com/)
 + [MSN](https://www.msn.com/en-us/play)
++ [Discord](https://discord.com/gaming)
 + Other [Work In Progress]
 
 ## Plugins for game engines
