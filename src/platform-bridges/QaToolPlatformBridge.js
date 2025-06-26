@@ -26,6 +26,7 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const ADVERTISEMENT_TYPE = {
@@ -61,6 +62,7 @@ const INTERSTITIAL_STATUS = {
     CLOSE: 'close',
     FAILED: 'failed',
 }
+
 const REWARD_STATUS = {
     START: 'start',
     OPEN: 'open',
@@ -80,12 +82,6 @@ const SUPPORTED_FEATURES = {
     ADD_TO_HOME_SCREEN: 'isAddToHomeScreenSupported',
     ADD_TO_FAVORITES: 'isAddToFavoritesSupported',
     RATE: 'isRateSupported',
-    LEADERBOARD: 'isLeaderboardSupported',
-    LEADERBOARD_MULTIPLE_BOARDS: 'isLeaderboardMultipleBoardsSupported',
-    LEADERBOARD_SET_SCORE: 'isLeaderboardSetScoreSupported',
-    LEADERBOARD_GET_SCORE: 'isLeaderboardGetScoreSupported',
-    LEADERBOARD_GET_ENTRIES: 'isLeaderboardGetEntriesSupported',
-    LEADERBOARD_NATIVE_POPUP: 'isLeaderboardNativePopupSupported',
     STORAGE_INTERNAL: 'isStorageInternalSupported',
     STORAGE_LOCAL: 'isStorageLocalSupported',
     BANNER: 'isBannerSupported',
@@ -162,29 +158,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.RATE)
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.LEADERBOARD)
-    }
-
-    get isLeaderboardMultipleBoardsSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.LEADERBOARD_MULTIPLE_BOARDS)
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.LEADERBOARD_SET_SCORE)
-    }
-
-    get isLeaderboardGetScoreSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.LEADERBOARD_GET_SCORE)
-    }
-
-    get isLeaderboardGetEntriesSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.LEADERBOARD_GET_ENTRIES)
-    }
-
-    get isLeaderboardNativePopupSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.LEADERBOARD_NATIVE_POPUP)
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
     }
 
     // clipboard
@@ -1029,109 +1005,48 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    // leaderboard
-    setLeaderboardScore(options) {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+    // leaderboards
+    leaderboardsSetScore(id, score) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
-            const scoreOptions = { ...options }
-            if (typeof scoreOptions.score === 'string') {
-                scoreOptions.score = parseInt(scoreOptions.score, 10)
+            const options = {
+                id,
+                score,
             }
 
             this.#messageBroker.send({
-                type: MODULE_NAME.LEADERBOARD,
-                action: ACTION_NAME.SET_LEADERBOARD_SCORE,
-                options: scoreOptions,
+                type: MODULE_NAME.LEADERBOARDS,
+                action: ACTION_NAME.LEADERBOARDS_SET_SCORE,
+                options,
             })
 
-            this._resolvePromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+            this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         }
 
         return promiseDecorator.promise
     }
 
-    getLeaderboardScore(options) {
-        const platformData = Object.values(options || {}).find((platform) => platform?.leaderboardName)
-        const leaderboardName = platformData?.leaderboardName
-        const decoratorKey = `${ACTION_NAME.GET_LEADERBOARD_SCORE}_${leaderboardName}`
-
-        let promiseDecorator = this._getPromiseDecorator(decoratorKey)
+    leaderboardsGetEntries(id) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(decoratorKey)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
 
             const messageId = this.#messageBroker.generateMessageId()
 
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.LEADERBOARD
-                    && data.action === ACTION_NAME.GET_LEADERBOARD_SCORE
-                    && data.id === messageId
-                    && data.leaderboardName === leaderboardName
-                ) {
-                    this._resolvePromiseDecorator(decoratorKey, data.score)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
+            const options = {
+                id,
             }
 
-            this.#messageBroker.addListener(messageHandler)
-
             this.#messageBroker.send({
-                type: MODULE_NAME.LEADERBOARD,
-                action: ACTION_NAME.GET_LEADERBOARD_SCORE,
-                id: messageId,
-                leaderboardName,
-                options,
-            })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getLeaderboardEntries(options) {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
-
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = (event) => {
-                if (
-                    event.data?.type === MODULE_NAME.LEADERBOARD
-                    && event.data.action === ACTION_NAME.GET_LEADERBOARD_ENTRIES
-                    && event.data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES, event.data.entries)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.LEADERBOARD,
-                action: ACTION_NAME.GET_LEADERBOARD_ENTRIES,
+                type: MODULE_NAME.LEADERBOARDS,
+                action: ACTION_NAME.LEADERBOARDS_GET_ENTRIES,
                 id: messageId,
                 options,
             })
-        }
 
-        return promiseDecorator.promise
-    }
-
-    showLeaderboardNativePopup(options) {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHOW_LEADERBOARD_NATIVE_POPUP)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHOW_LEADERBOARD_NATIVE_POPUP)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.LEADERBOARD,
-                action: ACTION_NAME.SHOW_LEADERBOARD_NATIVE_POPUP,
-                options,
-            })
-
-            this._resolvePromiseDecorator(ACTION_NAME.SHOW_LEADERBOARD_NATIVE_POPUP)
+            this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         }
 
         return promiseDecorator.promise

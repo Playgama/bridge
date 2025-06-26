@@ -26,6 +26,7 @@ import {
     ERROR,
     VISIBILITY_STATE,
     DEVICE_TYPE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 import PromiseDecorator from '../common/PromiseDecorator'
 import { showInfoPopup } from '../common/utils'
@@ -159,34 +160,14 @@ class PlatformBridgeBase {
         return DEVICE_TYPE.DESKTOP
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return false
-    }
-
-    get isLeaderboardNativePopupSupported() {
-        return false
-    }
-
-    get isLeaderboardMultipleBoardsSupported() {
-        return false
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return false
-    }
-
-    get isLeaderboardGetScoreSupported() {
-        return false
-    }
-
-    get isLeaderboardGetEntriesSupported() {
-        return false
-    }
-
     // payments
     get isPaymentsSupported() {
         return false
+    }
+
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NOT_AVAILABLE
     }
 
     // config
@@ -485,20 +466,12 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    // leaderboard
-    setLeaderboardScore() {
+    // leaderboards
+    leaderboardsSetScore() {
         return Promise.reject()
     }
 
-    getLeaderboardScore() {
-        return Promise.reject()
-    }
-
-    getLeaderboardEntries() {
-        return Promise.reject()
-    }
-
-    showLeaderboardNativePopup() {
+    leaderboardsGetEntries() {
         return Promise.reject()
     }
 

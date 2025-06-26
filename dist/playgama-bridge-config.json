@@ -16,6 +16,7 @@
             "publisherId": ""
         },
         "msn": {
+<<<<<<< feature/pb-167-discord
             "gameId": "",
             "advertisement": {
                 "backfillId": ""
@@ -23,6 +24,9 @@
         },
         "discord" : {
             "appId": ""
+=======
+            "gameId": ""
+>>>>>>> develop
         }
     },
     "advertisement": {
@@ -32,18 +36,9 @@
         "rewarded": {
             "preloadOnStart": true
         },
-        "useBuiltInErrorPopup": true
+        "useBuiltInErrorPopup": true,
+        "backfillId": ""
     },
-    "payments": [
-        {
-            "id": "test_product",
-            "playgama": {
-                "amount": 1
-            },
-            "playdeck": {
-                "amount": 1,
-                "description": "TEST PRODUCT"
-            }
-        }
-    ]
+    "payments": [],
+    "leaderboards": []
 }
