@@ -21,6 +21,9 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
+    INTERSTITIAL_STATE,
+    REWARDED_STATE,
+    BANNER_STATE,
 } from '../constants'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
@@ -42,7 +45,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
             console.info('Before BitQuest SDK URL')
-            const SDK_URL = 'https://games.bitquest.games/bqsdk.min.js'
+            const SDK_URL = 'https://games-stage.bitquest.games/bqsdk.min.js'
             console.info('BitQuest SDK URL')
             console.info('Adding javascript')
 
@@ -86,35 +89,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
         return promiseDecorator.promise
     }
-
-    // setupRewardedHandlers() {
-    //     this._platformSdk.ads.on('rewarded:start', () => {
-    //         console.info('Rewarded ad started')
-    //     })
-
-    //     this._platformSdk.ads.on('rewarded:close', (success) => {
-    //         if (!success) {
-    //             this._setRewardedState(REWARDED_STATE.FAILED)
-    //         } else {
-    //             // this._setRewardedState(REWARDED_STATE.CLOSED)
-    //         }
-    //     })
-
-    //     this._platformSdk.ads.on('rewarded:reward', () => {
-    //         this._setRewardedState(REWARDED_STATE.REWARDED)
-    //         this._setRewardedState(REWARDED_STATE.CLOSED)
-    //     })
-    // }
-
-    // setupInterstitialHandlers() {
-    //     this._platformSdk.ads.on('fullscreen:start', () => {
-    //         this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-    //     })
-
-    //     this._platformSdk.ads.on('fullscreen:close', () => {
-    //         this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-    //     })
-    // }
 
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
@@ -231,19 +205,56 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     setupAdvertisementHandlers() {
         console.info('BitQuest SDK setupAdvertisementHandlers')
+
+        const rewardedMap = {
+            loading: REWARDED_STATE.LOADING,
+            opened: REWARDED_STATE.OPENED,
+            closed: REWARDED_STATE.CLOSED,
+            failed: REWARDED_STATE.FAILED,
+            rewarded: REWARDED_STATE.REWARDED,
+        }
+
+        const interstitialMap = {
+            loading: INTERSTITIAL_STATE.LOADING,
+            opened: INTERSTITIAL_STATE.OPENED,
+            closed: INTERSTITIAL_STATE.CLOSED,
+            failed: INTERSTITIAL_STATE.FAILED,
+        }
+
+        const bannerMap = {
+            loading: BANNER_STATE.LOADING,
+            shown: BANNER_STATE.SHOWN,
+            hidden: BANNER_STATE.HIDDEN,
+            failed: BANNER_STATE.FAILED,
+        }
+
         this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
             console.info('[Ad State] Rewarded:', state)
-            this._setRewardedState?.(state)
+            const mappedState = rewardedMap[state]
+            if (!mappedState) return
+
+            this._setRewardedState?.(mappedState)
+
+            if (mappedState === REWARDED_STATE.REWARDED) {
+                // Automatically follow with 'closed'
+                this._setRewardedState?.(REWARDED_STATE.CLOSED)
+            }
         })
 
         this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
             console.info('[Ad State] Interstitial:', state)
-            this._setInterstitialState?.(state)
+            const mappedState = interstitialMap[state]
+            if (mappedState) {
+                this._setInterstitialState?.(mappedState)
+            }
         })
 
         this._platformSdk.advertisement.on('BANNER_STATE_CHANGED', (state) => {
             console.info('[Ad State] Banner:', state)
-            this._setBannerState?.(state)
+            const mappedState = bannerMap[state]
+            if (mappedState) {
+                this._setBannerState?.(mappedState)
+            }
         })
     }
 
@@ -265,6 +276,92 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     hideBanner() {
         console.info('BitQuest SDK hideBanner')
         this._platformSdk.advertisement.hideBanner()
+    }
+
+    // payments
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        if (!product.externalId) {
+            product.externalId = this._paymentsGenerateTransactionId(id)
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            this._platformSdk.inGamePaymentsApi.purchase(product)
+                .then((purchase) => {
+                    if (purchase.status === 'PAID') {
+                        const mergedPurchase = { id, ...purchase }
+                        this._paymentsPurchases.push(mergedPurchase)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.error)
+                    }
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
+            this._platformSdk.payment.getCatalog()
+                .then((catalog) => {
+                    console.info('[Full Catalog]', catalog) // 🔍 Log entire catalog before merging
+
+                    const mergedProducts = products.map((product) => {
+                        let catalogProduct = null
+
+                        for (let i = 0; i < catalog.length; i++) {
+                            const p = catalog[i]
+                            if (p.id === product.id) {
+                                catalogProduct = p
+                                console.info('[Catalog Match Found]', catalogProduct)
+                                break
+                            }
+                        }
+
+                        if (!catalogProduct) {
+                            console.warn('[Catalog Match Not Found] for product id:', product.id)
+                        }
+
+                        const finalProduct = {
+                            name: product.name,
+                            description: product.description,
+                            purchaseId: product.purchaseId,
+                            price: product.price,
+                            priceCurrencyCode: product.currencyCode,
+                            priceValue: product.priceValue,
+                        }
+
+                        console.info('[Catalog Product]', finalProduct)
+                        return finalProduct
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 }
 
