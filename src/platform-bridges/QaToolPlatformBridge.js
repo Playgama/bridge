@@ -62,6 +62,7 @@ const INTERSTITIAL_STATUS = {
     CLOSE: 'close',
     FAILED: 'failed',
 }
+
 const REWARD_STATUS = {
     START: 'start',
     OPEN: 'open',
@@ -1045,7 +1046,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 options,
             })
 
-            this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, [])
+            this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         }
 
         return promiseDecorator.promise
