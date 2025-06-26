@@ -28,7 +28,7 @@ import {
 } from '../constants'
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
-const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/ads.v0.1.js'
+const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 class MsnPlatformBridge extends PlatformBridgeBase {
     // platform
