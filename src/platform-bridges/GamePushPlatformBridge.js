@@ -100,99 +100,11 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return super.isStorageAvailable(storageType)
     }
 
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                if (Array.isArray(key)) {
-                    const values = []
-                    key.forEach((k) => {
-                        let value = this._platformSdk.player.get(k)
-
-                        if (tryParseJson) {
-                            try {
-                                value = JSON.parse(value)
-                            } catch (e) {
-                                // keep value as it is
-                            }
-                        }
-                        values.push(value)
-                    })
-
-                    resolve(values)
-                    return
-                }
-
-                let value = this._platformSdk.player.get(key)
-
-                if (tryParseJson) {
-                    try {
-                        value = JSON.parse(value)
-                    } catch (e) {
-                        // keep value as it is
-                    }
-                }
-                resolve(value)
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
-    }
-
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        let valueData = value[i]
-
-                        if (typeof value[i] !== 'string') {
-                            valueData = JSON.stringify(value[i])
-                        }
-
-                        this._platformSdk.player.set(key[i], valueData)
-                    }
-
-                    this._platformSdk.player.sync({ storage: 'local' })
-                    resolve()
-                    return
-                }
-
-                let valueData = value
-
-                if (typeof value !== 'string') {
-                    valueData = JSON.stringify(value)
-                }
-
-                this._platformSdk.player.set(key, valueData)
-                this._platformSdk.player.sync({ storage: 'local' })
-                resolve()
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
-    }
-
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                key.forEach((k) => this._platformSdk.player.set(k, null))
-                return this._platformSdk.player.sync({ storage: 'local' })
-            }
-
-            this._platformSdk.player.set(key, null)
-            return this._platformSdk.player.sync({ storage: 'local' })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
-    }
-
     showInterstitial() {
         this._platformSdk.ads.showFullscreen()
     }
 
     showRewarded() {
-        this._setRewardedState(REWARDED_STATE.OPENED)
-
         this._platformSdk.ads.showRewardedVideo()
             .catch(() => {
                 this._setRewardedState(REWARDED_STATE.FAILED)
