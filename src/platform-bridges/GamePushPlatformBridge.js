@@ -84,46 +84,9 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #setupRewardedHandlers() {
-        this._platformSdk.ads.on('rewarded:start', () => {
-            this._setRewardedState(REWARDED_STATE.OPENED)
-        })
-
-        this._platformSdk.ads.on('rewarded:close', (success) => {
-            if (!success) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            }
-        })
-
-        this._platformSdk.ads.on('rewarded:reward', () => {
-            this._setRewardedState(REWARDED_STATE.REWARDED)
-            this._setRewardedState(REWARDED_STATE.CLOSED)
-        })
-    }
-
-    #setupInterstitialHandlers() {
-        this._platformSdk.ads.on('fullscreen:start', () => {
-            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-        })
-
-        this._platformSdk.ads.on('fullscreen:close', () => {
-            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-        })
-    }
-
-    #setupBannerHandlers() {
-        this._platformSdk.ads.on('sticky:render', () => {
-            this._setBannerState(BANNER_STATE.SHOWN)
-        })
-
-        this._platformSdk.ads.on('sticky:close', () => {
-            this._setBannerState(BANNER_STATE.HIDDEN)
-        })
-    }
-
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn
+            return false
         }
 
         return super.isStorageSupported(storageType)
@@ -131,7 +94,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._platformSdk.player.isLoggedIn
+            return false
         }
 
         return super.isStorageAvailable(storageType)
@@ -189,6 +152,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                         this._platformSdk.player.set(key[i], valueData)
                     }
 
+                    this._platformSdk.player.sync({ storage: 'local' })
                     resolve()
                     return
                 }
@@ -200,7 +164,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                 }
 
                 this._platformSdk.player.set(key, valueData)
-                this._platformSdk.player.sync()
+                this._platformSdk.player.sync({ storage: 'local' })
                 resolve()
             })
         }
@@ -212,11 +176,11 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
                 key.forEach((k) => this._platformSdk.player.set(k, null))
-                return this._platformSdk.player.sync()
+                return this._platformSdk.player.sync({ storage: 'local' })
             }
 
             this._platformSdk.player.set(key, null)
-            return this._platformSdk.player.sync()
+            return this._platformSdk.player.sync({ storage: 'local' })
         }
 
         return super.deleteDataFromStorage(key, storageType)
@@ -236,19 +200,11 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     }
 
     showBanner() {
-        try {
-            this._platformSdk.ads.showSticky()
-        } catch (err) {
-            this._setBannerState(BANNER_STATE.FAILED)
-        }
+        this._platformSdk.ads.showSticky()
     }
 
     hideBanner() {
-        try {
-            this._platformSdk.ads.closeSticky()
-        } catch (err) {
-            this._setBannerState(BANNER_STATE.FAILED)
-        }
+        this._platformSdk.ads.closeSticky()
     }
 
     checkAdBlock() {
@@ -256,6 +212,43 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.ads.isAdblockEnabled().then((res) => {
                 resolve(res)
             })
+        })
+    }
+
+    #setupRewardedHandlers() {
+        this._platformSdk.ads.on('rewarded:start', () => {
+            this._setRewardedState(REWARDED_STATE.OPENED)
+        })
+
+        this._platformSdk.ads.on('rewarded:close', (success) => {
+            if (!success) {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            }
+        })
+
+        this._platformSdk.ads.on('rewarded:reward', () => {
+            this._setRewardedState(REWARDED_STATE.REWARDED)
+            this._setRewardedState(REWARDED_STATE.CLOSED)
+        })
+    }
+
+    #setupInterstitialHandlers() {
+        this._platformSdk.ads.on('fullscreen:start', () => {
+            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+        })
+
+        this._platformSdk.ads.on('fullscreen:close', () => {
+            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+        })
+    }
+
+    #setupBannerHandlers() {
+        this._platformSdk.ads.on('sticky:render', () => {
+            this._setBannerState(BANNER_STATE.SHOWN)
+        })
+
+        this._platformSdk.ads.on('sticky:close', () => {
+            this._setBannerState(BANNER_STATE.HIDDEN)
         })
     }
 }
