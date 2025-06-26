@@ -133,12 +133,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
                     return fetch('/users/@me', {
-                        method: 'POST',
+                        method: 'GET',
                         headers: {
                             Authorization: `Bearer ${this._accessToken}`,
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({}),
                     })
                 })
                 .then((response) => response.json())
