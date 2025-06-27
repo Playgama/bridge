@@ -20,7 +20,6 @@ import { addJavaScript, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
-    STORAGE_TYPE,
     ERROR,
     BANNER_STATE,
     INTERSTITIAL_STATE,
@@ -82,22 +81,6 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    isStorageSupported(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return false
-        }
-
-        return super.isStorageSupported(storageType)
-    }
-
-    isStorageAvailable(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return false
-        }
-
-        return super.isStorageAvailable(storageType)
     }
 
     showInterstitial() {

@@ -17,11 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, waitFor } from '../common/utils'
-import {
-    PLATFORM_ID,
-    ACTION_NAME,
-    ERROR,
-} from '../constants'
+import { ACTION_NAME, ERROR, PLATFORM_ID } from '../constants'
 
 const SDK_URL = '/cdn/discord/discord-v2.0.0.min.js'
 const APPLICATION_SERVER_PROXY_URL = '/api'
@@ -39,10 +35,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     // player
     get isPlayerAuthorizationSupported() {
         return true
-    }
-
-    get isPlayerAuthorized() {
-        return this._isPlayerAuthorized
     }
 
     // payments
@@ -77,7 +69,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     waitFor('discord', 'DiscordSDK')
                         .then(() => {
                             this._platformSdk = new window.discord.DiscordSDK(this._appId)
-
                             return this._platformSdk.ready()
                         })
                         .then(() => {
@@ -92,7 +83,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
-
     authorizePlayer() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
@@ -265,12 +255,10 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
 
                     this._paymentsPurchases = purchases.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.id)
-                        const mergedPurchase = {
+                        return {
                             id: product.id,
                             ...purchase,
                         }
-
-                        return mergedPurchase
                     })
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
