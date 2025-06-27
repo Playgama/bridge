@@ -32,6 +32,7 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
 }
 
@@ -150,6 +151,7 @@ export const ERROR = {
     Y8_GAME_PARAMS_NOT_FOUND: { message: 'Y8 Game params are not found' },
     OK_GAME_PARAMS_NOT_FOUND: { message: 'OK Game params are not found' },
     LAGGED_GAME_PARAMS_NOT_FOUND: { message: 'Lagged Game params are not found' },
+    GAMEPUSH_GAME_PARAMS_NOT_FOUND: { message: 'GamePush Game params are not found' },
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
     DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
