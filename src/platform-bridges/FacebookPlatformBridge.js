@@ -26,14 +26,8 @@ import {
     STORAGE_TYPE,
     DEVICE_TYPE,
     PLATFORM_MESSAGE,
+    LEADERBOARD_TYPE,
 } from '../constants'
-
-const Platform = {
-    IOS: 'IOS',
-    ANDROID: 'ANDROID',
-    WEB: 'WEB',
-    MOBILE_WEB: 'MOBILE_WEB',
-}
 
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 
@@ -50,12 +44,12 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     // device
     get deviceType() {
         switch (this._platformSdk && this._platformSdk.getPlatform()) {
-            case Platform.IOS:
-            case Platform.MOBILE_WEB:
-            case Platform.ANDROID: {
+            case 'IOS':
+            case 'ANDROID':
+            case 'MOBILE_WEB': {
                 return DEVICE_TYPE.MOBILE
             }
-            case Platform.WEB: {
+            case 'WEB': {
                 return DEVICE_TYPE.DESKTOP
             }
             default: {
@@ -69,34 +63,14 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isPlayerAuthorized() {
-        return this._isPlayerAuthorized
-    }
-
     // advertisement
     get isBannerSupported() {
         return true
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardMultipleBoardsSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
-    }
-
-    get isLeaderboardGetScoreSupported() {
-        return true
-    }
-
-    get isLeaderboardGetEntriesSupported() {
-        return true
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     // payments
@@ -114,8 +88,6 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     _contextId = null
-
-    _isPlayerAuthorized = true
 
     _supportedApis = []
 
@@ -141,6 +113,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     return this._platformSdk.initializeAsync()
                 })
                 .then(() => {
+                    this._isPlayerAuthorized = true
                     this._playerId = this._platformSdk.player.getID()
                     this._contextId = this._platformSdk.context.getID()
 
@@ -294,9 +267,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             .then(() => {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             })
-            .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            })
+            .catch(() => this._advertisementShowErrorPopup(false))
             .finally(() => {
                 this.#preloadInterstitial(placement, true)
             })
@@ -316,99 +287,59 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.REWARDED)
                 this._setRewardedState(REWARDED_STATE.CLOSED)
             })
-            .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            })
+            .catch(() => this._advertisementShowErrorPopup(true))
             .finally(() => {
                 this.#preloadRewarded(placement, true)
             })
     }
 
-    // leaderboard
-    setLeaderboardScore(options) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        if (!options || !options.score || !options.leaderboardName) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+    // leaderboards
+    leaderboardsSetScore(id, score) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
-            this._platformSdk.globalLeaderboards.setScoreAsync(
-                options.leaderboardName,
-                options.score,
-            )
+            this._platformSdk.globalLeaderboards.setScoreAsync(id, score)
                 .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
                 })
         }
 
         return promiseDecorator.promise
     }
 
-    getLeaderboardScore(options) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        if (!options || !options.leaderboardName) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE)
+    leaderboardsGetEntries(id) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
 
-            this._platformSdk.globalLeaderboards.getScoreAsync(options.leaderboardName)
-                .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, result)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, error)
-                })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getLeaderboardEntries(options) {
-        if (!options || !options.leaderboardName) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
-
-            this._platformSdk.globalLeaderboards.getTopEntriesAsync(options.leaderboardName, options.count)
+            this._platformSdk.globalLeaderboards.getTopEntriesAsync(id, 10)
                 .then((result) => {
                     let entries = null
+                    let rank = 0
 
                     if (result && result.entries.length > 0) {
-                        entries = result.entries.map((e) => (
-                            {
-                                rank: e.rank,
-                                score: e.score,
-                                format_score: e.format_score,
-                                ts: e.ts,
-                                extra_data: e.extra_data,
-                                playerId: e.player.player_id,
-                                playerName: e.player.name,
-                                playerPhoto: e.player.photo,
-                            }))
+                        entries = result.entries.map((e) => {
+                            const entryPlayer = e.getPlayer()
+                            const entryRank = rank
+                            rank += 1
+                            return {
+                                rank: entryRank,
+                                score: e.getScore(),
+                                id: entryPlayer.getID(),
+                                name: entryPlayer.getName(),
+                                photo: entryPlayer.getPhoto(),
+                            }
+                        })
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES, entries)
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
                 })
         }
 

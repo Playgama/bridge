@@ -26,6 +26,7 @@ import {
     DEVICE_TYPE,
     BANNER_STATE,
     PLATFORM_MESSAGE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = '/sdk.js'
@@ -99,25 +100,9 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardMultipleBoardsSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
-    }
-
-    get isLeaderboardGetScoreSupported() {
-        return true
-    }
-
-    get isLeaderboardGetEntriesSupported() {
-        return true
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     // payments
@@ -133,8 +118,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     #isAddToHomeScreenSupported = false
 
     #yandexPlayer = null
-
-    #yandexLeaderboards = null
 
     #yandexPayments = null
 
@@ -183,11 +166,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                         checkAddToHomeScreenSupportedTimeoutPromise,
                                     ])
 
-                                    const getLeaderboardsPromise = this._platformSdk.getLeaderboards()
-                                        .then((leaderboards) => {
-                                            this.#yandexLeaderboards = leaderboards
-                                        })
-
                                     const getPaymentsPromise = this._platformSdk.getPayments()
                                         .then((payments) => {
                                             this.#yandexPayments = payments
@@ -204,7 +182,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                     Promise.all([
                                         reportPluginEnginePromise,
                                         checkAddToHomeScreenSupportedRacePromise,
-                                        getLeaderboardsPromise,
                                         getPaymentsPromise,
                                         getBannerStatePromise,
                                     ])
@@ -544,109 +521,62 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    // leaderboard
-    setLeaderboardScore(options) {
+    // leaderboards
+    leaderboardsSetScore(id, score) {
         if (!this._isPlayerAuthorized) {
             return Promise.reject()
         }
 
-        if (!this.#yandexLeaderboards || !options || !options.score || !options.leaderboardName) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
-            this.#yandexLeaderboards.setLeaderboardScore(
-                options.leaderboardName,
-                typeof options.score === 'string'
-                    ? parseInt(options.score, 10)
-                    : options.score,
-            )
+            this._platformSdk.leaderboards.setScore(id, score)
                 .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
                 })
         }
 
         return promiseDecorator.promise
     }
 
-    getLeaderboardScore(options) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        if (!this.#yandexLeaderboards || !options || !options.leaderboardName) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE)
+    leaderboardsGetEntries(id) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
 
-            this.#yandexLeaderboards.getLeaderboardPlayerEntry(options.leaderboardName)
-                .then((result) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, result.score)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, error)
-                })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getLeaderboardEntries(options) {
-        if (!this.#yandexLeaderboards || !options || !options.leaderboardName) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
-
-            const parameters = {}
-
-            parameters.includeUser = typeof options.includeUser === 'boolean' ? options.includeUser : false
-
-            parameters.quantityAround = typeof options.quantityAround === 'string'
-                ? parseInt(options.quantityAround, 10)
-                : options.quantityAround
-
-            if (Number.isNaN(parameters.quantityAround)) {
-                parameters.quantityAround = 5
+            const options = {
+                quantityTop: 20,
             }
 
-            parameters.quantityTop = typeof options.quantityTop === 'string'
-                ? parseInt(options.quantityTop, 10)
-                : options.quantityTop
-
-            if (Number.isNaN(parameters.quantityTop)) {
-                parameters.quantityTop = 5
+            if (this._isPlayerAuthorized) {
+                options.includeUser = true
+                options.quantityAround = 3
             }
 
-            this.#yandexLeaderboards.getLeaderboardEntries(options.leaderboardName, parameters)
+            this._platformSdk.leaderboards.getEntries(id, options)
                 .then((result) => {
-                    let entries = null
+                    let entries
 
                     if (result && result.entries.length > 0) {
                         entries = result.entries.map((e) => ({
                             id: e.player.uniqueID,
+                            name: e.player.publicName,
                             score: e.score,
                             rank: e.rank,
-                            name: e.player.publicName,
                             photo: e.player.getAvatarSrc('large'),
                         }))
+                    } else {
+                        entries = []
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES, entries)
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
                 })
         }
 
@@ -844,7 +774,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.getPlayer(parameters)
                 .then((player) => {
                     this._playerId = player.getUniqueID()
-                    this._isPlayerAuthorized = player.getMode() !== 'lite'
+                    this._isPlayerAuthorized = player.isAuthorized()
 
                     this._defaultStorageType = this._isPlayerAuthorized
                         ? STORAGE_TYPE.PLATFORM_INTERNAL

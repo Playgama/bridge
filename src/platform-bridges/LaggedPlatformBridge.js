@@ -24,6 +24,7 @@ import {
     ERROR,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = 'https://lagged.com/api/rev-share/lagged.js'
@@ -34,12 +35,9 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.LAGGED
     }
 
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
     }
 
     // achievements
@@ -141,32 +139,22 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
         this._platformSdk.GEvents.reward(canShowReward, rewardSuccess)
     }
 
-    // leaderboard
-    setLeaderboardScore(options) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        if (typeof options?.score === 'undefined' || !options?.boardId) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+    // leaderboards
+    leaderboardsSetScore(id, score) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
             const params = {
-                score: typeof options.score === 'string'
-                    ? parseInt(options.score, 10)
-                    : options.score,
-                board: options.boardId,
+                score,
+                board: id,
             }
 
             this._platformSdk.Scores.save(params, (response) => {
                 if (response.success) {
-                    this._resolvePromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
                 } else {
-                    this._rejectPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE, response.errormsg)
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, response.errormsg)
                 }
             })
         }

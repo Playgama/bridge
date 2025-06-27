@@ -280,7 +280,26 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
 
     // social
     share() {
-        window.parent.postMessage({ playdeck: { method: 'customShare', value: this.#urlParams } }, '*')
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+
+            const shareHandler = ({ data }) => {
+                const playdeck = data?.playdeck
+                if (!playdeck) return
+
+                if (playdeck.method === 'customShare') {
+                    window.removeEventListener('message', shareHandler)
+                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
+                }
+            }
+
+            window.addEventListener('message', shareHandler)
+
+            window.parent.postMessage({ playdeck: { method: 'customShare', value: this.#urlParams } }, '*')
+        }
+
+        return promiseDecorator.promise
     }
 
     // payments

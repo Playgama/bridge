@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, showInfoPopup, waitFor } from '../common/utils'
+import { addJavaScript, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -24,10 +24,11 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_POSITION,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
-const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/ads.v0.1.js'
+const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 class MsnPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -45,13 +46,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
     }
 
     // advertisement
@@ -89,7 +86,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                         })
                 })
 
-            const { advertisementBackfillId } = this._options
+            const advertisementBackfillId = this._options?.advertisement?.backfillId
             if (advertisementBackfillId) {
                 addJavaScript(PLAYGAMA_ADS_SDK_URL)
                     .then(() => waitFor('pgAds'))
@@ -134,14 +131,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    // leaderboard
-    setLeaderboardScore(options) {
-        if (!options?.score) {
-            return Promise.reject(new Error('`score` option is required'))
-        }
-
+    // leaderboards
+    leaderboardsSetScore(id, score) {
         return new Promise((resolve, reject) => {
-            this._platformSdk.submitGameResultsAsync(options.score)
+            this._platformSdk.submitGameResultsAsync(score)
                 .then(resolve)
                 .catch(reject)
         })
@@ -352,7 +345,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     #showPlaygamaInterstitial() {
         if (!this.#playgamaAds) {
-            return this.#showAdsErrorPopup(false)
+            return this._advertisementShowErrorPopup(false)
         }
 
         return new Promise((resolve) => {
@@ -360,7 +353,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then((adInstance) => {
                     switch (adInstance.state) {
                         case 'empty':
-                            this.#showAdsErrorPopup(false).then(() => resolve())
+                            this._advertisementShowErrorPopup(false).then(() => resolve())
                             return
                         case 'ready':
                             this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
@@ -376,7 +369,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     })
 
                     adInstance.addEventListener('empty', () => {
-                        this.#showAdsErrorPopup(false).then(() => resolve())
+                        this._advertisementShowErrorPopup(false).then(() => resolve())
                     })
 
                     adInstance.addEventListener('closed', () => {
@@ -389,7 +382,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     #showPlaygamaRewarded() {
         if (!this.#playgamaAds) {
-            return this.#showAdsErrorPopup(true)
+            return this._advertisementShowErrorPopup(true)
         }
 
         return new Promise((resolve) => {
@@ -397,7 +390,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then((adInstance) => {
                     switch (adInstance.state) {
                         case 'empty':
-                            this.#showAdsErrorPopup(true).then(() => resolve())
+                            this._advertisementShowErrorPopup(true).then(() => resolve())
                             return
                         case 'ready':
                             this._setRewardedState(REWARDED_STATE.OPENED)
@@ -417,7 +410,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     })
 
                     adInstance.addEventListener('empty', () => {
-                        this.#showAdsErrorPopup(true).then(() => resolve())
+                        this._advertisementShowErrorPopup(true).then(() => resolve())
                     })
 
                     adInstance.addEventListener('closed', () => {
@@ -426,17 +419,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     })
                 })
         })
-    }
-
-    #showAdsErrorPopup(isRewarded) {
-        return showInfoPopup('Oops! You closed the Ad too soon or Ad isn\'t available now!')
-            .then(() => {
-                if (isRewarded) {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
-                } else {
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-                }
-            })
     }
 
     #updatePlayerInfo(data) {
