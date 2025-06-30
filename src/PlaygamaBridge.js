@@ -279,11 +279,19 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.BITQUEST
             } else if (url.hash.includes('customUrl_')) {
                 platformId = PLATFORM_ID.BITQUEST
-            } else if (document.referrer.includes('bitquest.games')) {
+            } else if (document.referrer.includes('bitquest')) {
                 platformId = PLATFORM_ID.BITQUEST
-            } else if (window.location.hostname.includes('bitquest') || new URLSearchParams(window.location.search).get('platform_id') === 'bitquest') {
+            } else if (window.location.search.includes('bitquest') || new URLSearchParams(window.location.search).get('platform_id') === 'bitquest') {
                 platformId = PLATFORM_ID.BITQUEST
             }
+
+            // platformId = PLATFORM_ID.BITQUEST
+            console.info(`%c Platform ID: ${platformId}`, 'background: #01A5DA; color: white')
+            console.info(`%c document.referrer: ${document.referrer}`, 'background: #01A5DA; color: white')
+            console.info(`%c window.location.hostname: ${window.location.hostname}`, 'background: #01A5DA; color: white')
+            console.info(`%c window.location.pathname: ${window.location.pathname}`, 'background: #01A5DA; color: white')
+            console.info(`%c window.location.search: ${window.location.search}`, 'background: #01A5DA; color: white')
+            console.info(`%c window.location.hash: ${window.location.hash}`, 'background: #01A5DA; color: white')
         }
 
         let modifiedOptions = options

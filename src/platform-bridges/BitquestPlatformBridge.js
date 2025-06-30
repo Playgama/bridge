@@ -45,7 +45,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
             console.info('Before BitQuest SDK URL')
-            const SDK_URL = 'https://games-stage.bitquest.games/bqsdk.min.js'
+            const SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
             console.info('BitQuest SDK URL')
             console.info('Adding javascript')
 
@@ -278,30 +278,24 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         this._platformSdk.advertisement.hideBanner()
     }
 
-    // payments
     paymentsPurchase(id) {
-        const product = this._paymentsGetProductPlatformData(id)
-        if (!product) {
-            return Promise.reject()
-        }
-
-        if (!product.externalId) {
-            product.externalId = this._paymentsGenerateTransactionId(id)
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.inGamePaymentsApi.purchase(product)
+            const bq = this._platformSdk
+
+            bq.payment.purchase(id)
                 .then((purchase) => {
-                    if (purchase.status === 'PAID') {
-                        const mergedPurchase = { id, ...purchase }
-                        this._paymentsPurchases.push(mergedPurchase)
-                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
-                    } else {
-                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.error)
+                    const mergedPurchase = {
+                        id,
+                        ...purchase.purchaseData,
                     }
+
+                    delete mergedPurchase.productID
+
+                    this._paymentsPurchases.push(mergedPurchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
@@ -323,41 +317,108 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
             this._platformSdk.payment.getCatalog()
                 .then((catalog) => {
-                    console.info('[Full Catalog]', catalog) // 🔍 Log entire catalog before merging
+                    console.info('[Full Catalog]', catalog)
 
-                    const mergedProducts = products.map((product) => {
-                        let catalogProduct = null
+                    const platformId = this._platformSdk?.getPlatformId?.() || 'playgama'
+                    console.info('[Platform ID]', platformId)
+                    console.info('[Local Products]', products)
 
-                        for (let i = 0; i < catalog.length; i++) {
-                            const p = catalog[i]
-                            if (p.id === product.id) {
-                                catalogProduct = p
-                                console.info('[Catalog Match Found]', catalogProduct)
-                                break
+                    const mergedProducts = products
+                        .map((product) => {
+                            const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
+
+                            if (!catalogProduct) {
+                                console.warn('[Catalog Match Not Found] for product id:', product.id)
+                                return null // skip this product
                             }
-                        }
 
-                        if (!catalogProduct) {
-                            console.warn('[Catalog Match Not Found] for product id:', product.id)
-                        }
+                            console.info('[Catalog Match Found]', catalogProduct)
 
-                        const finalProduct = {
-                            name: product.name,
-                            description: product.description,
-                            purchaseId: product.purchaseId,
-                            price: product.price,
-                            priceCurrencyCode: product.currencyCode,
-                            priceValue: product.priceValue,
-                        }
+                            const finalProduct = {
+                                name: catalogProduct.name,
+                                description: catalogProduct.description,
+                                purchaseId: product.id,
+                                price: catalogProduct.price,
+                                priceCurrencyCode: catalogProduct.currencyCode ?? 'ϐ',
+                                priceValue: catalogProduct.priceValue ?? `${catalogProduct.price} ϐ`,
+                            }
 
-                        console.info('[Catalog Product]', finalProduct)
-                        return finalProduct
-                    })
+                            console.info('[Final Merged Product]', finalProduct)
+                            return finalProduct
+                        })
+                        .filter(Boolean) // Remove nulls (unmatched products)
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+
+            this._platformSdk.payment.consumePurchase(id)
+                .then(() => {
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+
+            const bq = this._platformSdk
+
+            bq.payment.getPurchases()
+                .then((response) => {
+                    const purchases = response?.purchases
+                    if (!Array.isArray(purchases)) {
+                        console.error('[GetPurchases] Expected response.purchases to be an array, but got:', purchases)
+                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, new Error('Invalid purchases format'))
+                        return
+                    }
+
+                    const products = this._paymentsGetProductsPlatformData()
+
+                    this._paymentsPurchases = purchases.map((purchase) => {
+                        const product = products.find((p) => p.id === purchase.purchaseId)
+                        if (!product) {
+                            console.warn('[Purchase Match Not Found] for purchaseId:', purchase.purchaseId)
+                            return null
+                        }
+
+                        const mergedPurchase = {
+                            id: product.id,
+                            ...purchase,
+                        }
+
+                        delete mergedPurchase.purchaseId
+                        return mergedPurchase
+                    }).filter(Boolean)
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
                 })
         }
 
