@@ -17,6 +17,13 @@
         },
         "msn": {
             "gameId": ""
+        },
+        "discord" : {
+            "appId": ""
+        },
+        "gamepush": {
+            "projectId": "",
+            "publicToken": ""
         }
     },
     "advertisement": {

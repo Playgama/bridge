@@ -59,6 +59,9 @@ import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
 import BitquestPlatformBridge from './platform-bridges/BitquestPlatformBridge'
+import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
+import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
+
 import { deepMerge } from './common/utils'
 
 class PlaygamaBridge {
@@ -234,6 +237,12 @@ class PlaygamaBridge {
                                 this.#modules[MODULE_NAME.ADVERTISEMENT].preloadRewarded(placement)
                             }
                         })
+                        .finally(() => {
+                            setTimeout(
+                                () => this.#modules[MODULE_NAME.GAME].setLoadingProgress(100, true),
+                                700,
+                            )
+                        })
                 })
         }
 
@@ -283,6 +292,10 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.BITQUEST
             } else if (window.location.search.includes('bitquest') || new URLSearchParams(window.location.search).get('platform_id') === 'bitquest') {
                 platformId = PLATFORM_ID.BITQUEST
+            } else if (url.hostname.includes('eponesh.')) {
+                platformId = PLATFORM_ID.GAMEPUSH
+            } else if (url.hostname.includes('discordsays.com')) {
+                platformId = PLATFORM_ID.DISCORD
             }
         }
 
@@ -356,6 +369,12 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.BITQUEST: {
                 this.#platformBridge = new BitquestPlatformBridge(modifiedOptions)
+            case PLATFORM_ID.GAMEPUSH: {
+                this.#platformBridge = new GamePushPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.DISCORD: {
+                this.#platformBridge = new DiscordPlatformBridge(modifiedOptions)
                 break
             }
             default: {

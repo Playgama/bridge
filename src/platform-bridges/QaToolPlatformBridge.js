@@ -62,6 +62,7 @@ const INTERSTITIAL_STATUS = {
     CLOSE: 'close',
     FAILED: 'failed',
 }
+
 const REWARD_STATUS = {
     START: 'start',
     OPEN: 'open',
@@ -847,8 +848,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 ) {
                     const mergedProducts = products.map((product) => ({
                         id: product.id,
-                        price: `${product.amount} Golden Fennec`,
-                        priceCurrencyCode: 'Golden Fennec',
+                        price: `${product.amount} Gam`,
+                        priceCurrencyCode: 'Gam',
                         priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
                         priceValue: product.amount,
                     }))
@@ -1034,19 +1035,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             const messageId = this.#messageBroker.generateMessageId()
 
-            const messageHandler = (event) => {
-                if (
-                    event.data?.type === MODULE_NAME.LEADERBOARDS
-                    && event.data.action === ACTION_NAME.LEADERBOARDS_GET_ENTRIES
-                    && event.data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, event.data.entries)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
             const options = {
                 id,
             }
@@ -1057,6 +1045,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 id: messageId,
                 options,
             })
+
+            this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         }
 
         return promiseDecorator.promise
