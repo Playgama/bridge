@@ -369,6 +369,7 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.BITQUEST: {
                 this.#platformBridge = new BitquestPlatformBridge(modifiedOptions)
+            }
             case PLATFORM_ID.GAMEPUSH: {
                 this.#platformBridge = new GamePushPlatformBridge(modifiedOptions)
                 break
