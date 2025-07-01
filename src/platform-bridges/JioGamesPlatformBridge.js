@@ -62,12 +62,27 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                         this._packageName = this._options.packageName
 
                         this._platformSdk = window.DroidHandler
-                        this._isInitialized = true
 
                         this.#setupAdHandlers()
 
-                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        this._platformSdk.getUserProfile()
+
+                        window.onUserProfileResponse = (message) => {
+                            this.playerId = message?.userId || null
+                            this.playerName = message?.userName || null
+
+                            this._getUserProfileResolve?.()
+                            this._getUserProfileResolve = null
+                        }
+
+                        return new Promise((resolve) => {
+                            this._getUserProfileResolve = resolve
+                        })
                     })
+                        .then(() => {
+                            this._isInitialized = true
+                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        })
                 })
             }
         }
@@ -196,7 +211,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             }
         }
 
-        window.onAdPrepared = () => {}
+        window.onAdPrepared = () => { }
 
         window.onAdClosed = (...args) => {
             const localData = args[0]?.split(',')
@@ -243,6 +258,12 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         window.onAdRender = () => { }
         window.onAdSkippable = () => { }
         window.onAdView = () => { }
+    }
+
+    // leaderboards
+    leaderboardsSetScore(_, score) {
+        this._platformSdk.setScore(score)
+        return Promise.resolve()
     }
 }
 
