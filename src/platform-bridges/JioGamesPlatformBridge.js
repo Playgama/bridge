@@ -39,6 +39,20 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     _rewardedPlacement = null
 
+    _resolveInterstitialPreload = null
+
+    _rejectInterstitialPreload = null
+
+    _preloadInterstitialPromise = null
+
+    _resolveRewardedPreload = null
+
+    _rejectRewardedPreload = null
+
+    _preloadRewardedPromise = null
+
+    _shouldRewardUser = false
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -90,32 +104,9 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // advertisement
     preloadInterstitial(placement) {
         this.#preloadInterstitial(placement)
-    }
-
-    _resolveInterstitialPreload = null
-
-    _rejectInterstitialPreload = null
-
-    _preloadInterstitialPromise = null
-
-    // advertisement
-    #preloadInterstitial(placement, forciblyPreload = false) {
-        if (!this._interstitialPlacement || forciblyPreload) {
-            this._interstitialPlacement = placement
-        }
-
-        if (!this._preloadInterstitialPromise) {
-            this._platformSdk.cacheAd(placement, this._packageName)
-
-            this._preloadInterstitialPromise = new Promise((resolve, reject) => {
-                this._resolveInterstitialPreload = resolve
-                this._rejectInterstitialPreload = reject
-            })
-        }
-
-        return this._preloadInterstitialPromise
     }
 
     showInterstitial(placement) {
@@ -130,34 +121,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             .finally(() => {
                 this.#preloadInterstitial(placement, true)
             })
-    }
-
-    _resolveRewardedPreload = null
-
-    _rejectRewardedPreload = null
-
-    _preloadRewardedPromise = null
-
-    _shouldRewardUser = false
-
-    // advertisement
-    #preloadRewarded(placement, forciblyPreload = false) {
-        if (!this.rewardedPlacement || forciblyPreload) {
-            this.rewardedPlacement = placement
-        }
-
-        if (!this._preloadRewardedPromise) {
-            this._platformSdk.cacheAd(placement, this._packageName)
-
-            this._preloadRewardedPromise = new Promise((resolve, reject) => {
-                this._resolveRewardedPreload = resolve
-                this._rejectRewardedPreload = reject
-            })
-
-            this.#setupAdHandlers()
-        }
-
-        return this._preloadRewardedPromise
     }
 
     preloadRewarded(placement) {
@@ -176,6 +139,46 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             .finally(() => {
                 this.#preloadRewarded(placement, true)
             })
+    }
+
+    // leaderboards
+    leaderboardsSetScore(_, score) {
+        this._platformSdk.setScore(score)
+        return Promise.resolve()
+    }
+
+    #preloadInterstitial(placement, forciblyPreload = false) {
+        if (!this._interstitialPlacement || forciblyPreload) {
+            this._interstitialPlacement = placement
+        }
+
+        if (!this._preloadInterstitialPromise) {
+            this._platformSdk.cacheAd(placement, this._packageName)
+
+            this._preloadInterstitialPromise = new Promise((resolve, reject) => {
+                this._resolveInterstitialPreload = resolve
+                this._rejectInterstitialPreload = reject
+            })
+        }
+
+        return this._preloadInterstitialPromise
+    }
+
+    #preloadRewarded(placement, forciblyPreload = false) {
+        if (!this.rewardedPlacement || forciblyPreload) {
+            this.rewardedPlacement = placement
+        }
+
+        if (!this._preloadRewardedPromise) {
+            this._platformSdk.cacheAd(placement, this._packageName)
+
+            this._preloadRewardedPromise = new Promise((resolve, reject) => {
+                this._resolveRewardedPreload = resolve
+                this._rejectRewardedPreload = reject
+            })
+        }
+
+        return this._preloadRewardedPromise
     }
 
     #setupAdHandlers() {
@@ -258,12 +261,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         window.onAdRender = () => { }
         window.onAdSkippable = () => { }
         window.onAdView = () => { }
-    }
-
-    // leaderboards
-    leaderboardsSetScore(_, score) {
-        this._platformSdk.setScore(score)
-        return Promise.resolve()
     }
 }
 
