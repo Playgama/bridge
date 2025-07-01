@@ -32,10 +32,11 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.BITQUEST
     }
 
-    _isBannerSupported = false
+    get isPaymentsSupported() {
+        return false
+    }
 
     initialize() {
-        console.info('BitQuest SDK initialize')
         if (this._isInitialized) {
             return Promise.resolve()
         }
@@ -44,23 +45,15 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            console.info('Before BitQuest SDK URL')
             const SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
-            console.info('BitQuest SDK URL')
-            console.info('Adding javascript')
 
             addJavaScript(SDK_URL).then(() => {
-                console.info('BitQuest SDK added')
                 waitFor('bq').then(async () => {
-                    console.info('BitQuest SDK available, initializing...')
 
                     this._platformSdk = window.bq
-                    // Await bq.initialize()
                     try {
                         await this._platformSdk.initialize()
-                        console.info('BitQuest SDK fully initialized')
                     } catch (e) {
-                        console.error('Error during bq.initialize():', e)
                         this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
                         return
                     }
@@ -72,14 +65,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                         const { id = null, name = '' } = player
                         this._playerId = id
                         this._playerName = name
-                    } else {
-                        console.warn('[Player Init] platformSdk.player is not available')
                     }
 
                     this._isInitialized = true
-
-                    // this.setupInterstitialHandlers()
-                    // this.setupRewardedHandlers()
                     this.setupAdvertisementHandlers()
 
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -92,7 +80,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            // return this._platformSdk.player.isLoggedIn
             return true
         }
 
@@ -101,7 +88,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            // return this._platformSdk.player.isLoggedIn
             return true
         }
 
@@ -149,53 +135,41 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     async setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                console.info('[setDataToStorage] Detected array of keys')
-
                 if (!Array.isArray(value)) {
-                    console.warn('[setDataToStorage] Expected array of values for array of keys')
                     throw new Error('Value must be an array if key is an array')
                 }
 
                 if (key.length !== value.length) {
-                    console.warn('[setDataToStorage] Mismatch between key and value lengths')
                     throw new Error('Key and value arrays must have the same length')
                 }
 
                 /* eslint-disable no-await-in-loop */
                 for (let i = 0; i < key.length; i++) {
-                    console.info(`[setDataToStorage] Setting key: ${key[i]}, value:`, value[i])
                     await this._platformSdk.storage.set(key[i], value[i], 'platform_internal')
                 }
                 /* eslint-enable no-await-in-loop */
                 return
             }
 
-            console.info(`[setDataToStorage] Setting single key: ${key}, value:`, value)
             await this._platformSdk.storage.set(key, value, 'platform_internal')
             return
         }
 
-        // Assuming super.setDataToStorage is also an async method that returns a Promise,
-        // but your method is expected to return void, so don't return its result directly.
         await super.setDataToStorage(key, value, storageType)
     }
 
     async deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                console.info('[deleteDataFromStorage] Detected array of keys')
-
                 /* eslint-disable no-await-in-loop */
                 for (let i = 0; i < key.length; i++) {
-                    console.info(`[deleteDataFromStorage] Deleting key: ${key[i]}`)
                     await this._platformSdk.storage.delete(key[i], 'platform_internal')
                 }
                 /* eslint-enable no-await-in-loop */
 
-                return // for consistent-return
+                return
             }
 
-            console.info(`[deleteDataFromStorage] Deleting single key: ${key}`)
             await this._platformSdk.storage.delete(key, 'platform_internal')
             return
         }
@@ -204,8 +178,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     setupAdvertisementHandlers() {
-        console.info('BitQuest SDK setupAdvertisementHandlers')
-
         const rewardedMap = {
             loading: REWARDED_STATE.LOADING,
             opened: REWARDED_STATE.OPENED,
@@ -229,20 +201,17 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         }
 
         this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
-            console.info('[Ad State] Rewarded:', state)
             const mappedState = rewardedMap[state]
             if (!mappedState) return
 
             this._setRewardedState?.(mappedState)
 
             if (mappedState === REWARDED_STATE.REWARDED) {
-                // Automatically follow with 'closed'
                 this._setRewardedState?.(REWARDED_STATE.CLOSED)
             }
         })
 
         this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
-            console.info('[Ad State] Interstitial:', state)
             const mappedState = interstitialMap[state]
             if (mappedState) {
                 this._setInterstitialState?.(mappedState)
@@ -250,7 +219,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         })
 
         this._platformSdk.advertisement.on('BANNER_STATE_CHANGED', (state) => {
-            console.info('[Ad State] Banner:', state)
             const mappedState = bannerMap[state]
             if (mappedState) {
                 this._setBannerState?.(mappedState)
@@ -259,22 +227,18 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     showRewarded() {
-        console.info('BitQuest SDK showRewarded')
         this._platformSdk.advertisement.showRewarded()
     }
 
     showInterstitial() {
-        console.info('BitQuest SDK showInterstitial')
         this._platformSdk.advertisement.showInterstitial()
     }
 
     showBanner() {
-        console.info('BitQuest SDK showBanner')
         this._platformSdk.advertisement.showBanner()
     }
 
     hideBanner() {
-        console.info('BitQuest SDK hideBanner')
         this._platformSdk.advertisement.hideBanner()
     }
 
@@ -317,22 +281,15 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
             this._platformSdk.payment.getCatalog()
                 .then((catalog) => {
-                    console.info('[Full Catalog]', catalog)
-
                     const platformId = this._platformSdk?.getPlatformId?.() || 'playgama'
-                    console.info('[Platform ID]', platformId)
-                    console.info('[Local Products]', products)
 
                     const mergedProducts = products
                         .map((product) => {
                             const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
 
                             if (!catalogProduct) {
-                                console.warn('[Catalog Match Not Found] for product id:', product.id)
-                                return null // skip this product
+                                return null
                             }
-
-                            console.info('[Catalog Match Found]', catalogProduct)
 
                             const finalProduct = {
                                 name: catalogProduct.name,
@@ -343,10 +300,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                                 priceValue: catalogProduct.priceValue ?? `${catalogProduct.price} ϐ`,
                             }
 
-                            console.info('[Final Merged Product]', finalProduct)
                             return finalProduct
                         })
-                        .filter(Boolean) // Remove nulls (unmatched products)
+                        .filter(Boolean)
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
@@ -392,7 +348,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                 .then((response) => {
                     const purchases = response?.purchases
                     if (!Array.isArray(purchases)) {
-                        console.error('[GetPurchases] Expected response.purchases to be an array, but got:', purchases)
                         this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, new Error('Invalid purchases format'))
                         return
                     }
@@ -402,7 +357,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                     this._paymentsPurchases = purchases.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.purchaseId)
                         if (!product) {
-                            console.warn('[Purchase Match Not Found] for purchaseId:', purchase.purchaseId)
                             return null
                         }
 

@@ -265,8 +265,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.ABSOLUTE_GAMES
             } else if (url.searchParams.has('playdeck')) {
                 platformId = PLATFORM_ID.PLAYDECK
-            // } else if (url.hash.includes('tgWebAppData')) {
-            //     platformId = PLATFORM_ID.TELEGRAM
+            } else if (url.hash.includes('tgWebAppData')) {
+                platformId = PLATFORM_ID.TELEGRAM
             } else if (url.hostname.includes('y8')) {
                 platformId = PLATFORM_ID.Y8
             } else if (url.hostname.includes('fbsbx')) {
@@ -285,13 +285,6 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.BITQUEST
             }
 
-            // platformId = PLATFORM_ID.BITQUEST
-            console.info(`%c Platform ID: ${platformId}`, 'background: #01A5DA; color: white')
-            console.info(`%c document.referrer: ${document.referrer}`, 'background: #01A5DA; color: white')
-            console.info(`%c window.location.hostname: ${window.location.hostname}`, 'background: #01A5DA; color: white')
-            console.info(`%c window.location.pathname: ${window.location.pathname}`, 'background: #01A5DA; color: white')
-            console.info(`%c window.location.search: ${window.location.search}`, 'background: #01A5DA; color: white')
-            console.info(`%c window.location.hash: ${window.location.hash}`, 'background: #01A5DA; color: white')
         }
 
         let modifiedOptions = options
