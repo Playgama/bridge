@@ -284,7 +284,6 @@ class PlaygamaBridge {
             } else if (window.location.search.includes('bitquest') || new URLSearchParams(window.location.search).get('platform_id') === 'bitquest') {
                 platformId = PLATFORM_ID.BITQUEST
             }
-
         }
 
         let modifiedOptions = options

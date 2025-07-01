@@ -49,7 +49,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
             addJavaScript(SDK_URL).then(() => {
                 waitFor('bq').then(async () => {
-
                     this._platformSdk = window.bq
                     try {
                         await this._platformSdk.initialize()
@@ -281,8 +280,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
             this._platformSdk.payment.getCatalog()
                 .then((catalog) => {
-                    const platformId = this._platformSdk?.getPlatformId?.() || 'playgama'
-
                     const mergedProducts = products
                         .map((product) => {
                             const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
@@ -296,8 +293,8 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                                 description: catalogProduct.description,
                                 purchaseId: product.id,
                                 price: catalogProduct.price,
-                                priceCurrencyCode: catalogProduct.currencyCode ?? 'ϐ',
-                                priceValue: catalogProduct.priceValue ?? `${catalogProduct.price} ϐ`,
+                                priceCurrencyCode: catalogProduct.currencyCode,
+                                priceValue: catalogProduct.priceValue,
                             }
 
                             return finalProduct
