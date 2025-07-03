@@ -33,7 +33,11 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     get isPaymentsSupported() {
-        return false
+        return true
+    }
+
+    get isPlayerAuthorizationSupported() {
+        return true
     }
 
     initialize() {
@@ -64,6 +68,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                         const { id = null, name = '' } = player
                         this._playerId = id
                         this._playerName = name
+                        this._isPlayerAuthorized = true
                     }
 
                     this._isInitialized = true
@@ -374,6 +379,14 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+
+    getServerTime() {
+        return new Promise((resolve) => {
+            const ts = this._platformSdk.platform.getServerTime()
+            resolve(ts)
+        })
     }
 }
 
