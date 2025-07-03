@@ -381,7 +381,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-
     getServerTime() {
         return new Promise((resolve) => {
             const ts = this._platformSdk.platform.getServerTime()
