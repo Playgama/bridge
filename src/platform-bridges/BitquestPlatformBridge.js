@@ -74,6 +74,8 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                     this._isInitialized = true
                     this.setupAdvertisementHandlers()
 
+                    this.showInterstitial()
+
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
             })
