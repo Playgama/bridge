@@ -148,9 +148,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         // eslint-disable-next-line no-undef
         system.onmessage = (event) => {
             try {
-                // eslint-disable-next-line no-console
-                console.log('HuaweiPlatformBridge received message:', event)
-
                 const data = JSON.parse(event)
 
                 if (data.message.startsWith('interstitial')) {
