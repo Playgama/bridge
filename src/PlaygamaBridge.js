@@ -281,8 +281,6 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.BITQUEST
             } else if (document.referrer.includes('bitquest')) {
                 platformId = PLATFORM_ID.BITQUEST
-            } else if (window.location.search.includes('bitquest') || new URLSearchParams(window.location.search).get('platform_id') === 'bitquest') {
-                platformId = PLATFORM_ID.BITQUEST
             }
         }
 
