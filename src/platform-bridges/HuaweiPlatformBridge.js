@@ -64,6 +64,8 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
             } else {
                 this._appId = this._options.appId
 
+                this.#setupHandlers()
+
                 if (this._isChineseDevice) {
                     promiseDecorator.resolve()
 
@@ -132,48 +134,50 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showInterstitial() {
-        const messageHandler = (event) => {
-            if (event.message !== 'nativeAdReady') {
-                return
-            }
-
-            if (event.error) {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.SHOWN)
-                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-            }
-
-            window.removeEventListener('message', messageHandler)
-        }
-
-        window.addEventListener('message', messageHandler)
-
-        // eslint-disable-next-line no-console
-        console.log('window.parent', window.parent)
-        window.parent.postMessage({ message: 'requestNativeAd' }, '*')
+    showInterstitial(placementId) {
+        // eslint-disable-next-line no-undef
+        system.postMessage(`showInterstitial:${placementId}`)
     }
 
-    showRewarded() {
-        const messageHandler = (event) => {
-            if (event.message !== 'rewardedAdReady') {
-                return
-            }
+    showRewarded(placementId) {
+        // eslint-disable-next-line no-undef
+        system.postMessage(`showRewarded:${placementId}`)
+    }
 
-            if (event.error) {
-                this._setInterstitialState(REWARDED_STATE.FAILED)
-            } else {
-                this._setInterstitialState(REWARDED_STATE.SHOWN)
-                this._setInterstitialState(REWARDED_STATE.CLOSED)
-            }
+    #setupHandlers() {
+        // eslint-disable-next-line no-undef
+        system.onmessage = (event) => {
+            try {
+                // eslint-disable-next-line no-console
+                console.log('HuaweiPlatformBridge received message:', event)
 
-            window.removeEventListener('message', messageHandler)
+                const data = JSON.parse(event)
+
+                if (data.message.startsWith('interstitial')) {
+                    const [, state] = data.message.split(':')
+
+                    if (Object.values(INTERSTITIAL_STATE).includes(state)) {
+                        this._setInterstitialState(
+                            state,
+                            state === INTERSTITIAL_STATE.FAILED ? new Error(data.message) : undefined,
+                        )
+                    }
+                }
+
+                if (data.message.startsWith('rewarded')) {
+                    const [, state] = data.message.split(':')
+
+                    if (Object.values(REWARDED_STATE).includes(state)) {
+                        this._setRewardedState(
+                            state,
+                            state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
+                        )
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing Huawei message:', error)
+            }
         }
-
-        window.addEventListener('message', messageHandler)
-
-        window.parent.postMessage({ message: 'requestRewardedAd' }, '*')
     }
 }
 
