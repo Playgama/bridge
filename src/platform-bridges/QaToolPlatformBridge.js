@@ -53,6 +53,7 @@ const ACTION_NAME_QA = {
     GET_ACHIEVEMENTS: 'get_achievements',
     SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
     GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
+    GET_LANGUAGE: 'get_language',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -90,6 +91,7 @@ const SUPPORTED_FEATURES = {
     ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
     ACHIEVEMENTS_NATIVE_POPUP: 'isAchievementsNativePopupSupported',
     STORAGE_REMOTE_LOCAL: 'isStorageRemoteLocalSupported',
+    LANGUAGE_SUPPORTED: 'isGetLanguageSupported',
 }
 
 class QaToolPlatformBridge extends PlatformBridgeBase {
@@ -99,6 +101,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
+        if (this._supportedFeatures.includes(SUPPORTED_FEATURES.LANGUAGE_SUPPORTED)) {
+            this.#messageBroker.send({
+                type: MODULE_NAME.PLATFORM,
+                action: ACTION_NAME_QA.GET_LANGUAGE,
+                options: {
+                    language: this._platformLanguage,
+                },
+            })
+        }
+
         return this._platformLanguage
     }
 
