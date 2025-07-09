@@ -172,7 +172,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._isPlayerAuthorized
+            return true
         }
 
         return super.isStorageAvailable(storageType)
