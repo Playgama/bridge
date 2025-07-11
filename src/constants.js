@@ -142,6 +142,10 @@ export const ACTION_NAME = {
     SHOW_LEADERBOARD_NATIVE_POPUP: 'show_leaderboard_native_popup',
     CLIPBOARD_WRITE: 'clipboard_write',
     ADBLOCK_DETECT: 'adblock_detect',
+    SET_INTERSTITIAL_STATE: 'set_interstitial_state',
+    SET_REWARDED_STATE: 'set_rewarded_state',
+    SHOW_INTERSTITIAL: 'show_interstitial',
+    SHOW_REWARDED: 'show_rewarded',
 }
 
 export const ERROR = {

@@ -40,10 +40,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get _isChineseDevice() {
-        return typeof window.HwFastappObject === 'object'
-    }
-
     async initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -66,15 +62,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
                 this.#setupHandlers()
 
-                if (this._isChineseDevice) {
-                    promiseDecorator.resolve()
-
-                    this._platformSdk = window.HwFastappObject
-                } else {
-                    // Fallback for non-Chinese devices
-
-                    promiseDecorator.resolve()
-                }
+                this.#postMessage(ACTION_NAME.INITIALIZE, this._appId)
             }
         }
 
@@ -82,92 +70,114 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     authorizePlayer() {
-        if (this._isChineseDevice) {
-            return Promise.resolve()
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+
+            this.#postMessage(ACTION_NAME.AUTHORIZE_PLAYER)
         }
 
-        return new Promise((resolve, reject) => {
-            if (!this._platformSdk) {
-                reject(ERROR.SDK_NOT_INITIALIZED)
-                return
-            }
-
-            this._platformSdk.onGameLoginResult = function onGameLoginResult({
-                code,
-                data,
-                gameUserData,
-            }) {
-                if (code === 0) {
-                    const {
-                        playerId,
-                        displayName,
-                        // playerLevel,
-                        // ts,
-                        // gameAuthSign,
-                        hiResImageUri,
-                        imageUri,
-                    } = gameUserData
-
-                    this._playerId = playerId
-                    this._playerName = displayName
-
-                    if (imageUri) {
-                        this._playerPhotos.push(imageUri)
-                    }
-
-                    if (hiResImageUri) {
-                        this._playerPhotos.push(hiResImageUri)
-                    }
-
-                    this._isPlayerAuthorized = true
-                    resolve()
-                } else {
-                    reject(JSON.stringify({ data, code }))
-                }
-            }
-
-            this._platformSdk.gameLogin(JSON.stringify({
-                appid: this._appId,
-                forceLogin: '1',
-            }))
-        })
+        return promiseDecorator.promise
     }
 
     // advertisement
     showInterstitial(placementId) {
-        // eslint-disable-next-line no-undef
-        system.postMessage(`showInterstitial:${placementId}`)
+        this.#postMessage(ACTION_NAME.SHOW_INTERSTITIAL, placementId)
     }
 
     showRewarded(placementId) {
-        // eslint-disable-next-line no-undef
-        system.postMessage(`showRewarded:${placementId}`)
+        this.#postMessage(ACTION_NAME.SHOW_REWARDED, placementId)
+    }
+
+    // payments
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+
+        // eslint-disable-next-line no-console
+        console.log({ products })
+
+        if (!products) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
+            this.#postMessage(ACTION_NAME.GET_CATALOG, products.map(({ id }) => id))
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #postMessage(action, data) {
+        window.system.postMessage(JSON.stringify({ action, data }))
     }
 
     #setupHandlers() {
-        // eslint-disable-next-line no-undef
-        system.onmessage = (event) => {
+        window.system.onmessage = (event) => {
             try {
-                const data = JSON.parse(event)
+                // eslint-disable-next-line no-console
+                console.log('HuaweiPlatformBridge received message:', event)
 
-                if (data.message.startsWith('interstitial')) {
-                    const [, state] = data.message.split(':')
+                const { action, data } = JSON.parse(event)
 
-                    if (Object.values(INTERSTITIAL_STATE).includes(state)) {
-                        this._setInterstitialState(
-                            state,
-                            state === INTERSTITIAL_STATE.FAILED ? new Error(data.message) : undefined,
+                if (action === ACTION_NAME.INITIALIZE) {
+                    if (data.success) {
+                        this._isInitialized = true
+                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+                    } else {
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.INITIALIZE,
+                            new Error(data),
                         )
                     }
                 }
 
-                if (data.message.startsWith('rewarded')) {
-                    const [, state] = data.message.split(':')
+                if (action === ACTION_NAME.SET_INTERSTITIAL_STATE) {
+                    if (Object.values(INTERSTITIAL_STATE).includes(data.state)) {
+                        this._setInterstitialState(
+                            data.state,
+                            data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
+                        )
+                    }
+                }
 
-                    if (Object.values(REWARDED_STATE).includes(state)) {
+                if (action === ACTION_NAME.SET_REWARDED_STATE) {
+                    if (Object.values(REWARDED_STATE).includes(data.state)) {
                         this._setRewardedState(
-                            state,
-                            state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
+                            data.state,
+                            data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
+                        )
+                    }
+                }
+
+                if (action === ACTION_NAME.GET_CATALOG) {
+                    if (data.success) {
+                        const products = this._paymentsGetProductsPlatformData()
+
+                        // eslint-disable-next-line no-console
+                        const mergedProducts = products.map((product) => {
+                            const huaweiProduct = data.data.productInfoList.find((p) => p.productId === product.id)
+
+                            return {
+                                id: product.id,
+                                title: huaweiProduct.productName,
+                                description: huaweiProduct.productDesc,
+                                price: huaweiProduct.price,
+                                priceCurrencyCode: huaweiProduct.currency,
+                                priceValue: huaweiProduct.microsPrice * 0.000001,
+                                subSpecialPeriodCycles: huaweiProduct.subSpecialPeriodCycles,
+                                subProductLevel: huaweiProduct.subProductLevel,
+                                priceType: huaweiProduct.priceType,
+                            }
+                        })
+
+                        this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+                    } else {
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.GET_CATALOG,
+                            new Error(data),
                         )
                     }
                 }
