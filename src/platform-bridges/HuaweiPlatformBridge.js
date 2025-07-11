@@ -90,6 +90,42 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            this.#postMessage(ACTION_NAME.PURCHASE, id)
+            this._platformSdk.iap.purchaseAsync({ productId: id })
+                .then((purchase) => {
+                    if (purchase.code === 'IAP_PURCHASE_FAILURE') {
+                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.description)
+                        return
+                    }
+
+                    const mergedPurchase = {
+                        id,
+                        ...purchase.receipt,
+                        receiptSignature: purchase.receiptSignature,
+                    }
+                    delete mergedPurchase.productId
+
+                    this._paymentsPurchases.push(mergedPurchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
     paymentsGetCatalog() {
         const products = this._paymentsGetProductsPlatformData()
 
@@ -177,6 +213,26 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                     } else {
                         this._rejectPromiseDecorator(
                             ACTION_NAME.GET_CATALOG,
+                            new Error(data),
+                        )
+                    }
+                }
+
+                if (action === ACTION_NAME.PURCHASE) {
+                    if (data.success) {
+                        const purchase = this._paymentsGetPurchasePlatformData(data.data)
+
+                        const mergedPurchase = {
+                            id: data.id,
+                            ...purchase,
+                        }
+                        delete mergedPurchase.productId
+
+                        this._paymentsPurchases.push(mergedPurchase)
+                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    } else {
+                        this._rejectPromiseDecorator(
+                            ACTION_NAME.PURCHASE,
                             new Error(data),
                         )
                     }
