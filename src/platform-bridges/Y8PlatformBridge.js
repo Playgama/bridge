@@ -24,6 +24,7 @@ import {
     ERROR,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = 'https://cdn.y8.com/api/sdk.js'
@@ -42,29 +43,9 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardNativePopupSupported() {
-        return true
-    }
-
-    get isLeaderboardMultipleBoardsSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
-    }
-
-    get isLeaderboardGetScoreSupported() {
-        return true
-    }
-
-    get isLeaderboardGetEntriesSupported() {
-        return true
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     // achievements
@@ -303,38 +284,26 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    // leaderboard
-    showLeaderboardNativePopup(options) {
+    // leaderboards
+    leaderboardsSetScore(id, score) {
         if (!this._isPlayerAuthorized) {
             return Promise.reject()
         }
 
-        if (!options || !options.table) {
-            return Promise.reject(new Error('`table` property is not provided'))
-        }
-
-        this._platformSdk.GameAPI.Leaderboards.list(options)
-        return Promise.resolve()
-    }
-
-    setLeaderboardScore(options) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        if (!options || !options.points || !options.table) {
-            return Promise.reject(new Error('`table` or `points` property is not provided'))
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+
+            const options = {
+                table: id,
+                points: score,
+            }
 
             this._platformSdk.GameAPI.Leaderboards.save(options, ({ success, errormessage: error }) => {
                 if (success) {
-                    this._resolvePromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE)
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
                 } else {
-                    this._rejectPromiseDecorator(ACTION_NAME.SET_LEADERBOARD_SCORE, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
                 }
             })
         }
@@ -342,52 +311,32 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getLeaderboardScore(options) {
+    leaderboardsGetEntries(id) {
         if (!this._isPlayerAuthorized) {
             return Promise.reject()
         }
 
-        if (!options || !options.table) {
-            return Promise.reject(new Error('`table` property is not provided'))
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
 
-            this._platformSdk.GameAPI.Leaderboards.listCustom(
-                { ...options, playerid: this.playerId },
-                ({ scores, success, errormessage: error }) => {
-                    if (success) {
-                        this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, scores[0])
-                    } else {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_SCORE, error)
-                    }
-                },
-            )
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getLeaderboardEntries(options) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        if (!options || !options.table) {
-            return Promise.reject(new Error('`table` property is not provided'))
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES)
+            const options = {
+                table: id,
+                mode: 'alltime',
+            }
 
             this._platformSdk.GameAPI.Leaderboards.listCustom(options, ({ scores, success, errormessage: error }) => {
                 if (success) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES, scores)
+                    const entries = scores.map((entry) => ({
+                        id: entry.playerid,
+                        name: entry.playername,
+                        score: entry.points,
+                        rank: entry.rank,
+                        photo: null,
+                    }))
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
                 } else {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_LEADERBOARD_ENTRIES, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
                 }
             })
         }

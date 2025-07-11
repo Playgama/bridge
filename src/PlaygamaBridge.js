@@ -36,7 +36,7 @@ import StorageModule from './modules/StorageModule'
 import AdvertisementModule from './modules/AdvertisementModule'
 import SocialModule from './modules/SocialModule'
 import DeviceModule from './modules/DeviceModule'
-import LeaderboardModule from './modules/LeaderboardModule'
+import LeaderboardsModule from './modules/LeaderboardsModule'
 import PaymentsModule from './modules/PaymentsModule'
 import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
@@ -59,6 +59,9 @@ import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
 import HuaweiPlatformBridge from './platform-bridges/HuaweiPlatformBridge'
+import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
+import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
+import { deepMerge } from './common/utils'
 
 class PlaygamaBridge {
     get version() {
@@ -102,7 +105,11 @@ class PlaygamaBridge {
     }
 
     get leaderboard() {
-        return this.#getModule(MODULE_NAME.LEADERBOARD)
+        return this.#getModule(MODULE_NAME.LEADERBOARDS)
+    }
+
+    get leaderboards() {
+        return this.#getModule(MODULE_NAME.LEADERBOARDS)
     }
 
     get payments() {
@@ -202,7 +209,7 @@ class PlaygamaBridge {
                     this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.LEADERBOARD] = new LeaderboardModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.LEADERBOARDS] = new LeaderboardsModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
@@ -228,6 +235,12 @@ class PlaygamaBridge {
                                 const placement = this.#platformBridge.options.advertisement.rewarded.preloadOnStart
                                 this.#modules[MODULE_NAME.ADVERTISEMENT].preloadRewarded(placement)
                             }
+                        })
+                        .finally(() => {
+                            setTimeout(
+                                () => this.#modules[MODULE_NAME.GAME].setLoadingProgress(100, true),
+                                700,
+                            )
                         })
                 })
         }
@@ -270,12 +283,16 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.POKI
             } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
+            } else if (url.hostname.includes('eponesh.')) {
+                platformId = PLATFORM_ID.GAMEPUSH
+            } else if (url.hostname.includes('discordsays.com')) {
+                platformId = PLATFORM_ID.DISCORD
             }
         }
 
         let modifiedOptions = options
         if (modifiedOptions.platforms?.[platformId]) {
-            modifiedOptions = { ...modifiedOptions, ...modifiedOptions.platforms[platformId] }
+            modifiedOptions = deepMerge(modifiedOptions, modifiedOptions.platforms[platformId])
         }
 
         delete modifiedOptions.platforms
@@ -343,6 +360,14 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.HUAWEI: {
                 this.#platformBridge = new HuaweiPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.GAMEPUSH: {
+                this.#platformBridge = new GamePushPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.DISCORD: {
+                this.#platformBridge = new DiscordPlatformBridge(modifiedOptions)
                 break
             }
             default: {

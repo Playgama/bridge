@@ -24,9 +24,11 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_POSITION,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
+const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 class MsnPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -44,13 +46,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return true
-    }
-
-    get isLeaderboardSetScoreSupported() {
-        return true
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
     }
 
     // advertisement
@@ -63,9 +61,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    _preloadedInterstitialPromise = null
-
-    _preloadedRewardedPromise = null
+    #playgamaAds = null
 
     initialize() {
         if (this._isInitialized) {
@@ -76,10 +72,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            addJavaScript(SDK_URL).then(() => {
-                waitFor('$msstart').then(() => {
+            addJavaScript(SDK_URL)
+                .then(() => waitFor('$msstart'))
+                .then(() => {
                     this._platformSdk = window.$msstart
-
                     this._platformSdk.getSignedInUserAsync()
                         .then((data) => {
                             this.#updatePlayerInfo(data)
@@ -89,7 +85,20 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                 })
-            })
+
+            const advertisementBackfillId = this._options?.advertisement?.backfillId
+            if (advertisementBackfillId) {
+                addJavaScript(PLAYGAMA_ADS_SDK_URL)
+                    .then(() => waitFor('pgAds'))
+                    .then(() => {
+                        window.pgAds.init(advertisementBackfillId)
+                            .then(() => {
+                                this.#playgamaAds = window.pgAds
+                                const { gameId } = this._options
+                                this.#playgamaAds.updateTargeting({ gameId })
+                            })
+                    })
+            }
         }
 
         return promiseDecorator.promise
@@ -122,14 +131,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    // leaderboard
-    setLeaderboardScore(options) {
-        if (!options?.score) {
-            return Promise.reject(new Error('`score` option is required'))
-        }
-
+    // leaderboards
+    leaderboardsSetScore(id, score) {
         return new Promise((resolve, reject) => {
-            this._platformSdk.submitGameResultsAsync(options.score)
+            this._platformSdk.submitGameResultsAsync(score)
                 .then(resolve)
                 .catch(reject)
         })
@@ -165,32 +170,19 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             })
     }
 
-    preloadInterstitial() {
-        this.#loadInterstitialAdsAsync(true)
-    }
-
     showInterstitial() {
-        this.#loadInterstitialAdsAsync()
+        this._platformSdk.loadAdsAsync(false)
             .then((adInstance) => this._platformSdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                 return adInstance.showAdsCompletedAsync
             })
             .then(() => this._setInterstitialState(INTERSTITIAL_STATE.CLOSED))
-            .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            })
-            .finally(() => {
-                this.#loadInterstitialAdsAsync(true)
-            })
-    }
-
-    preloadRewarded() {
-        this.#loadRewardAdsAsync(true)
+            .catch(() => this.#showPlaygamaInterstitial())
     }
 
     showRewarded() {
-        this.#loadRewardAdsAsync()
+        this._platformSdk.loadAdsAsync(true)
             .then((adInstance) => this._platformSdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
@@ -200,12 +192,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.REWARDED)
                 this._setRewardedState(REWARDED_STATE.CLOSED)
             })
-            .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            })
-            .finally(() => {
-                this.#loadRewardAdsAsync(true)
-            })
+            .catch(() => this.#showPlaygamaRewarded())
     }
 
     // payments
@@ -356,59 +343,89 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #loadRewardAdsAsync(forciblyPreload = false) {
-        if (!forciblyPreload && this._preloadedRewardedPromise) {
-            return this._preloadedRewardedPromise
+    #showPlaygamaInterstitial() {
+        if (!this.#playgamaAds) {
+            return this._advertisementShowErrorPopup(false)
         }
 
-        this._preloadedRewardedPromise = this.#loadAdsAsync(true)
-            .catch(() => {
-                this._preloadedRewardedPromise = null
-            })
+        return new Promise((resolve) => {
+            this.#playgamaAds.requestOutOfPageAd('interstitial')
+                .then((adInstance) => {
+                    switch (adInstance.state) {
+                        case 'empty':
+                            this._advertisementShowErrorPopup(false).then(() => resolve())
+                            return
+                        case 'ready':
+                            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                            adInstance.show()
+                            break
+                        default:
+                            break
+                    }
 
-        return this._preloadedRewardedPromise
-    }
-
-    #loadInterstitialAdsAsync(forciblyPreload = false) {
-        if (!forciblyPreload && this._preloadedInterstitialPromise) {
-            return this._preloadedInterstitialPromise
-        }
-
-        this._preloadedInterstitialPromise = this.#loadAdsAsync()
-            .catch(() => {
-                this._preloadedInterstitialPromise = null
-            })
-
-        return this._preloadedInterstitialPromise
-    }
-
-    #loadAdsAsync(isRewardedAd = false) {
-        return new Promise((resolve, reject) => {
-            let attempts = 3
-
-            const loadAdsAsync = () => {
-                attempts -= 1
-                this._platformSdk.loadAdsAsync(isRewardedAd)
-                    .then(resolve)
-                    .catch((e) => {
-                        if (e.code !== 'LOAD_ADS_FAILURE' || attempts < 1) {
-                            reject(e)
-                        } else {
-                            loadAdsAsync()
-                        }
+                    adInstance.addEventListener('ready', () => {
+                        this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                        adInstance.show()
                     })
-            }
 
-            loadAdsAsync()
+                    adInstance.addEventListener('empty', () => {
+                        this._advertisementShowErrorPopup(false).then(() => resolve())
+                    })
+
+                    adInstance.addEventListener('closed', () => {
+                        this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                        resolve()
+                    })
+                })
+        })
+    }
+
+    #showPlaygamaRewarded() {
+        if (!this.#playgamaAds) {
+            return this._advertisementShowErrorPopup(true)
+        }
+
+        return new Promise((resolve) => {
+            this.#playgamaAds.requestOutOfPageAd('rewarded')
+                .then((adInstance) => {
+                    switch (adInstance.state) {
+                        case 'empty':
+                            this._advertisementShowErrorPopup(true).then(() => resolve())
+                            return
+                        case 'ready':
+                            this._setRewardedState(REWARDED_STATE.OPENED)
+                            adInstance.show()
+                            break
+                        default:
+                            break
+                    }
+
+                    adInstance.addEventListener('ready', () => {
+                        this._setRewardedState(REWARDED_STATE.OPENED)
+                        adInstance.show()
+                    })
+
+                    adInstance.addEventListener('rewarded', () => {
+                        this._setRewardedState(REWARDED_STATE.REWARDED)
+                    })
+
+                    adInstance.addEventListener('empty', () => {
+                        this._advertisementShowErrorPopup(true).then(() => resolve())
+                    })
+
+                    adInstance.addEventListener('closed', () => {
+                        this._setRewardedState(REWARDED_STATE.CLOSED)
+                        resolve()
+                    })
+                })
         })
     }
 
     #updatePlayerInfo(data) {
         if (data.playerId) {
+            this._isPlayerAuthorized = true
             this._playerId = data.playerId
             this._playerName = data.playerDisplayName
-
-            this._isPlayerAuthorized = true
         }
     }
 }

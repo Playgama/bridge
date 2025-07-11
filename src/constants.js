@@ -23,7 +23,6 @@ export const PLATFORM_ID = {
     ABSOLUTE_GAMES: 'absolute_games',
     GAME_DISTRIBUTION: 'game_distribution',
     PLAYGAMA: 'playgama',
-    WORTAL: 'wortal',
     PLAYDECK: 'playdeck',
     TELEGRAM: 'telegram',
     Y8: 'y8',
@@ -34,6 +33,8 @@ export const PLATFORM_ID = {
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
     HUAWEI: 'huawei',
+    GAMEPUSH: 'gamepush',
+    DISCORD: 'discord',
 }
 
 export const MODULE_NAME = {
@@ -44,7 +45,7 @@ export const MODULE_NAME = {
     ADVERTISEMENT: 'advertisement',
     SOCIAL: 'social',
     DEVICE: 'device',
-    LEADERBOARD: 'leaderboard',
+    LEADERBOARDS: 'leaderboards',
     PAYMENTS: 'payments',
     REMOTE_CONFIG: 'remote_config',
     CLIPBOARD: 'clipboard',
@@ -114,6 +115,12 @@ export const PLATFORM_MESSAGE = {
     GAME_OVER: 'game_over',
 }
 
+export const LEADERBOARD_TYPE = {
+    NOT_AVAILABLE: 'not_available',
+    IN_GAME: 'in_game',
+    NATIVE: 'native',
+}
+
 export const ACTION_NAME = {
     INITIALIZE: 'initialize',
     AUTHORIZE_PLAYER: 'authorize_player',
@@ -124,9 +131,8 @@ export const ACTION_NAME = {
     ADD_TO_HOME_SCREEN: 'add_to_home_screen',
     ADD_TO_FAVORITES: 'add_to_favorites',
     RATE: 'rate',
-    SET_LEADERBOARD_SCORE: 'set_leaderboard_score',
-    GET_LEADERBOARD_SCORE: 'get_leaderboard_score',
-    GET_LEADERBOARD_ENTRIES: 'get_leaderboard_entries',
+    LEADERBOARDS_SET_SCORE: 'leaderboards_set_score',
+    LEADERBOARDS_GET_ENTRIES: 'leaderboards_get_entries',
     GET_PURCHASES: 'get_purchases',
     GET_CATALOG: 'get_catalog',
     PURCHASE: 'purchase',
@@ -147,6 +153,8 @@ export const ERROR = {
     OK_GAME_PARAMS_NOT_FOUND: { message: 'OK Game params are not found' },
     LAGGED_GAME_PARAMS_NOT_FOUND: { message: 'Lagged Game params are not found' },
     HUAWEI_GAME_PARAMS_NOT_FOUND: { message: 'Huawei Game params are not found' },
+    GAMEPUSH_GAME_PARAMS_NOT_FOUND: { message: 'GamePush Game params are not found' },
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
+    DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
 }

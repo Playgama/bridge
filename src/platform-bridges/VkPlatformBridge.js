@@ -122,15 +122,6 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // leaderboard
-    get isLeaderboardSupported() {
-        return this.deviceType === DEVICE_TYPE.MOBILE
-    }
-
-    get isLeaderboardNativePopupSupported() {
-        return this.deviceType === DEVICE_TYPE.MOBILE
-    }
-
     #platform
 
     initialize() {
@@ -450,24 +441,6 @@ class VkPlatformBridge extends PlatformBridgeBase {
 
     addToFavorites() {
         return this.#sendRequestToVKBridge(ACTION_NAME.ADD_TO_FAVORITES, 'VKWebAppAddToFavorites')
-    }
-
-    // leaderboard
-    showLeaderboardNativePopup(options) {
-        if (!this.isLeaderboardNativePopupSupported) {
-            return Promise.reject()
-        }
-
-        if (!options || !options.userResult) {
-            return Promise.reject()
-        }
-
-        const data = { user_result: options.userResult }
-        if (typeof options.global === 'boolean') {
-            data.global = options.global ? 1 : 0
-        }
-
-        return this.#sendRequestToVKBridge(ACTION_NAME.SHOW_LEADERBOARD_NATIVE_POPUP, 'VKWebAppShowLeaderBoardBox', data)
     }
 
     // clipboard

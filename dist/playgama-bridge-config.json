@@ -17,6 +17,16 @@
         },
         "huawei": {
             "appId": ""
+        },
+        "msn": {
+            "gameId": ""
+        },
+        "discord" : {
+            "appId": ""
+        },
+        "gamepush": {
+            "projectId": "",
+            "publicToken": ""
         }
     },
     "advertisement": {
@@ -25,18 +35,10 @@
         },
         "rewarded": {
             "preloadOnStart": true
-        }
+        },
+        "useBuiltInErrorPopup": true,
+        "backfillId": ""
     },
-    "payments": [
-        {
-            "id": "test_product",
-            "playgama": {
-                "amount": 1
-            },
-            "playdeck": {
-                "amount": 1,
-                "description": "TEST PRODUCT"
-            }
-        }
-    ]
+    "payments": [],
+    "leaderboards": []
 }
