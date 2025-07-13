@@ -34,6 +34,7 @@ export const PLATFORM_ID = {
     MSN: 'msn',
     GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
+    JIO_GAMES: 'jio_games',
 }
 
 export const MODULE_NAME = {
@@ -155,4 +156,5 @@ export const ERROR = {
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
     DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
+    JIO_GAMES_GAME_PARAMS_NOT_FOUND: { message: 'JioGames Game params are not found' },
 }
