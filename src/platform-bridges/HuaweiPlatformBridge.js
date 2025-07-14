@@ -40,6 +40,11 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // payments
+    get isPaymentsSupported() {
+        return true
+    }
+
     async initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -157,29 +162,27 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     #setupHandlers() {
+        const self = this
         window.system.onmessage = (event) => {
             try {
-                // eslint-disable-next-line no-console
-                console.log('HuaweiPlatformBridge received message:', event)
-
                 const { action, data } = JSON.parse(event)
 
                 if (action === ACTION_NAME.INITIALIZE) {
                     if (!data.success) {
-                        this._rejectPromiseDecorator(
+                        self._rejectPromiseDecorator(
                             ACTION_NAME.INITIALIZE,
                             new Error(data),
                         )
                         return
                     }
 
-                    this._isInitialized = true
-                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+                    self._isInitialized = true
+                    self._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
                 }
 
                 if (action === ACTION_NAME.SET_INTERSTITIAL_STATE) {
                     if (Object.values(INTERSTITIAL_STATE).includes(data.state)) {
-                        this._setInterstitialState(
+                        self._setInterstitialState(
                             data.state,
                             data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
                         )
@@ -188,7 +191,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
                 if (action === ACTION_NAME.SET_REWARDED_STATE) {
                     if (Object.values(REWARDED_STATE).includes(data.state)) {
-                        this._setRewardedState(
+                        self._setRewardedState(
                             data.state,
                             data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
                         )
@@ -197,16 +200,15 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
                 if (action === ACTION_NAME.GET_CATALOG) {
                     if (!data.success) {
-                        this._rejectPromiseDecorator(
+                        self._rejectPromiseDecorator(
                             ACTION_NAME.GET_CATALOG,
                             new Error(data),
                         )
                         return
                     }
 
-                    const products = this._paymentsGetProductsPlatformData()
+                    const products = self._paymentsGetProductsPlatformData()
 
-                    // eslint-disable-next-line no-console
                     const mergedProducts = products.map((product) => {
                         const huaweiProduct = data.data.productInfoList.find((p) => p.productId === product.id)
 
@@ -223,19 +225,19 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+                    self._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 }
 
                 if (action === ACTION_NAME.PURCHASE) {
                     if (!data.success) {
-                        this._rejectPromiseDecorator(
+                        self._rejectPromiseDecorator(
                             ACTION_NAME.PURCHASE,
                             new Error(data),
                         )
                         return
                     }
 
-                    const purchase = this._paymentsGetPurchasePlatformData(data.data)
+                    const purchase = self._paymentsGetPurchasePlatformData(data.data)
 
                     const mergedPurchase = {
                         id: data.id,
@@ -243,42 +245,43 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                     }
                     delete mergedPurchase.productId
 
-                    this._paymentsPurchases.push(mergedPurchase)
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    self._paymentsPurchases.push(mergedPurchase)
+                    self._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 }
 
                 if (action === ACTION_NAME.CONSUME_PURCHASE) {
                     if (!data.success) {
-                        this._rejectPromiseDecorator(
+                        self._rejectPromiseDecorator(
                             ACTION_NAME.CONSUME_PURCHASE,
                             new Error(data),
                         )
                         return
                     }
 
-                    const purchaseIndex = this._paymentsPurchases.findIndex(
+                    const purchaseIndex = self._paymentsPurchases.findIndex(
                         (p) => p.purchaseToken === data.purchaseToken,
                     )
 
                     if (purchaseIndex >= 0) {
-                        this._paymentsPurchases.splice(purchaseIndex, 1)
+                        self._paymentsPurchases.splice(purchaseIndex, 1)
                     }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data)
+                    self._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data)
                 }
 
                 if (action === ACTION_NAME.GET_PURCHASES) {
                     if (!data.success) {
-                        this._rejectPromiseDecorator(
+                        self._rejectPromiseDecorator(
                             ACTION_NAME.GET_PURCHASES,
                             new Error(data),
                         )
                         return
                     }
 
-                    const products = this._paymentsGetProductsPlatformData()
+                    const products = self._paymentsGetProductsPlatformData()
 
-                    this._paymentsPurchases = data.inAppPurchaseDataList.map((purchase) => {
+                    self._paymentsPurchases = data.data.inAppPurchaseDataList.map((unparsedPurchase) => {
+                        const purchase = JSON.parse(unparsedPurchase)
                         const product = products.find((p) => p.id === purchase.productId)
                         const mergedPurchase = {
                             id: product.id,
@@ -289,7 +292,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                         return mergedPurchase
                     })
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                    self._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, self._paymentsPurchases)
                 }
             } catch (error) {
                 console.error('Error parsing Huawei message:', error)
