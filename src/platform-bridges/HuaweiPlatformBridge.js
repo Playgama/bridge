@@ -162,7 +162,12 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     #setupHandlers() {
+        if (!window.system) {
+            return
+        }
+
         const self = this
+
         window.system.onmessage = (event) => {
             try {
                 const { action, data } = JSON.parse(event)
