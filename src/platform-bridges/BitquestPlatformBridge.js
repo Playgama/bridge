@@ -180,55 +180,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         await super.deleteDataFromStorage(key, storageType)
     }
 
-    setupAdvertisementHandlers() {
-        const rewardedMap = {
-            loading: REWARDED_STATE.LOADING,
-            opened: REWARDED_STATE.OPENED,
-            closed: REWARDED_STATE.CLOSED,
-            failed: REWARDED_STATE.FAILED,
-            rewarded: REWARDED_STATE.REWARDED,
-        }
-
-        const interstitialMap = {
-            loading: INTERSTITIAL_STATE.LOADING,
-            opened: INTERSTITIAL_STATE.OPENED,
-            closed: INTERSTITIAL_STATE.CLOSED,
-            failed: INTERSTITIAL_STATE.FAILED,
-        }
-
-        const bannerMap = {
-            loading: BANNER_STATE.LOADING,
-            shown: BANNER_STATE.SHOWN,
-            hidden: BANNER_STATE.HIDDEN,
-            failed: BANNER_STATE.FAILED,
-        }
-
-        this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
-            const mappedState = rewardedMap[state]
-            if (!mappedState) return
-
-            this._setRewardedState?.(mappedState)
-
-            if (mappedState === REWARDED_STATE.REWARDED) {
-                this._setRewardedState?.(REWARDED_STATE.CLOSED)
-            }
-        })
-
-        this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
-            const mappedState = interstitialMap[state]
-            if (mappedState) {
-                this._setInterstitialState?.(mappedState)
-            }
-        })
-
-        this._platformSdk.advertisement.on('BANNER_STATE_CHANGED', (state) => {
-            const mappedState = bannerMap[state]
-            if (mappedState) {
-                this._setBannerState?.(mappedState)
-            }
-        })
-    }
-
     showRewarded() {
         this._platformSdk.advertisement.showRewarded()
     }
@@ -357,16 +308,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            const bq = this._platformSdk
-
-            bq.payment.getPurchases()
+            this._platformSdk.payment.getPurchases()
                 .then((response) => {
                     const purchases = response?.purchases
-                    if (!Array.isArray(purchases)) {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, new Error('Invalid purchases format'))
-                        return
-                    }
-
                     const products = this._paymentsGetProductsPlatformData()
 
                     this._paymentsPurchases = purchases.map((purchase) => {
@@ -400,6 +344,56 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             resolve(ts)
         })
     }
+
+    #setupAdvertisementHandlers() {
+        const rewardedMap = {
+            loading: REWARDED_STATE.LOADING,
+            opened: REWARDED_STATE.OPENED,
+            closed: REWARDED_STATE.CLOSED,
+            failed: REWARDED_STATE.FAILED,
+            rewarded: REWARDED_STATE.REWARDED,
+        }
+
+        const interstitialMap = {
+            loading: INTERSTITIAL_STATE.LOADING,
+            opened: INTERSTITIAL_STATE.OPENED,
+            closed: INTERSTITIAL_STATE.CLOSED,
+            failed: INTERSTITIAL_STATE.FAILED,
+        }
+
+        const bannerMap = {
+            loading: BANNER_STATE.LOADING,
+            shown: BANNER_STATE.SHOWN,
+            hidden: BANNER_STATE.HIDDEN,
+            failed: BANNER_STATE.FAILED,
+        }
+
+        this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
+            const mappedState = rewardedMap[state]
+            if (!mappedState) return
+
+            this._setRewardedState(mappedState)
+
+            if (mappedState === REWARDED_STATE.REWARDED) {
+                this._setRewardedState(REWARDED_STATE.CLOSED)
+            }
+        })
+
+        this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
+            const mappedState = interstitialMap[state]
+            if (mappedState) {
+                this._setInterstitialState(mappedState)
+            }
+        })
+
+        this._platformSdk.advertisement.on('BANNER_STATE_CHANGED', (state) => {
+            const mappedState = bannerMap[state]
+            if (mappedState) {
+                this._setBannerState(mappedState)
+            }
+        })
+    }
+
 }
 
 export default BitquestPlatformBridge
