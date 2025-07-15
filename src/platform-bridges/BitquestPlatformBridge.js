@@ -66,7 +66,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._isPlayerAuthorized = true
 
                             this._isInitialized = true
-                            this.setupAdvertisementHandlers()
+                            this.#setupAdvertisementHandlers()
                             this.showInterstitial()
 
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -393,7 +393,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             }
         })
     }
-
 }
 
 export default BitquestPlatformBridge
