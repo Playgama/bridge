@@ -287,7 +287,7 @@ class PlaygamaBridge {
             } else if (url.hash.includes('customUrl_')) {
                 platformId = PLATFORM_ID.BITQUEST // bq tg
             } else if (document.referrer.includes('bitquest')) {
-                platformId = PLATFORM_ID.BITQUEST // bg web
+                platformId = PLATFORM_ID.BITQUEST // bq web
             } else if (url.hostname.includes('eponesh.')) {
                 platformId = PLATFORM_ID.GAMEPUSH
             } else if (url.hostname.includes('discordsays.com')) {
