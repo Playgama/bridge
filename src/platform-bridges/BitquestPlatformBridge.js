@@ -52,31 +52,28 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             const SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
 
             addJavaScript(SDK_URL).then(() => {
-                waitFor('bq').then(async () => {
+                waitFor('bq').then(() => {
                     this._platformSdk = window.bq
-                    try {
-                        await this._platformSdk.initialize()
-                    } catch (e) {
-                        this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
-                        return
-                    }
 
-                    this._platformSdk.platform.sendMessage('game_ready')
+                    this._platformSdk.initialize()
+                        .then(() => {
+                            this._platformSdk.platform.sendMessage('game_ready')
 
-                    const player = this._platformSdk?.player
-                    if (player) {
-                        const { id = null, name = '' } = player
-                        this._playerId = id
-                        this._playerName = name
-                        this._isPlayerAuthorized = true
-                    }
+                            const { player } = this._platformSdk
+                            const { id = null, name = '' } = player
+                            this._playerId = id
+                            this._playerName = name
+                            this._isPlayerAuthorized = true
 
-                    this._isInitialized = true
-                    this.setupAdvertisementHandlers()
+                            this._isInitialized = true
+                            this.setupAdvertisementHandlers()
+                            this.showInterstitial()
 
-                    this.showInterstitial()
-
-                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        })
+                        .catch((e) => {
+                            this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
+                        })
                 })
             })
         }
@@ -253,9 +250,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            const bq = this._platformSdk
-
-            bq.payment.purchase(id)
+            this._platformSdk.payment.purchase(id)
                 .then((purchase) => {
                     const mergedPurchase = {
                         id,
