@@ -33,7 +33,11 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     get isPaymentsSupported() {
-        return false
+        return true
+    }
+
+    get isPlayerAuthorizationSupported() {
+        return true
     }
 
     initialize() {
@@ -48,30 +52,28 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             const SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
 
             addJavaScript(SDK_URL).then(() => {
-                waitFor('bq').then(async () => {
+                waitFor('bq').then(() => {
                     this._platformSdk = window.bq
-                    try {
-                        await this._platformSdk.initialize()
-                    } catch (e) {
-                        this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
-                        return
-                    }
 
-                    this._platformSdk.platform.sendMessage('game_ready')
+                    this._platformSdk.initialize()
+                        .then(() => {
+                            this._platformSdk.platform.sendMessage('game_ready')
 
-                    const player = this._platformSdk?.player
-                    if (player) {
-                        const { id = null, name = '' } = player
-                        this._playerId = id
-                        this._playerName = name
-                    }
+                            const { player } = this._platformSdk
+                            const { id = null, name = '' } = player
+                            this._playerId = id
+                            this._playerName = name
+                            this._isPlayerAuthorized = true
 
-                    this._isInitialized = true
-                    this.setupAdvertisementHandlers()
+                            this._isInitialized = true
+                            this.setupAdvertisementHandlers()
+                            this.showInterstitial()
 
-                    this.showInterstitial()
-
-                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        })
+                        .catch((e) => {
+                            this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
+                        })
                 })
             })
         }
@@ -178,55 +180,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         await super.deleteDataFromStorage(key, storageType)
     }
 
-    setupAdvertisementHandlers() {
-        const rewardedMap = {
-            loading: REWARDED_STATE.LOADING,
-            opened: REWARDED_STATE.OPENED,
-            closed: REWARDED_STATE.CLOSED,
-            failed: REWARDED_STATE.FAILED,
-            rewarded: REWARDED_STATE.REWARDED,
-        }
-
-        const interstitialMap = {
-            loading: INTERSTITIAL_STATE.LOADING,
-            opened: INTERSTITIAL_STATE.OPENED,
-            closed: INTERSTITIAL_STATE.CLOSED,
-            failed: INTERSTITIAL_STATE.FAILED,
-        }
-
-        const bannerMap = {
-            loading: BANNER_STATE.LOADING,
-            shown: BANNER_STATE.SHOWN,
-            hidden: BANNER_STATE.HIDDEN,
-            failed: BANNER_STATE.FAILED,
-        }
-
-        this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
-            const mappedState = rewardedMap[state]
-            if (!mappedState) return
-
-            this._setRewardedState?.(mappedState)
-
-            if (mappedState === REWARDED_STATE.REWARDED) {
-                this._setRewardedState?.(REWARDED_STATE.CLOSED)
-            }
-        })
-
-        this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
-            const mappedState = interstitialMap[state]
-            if (mappedState) {
-                this._setInterstitialState?.(mappedState)
-            }
-        })
-
-        this._platformSdk.advertisement.on('BANNER_STATE_CHANGED', (state) => {
-            const mappedState = bannerMap[state]
-            if (mappedState) {
-                this._setBannerState?.(mappedState)
-            }
-        })
-    }
-
     showRewarded() {
         this._platformSdk.advertisement.showRewarded()
     }
@@ -248,9 +201,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            const bq = this._platformSdk
-
-            bq.payment.purchase(id)
+            this._platformSdk.payment.purchase(id)
                 .then((purchase) => {
                     const mergedPurchase = {
                         id,
@@ -272,40 +223,56 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     paymentsGetCatalog() {
         const products = this._paymentsGetProductsPlatformData()
-        if (!products) {
-            return Promise.reject()
+
+        if (!products || !Array.isArray(products) || products.length === 0) {
+            console.warn('[paymentsGetCatalog] No platform products available')
+            return Promise.reject(new Error('No platform products available'))
+        }
+
+        if (!this._isInitialized || !this._platformSdk?.payment) {
+            console.warn('[paymentsGetCatalog] SDK not initialized or missing payment object')
+            return Promise.reject(new Error('SDK not initialized or payment not available'))
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
             this._platformSdk.payment.getCatalog()
                 .then((catalog) => {
+                    console.info('[paymentsGetCatalog] Catalog received:', catalog)
+
+                    if (!Array.isArray(catalog)) {
+                        throw new Error('Catalog response is not an array')
+                    }
+
                     const mergedProducts = products
                         .map((product) => {
                             const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
 
                             if (!catalogProduct) {
+                                console.warn(`[paymentsGetCatalog] No match found for product ID: ${product.id}`)
                                 return null
                             }
 
-                            const finalProduct = {
+                            return {
                                 name: catalogProduct.name,
                                 description: catalogProduct.description,
-                                purchaseId: product.id,
-                                price: catalogProduct.price,
+                                id: catalogProduct.purchaseId,
+                                price: catalogProduct.priceValue,
                                 priceCurrencyCode: catalogProduct.currencyCode,
-                                priceValue: catalogProduct.priceValue,
+                                priceValue: catalogProduct.price,
                             }
-
-                            return finalProduct
                         })
                         .filter(Boolean)
+
+                    console.info('[paymentsGetCatalog] Merged products:', mergedProducts)
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
+                    console.error('[paymentsGetCatalog] Failed to get catalog:', error)
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
                 })
         }
@@ -341,16 +308,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            const bq = this._platformSdk
-
-            bq.payment.getPurchases()
+            this._platformSdk.payment.getPurchases()
                 .then((response) => {
                     const purchases = response?.purchases
-                    if (!Array.isArray(purchases)) {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, new Error('Invalid purchases format'))
-                        return
-                    }
-
                     const products = this._paymentsGetProductsPlatformData()
 
                     this._paymentsPurchases = purchases.map((purchase) => {
@@ -377,6 +337,63 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
         return promiseDecorator.promise
     }
+
+    getServerTime() {
+        return new Promise((resolve) => {
+            const ts = this._platformSdk.platform.getServerTime()
+            resolve(ts)
+        })
+    }
+
+    #setupAdvertisementHandlers() {
+        const rewardedMap = {
+            loading: REWARDED_STATE.LOADING,
+            opened: REWARDED_STATE.OPENED,
+            closed: REWARDED_STATE.CLOSED,
+            failed: REWARDED_STATE.FAILED,
+            rewarded: REWARDED_STATE.REWARDED,
+        }
+
+        const interstitialMap = {
+            loading: INTERSTITIAL_STATE.LOADING,
+            opened: INTERSTITIAL_STATE.OPENED,
+            closed: INTERSTITIAL_STATE.CLOSED,
+            failed: INTERSTITIAL_STATE.FAILED,
+        }
+
+        const bannerMap = {
+            loading: BANNER_STATE.LOADING,
+            shown: BANNER_STATE.SHOWN,
+            hidden: BANNER_STATE.HIDDEN,
+            failed: BANNER_STATE.FAILED,
+        }
+
+        this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
+            const mappedState = rewardedMap[state]
+            if (!mappedState) return
+
+            this._setRewardedState(mappedState)
+
+            if (mappedState === REWARDED_STATE.REWARDED) {
+                this._setRewardedState(REWARDED_STATE.CLOSED)
+            }
+        })
+
+        this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
+            const mappedState = interstitialMap[state]
+            if (mappedState) {
+                this._setInterstitialState(mappedState)
+            }
+        })
+
+        this._platformSdk.advertisement.on('BANNER_STATE_CHANGED', (state) => {
+            const mappedState = bannerMap[state]
+            if (mappedState) {
+                this._setBannerState(mappedState)
+            }
+        })
+    }
+
 }
 
 export default BitquestPlatformBridge
