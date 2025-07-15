@@ -277,40 +277,56 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     paymentsGetCatalog() {
         const products = this._paymentsGetProductsPlatformData()
-        if (!products) {
-            return Promise.reject()
+
+        if (!products || !Array.isArray(products) || products.length === 0) {
+            console.warn('[paymentsGetCatalog] No platform products available')
+            return Promise.reject(new Error('No platform products available'))
+        }
+
+        if (!this._isInitialized || !this._platformSdk?.payment) {
+            console.warn('[paymentsGetCatalog] SDK not initialized or missing payment object')
+            return Promise.reject(new Error('SDK not initialized or payment not available'))
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
             this._platformSdk.payment.getCatalog()
                 .then((catalog) => {
+                    console.info('[paymentsGetCatalog] Catalog received:', catalog)
+
+                    if (!Array.isArray(catalog)) {
+                        throw new Error('Catalog response is not an array')
+                    }
+
                     const mergedProducts = products
                         .map((product) => {
                             const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
 
                             if (!catalogProduct) {
+                                console.warn(`[paymentsGetCatalog] No match found for product ID: ${product.id}`)
                                 return null
                             }
 
-                            const finalProduct = {
+                            return {
                                 name: catalogProduct.name,
                                 description: catalogProduct.description,
-                                purchaseId: product.id,
-                                price: catalogProduct.price,
+                                id: catalogProduct.purchaseId,
+                                price: catalogProduct.priceValue,
                                 priceCurrencyCode: catalogProduct.currencyCode,
-                                priceValue: catalogProduct.priceValue,
+                                priceValue: catalogProduct.price,
                             }
-
-                            return finalProduct
                         })
                         .filter(Boolean)
+
+                    console.info('[paymentsGetCatalog] Merged products:', mergedProducts)
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
+                    console.error('[paymentsGetCatalog] Failed to get catalog:', error)
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
                 })
         }
