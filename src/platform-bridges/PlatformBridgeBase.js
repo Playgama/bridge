@@ -625,7 +625,7 @@ class PlatformBridgeBase {
 
         return this._options.payments
             .map((product) => ({
-                id: product.id,
+                id: product.commonId,
                 ...product[this.platformId],
             }))
     }

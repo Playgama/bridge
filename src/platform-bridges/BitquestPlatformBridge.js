@@ -249,6 +249,8 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
                     const mergedProducts = products
                         .map((product) => {
+                            console.info('[paymentsGetCatalog] Product:', product)
+                            console.info('[paymentsGetCatalog] Catalog:', catalog)
                             const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
 
                             if (!catalogProduct) {
@@ -259,7 +261,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             return {
                                 name: catalogProduct.name,
                                 description: catalogProduct.description,
-                                id: catalogProduct.purchaseId,
+                                commonId: catalogProduct.purchaseId,
                                 price: catalogProduct.priceValue,
                                 priceCurrencyCode: catalogProduct.currencyCode,
                                 priceValue: catalogProduct.price,
@@ -320,7 +322,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                         }
 
                         const mergedPurchase = {
-                            id: product.id,
+                            commonId: product.id,
                             ...purchase,
                         }
 
