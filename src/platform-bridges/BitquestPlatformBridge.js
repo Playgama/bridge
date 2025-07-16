@@ -225,12 +225,10 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         const products = this._paymentsGetProductsPlatformData()
 
         if (!products || !Array.isArray(products) || products.length === 0) {
-            console.warn('[paymentsGetCatalog] No platform products available')
             return Promise.reject(new Error('No platform products available'))
         }
 
         if (!this._isInitialized || !this._platformSdk?.payment) {
-            console.warn('[paymentsGetCatalog] SDK not initialized or missing payment object')
             return Promise.reject(new Error('SDK not initialized or payment not available'))
         }
 
@@ -241,8 +239,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
             this._platformSdk.payment.getCatalog()
                 .then((catalog) => {
-                    console.info('[paymentsGetCatalog] Catalog received:', catalog)
-
                     if (!Array.isArray(catalog)) {
                         throw new Error('Catalog response is not an array')
                     }
@@ -252,7 +248,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
 
                             if (!catalogProduct) {
-                                console.warn(`[paymentsGetCatalog] No match found for product ID: ${product.id}`)
                                 return null
                             }
 
@@ -267,12 +262,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                         })
                         .filter(Boolean)
 
-                    console.info('[paymentsGetCatalog] Merged products:', mergedProducts)
-
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
                 .catch((error) => {
-                    console.error('[paymentsGetCatalog] Failed to get catalog:', error)
                     this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
                 })
         }
@@ -393,7 +385,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             }
         })
     }
-
 }
 
 export default BitquestPlatformBridge

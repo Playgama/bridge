@@ -284,10 +284,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.POKI
             } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
-            } else if (url.hash.includes('customUrl_')) {
-                platformId = PLATFORM_ID.BITQUEST // bq tg
-            } else if (document.referrer.includes('bitquest')) {
-                platformId = PLATFORM_ID.BITQUEST // bq web
+            } else if (url.hash.includes('customUrl_') || document.referrer.includes('bitquest')) {
+                platformId = PLATFORM_ID.BITQUEST
             } else if (url.hostname.includes('eponesh.')) {
                 platformId = PLATFORM_ID.GAMEPUSH
             } else if (url.hostname.includes('discordsays.com')) {
