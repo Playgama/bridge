@@ -187,27 +187,35 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
                     self._isInitialized = true
                     self._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
-                }
+                } else if (action === ACTION_NAME.AUTHORIZE_PLAYER) {
+                    if (!data.success) {
+                        self._rejectPromiseDecorator(
+                            ACTION_NAME.AUTHORIZE_PLAYER,
+                            new Error(data),
+                        )
+                        return
+                    }
 
-                if (action === ACTION_NAME.SET_INTERSTITIAL_STATE) {
+                    self._playerId = data.playerId
+                    self._playerName = data.playerName
+                    self._isPlayerAuthorized = true
+
+                    self._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                } else if (action === ACTION_NAME.SET_INTERSTITIAL_STATE) {
                     if (Object.values(INTERSTITIAL_STATE).includes(data.state)) {
                         self._setInterstitialState(
                             data.state,
                             data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
                         )
                     }
-                }
-
-                if (action === ACTION_NAME.SET_REWARDED_STATE) {
+                } else if (action === ACTION_NAME.SET_REWARDED_STATE) {
                     if (Object.values(REWARDED_STATE).includes(data.state)) {
                         self._setRewardedState(
                             data.state,
                             data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
                         )
                     }
-                }
-
-                if (action === ACTION_NAME.GET_CATALOG) {
+                } else if (action === ACTION_NAME.GET_CATALOG) {
                     if (!data.success) {
                         self._rejectPromiseDecorator(
                             ACTION_NAME.GET_CATALOG,
@@ -235,9 +243,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                     })
 
                     self._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
-                }
-
-                if (action === ACTION_NAME.PURCHASE) {
+                } else if (action === ACTION_NAME.PURCHASE) {
                     if (!data.success) {
                         self._rejectPromiseDecorator(
                             ACTION_NAME.PURCHASE,
@@ -256,9 +262,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
                     self._paymentsPurchases.push(mergedPurchase)
                     self._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
-                }
-
-                if (action === ACTION_NAME.CONSUME_PURCHASE) {
+                } else if (action === ACTION_NAME.CONSUME_PURCHASE) {
                     if (!data.success) {
                         self._rejectPromiseDecorator(
                             ACTION_NAME.CONSUME_PURCHASE,
@@ -276,9 +280,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                     }
 
                     self._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data)
-                }
-
-                if (action === ACTION_NAME.GET_PURCHASES) {
+                } else if (action === ACTION_NAME.GET_PURCHASES) {
                     if (!data.success) {
                         self._rejectPromiseDecorator(
                             ACTION_NAME.GET_PURCHASES,
