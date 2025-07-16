@@ -158,6 +158,10 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     #postMessage(action, data) {
+        if (!window.system) {
+            return
+        }
+
         window.system.postMessage(JSON.stringify({ action, data }))
     }
 
@@ -215,7 +219,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                     const products = self._paymentsGetProductsPlatformData()
 
                     const mergedProducts = products.map((product) => {
-                        const huaweiProduct = data.data.productInfoList.find((p) => p.productId === product.id)
+                        const huaweiProduct = data.data.find((p) => p.productId === product.id)
 
                         return {
                             id: product.id,
@@ -242,7 +246,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                         return
                     }
 
-                    const purchase = self._paymentsGetPurchasePlatformData(data.data)
+                    const purchase = data.data
 
                     const mergedPurchase = {
                         id: data.id,
@@ -285,7 +289,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
                     const products = self._paymentsGetProductsPlatformData()
 
-                    self._paymentsPurchases = data.data.inAppPurchaseDataList.map((unparsedPurchase) => {
+                    self._paymentsPurchases = data.data.map((unparsedPurchase) => {
                         const purchase = JSON.parse(unparsedPurchase)
                         const product = products.find((p) => p.id === purchase.productId)
                         const mergedPurchase = {
