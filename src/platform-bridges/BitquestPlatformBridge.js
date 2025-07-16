@@ -248,13 +248,16 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                     }
 
                     const mergedProducts = products
-                        .map((product) => {
-                            console.info('[paymentsGetCatalog] Product:', product)
-                            console.info('[paymentsGetCatalog] Catalog:', catalog)
+                        .map((product, index) => {
+                            if (!product || typeof product.id === 'undefined') {
+                                console.warn(`[paymentsGetCatalog] Skipping invalid product at index ${index}:`, product)
+                                return null
+                            }
+
                             const catalogProduct = catalog.find((p) => p.purchaseId === product.id)
 
                             if (!catalogProduct) {
-                                console.warn(`[paymentsGetCatalog] No match found for product ID: ${product.id}`)
+                                console.warn(`[paymentsGetCatalog] No match found in catalog for product ID: ${product.id}`)
                                 return null
                             }
 
