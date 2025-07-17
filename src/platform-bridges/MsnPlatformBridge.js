@@ -275,7 +275,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
-            this._platformSdk.iap.getAllAddOnsAsync()
+            this._platformSdk.iap.getAllAddOnsAsync({ productId: this._options.gameId })
                 .then((msnProducts) => {
                     if (msnProducts.code === 'IAP_GET_ALL_ADD_ONS_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, msnProducts.description)
@@ -313,7 +313,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this._platformSdk.iap.getAllPurchasesAsync()
+            this._platformSdk.iap.getAllPurchasesAsync({ productId: this._options.gameId })
                 .then((response) => {
                     if (response.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, response.description)
