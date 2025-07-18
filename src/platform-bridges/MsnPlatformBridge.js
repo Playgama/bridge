@@ -36,6 +36,15 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.MSN
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return true

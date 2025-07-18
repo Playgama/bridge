@@ -34,6 +34,15 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.PLAYGAMA
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // social
     get isExternalLinksAllowed() {
         return false

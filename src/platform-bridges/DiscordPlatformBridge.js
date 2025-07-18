@@ -32,15 +32,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         return this._platformLanguage
     }
 
-    // advertisement
-    get isInterstitialSupported() {
-        return false
-    }
-
-    get isRewardedSupported() {
-        return false
-    }
-
     // player
     get isPlayerAuthorizationSupported() {
         return true

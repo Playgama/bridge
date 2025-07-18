@@ -86,6 +86,8 @@ const SUPPORTED_FEATURES = {
     STORAGE_INTERNAL: 'isStorageInternalSupported',
     STORAGE_LOCAL: 'isStorageLocalSupported',
     BANNER: 'isBannerSupported',
+    INTERSTITIAL: 'isInterstitialSupported',
+    REWARDED: 'isRewardedSupported',
     CLIPBOARD: 'isClipboardSupported',
     ACHIEVEMENTS: 'isAchievementsSupported',
     ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
@@ -124,6 +126,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     get platformPayload() {
         return this._platformPayload
+    }
+
+    // advertisement
+    get isInterstitialSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INTERSTITIAL)
+    }
+
+    get isRewardedSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REWARDED)
     }
 
     // player

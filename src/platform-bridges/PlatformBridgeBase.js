@@ -108,7 +108,7 @@ class PlatformBridgeBase {
     }
 
     get isInterstitialSupported() {
-        return true
+        return false
     }
 
     get isMinimumDelayBetweenInterstitialEnabled() {
@@ -116,7 +116,7 @@ class PlatformBridgeBase {
     }
 
     get isRewardedSupported() {
-        return true
+        return false
     }
 
     // social
