@@ -493,6 +493,8 @@
                         achievementsSection.style.display = 'block'
                         remoteConfigSection.style.display = 'block'
                         clipboardSection.style.display = 'block'
+
+                        bridge.platform.sendMessage(bridge.PLATFORM_MESSAGE.GAME_READY)
                     })
 
                 platformServerTimeButton.addEventListener('click', () => {
