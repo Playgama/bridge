@@ -67,7 +67,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
                             this._isInitialized = true
                             this.#setupAdvertisementHandlers()
-                            this.showInterstitial()
 
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -144,6 +143,11 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
                 if (key.length !== value.length) {
                     throw new Error('Key and value arrays must have the same length')
+                }
+
+                if (Array.isArray(key) && Array.isArray(value)) {
+                    this._platformSdk.storage.set(key, value, 'platform_internal')
+                    return
                 }
 
                 /* eslint-disable no-await-in-loop */
@@ -335,6 +339,18 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             const ts = this._platformSdk.platform.getServerTime()
             resolve(ts)
         })
+    }
+
+    get isInterstitialSupported() {
+        return true;
+    }
+
+    get isRewardedSupported() {
+        return true;
+    }
+
+    get isBannerSupported() {
+        return true;
     }
 
     #setupAdvertisementHandlers() {
