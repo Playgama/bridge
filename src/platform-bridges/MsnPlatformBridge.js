@@ -215,7 +215,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.iap.purchaseAsync({ productId: id })
+            this._platformSdk.iap.purchaseAsync({ productId: product.productId })
                 .then((purchase) => {
                     if (purchase.code === 'IAP_PURCHASE_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.description)
@@ -227,7 +227,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                         ...purchase.receipt,
                         receiptSignature: purchase.receiptSignature,
                     }
-                    delete mergedPurchase.productId
 
                     this._paymentsPurchases.push(mergedPurchase)
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
@@ -250,7 +249,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            this._platformSdk.iap.consumeAsync({ productId: this._paymentsPurchases[purchaseIndex].id })
+            this._platformSdk.iap.consumeAsync({ productId: this._paymentsPurchases[purchaseIndex].productId })
                 .then((response) => {
                     if (response.code === 'IAP_CONSUME_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, response.description)
@@ -292,7 +291,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     }
 
                     const mergedProducts = products.map((product) => {
-                        const msnProduct = msnProducts.find((p) => p.productId === product.id)
+                        const msnProduct = msnProducts.find((p) => p.productId === product.productId)
 
                         return {
                             id: product.id,
@@ -331,14 +330,13 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
                     const products = this._paymentsGetProductsPlatformData()
                     this._paymentsPurchases = response.receipts.map((purchase) => {
-                        const product = products.find((p) => p.id === purchase.productId)
+                        const product = products.find((p) => p.productId === purchase.productId)
                         const mergedPurchase = {
                             id: product.id,
                             ...purchase,
                             receiptSignature: response.receiptSignature,
                         }
 
-                        delete mergedPurchase.productId
                         return mergedPurchase
                     })
 
