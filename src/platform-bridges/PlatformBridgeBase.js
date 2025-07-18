@@ -107,7 +107,15 @@ class PlatformBridgeBase {
         return this._isBannerSupported
     }
 
+    get isInterstitialSupported() {
+        return true
+    }
+
     get isMinimumDelayBetweenInterstitialEnabled() {
+        return true
+    }
+
+    get isRewardedSupported() {
         return true
     }
 
