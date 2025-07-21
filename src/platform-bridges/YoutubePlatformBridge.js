@@ -20,7 +20,11 @@ import { addJavaScript, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
-    STORAGE_TYPE, PLATFORM_MESSAGE, INTERSTITIAL_STATE, REWARDED_STATE,
+    STORAGE_TYPE,
+    PLATFORM_MESSAGE,
+    INTERSTITIAL_STATE,
+    REWARDED_STATE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = 'https://www.youtube.com/game_api/v1'
@@ -51,6 +55,11 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
     // social
     get isExternalLinksAllowed() {
         return false
+    }
+
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
     }
 
     #platformLanguage
@@ -259,6 +268,32 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._setRewardedState(REWARDED_STATE.FAILED)
             })
+    }
+
+    // leaderboards
+    leaderboardsSetScore(id, score, isMain) {
+        if (!isMain) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+
+            const value = typeof score === 'string'
+                ? parseInt(score, 10)
+                : score
+
+            this._platformSdk.engagement.sendScore({ value })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 }
 
