@@ -139,6 +139,8 @@ export const ACTION_NAME = {
     CONSUME_PURCHASE: 'consume_purchase',
     GET_REMOTE_CONFIG: 'get_remote_config',
     GET_STORAGE_DATA: 'get_storage_data',
+    SET_STORAGE_DATA: 'set_storage_data',
+    DELETE_STORAGE_DATA: 'delete_storage_data',
     SHOW_LEADERBOARD_NATIVE_POPUP: 'show_leaderboard_native_popup',
     CLIPBOARD_WRITE: 'clipboard_write',
     ADBLOCK_DETECT: 'adblock_detect',

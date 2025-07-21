@@ -22,6 +22,7 @@ import {
     ERROR,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    STORAGE_TYPE,
 } from '../constants'
 
 class HuaweiPlatformBridge extends PlatformBridgeBase {
@@ -35,8 +36,12 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // advertisement
-    get isAdvertisementSupported() {
+    // storage
+    isStorageSupported() {
+        return true
+    }
+
+    isStorageAvailable() {
         return true
     }
 
@@ -85,6 +90,52 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // storage
+    setDataToStorage(key, value, type) {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.setDataToStorage(key, value, type)
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    getDataFromStorage(key, type) {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.getDataFromStorage(key, type)
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, key)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    deleteDataFromStorage(key, type) {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.deleteDataFromStorage(key, type)
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, key)
+        }
+
+        return promiseDecorator.promise
+    }
+
     // advertisement
     showInterstitial(placementId) {
         this.#postMessage(ACTION_NAME.SHOW_INTERSTITIAL, placementId)
@@ -128,9 +179,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
     paymentsGetCatalog() {
         const products = this._paymentsGetProductsPlatformData()
-
-        // eslint-disable-next-line no-console
-        console.log({ products })
 
         if (!products) {
             return Promise.reject()
@@ -304,6 +352,36 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                     })
 
                     self._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, self._paymentsPurchases)
+                } else if (action === ACTION_NAME.GET_STORAGE_DATA) {
+                    if (!data.success) {
+                        self._rejectPromiseDecorator(
+                            ACTION_NAME.GET_STORAGE_DATA,
+                            new Error(data),
+                        )
+                        return
+                    }
+
+                    self._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, data.data)
+                } else if (action === ACTION_NAME.SET_STORAGE_DATA) {
+                    if (!data.success) {
+                        self._rejectPromiseDecorator(
+                            ACTION_NAME.SET_STORAGE_DATA,
+                            new Error(data),
+                        )
+                        return
+                    }
+
+                    self._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA, data.data)
+                } else if (action === ACTION_NAME.DELETE_STORAGE_DATA) {
+                    if (!data.success) {
+                        self._rejectPromiseDecorator(
+                            ACTION_NAME.DELETE_STORAGE_DATA,
+                            new Error(data),
+                        )
+                        return
+                    }
+
+                    self._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, data.data)
                 }
             } catch (error) {
                 console.error('Error parsing Huawei message:', error)
