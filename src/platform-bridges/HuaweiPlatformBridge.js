@@ -240,168 +240,218 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                 const { action, data } = JSON.parse(event)
 
                 if (action === ACTION_NAME.INITIALIZE) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.INITIALIZE,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    self._isInitialized = true
-                    self._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+                    self.#initialize(data)
                 } else if (action === ACTION_NAME.AUTHORIZE_PLAYER) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.AUTHORIZE_PLAYER,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    self._playerId = data.playerId
-                    self._playerName = data.playerName
-                    self._isPlayerAuthorized = true
-
-                    self._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    self.#authorizePlayer(data)
                 } else if (action === ACTION_NAME.SET_INTERSTITIAL_STATE) {
-                    if (Object.values(INTERSTITIAL_STATE).includes(data.state)) {
-                        self._setInterstitialState(
-                            data.state,
-                            data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
-                        )
-                    }
+                    self.#setInterstitialState(data)
                 } else if (action === ACTION_NAME.SET_REWARDED_STATE) {
-                    if (Object.values(REWARDED_STATE).includes(data.state)) {
-                        self._setRewardedState(
-                            data.state,
-                            data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
-                        )
-                    }
+                    self.#setRewardedState(data)
                 } else if (action === ACTION_NAME.GET_CATALOG) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.GET_CATALOG,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    const products = self._paymentsGetProductsPlatformData()
-
-                    const mergedProducts = products.map((product) => {
-                        const huaweiProduct = data.data.find((p) => p.productId === product.id)
-
-                        return {
-                            id: product.id,
-                            title: huaweiProduct.productName,
-                            description: huaweiProduct.productDesc,
-                            price: huaweiProduct.price,
-                            priceCurrencyCode: huaweiProduct.currency,
-                            priceValue: huaweiProduct.microsPrice * 0.000001,
-                            subSpecialPeriodCycles: huaweiProduct.subSpecialPeriodCycles,
-                            subProductLevel: huaweiProduct.subProductLevel,
-                            priceType: huaweiProduct.priceType,
-                        }
-                    })
-
-                    self._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+                    self.#getCatalog(data)
                 } else if (action === ACTION_NAME.PURCHASE) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.PURCHASE,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    const purchase = data.data
-
-                    const mergedPurchase = {
-                        id: data.id,
-                        ...purchase,
-                    }
-                    delete mergedPurchase.productId
-
-                    self._paymentsPurchases.push(mergedPurchase)
-                    self._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                    self.#purchase(data)
                 } else if (action === ACTION_NAME.CONSUME_PURCHASE) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.CONSUME_PURCHASE,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    const purchaseIndex = self._paymentsPurchases.findIndex(
-                        (p) => p.purchaseToken === data.purchaseToken,
-                    )
-
-                    if (purchaseIndex >= 0) {
-                        self._paymentsPurchases.splice(purchaseIndex, 1)
-                    }
-
-                    self._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data)
+                    self.#consumePurchase(data)
                 } else if (action === ACTION_NAME.GET_PURCHASES) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.GET_PURCHASES,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    const products = self._paymentsGetProductsPlatformData()
-
-                    self._paymentsPurchases = data.data.map((unparsedPurchase) => {
-                        const purchase = JSON.parse(unparsedPurchase)
-                        const product = products.find((p) => p.id === purchase.productId)
-                        const mergedPurchase = {
-                            id: product.id,
-                            ...purchase,
-                        }
-
-                        delete mergedPurchase.productId
-                        return mergedPurchase
-                    })
-
-                    self._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, self._paymentsPurchases)
+                    self.#getPurchases(data)
                 } else if (action === ACTION_NAME.GET_STORAGE_DATA) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.GET_STORAGE_DATA,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    self._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, data.data)
+                    self.#getStorageData(data)
                 } else if (action === ACTION_NAME.SET_STORAGE_DATA) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.SET_STORAGE_DATA,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    self._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA, data.data)
+                    self.#setStorageData(data)
                 } else if (action === ACTION_NAME.DELETE_STORAGE_DATA) {
-                    if (!data.success) {
-                        self._rejectPromiseDecorator(
-                            ACTION_NAME.DELETE_STORAGE_DATA,
-                            new Error(data),
-                        )
-                        return
-                    }
-
-                    self._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, data.data)
+                    self.#deleteStorageData(data)
                 }
             } catch (error) {
                 console.error('Error parsing Huawei message:', error)
             }
         }
+    }
+
+    #initialize(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.INITIALIZE,
+                new Error(data),
+            )
+            return
+        }
+
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+    }
+
+    #authorizePlayer(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.AUTHORIZE_PLAYER,
+                new Error(data),
+            )
+            return
+        }
+
+        this._playerId = data.playerId
+        this._playerName = data.playerName
+        this._isPlayerAuthorized = true
+
+        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+    }
+
+    // advertisement
+
+    #setInterstitialState(data) {
+        if (Object.values(INTERSTITIAL_STATE).includes(data.state)) {
+            this._setInterstitialState(
+                data.state,
+                data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
+            )
+        }
+    }
+
+    #setRewardedState(data) {
+        if (Object.values(REWARDED_STATE).includes(data.state)) {
+            this._setRewardedState(
+                data.state,
+                data.state === REWARDED_STATE.FAILED ? new Error(data) : undefined,
+            )
+        }
+    }
+
+    // payments
+
+    #getCatalog(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_CATALOG,
+                new Error(data),
+            )
+            return
+        }
+
+        const products = this._paymentsGetProductsPlatformData()
+
+        const mergedProducts = products.map((product) => {
+            const huaweiProduct = data.data.find((p) => p.productId === product.id)
+
+            return {
+                id: product.id,
+                title: huaweiProduct.productName,
+                description: huaweiProduct.productDesc,
+                price: huaweiProduct.price,
+                priceCurrencyCode: huaweiProduct.currency,
+                priceValue: huaweiProduct.microsPrice * 0.000001,
+                subSpecialPeriodCycles: huaweiProduct.subSpecialPeriodCycles,
+                subProductLevel: huaweiProduct.subProductLevel,
+                priceType: huaweiProduct.priceType,
+            }
+        })
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+    }
+
+    #purchase(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.PURCHASE,
+                new Error(data),
+            )
+            return
+        }
+
+        const purchase = data.data
+
+        const mergedPurchase = {
+            id: data.id,
+            ...purchase,
+        }
+        delete mergedPurchase.productId
+
+        this._paymentsPurchases.push(mergedPurchase)
+        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+    }
+
+    #consumePurchase(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.CONSUME_PURCHASE,
+                new Error(data),
+            )
+            return
+        }
+
+        const purchaseIndex = this._paymentsPurchases.findIndex(
+            (p) => p.purchaseToken === data.purchaseToken,
+        )
+
+        if (purchaseIndex >= 0) {
+            this._paymentsPurchases.splice(purchaseIndex, 1)
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data)
+    }
+
+    #getPurchases(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_PURCHASES,
+                new Error(data),
+            )
+            return
+        }
+
+        const products = this._paymentsGetProductsPlatformData()
+
+        this._paymentsPurchases = data.data.map((unparsedPurchase) => {
+            const purchase = JSON.parse(unparsedPurchase)
+            const product = products.find((p) => p.id === purchase.productId)
+            const mergedPurchase = {
+                id: product.id,
+                ...purchase,
+            }
+
+            delete mergedPurchase.productId
+            return mergedPurchase
+        })
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+    }
+
+    // storage
+
+    #getStorageData(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_STORAGE_DATA,
+                new Error(data),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, data.data)
+    }
+
+    #setStorageData(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.SET_STORAGE_DATA,
+                new Error(data),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA, data.data)
+    }
+
+    #deleteStorageData(data) {
+        if (!data.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.DELETE_STORAGE_DATA,
+                new Error(data),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, data.data)
     }
 }
 
