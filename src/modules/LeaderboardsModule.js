@@ -24,7 +24,8 @@ class LeaderboardsModule extends ModuleBase {
 
     setScore(id, score) {
         const modifiedId = this.#getPlatformLeaderboardId(id)
-        return this._platformBridge.leaderboardsSetScore(modifiedId, score)
+        const isMain = this.#getIsMain(id)
+        return this._platformBridge.leaderboardsSetScore(modifiedId, score, isMain)
     }
 
     getEntries(id) {
@@ -52,6 +53,20 @@ class LeaderboardsModule extends ModuleBase {
         }
 
         return id
+    }
+
+    #getIsMain(id) {
+        const leaderboards = this._platformBridge.options?.leaderboards
+        if (!leaderboards) {
+            return false
+        }
+
+        const leaderboard = leaderboards.find((p) => p.id === id)
+        if (!leaderboard) {
+            return false
+        }
+
+        return leaderboard.isMain === true
     }
 }
 

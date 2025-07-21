@@ -45,6 +45,15 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         return super.platformLanguage
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return this.#isUserAccountAvailable

@@ -107,8 +107,16 @@ class PlatformBridgeBase {
         return this._isBannerSupported
     }
 
+    get isInterstitialSupported() {
+        return false
+    }
+
     get isMinimumDelayBetweenInterstitialEnabled() {
         return true
+    }
+
+    get isRewardedSupported() {
+        return false
     }
 
     // social

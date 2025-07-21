@@ -61,6 +61,15 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // device
     get deviceType() {
         switch (this._platformSdk && this._platformSdk.deviceInfo.type) {

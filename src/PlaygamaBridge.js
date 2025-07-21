@@ -61,6 +61,7 @@ import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
 import HuaweiPlatformBridge from './platform-bridges/HuaweiPlatformBridge'
 import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
 import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
+import YoutubePlatformBridge from './platform-bridges/YoutubePlatformBridge'
 import { deepMerge } from './common/utils'
 
 class PlaygamaBridge {
@@ -368,6 +369,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.DISCORD: {
                 this.#platformBridge = new DiscordPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.YOUTUBE: {
+                this.#platformBridge = new YoutubePlatformBridge(modifiedOptions)
                 break
             }
             default: {

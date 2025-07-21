@@ -35,6 +35,7 @@ export const PLATFORM_ID = {
     HUAWEI: 'huawei',
     GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
+    YOUTUBE: 'youtube',
 }
 
 export const MODULE_NAME = {
