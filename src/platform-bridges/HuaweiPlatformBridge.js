@@ -54,6 +54,8 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
