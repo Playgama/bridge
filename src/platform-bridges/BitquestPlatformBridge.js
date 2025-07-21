@@ -68,6 +68,8 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._isInitialized = true
                             this.#setupAdvertisementHandlers()
 
+                            this.showPreRoll()
+
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                         .catch((e) => {
@@ -190,6 +192,10 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     showInterstitial() {
         this._platformSdk.advertisement.showInterstitial()
+    }
+
+    showPreRoll() {
+        this._platformSdk.advertisement.showPreRoll()
     }
 
     showBanner() {
@@ -342,15 +348,15 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     get isInterstitialSupported() {
-        return true;
+        return true
     }
 
     get isRewardedSupported() {
-        return true;
+        return true
     }
 
     get isBannerSupported() {
-        return true;
+        return true
     }
 
     #setupAdvertisementHandlers() {
