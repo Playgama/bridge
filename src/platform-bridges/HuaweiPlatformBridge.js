@@ -36,12 +36,12 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // storage
-    isStorageSupported() {
+    // advertisement
+    get isInterstitialSupported() {
         return true
     }
 
-    isStorageAvailable() {
+    get isRewardedSupported() {
         return true
     }
 
@@ -50,7 +50,11 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    async initialize() {
+    get isExternalLinksAllowed() {
+        return true
+    }
+
+    initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
         }
@@ -91,6 +95,15 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
+    // storage
+    isStorageSupported() {
+        return true
+    }
+
+    isStorageAvailable() {
+        return true
+    }
+
     setDataToStorage(key, value, type) {
         if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
             return super.setDataToStorage(key, value, type)
