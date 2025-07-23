@@ -57,6 +57,8 @@ export const EVENT_NAME = {
     REWARDED_STATE_CHANGED: 'rewarded_state_changed',
     BANNER_STATE_CHANGED: 'banner_state_changed',
     VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
+    AUDIO_STATE_CHANGED: 'audio_state_changed',
+    PAUSE_STATE_CHANGED: 'pause_state_changed',
 }
 
 export const VISIBILITY_STATE = {

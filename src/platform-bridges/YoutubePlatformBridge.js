@@ -43,6 +43,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return super.platformLanguage
     }
 
+    get isPlatformAudioEnabled() {
+        return this._platformSdk.system.isAudioEnabled()
+    }
+
     // advertisement
     get isInterstitialSupported() {
         return true
@@ -89,6 +93,18 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                                 this._platformStorageCachedData = JSON.parse(data)
                             }
                         })
+
+                    this._platformSdk.system.onAudioEnabledChange((isEnabled) => {
+                        this._setAudioState(isEnabled)
+                    })
+
+                    this._platformSdk.system.onPause(() => {
+                        this._setPauseState(true)
+                    })
+
+                    this._platformSdk.system.onResume(() => {
+                        this._setPauseState(false)
+                    })
 
                     Promise.all([getLanguagePromise, getDataPromise])
                         .finally(() => {
