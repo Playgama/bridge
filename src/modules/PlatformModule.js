@@ -52,6 +52,10 @@ class PlatformModule extends ModuleBase {
         return this._platformBridge.isPlatformAudioEnabled
     }
 
+    get isPaused() {
+        return this._platformBridge.isPlatformPaused
+    }
+
     #isGameReadyMessageSent = false
 
     constructor(platformBridge) {

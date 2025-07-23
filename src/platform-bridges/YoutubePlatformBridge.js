@@ -44,7 +44,11 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
     }
 
     get isPlatformAudioEnabled() {
-        return this._platformSdk.system.isAudioEnabled()
+        return this.#isAudioEnabled
+    }
+
+    get isPlatformPaused() {
+        return this.#isPaused
     }
 
     // advertisement
@@ -68,6 +72,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
     #platformLanguage
 
+    #isAudioEnabled = true
+
+    #isPaused = false
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -80,6 +88,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 waitFor('ytgame').then(() => {
                     this._platformSdk = window.ytgame
                     this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                    this.#isAudioEnabled = this._platformSdk.system.isAudioEnabled()
 
                     const getLanguagePromise = this._platformSdk.system.getLanguage()
                         .then((language) => {
@@ -95,15 +104,18 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                         })
 
                     this._platformSdk.system.onAudioEnabledChange((isEnabled) => {
+                        this.#isAudioEnabled = isEnabled
                         this._setAudioState(isEnabled)
                     })
 
                     this._platformSdk.system.onPause(() => {
-                        this._setPauseState(true)
+                        this.#isPaused = true
+                        this._setPauseState(this.#isPaused)
                     })
 
                     this._platformSdk.system.onResume(() => {
-                        this._setPauseState(false)
+                        this.#isPaused = false
+                        this._setPauseState(this.#isPaused)
                     })
 
                     Promise.all([getLanguagePromise, getDataPromise])

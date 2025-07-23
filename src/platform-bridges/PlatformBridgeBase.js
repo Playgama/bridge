@@ -75,6 +75,10 @@ class PlatformBridgeBase {
         return true
     }
 
+    get isPlatformPaused() {
+        return false
+    }
+
     // game
     get visibilityState() {
         return this._visibilityState
