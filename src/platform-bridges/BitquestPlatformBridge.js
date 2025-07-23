@@ -24,6 +24,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
@@ -38,6 +39,10 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     get isPlayerAuthorizationSupported() {
         return true
+    }
+
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     initialize() {
@@ -358,6 +363,47 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
             const ts = this._platformSdk.platform.getServerTime()
             resolve(ts)
         })
+    }
+
+    // leaderboards
+    leaderboardsSetScore(id, score) {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.leaderboard.setScore(id, score)
+                .then(() => {
+                    resolve()
+                })
+                .catch((error) => {
+                    reject(error)
+                })
+        })
+    }
+
+    leaderboardsGetEntries(id) {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+
+            this._platformSdk.leaderboard.getEntries(id)
+                .then((entries) => {
+                    entries.forEach((entry) => {
+                        console.info(`ID: ${entry.id}`)
+                        console.info(`Name: ${entry.name}`)
+                        console.info(`Photo: ${entry.photo}`)
+                        console.info(`Score: ${entry.score}`)
+                        console.info(`Rank: ${entry.rank}`)
+                    })
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 
     #setupAdvertisementHandlers() {
