@@ -183,7 +183,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     get leaderboardsType() {
-        return LEADERBOARD_TYPE.NATIVE
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     // clipboard
@@ -1058,18 +1058,29 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             const messageId = this.#messageBroker.generateMessageId()
 
-            const options = {
-                id,
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === MODULE_NAME.LEADERBOARDS
+                    && data.action === ACTION_NAME.LEADERBOARDS_GET_ENTRIES
+                    && data.id === messageId
+                ) {
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, data.entries)
+                    this.#messageBroker.removeListener(messageHandler)
+                } else {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+                }
             }
+
+            this.#messageBroker.addListener(messageHandler)
 
             this.#messageBroker.send({
                 type: MODULE_NAME.LEADERBOARDS,
                 action: ACTION_NAME.LEADERBOARDS_GET_ENTRIES,
                 id: messageId,
-                options,
+                options: {
+                    id,
+                },
             })
-
-            this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         }
 
         return promiseDecorator.promise
