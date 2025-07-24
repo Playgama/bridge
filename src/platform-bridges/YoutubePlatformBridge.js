@@ -22,8 +22,6 @@ import {
     ACTION_NAME,
     STORAGE_TYPE,
     PLATFORM_MESSAGE,
-    INTERSTITIAL_STATE,
-    REWARDED_STATE,
     LEADERBOARD_TYPE,
 } from '../constants'
 
@@ -49,15 +47,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
     get isPlatformPaused() {
         return this.#isPaused
-    }
-
-    // advertisement
-    get isInterstitialSupported() {
-        return true
-    }
-
-    get isRewardedSupported() {
-        return true
     }
 
     // social
@@ -272,30 +261,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 return super.sendMessage(message)
             }
         }
-    }
-
-    // advertisement
-    showInterstitial() {
-        this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-        this._platformSdk.ads.requestInterstitialAd()
-            .then(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-            })
-            .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            })
-    }
-
-    showRewarded() {
-        this._setRewardedState(REWARDED_STATE.OPENED)
-        this._platformSdk.ads.requestInterstitialAd()
-            .then(() => {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-                this._setRewardedState(REWARDED_STATE.CLOSED)
-            })
-            .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            })
     }
 
     // leaderboards
