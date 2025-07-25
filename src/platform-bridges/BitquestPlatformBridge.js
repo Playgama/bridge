@@ -24,6 +24,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
@@ -38,6 +39,10 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     get isPlayerAuthorizationSupported() {
         return true
+    }
+
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
     }
 
     initialize() {
@@ -334,6 +339,49 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // leaderboards
+    leaderboardsSetScore(id, score) {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+
+            const numericScore = typeof score === 'number' ? score : parseInt(score, 10);
+            this._platformSdk.leaderboard.setScore(id, numericScore)
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    leaderboardsGetEntries(id) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+
+            this._platformSdk.leaderboard.getEntries(id)
+                .then((entries) => {
+                    const entriesArray = Array.isArray(entries)
+                        ? entries
+                        : entries.entries || entries.data || [];
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entriesArray)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
                 })
         }
 
