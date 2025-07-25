@@ -97,13 +97,21 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    // storage
-    isStorageSupported() {
-        return true
+
+    isStorageSupported(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageSupported(storageType)
     }
 
-    isStorageAvailable() {
-        return true
+    isStorageAvailable(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageAvailable(storageType)
     }
 
     setDataToStorage(key, value, type) {
