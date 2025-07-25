@@ -371,7 +371,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     const mergedPurchase = { id, ...purchase }
                     delete mergedPurchase.productID
                     this._paymentsPurchases.push(mergedPurchase)
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
