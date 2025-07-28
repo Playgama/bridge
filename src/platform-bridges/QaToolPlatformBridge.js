@@ -1040,7 +1040,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE
             || this.leaderboardsType === LEADERBOARD_TYPE.NATIVE
         ) {
-            return Promise.resolve([])
+            return Promise.reject(new Error('Leaderboards are not available'))
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
