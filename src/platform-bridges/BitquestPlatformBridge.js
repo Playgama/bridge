@@ -28,7 +28,6 @@ import {
 } from '../constants'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
-    // platform
     get platformId() {
         return PLATFORM_ID.BITQUEST
     }
@@ -41,8 +40,20 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
+    get isBannerSupported() {
+        return true
+    }
+
     get leaderboardsType() {
-        return LEADERBOARD_TYPE.NATIVE
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     initialize() {
@@ -70,11 +81,10 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._playerName = name
                             this._isPlayerAuthorized = true
 
-                            this._isInitialized = true
                             this.#setupAdvertisementHandlers()
-
                             this.showPreRoll()
 
+                            this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                         .catch((e) => {
@@ -87,6 +97,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // storage
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return true
@@ -191,6 +202,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         await super.deleteDataFromStorage(key, storageType)
     }
 
+    // advertisement
     showRewarded() {
         this._platformSdk.advertisement.showRewarded()
     }
@@ -211,6 +223,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         this._platformSdk.advertisement.hideBanner()
     }
 
+    // payments
     paymentsPurchase(id) {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
@@ -355,7 +368,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
-            const numericScore = typeof score === 'number' ? score : parseInt(score, 10);
+            const numericScore = typeof score === 'number' ? score : parseInt(score, 10)
             this._platformSdk.leaderboard.setScore(id, numericScore)
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
@@ -377,7 +390,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                 .then((entries) => {
                     const entriesArray = Array.isArray(entries)
                         ? entries
-                        : entries.entries || entries.data || [];
+                        : entries.entries || entries.data || []
                     this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entriesArray)
                 })
                 .catch((error) => {
@@ -388,23 +401,12 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // platform
     getServerTime() {
         return new Promise((resolve) => {
             const ts = this._platformSdk.platform.getServerTime()
             resolve(ts)
         })
-    }
-
-    get isInterstitialSupported() {
-        return true
-    }
-
-    get isRewardedSupported() {
-        return true
-    }
-
-    get isBannerSupported() {
-        return true
     }
 
     #setupAdvertisementHandlers() {
@@ -432,7 +434,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
         this._platformSdk.advertisement.on('REWARDED_STATE_CHANGED', (state) => {
             const mappedState = rewardedMap[state]
-            if (!mappedState) return
+            if (!mappedState) {
+                return
+            }
 
             this._setRewardedState(mappedState)
 
