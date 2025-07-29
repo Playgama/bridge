@@ -33,6 +33,15 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.ABSOLUTE_GAMES
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return true

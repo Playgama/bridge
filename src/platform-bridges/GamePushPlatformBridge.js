@@ -31,6 +31,15 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.GAMEPUSH
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     _isBannerSupported = true
 
     initialize() {

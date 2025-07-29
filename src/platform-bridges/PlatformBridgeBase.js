@@ -71,6 +71,14 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isPlatformAudioEnabled() {
+        return true
+    }
+
+    get isPlatformPaused() {
+        return false
+    }
+
     // game
     get visibilityState() {
         return this._visibilityState
@@ -107,8 +115,16 @@ class PlatformBridgeBase {
         return this._isBannerSupported
     }
 
+    get isInterstitialSupported() {
+        return false
+    }
+
     get isMinimumDelayBetweenInterstitialEnabled() {
         return true
+    }
+
+    get isRewardedSupported() {
+        return false
     }
 
     // social
@@ -592,6 +608,14 @@ class PlatformBridgeBase {
 
     _setRewardedState(state) {
         this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, state)
+    }
+
+    _setAudioState(isEnabled) {
+        this.emit(EVENT_NAME.AUDIO_STATE_CHANGED, isEnabled)
+    }
+
+    _setPauseState(isPaused) {
+        this.emit(EVENT_NAME.PAUSE_STATE_CHANGED, isPaused)
     }
 
     _createPromiseDecorator(actionName) {

@@ -49,6 +49,14 @@ class OkPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // social
     get isJoinCommunitySupported() {
         return true

@@ -45,6 +45,15 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         return super.platformLanguage
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return this.#isUserAccountAvailable
@@ -172,7 +181,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._isPlayerAuthorized
+            return true
         }
 
         return super.isStorageAvailable(storageType)
