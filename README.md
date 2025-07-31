@@ -17,6 +17,7 @@ One SDK for cross-platform publishing HTML5 games.
 + [Poki](https://poki.com/)
 + [MSN](https://www.msn.com/en-us/play)
 + [Discord](https://discord.com/gaming)
++ [BitQuest](https://t.me/BitquestGamesBot/start)
 + Other [Work In Progress]
 
 ## Plugins for game engines
@@ -25,7 +26,7 @@ One SDK for cross-platform publishing HTML5 games.
 + [Unity](https://github.com/playgama/bridge-unity)
 + [Godot 3](https://github.com/playgama/bridge-godot)
 + [Godot 4](https://github.com/playgama/bridge-godot-4)
-+ [Game Maker](https://github.com/playgama/bridge-gamemaker)
++ [GameMaker](https://github.com/playgama/bridge-gamemaker)
 + [Defold](https://github.com/playgama/bridge-defold)
 + [GDevelop](https://github.com/playgama/bridge-gdevelop)
 + [Cocos Creator](https://github.com/playgama/bridge-cocos-creator)
