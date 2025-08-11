@@ -45,6 +45,15 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         return super.platformLanguage
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return this.#isUserAccountAvailable
@@ -84,7 +93,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                 waitFor('CrazyGames', 'SDK', 'init').then(() => {
                     this._platformSdk = window.CrazyGames.SDK
 
-                    this._defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
+                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
                     this._isBannerSupported = true
                     this._platformSdk.init().then(() => {
                         this.#isUserAccountAvailable = this._platformSdk.user.isUserAccountAvailable
@@ -172,7 +181,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._isPlayerAuthorized
+            return true
         }
 
         return super.isStorageAvailable(storageType)
@@ -348,8 +357,6 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._isPlayerAuthorized = true
-                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-
                     if (user.username) {
                         this._playerName = user.username
                     }

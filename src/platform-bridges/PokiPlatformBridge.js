@@ -33,6 +33,15 @@ class PokiPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.POKI
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // social
     get isExternalLinksAllowed() {
         return false

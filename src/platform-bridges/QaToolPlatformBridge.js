@@ -53,6 +53,7 @@ const ACTION_NAME_QA = {
     GET_ACHIEVEMENTS: 'get_achievements',
     SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
     GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
+    GET_LANGUAGE: 'get_language',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -85,11 +86,14 @@ const SUPPORTED_FEATURES = {
     STORAGE_INTERNAL: 'isStorageInternalSupported',
     STORAGE_LOCAL: 'isStorageLocalSupported',
     BANNER: 'isBannerSupported',
+    INTERSTITIAL: 'isInterstitialSupported',
+    REWARDED: 'isRewardedSupported',
     CLIPBOARD: 'isClipboardSupported',
     ACHIEVEMENTS: 'isAchievementsSupported',
     ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
     ACHIEVEMENTS_NATIVE_POPUP: 'isAchievementsNativePopupSupported',
     STORAGE_REMOTE_LOCAL: 'isStorageRemoteLocalSupported',
+    LANGUAGE_SUPPORTED: 'isGetLanguageSupported',
 }
 
 class QaToolPlatformBridge extends PlatformBridgeBase {
@@ -99,6 +103,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
+        if (this._supportedFeatures.includes(SUPPORTED_FEATURES.LANGUAGE_SUPPORTED)) {
+            this.#messageBroker.send({
+                type: MODULE_NAME.PLATFORM,
+                action: ACTION_NAME_QA.GET_LANGUAGE,
+                options: {
+                    language: this._platformLanguage,
+                },
+            })
+        }
+
         return this._platformLanguage
     }
 
@@ -112,6 +126,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     get platformPayload() {
         return this._platformPayload
+    }
+
+    // advertisement
+    get isInterstitialSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INTERSTITIAL)
+    }
+
+    get isRewardedSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REWARDED)
     }
 
     // player
@@ -160,7 +183,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     get leaderboardsType() {
-        return LEADERBOARD_TYPE.NATIVE
+        return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
     }
 
     // clipboard
@@ -189,6 +212,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #messageBroker = new MessageBroker()
 
     _supportedFeatures = []
+
+    _leaderboardsType = null
 
     initialize() {
         if (this._isInitialized) {
@@ -236,6 +261,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this._platformLanguage = config.platformLanguage ?? super.platformLanguage
         this._platformTld = config.platformTld ?? super.platformTld
         this._platformPayload = config.platformPayload ?? super.platformPayload
+        this._leaderboardsType = config.leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
 
         this._paymentsPurchases = data.purchases || []
 
@@ -1007,6 +1033,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     leaderboardsSetScore(id, score) {
+        if (this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE) {
+            return Promise.reject(new Error('Leaderboards are not available'))
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
@@ -1029,24 +1059,42 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     leaderboardsGetEntries(id) {
+        if (
+            this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE
+            || this.leaderboardsType === LEADERBOARD_TYPE.NATIVE
+        ) {
+            return Promise.reject(new Error('Leaderboards are not available'))
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
 
             const messageId = this.#messageBroker.generateMessageId()
 
-            const options = {
-                id,
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === MODULE_NAME.LEADERBOARDS
+                    && data.action === ACTION_NAME.LEADERBOARDS_GET_ENTRIES
+                    && data.id === messageId
+                ) {
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, data.entries)
+                    this.#messageBroker.removeListener(messageHandler)
+                } else {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+                }
             }
+
+            this.#messageBroker.addListener(messageHandler)
 
             this.#messageBroker.send({
                 type: MODULE_NAME.LEADERBOARDS,
                 action: ACTION_NAME.LEADERBOARDS_GET_ENTRIES,
                 id: messageId,
-                options,
+                options: {
+                    id,
+                },
             })
-
-            this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         }
 
         return promiseDecorator.promise

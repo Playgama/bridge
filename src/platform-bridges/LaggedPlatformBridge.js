@@ -35,6 +35,15 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.LAGGED
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // leaderboards
     get leaderboardsType() {
         return LEADERBOARD_TYPE.NATIVE

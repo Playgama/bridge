@@ -32,9 +32,11 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    BITQUEST: 'bitquest',
     GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
     JIO_GAMES: 'jio_games',
+    YOUTUBE: 'youtube',
 }
 
 export const MODULE_NAME = {
@@ -57,6 +59,8 @@ export const EVENT_NAME = {
     REWARDED_STATE_CHANGED: 'rewarded_state_changed',
     BANNER_STATE_CHANGED: 'banner_state_changed',
     VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
+    AUDIO_STATE_CHANGED: 'audio_state_changed',
+    PAUSE_STATE_CHANGED: 'pause_state_changed',
 }
 
 export const VISIBILITY_STATE = {

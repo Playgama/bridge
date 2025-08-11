@@ -44,6 +44,15 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
         return super.platformLanguage
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return !!this.#adsController
+    }
+
+    get isRewardedSupported() {
+        return !!this.#adsController
+    }
+
     // device
     get deviceType() {
         switch (this.#platform) {

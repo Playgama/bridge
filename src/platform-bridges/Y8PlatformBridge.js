@@ -38,6 +38,15 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.Y8
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // player
     get isPlayerAuthorizationSupported() {
         return true
