@@ -25,7 +25,7 @@ import {
     ERROR,
 } from '../constants'
 
-const SDK_URL = '/jiogames_stb_sdk_v1.0.js'
+const SDK_URL = '/jiogames_sp_wrapper.js'
 
 class JioGamesPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -82,8 +82,14 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                         this._platformSdk.getUserProfile()
 
                         window.onUserProfileResponse = (message) => {
-                            this.playerId = message?.userId || null
-                            this.playerName = message?.userName || null
+                            const obj = JSON.parse(message)
+
+                            this.playerId = obj.gamer_id || null
+                            this.playerName = obj.gamer_name || null
+
+                            if (obj.gamer_avatar_url) {
+                                this.playerPhotos.push(obj.gamer_avatar_url)
+                            }
 
                             this._getUserProfileResolve?.()
                             this._getUserProfileResolve = null
@@ -130,7 +136,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     showRewarded(placement) {
         this.#preloadRewarded(placement)
             .then(() => {
-                this._platformSdk.showAd(placement, this._packageName)
+                this._platformSdk.showAdRewarded(placement, this._packageName)
                 this._setRewardedState(REWARDED_STATE.OPENED)
             })
             .catch((error) => {
@@ -188,23 +194,19 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 this._resolveInterstitialPreload = null
             }
 
-            // placement == adSpotRewardedVideo && (isRVReady = true, console.log("JioGames: onAdReady RewardedVideo " + isRVReady));
-        }
-
-        window.onAdClose = (placement) => {
-            if (placement === this._rewardedPlacement && this._shouldRewardUser) {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-                this._shouldRewardUser = false
+            if (placement === this._interstitialPlacement) {
+                this._resolveRewardedPreload()
+                this._resolveInterstitialPreload = null
             }
-        };
+        }
 
         window.onAdError = (placement, errorMessage) => {
             if (placement === this._interstitialPlacement) {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED, errorMessage)
+                this._rejectInterstitialPreload(errorMessage)
             }
 
             if (placement === this._rewardedPlacement) {
-                this._setRewardedState(REWARDED_STATE.FAILED, errorMessage)
+                this._rejectRewardedPreload(errorMessage)
             }
         }
 
