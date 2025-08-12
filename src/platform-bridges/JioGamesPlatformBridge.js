@@ -25,7 +25,7 @@ import {
     ERROR,
 } from '../constants'
 
-const SDK_URL = '/jiogames_sp_wrapper.js'
+const SDK_URL = 'https://jioadsweb.akamaized.net/jioads/websdk/default/stable/v2/jioAds.js'
 
 class JioGamesPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -39,19 +39,17 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     _rewardedPlacement = null
 
-    _resolveInterstitialPreload = null
+    _resolveInterstitial = null
 
-    _rejectInterstitialPreload = null
+    _rejectInterstitial = null
 
     _preloadInterstitialPromise = null
 
-    _resolveRewardedPreload = null
+    _resolveRewarded = null
 
-    _rejectRewardedPreload = null
+    _rejectRewarded = null
 
     _preloadRewardedPromise = null
-
-    _shouldRewardUser = false
 
     initialize() {
         if (this._isInitialized) {
@@ -72,7 +70,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 )
             } else {
                 addJavaScript(SDK_URL).then(() => {
-                    waitFor('DroidHandler').then(() => {
+                    waitFor('DroidHandler', 'JioAds').then(() => {
                         this._packageName = this._options.packageName
 
                         this._platformSdk = window.DroidHandler
@@ -120,6 +118,14 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             .then(() => {
                 this._platformSdk.showAd(placement, this._packageName)
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+
+                return new Promise((resolve, reject) => {
+                    this._resolveInterstitial = resolve
+                    this._rejectInterstitial = reject
+                })
+            })
+            .then(() => {
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             })
             .catch((error) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED, error)
@@ -138,6 +144,15 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             .then(() => {
                 this._platformSdk.showAdRewarded(placement, this._packageName)
                 this._setRewardedState(REWARDED_STATE.OPENED)
+
+                return new Promise((resolve, reject) => {
+                    this._resolveRewarded = resolve
+                    this._rejectRewarded = reject
+                })
+            })
+            .then(() => {
+                this._setRewardedState(REWARDED_STATE.REWARDED)
+                this._setRewardedState(REWARDED_STATE.CLOSED)
             })
             .catch((error) => {
                 this._setRewardedState(REWARDED_STATE.FAILED, error)
@@ -148,9 +163,24 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // leaderboards
-    leaderboardsSetScore(_, score) {
-        this._platformSdk.setScore(score)
-        return Promise.resolve()
+    leaderboardsSetScore(id, score, isMain) {
+        if (!isMain) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+
+            const value = typeof score === 'string'
+                ? parseInt(score, 10)
+                : score
+
+            this._platformSdk.postScore(value)
+            this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        }
+
+        return promiseDecorator.promise
     }
 
     #preloadInterstitial(placement, forciblyPreload = false) {
@@ -162,8 +192,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.cacheAd(placement, this._packageName)
 
             this._preloadInterstitialPromise = new Promise((resolve, reject) => {
-                this._resolveInterstitialPreload = resolve
-                this._rejectInterstitialPreload = reject
+                this._resolveInterstitial = resolve
+                this._rejectInterstitial = reject
             })
         }
 
@@ -179,8 +209,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.cacheAd(placement, this._packageName)
 
             this._preloadRewardedPromise = new Promise((resolve, reject) => {
-                this._resolveRewardedPreload = resolve
-                this._rejectRewardedPreload = reject
+                this._resolveRewarded = resolve
+                this._rejectRewarded = reject
             })
         }
 
@@ -190,29 +220,25 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     #setupAdHandlers() {
         window.onAdReady = (placement) => {
             if (placement === this._interstitialPlacement) {
-                this._resolveInterstitialPreload()
-                this._resolveInterstitialPreload = null
+                this._resolveInterstitial()
+                this._resolveInterstitial = null
             }
 
-            if (placement === this._interstitialPlacement) {
-                this._resolveRewardedPreload()
-                this._resolveInterstitialPreload = null
+            if (placement === this._rewardedPlacement) {
+                this._resolveRewarded()
+                this._resolveRewarded = null
             }
         }
 
         window.onAdError = (placement, errorMessage) => {
             if (placement === this._interstitialPlacement) {
-                this._rejectInterstitialPreload(errorMessage)
+                this._rejectInterstitial(errorMessage)
+                this._rejectInterstitial = null
             }
 
             if (placement === this._rewardedPlacement) {
-                this._rejectRewardedPreload(errorMessage)
-            }
-        }
-
-        window.onAdMediaEnd = (placement /* , success, value */) => {
-            if (placement === this._rewardedPlacement) {
-                this._shouldRewardUser = true // success
+                this._rejectRewarded(errorMessage)
+                this._rejectRewarded = null
             }
         }
 
@@ -230,9 +256,19 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 isEligibleForReward = Boolean(localData[2].trim())
             }
 
-            if (placement === this._rewardedPlacement && isVideoCompleted && isEligibleForReward) {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-                this._setRewardedState(REWARDED_STATE.CLOSED)
+            if (placement === this._rewardedPlacement) {
+                if (isVideoCompleted && isEligibleForReward) {
+                    this._resolveRewarded?.()
+                    this._resolveRewarded = null
+                } else {
+                    this._rejectRewarded?.()
+                    this._rejectRewarded = null
+                }
+            }
+
+            if (placement === this._interstitialPlacement) {
+                this._resolveInterstitial?.()
+                this._resolveInterstitial = null
             }
         }
 
@@ -247,11 +283,13 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             }
 
             if (placement === this._interstitialPlacement) {
-                this._rejectInterstitialPreload(description)
+                this._rejectInterstitial?.(description)
+                this._rejectInterstitial = null
             }
 
             if (placement === this._rewardedPlacement) {
-                this._rejectRewardedPreload(description)
+                this._rejectRewarded?.(description)
+                this._rejectRewarded = null
             }
         }
 
