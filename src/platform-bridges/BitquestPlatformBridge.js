@@ -159,7 +159,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         await super.setDataToStorage(key, value, storageType)
     }
 
-
     async deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
