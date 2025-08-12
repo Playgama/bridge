@@ -23,6 +23,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     ERROR,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 const SDK_URL = 'https://jioadsweb.akamaized.net/jioads/websdk/default/stable/v2/jioAds.js'
@@ -31,6 +32,25 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
         return PLATFORM_ID.JIO_GAMES
+    }
+
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
+    }
+
+    // social
+    get isExternalLinksAllowed() {
+        return false
     }
 
     _packageName = null
