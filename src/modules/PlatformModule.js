@@ -15,12 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
-import { PLATFORM_MESSAGE } from '../constants'
+import { EVENT_NAME, PLATFORM_MESSAGE } from '../constants'
 
 class PlatformModule extends ModuleBase {
-    #isGameReadyMessageSent = false
-
     get id() {
         return this._platformBridge.platformId
     }
@@ -47,6 +46,30 @@ class PlatformModule extends ModuleBase {
 
     get isGetGameByIdSupported() {
         return this._platformBridge.isPlatformGetGameByIdSupported
+    }
+
+    get isAudioEnabled() {
+        return this._platformBridge.isPlatformAudioEnabled
+    }
+
+    get isPaused() {
+        return this._platformBridge.isPlatformPaused
+    }
+
+    #isGameReadyMessageSent = false
+
+    constructor(platformBridge) {
+        super(platformBridge)
+
+        this._platformBridge.on(
+            EVENT_NAME.AUDIO_STATE_CHANGED,
+            (isEnabled) => this.emit(EVENT_NAME.AUDIO_STATE_CHANGED, isEnabled),
+        )
+
+        this._platformBridge.on(
+            EVENT_NAME.PAUSE_STATE_CHANGED,
+            (isPaused) => this.emit(EVENT_NAME.PAUSE_STATE_CHANGED, isPaused),
+        )
     }
 
     sendMessage(message) {
@@ -81,4 +104,5 @@ class PlatformModule extends ModuleBase {
     }
 }
 
+EventLite.mixin(PlatformModule.prototype)
 export default PlatformModule

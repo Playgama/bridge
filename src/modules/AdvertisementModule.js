@@ -31,8 +31,16 @@ class AdvertisementModule extends ModuleBase {
         return this.#bannerState
     }
 
+    get isInterstitialSupported() {
+        return this._platformBridge.isInterstitialSupported
+    }
+
     get interstitialState() {
         return this.#interstitialState
+    }
+
+    get isRewardedSupported() {
+        return this._platformBridge.isRewardedSupported
     }
 
     get rewardedPlacement() {

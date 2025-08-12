@@ -36,8 +36,16 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
     get isMinimumDelayBetweenInterstitialEnabled() {
         return false
+    }
+
+    get isRewardedSupported() {
+        return true
     }
 
     // social

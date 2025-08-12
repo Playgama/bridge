@@ -75,6 +75,15 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return super.platformPayload
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
     // device
     get deviceType() {
         switch (this.#platform) {
@@ -122,6 +131,8 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    _isBannerSupported = true
+
     #platform
 
     initialize() {
@@ -144,7 +155,6 @@ class VkPlatformBridge extends PlatformBridgeBase {
                     this._platformSdk
                         .send('VKWebAppInit')
                         .then(() => {
-                            this._isBannerSupported = true
                             this._platformSdk.send('VKWebAppGetUserInfo')
                                 .then((data) => {
                                     if (data) {
