@@ -63,6 +63,7 @@ import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
 import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
 import YoutubePlatformBridge from './platform-bridges/YoutubePlatformBridge'
 import { deepMerge } from './common/utils'
+import JioGamesPlatformBridge from './platform-bridges/JioGamesPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -376,6 +377,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.YOUTUBE: {
                 this.#platformBridge = new YoutubePlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.JIO_GAMES: {
+                this.#platformBridge = new JioGamesPlatformBridge(modifiedOptions)
                 break
             }
             default: {
