@@ -80,6 +80,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._playerId = id
                             this._playerName = name
                             this._isPlayerAuthorized = true
+                            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
                             this.#setupAdvertisementHandlers()
                             this.showPreRoll()
@@ -163,16 +164,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                     throw new Error('Key and value arrays must have the same length')
                 }
 
-                if (Array.isArray(key) && Array.isArray(value)) {
-                    this._platformSdk.storage.set(key, value, 'platform_internal')
-                    return
-                }
-
-                /* eslint-disable no-await-in-loop */
-                for (let i = 0; i < key.length; i++) {
-                    await this._platformSdk.storage.set(key[i], value[i], 'platform_internal')
-                }
-                /* eslint-enable no-await-in-loop */
+                await this._platformSdk.storage.set(key, value, 'platform_internal')
                 return
             }
 
