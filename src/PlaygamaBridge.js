@@ -197,7 +197,8 @@ class PlaygamaBridge {
                 .then((data) => {
                     modifiedOptions = { ...data }
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.error('Config parsing error.', error)
                     modifiedOptions = { ...options }
                 })
                 .finally(() => {

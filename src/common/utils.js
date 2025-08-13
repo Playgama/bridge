@@ -375,7 +375,7 @@ export function getKeysFromObject(keys, data, tryParseJson = false) {
                 try {
                     res[i] = JSON.parse(res[i])
                 } catch (e) {
-                    console.error(e)
+                    // keep value as is
                 }
             }
             return res
