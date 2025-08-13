@@ -96,6 +96,8 @@ export const BANNER_POSITION = {
 }
 
 export const BANNER_CONTAINER_ID = 'banner-container'
+export const INTERSTIIAL_CONTAINER_ID = 'interstiail-container'
+export const REWARDED_CONTAINER_ID = 'rewarded-container'
 
 export const STORAGE_TYPE = {
     LOCAL_STORAGE: 'local_storage',
