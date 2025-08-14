@@ -122,6 +122,7 @@ export const LEADERBOARD_TYPE = {
     NOT_AVAILABLE: 'not_available',
     IN_GAME: 'in_game',
     NATIVE: 'native',
+    NATIVE_POPUP: 'native_popup',
 }
 
 export const ACTION_NAME = {
