@@ -496,6 +496,20 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    joinCommunity(options) {
+        if (!options) {
+            return Promise.reject()
+        }
+
+        let { isPage } = options
+
+        if (isPage === true) {
+            return FBInstant.community.followOfficialPageAsync()
+        }else{
+            return FBInstant.community.joinOfficialGroupAsync()
+        }
+    }
+
     share(options) {
         if (!options.image || !options.text) {
             return Promise.reject()
