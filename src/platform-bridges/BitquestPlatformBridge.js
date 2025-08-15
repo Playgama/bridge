@@ -27,6 +27,8 @@ import {
     LEADERBOARD_TYPE,
 } from '../constants'
 
+const SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
+
 class BitquestPlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.BITQUEST
@@ -64,8 +66,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
-
-            const SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
 
             addJavaScript(SDK_URL).then(() => {
                 waitFor('bq').then(() => {
