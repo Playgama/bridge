@@ -1,0 +1,278 @@
+/*
+ * This file is part of Playgama Bridge.
+ *
+ * Playgama Bridge is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ *
+ * Playgama Bridge is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import PlatformBridgeBase from './PlatformBridgeBase'
+import {
+    addJavaScript,
+    createAdContainer,
+    createAdvertisementBannerContainer,
+    waitFor,
+} from '../common/utils'
+
+import {
+    PLATFORM_ID,
+    ACTION_NAME,
+    INTERSTITIAL_STATE,
+    REWARDED_STATE,
+    ERROR,
+    LEADERBOARD_TYPE,
+    BANNER_CONTAINER_ID,
+    BANNER_STATE,
+    INTERSTIIAL_CONTAINER_ID,
+    REWARDED_CONTAINER_ID,
+} from '../constants'
+
+const SDK_URL = 'https://jioadsweb.akamaized.net/jioads/websdk/default/stable/v2/jioAds.js'
+
+class JioGamesPlatformBridge extends PlatformBridgeBase {
+    // platform
+    get platformId() {
+        return PLATFORM_ID.JIO_GAMES
+    }
+
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
+    }
+
+    // social
+    get isExternalLinksAllowed() {
+        return false
+    }
+
+    _packageName = null
+
+    _bannerPlacement = null
+
+    _bannerContainer = null
+
+    _interstitialPlacement = null
+
+    _interstitalContainer
+
+    _rewardedPlacement = null
+
+    _rewardedContainer = null
+
+    initialize() {
+        if (this._isInitialized) {
+            return Promise.resolve()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            if (
+                !this._options
+                || !this._options.packageName
+            ) {
+                this._rejectPromiseDecorator(
+                    ACTION_NAME.INITIALIZE,
+                    ERROR.JIO_GAMES_GAME_PARAMS_NOT_FOUND,
+                )
+            } else {
+                addJavaScript(SDK_URL).then(() => {
+                    waitFor('JioAds').then(() => {
+                        const self = this
+
+                        this._packageName = this._options.packageName
+
+                        this._platformSdk = window.JioAds
+
+                        if (window.DroidHandler) {
+                            window.DroidHandler.getUserProfile()
+                            window.DroidHandler.postMessage(JSON.stringify({ key: 'getUserProperties' }))
+                        } else {
+                            window.onUserPropertiesResponse({ detail: { uid: '', ifa: '' } })
+                        }
+
+                        window.onUserProfileResponse = (message) => {
+                            const obj = JSON.parse(message)
+
+                            self.playerId = obj.gamer_id || null
+                            self.playerName = obj.gamer_name || null
+
+                            if (obj.gamer_avatar_url) {
+                                self.playerPhotos.push(obj.gamer_avatar_url)
+                            }
+                        }
+
+                        window.onUserPropertiesResponse = (obj) => {
+                            self.#setupAds(obj)
+                            self.#setupAdCallbacks()
+                        }
+                    })
+                })
+            }
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // advertisement
+    showBanner(position, placement) {
+        if (this._bannerContainer) {
+            return
+        }
+
+        this._bannerPlacement = placement
+        this._bannerContainer = createAdvertisementBannerContainer(position)
+
+        const ins = this.#createIns(placement, { 'data-container-id': BANNER_CONTAINER_ID })
+        this._bannerContainer.appendChild(ins)
+    }
+
+    hideBanner() {
+        this._bannerContainer?.remove()
+        this._bannerContainer = null
+
+        this._setBannerState(BANNER_STATE.HIDDEN)
+    }
+
+    showInterstitial(placement) {
+        if (this._interstitalContainer) {
+            return
+        }
+
+        this._interstitialPlacement = placement
+        this._interstitalContainer = createAdContainer(INTERSTIIAL_CONTAINER_ID)
+
+        const ins = this.#createIns(placement, { 'data-container-id': INTERSTIIAL_CONTAINER_ID })
+        this._interstitalContainer.appendChild(ins)
+    }
+
+    showRewarded(placement) {
+        if (this._rewardedContainer) {
+            return
+        }
+
+        this._rewardedPlacement = placement
+        this._rewardedContainer = createAdContainer(REWARDED_CONTAINER_ID)
+
+        const ins = this.#createIns(placement, { 'data-container-id': REWARDED_CONTAINER_ID })
+        this._rewardedContainer.appendChild(ins)
+    }
+
+    // leaderboards
+    leaderboardsSetScore(id, score, isMain) {
+        if (!isMain || !window.DroidHandler) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+
+            const value = typeof score === 'string'
+                ? parseInt(score, 10)
+                : score
+
+            this._platformSdk.postScore(value)
+            this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #setupAds(obj) {
+        this._platformSdk.setConfiguration({
+            ...obj,
+            reqType: 'prod',
+            logLevel: 1,
+            adRequestTimeout: 6000,
+            adRenderingTimeout: 5000,
+        })
+    }
+
+    #createIns(placementId, extraAttrs = {}) {
+        const ins = document.createinsement('ins')
+        ins.setAttribute('data-adspot-key', placementId)
+        ins.setAttribute('data-source', this._packageName)
+        Object.entries(extraAttrs).forEach(([k, v]) => ins.setAttribute(k, String(v)))
+
+        return ins
+    }
+
+    #setupAdCallbacks() {
+        this._platformSdk.onInitialized = () => {
+            this._isInitialized = true
+            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+        }
+
+        this._platformSdk.onAdPrepared = (placement) => {
+            if (placement === this._bannerPlacement) {
+                this._setBannerState(BANNER_STATE.SHOWN)
+            } else if (placement === this._interstitialPlacement) {
+                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            } else if (placement === this._rewardedPlacement) {
+                this._setRewardedState(REWARDED_STATE.OPENED)
+            }
+        }
+
+        this._platformSdk.onAdFailedToLoad = (placement, options) => {
+            console.error(JSON.stringify(options))
+
+            if (placement === this._bannerPlacement) {
+                this._bannerContainer?.remove()
+                this._bannerContainer = null
+
+                this._setBannerState(BANNER_STATE.FAILED)
+            } else if (placement === this._interstitialPlacement) {
+                this._interstitalContainer?.remove()
+                this._interstitalContainer = null
+
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            } else if (placement === this._rewardedPlacement) {
+                this._rewardedContainer?.remove()
+                this._rewardedContainer = null
+
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            }
+        }
+
+        this._platformSdk.onAdClosed = (placement, isVideoCompleted, reward) => {
+            if (placement === this._interstitialPlacement) {
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+
+                this._interstitalContainer?.remove()
+                this._interstitalContainer = null
+            } else if (placement === this._rewardedPlacement) {
+                if (reward && isVideoCompleted) {
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                    this._setRewardedState(REWARDED_STATE.REWARDED)
+                } else {
+                    this._setRewardedState(REWARDED_STATE.FAILED)
+                }
+
+                this._rewardedContainer?.remove()
+                this._rewardedContainer = null
+            }
+        }
+    }
+}
+
+export default JioGamesPlatformBridge

@@ -68,6 +68,17 @@ export function createAdvertisementBannerContainer(position) {
     return container
 }
 
+export function createAdContainer(containerId) {
+    const container = document.createElement('div')
+    container.id = containerId
+    container.style.position = 'fixed'
+    container.style.inset = '0'
+    container.style.zIndex = '9999999'
+    document.body.appendChild(container)
+
+    return container
+}
+
 export function showInfoPopup(message) {
     if (!document.getElementById('bridge-info-popup-styles')) {
         const style = document.createElement('style')
