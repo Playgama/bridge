@@ -31,6 +31,25 @@ import {
 
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 
+const LEADERBOARD_XML = `
+    <View style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center">
+        <View style="position: relative; background-color: #2E3C75;color: #fff;padding: 20px;border-radius: 10px;box-shadow: 0 0 10px #2E3C75;font-size: 24px;text-align: center;min-width: 250px;max-width: 30%;flex-direction: column;justify-content: center;align-items: center;">
+            <View style="position: absolute;top: 10px;right: 10px;cursor: pointer;" onTapEvent="close">
+                <Text content="x" style="font-size: 24px; color: rgb(255, 255, 255); margin: 0" />
+            </View>
+            <View style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <For source="{{FBInstant.globalLeaderboards[{{id}}].topPlayers}}" itemName="i" sortKey="score">
+                    <View style="display: flex;align-items: center;justify-content: space-between;width: 100%;gap: 10px;">
+                        <Image src="{{i.photo}}" style="width: 50px; height: 50px; border-radius: 50%" />
+                        <Text content="{{i.name}}" style="flex: 1; text-align: start;" />
+                        <Text content="{{i.score}}" />
+                    </View>
+                </For>
+            </View>
+        </View>
+    </View>
+`
+
 class FacebookPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
@@ -79,7 +98,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     get leaderboardsType() {
-        return LEADERBOARD_TYPE.IN_GAME
+        return LEADERBOARD_TYPE.NATIVE_POPUP
     }
 
     // payments
@@ -132,6 +151,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
+
+                    this.#setupLeaderboards()
 
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -320,36 +341,37 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    leaderboardsGetEntries(id) {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+    leaderboardsShowNativePopup(id) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
 
-            this._platformSdk.globalLeaderboards.getTopEntriesAsync(id, 10)
-                .then((result) => {
-                    let entries = null
-                    let rank = 0
+            this._platformSdk.overlayViews.createOverlayViewWithXMLStringAsync(
+                LEADERBOARD_XML,
+                document.body,
+                '',
+                '',
+                { id },
+            ).then((overlay) => {
+                const { iframeElement } = overlay
 
-                    if (result && result.entries.length > 0) {
-                        entries = result.entries.map((e) => {
-                            const entryPlayer = e.getPlayer()
-                            const entryRank = rank
-                            rank += 1
-                            return {
-                                rank: entryRank,
-                                score: e.getScore(),
-                                id: entryPlayer.getID(),
-                                name: entryPlayer.getName(),
-                                photo: entryPlayer.getPhoto(),
-                            }
-                        })
-                    }
+                iframeElement.style.zIndex = 9999
+                iframeElement.style.position = 'absolute'
+                iframeElement.style.top = 0
+                iframeElement.style.left = 0
+                iframeElement.style.height = '100vh'
+                iframeElement.style.width = '100vw'
+                iframeElement.border = 0
+                iframeElement.id = iframeElement.name
 
-                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
-                })
+                this._overlay = overlay
+
+                this._overlay.showAsync()
+
+                this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
+            }).catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
+            })
         }
 
         return promiseDecorator.promise
@@ -522,6 +544,22 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #setupLeaderboards() {
+        const self = this
+        self._platformSdk.overlayViews.setCustomEventHandler((eventStr) => {
+            if (eventStr === 'close') {
+                if (self._overlay) {
+                    document.body.removeChild(
+                        document.getElementsByName(self._overlay.iframeElement.name)[0],
+                    )
+
+                    self._overlay.dismissAsync()
+                    self._overlay = null
+                }
+            }
+        })
     }
 
     #preloadInterstitial(placementId, forciblyPreload = false) {
