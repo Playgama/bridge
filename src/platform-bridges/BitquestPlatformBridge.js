@@ -27,6 +27,8 @@ import {
     LEADERBOARD_TYPE,
 } from '../constants'
 
+const SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
+
 class BitquestPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
@@ -53,8 +55,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
-
-            const SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
 
             addJavaScript(SDK_URL).then(() => {
                 waitFor('bq').then(() => {
@@ -347,7 +347,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
-            const numericScore = typeof score === 'number' ? score : parseInt(score, 10);
+            const numericScore = typeof score === 'number' ? score : parseInt(score, 10)
             this._platformSdk.leaderboard.setScore(id, numericScore)
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
@@ -369,7 +369,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                 .then((entries) => {
                     const entriesArray = Array.isArray(entries)
                         ? entries
-                        : entries.entries || entries.data || [];
+                        : entries.entries || entries.data || []
                     this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entriesArray)
                 })
                 .catch((error) => {
