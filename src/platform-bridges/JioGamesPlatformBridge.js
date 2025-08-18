@@ -32,8 +32,8 @@ import {
     LEADERBOARD_TYPE,
     BANNER_CONTAINER_ID,
     BANNER_STATE,
-    INTERSTIIAL_CONTAINER_ID,
     REWARDED_CONTAINER_ID,
+    INTERSTITIAL_CONTAINER_ID,
 } from '../constants'
 
 const SDK_URL = 'https://jioadsweb.akamaized.net/jioads/websdk/default/stable/v2/jioAds.js'
@@ -71,7 +71,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     _interstitialPlacement = null
 
-    _interstitalContainer
+    _interstitialContainer = null
 
     _rewardedPlacement = null
 
@@ -119,6 +119,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                             if (obj.gamer_avatar_url) {
                                 self.playerPhotos.push(obj.gamer_avatar_url)
                             }
+
+                            self._isPlayerAuthorized = true
                         }
 
                         window.onUserPropertiesResponse = (obj) => {
@@ -154,15 +156,15 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     showInterstitial(placement) {
-        if (this._interstitalContainer) {
+        if (this._interstitialContainer) {
             return
         }
 
         this._interstitialPlacement = placement
-        this._interstitalContainer = createAdContainer(INTERSTIIAL_CONTAINER_ID)
+        this._interstitialContainer = createAdContainer(INTERSTITIAL_CONTAINER_ID)
 
-        const ins = this.#createIns(placement, { 'data-container-id': INTERSTIIAL_CONTAINER_ID })
-        this._interstitalContainer.appendChild(ins)
+        const ins = this.#createIns(placement, { 'data-container-id': INTERSTITIAL_CONTAINER_ID })
+        this._interstitialContainer.appendChild(ins)
     }
 
     showRewarded(placement) {
@@ -183,19 +185,12 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        const value = typeof score === 'string'
+            ? parseInt(score, 10)
+            : score
 
-            const value = typeof score === 'string'
-                ? parseInt(score, 10)
-                : score
-
-            this._platformSdk.postScore(value)
-            this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
-        }
-
-        return promiseDecorator.promise
+        window.DroidHandler.postScore(value)
+        return Promise.resolve()
     }
 
     #setupAds(obj) {
@@ -242,8 +237,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
                 this._setBannerState(BANNER_STATE.FAILED)
             } else if (placement === this._interstitialPlacement) {
-                this._interstitalContainer?.remove()
-                this._interstitalContainer = null
+                this._interstitialContainer?.remove()
+                this._interstitialContainer = null
 
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
             } else if (placement === this._rewardedPlacement) {
@@ -258,8 +253,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             if (placement === this._interstitialPlacement) {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
 
-                this._interstitalContainer?.remove()
-                this._interstitalContainer = null
+                this._interstitialContainer?.remove()
+                this._interstitialContainer = null
             } else if (placement === this._rewardedPlacement) {
                 if (reward && isVideoCompleted) {
                     this._setRewardedState(REWARDED_STATE.CLOSED)
