@@ -124,8 +124,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                         }
 
                         window.onUserPropertiesResponse = (obj) => {
-                            self.#setupAds(obj)
-                            self.#setupAdCallbacks()
+                            self.#setupAdvertisement(obj)
+                            self.#setupAdvertisementCallbacks()
                         }
 
                         this._platformSdk.onInitialized = () => {
@@ -198,7 +198,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    #setupAds(obj) {
+    #setupAdvertisement(obj) {
         this._platformSdk.setConfiguration({
             ...obj,
             reqType: 'prod',
@@ -217,7 +217,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return ins
     }
 
-    #setupAdCallbacks() {
+    #setupAdvertisementCallbacks() {
         this._platformSdk.onAdPrepared = (placement) => {
             if (placement === this.#bannerPlacement) {
                 this._setBannerState(BANNER_STATE.SHOWN)
@@ -258,10 +258,9 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             } else if (placement === this.#rewardedPlacement) {
                 if (reward && isVideoCompleted) {
                     this._setRewardedState(REWARDED_STATE.REWARDED)
-                    this._setRewardedState(REWARDED_STATE.CLOSED)
-                } else {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
                 }
+
+                this._setRewardedState(REWARDED_STATE.CLOSED)
 
                 this.#rewardedContainer?.remove()
                 this.#rewardedContainer = null
