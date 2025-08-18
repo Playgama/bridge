@@ -127,7 +127,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                             self.#setupAdvertisement(obj)
                         }
 
-                        this._platformSdk.onInitialized = () => {
+                        this._platformSdk.onInitialised = () => {
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         }
