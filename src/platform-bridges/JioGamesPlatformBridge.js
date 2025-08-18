@@ -63,19 +63,19 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    _packageName = null
+    #packageName = null
 
-    _bannerPlacement = null
+    #bannerPlacement = null
 
-    _bannerContainer = null
+    #bannerContainer = null
 
-    _interstitialPlacement = null
+    #interstitialPlacement = null
 
-    _interstitialContainer = null
+    #interstitialContainer = null
 
-    _rewardedPlacement = null
+    #rewardedPlacement = null
 
-    _rewardedContainer = null
+    #rewardedContainer = null
 
     initialize() {
         if (this._isInitialized) {
@@ -99,7 +99,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                     waitFor('JioAds').then(() => {
                         const self = this
 
-                        this._packageName = this._options.packageName
+                        this.#packageName = this._options.packageName
 
                         this._platformSdk = window.JioAds
 
@@ -137,46 +137,46 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showBanner(position, placement) {
-        if (this._bannerContainer) {
+        if (this.#bannerContainer) {
             return
         }
 
-        this._bannerPlacement = placement
-        this._bannerContainer = createAdvertisementBannerContainer(position)
+        this.#bannerPlacement = placement
+        this.#bannerContainer = createAdvertisementBannerContainer(position)
 
         const ins = this.#createIns(placement, { 'data-container-id': BANNER_CONTAINER_ID })
-        this._bannerContainer.appendChild(ins)
+        this.#bannerContainer.appendChild(ins)
     }
 
     hideBanner() {
-        this._bannerContainer?.remove()
-        this._bannerContainer = null
+        this.#bannerContainer?.remove()
+        this.#bannerContainer = null
 
         this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
     showInterstitial(placement) {
-        if (this._interstitialContainer) {
+        if (this.#interstitialContainer) {
             return
         }
 
-        this._interstitialPlacement = placement
-        this._interstitialContainer = createAdContainer(INTERSTITIAL_CONTAINER_ID)
+        this.#interstitialPlacement = placement
+        this.#interstitialContainer = createAdContainer(INTERSTITIAL_CONTAINER_ID)
 
         const ins = this.#createIns(placement, { 'data-container-id': INTERSTITIAL_CONTAINER_ID })
-        this._interstitialContainer.appendChild(ins)
+        this.#interstitialContainer.appendChild(ins)
     }
 
     showRewarded(placement) {
-        if (this._rewardedContainer) {
+        if (this.#rewardedContainer) {
             return
         }
 
-        this._rewardedPlacement = placement
-        this._rewardedContainer = createAdContainer(REWARDED_CONTAINER_ID)
+        this.#rewardedPlacement = placement
+        this.#rewardedContainer = createAdContainer(REWARDED_CONTAINER_ID)
 
         const ins = this.#createIns(placement, { 'data-container-id': REWARDED_CONTAINER_ID })
-        this._rewardedContainer.appendChild(ins)
+        this.#rewardedContainer.appendChild(ins)
     }
 
     // leaderboards
@@ -206,7 +206,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     #createIns(placementId, extraAttrs = {}) {
         const ins = document.createinsement('ins')
         ins.setAttribute('data-adspot-key', placementId)
-        ins.setAttribute('data-source', this._packageName)
+        ins.setAttribute('data-source', this.#packageName)
         Object.entries(extraAttrs).forEach(([k, v]) => ins.setAttribute(k, String(v)))
 
         return ins
@@ -219,11 +219,11 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         this._platformSdk.onAdPrepared = (placement) => {
-            if (placement === this._bannerPlacement) {
+            if (placement === this.#bannerPlacement) {
                 this._setBannerState(BANNER_STATE.SHOWN)
-            } else if (placement === this._interstitialPlacement) {
+            } else if (placement === this.#interstitialPlacement) {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-            } else if (placement === this._rewardedPlacement) {
+            } else if (placement === this.#rewardedPlacement) {
                 this._setRewardedState(REWARDED_STATE.OPENED)
             }
         }
@@ -231,31 +231,31 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         this._platformSdk.onAdFailedToLoad = (placement, options) => {
             console.error(JSON.stringify(options))
 
-            if (placement === this._bannerPlacement) {
-                this._bannerContainer?.remove()
-                this._bannerContainer = null
+            if (placement === this.#bannerPlacement) {
+                this.#bannerContainer?.remove()
+                this.#bannerContainer = null
 
                 this._setBannerState(BANNER_STATE.FAILED)
-            } else if (placement === this._interstitialPlacement) {
-                this._interstitialContainer?.remove()
-                this._interstitialContainer = null
+            } else if (placement === this.#interstitialPlacement) {
+                this.#interstitialContainer?.remove()
+                this.#interstitialContainer = null
 
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            } else if (placement === this._rewardedPlacement) {
-                this._rewardedContainer?.remove()
-                this._rewardedContainer = null
+            } else if (placement === this.#rewardedPlacement) {
+                this.#rewardedContainer?.remove()
+                this.#rewardedContainer = null
 
                 this._setRewardedState(REWARDED_STATE.FAILED)
             }
         }
 
         this._platformSdk.onAdClosed = (placement, isVideoCompleted, reward) => {
-            if (placement === this._interstitialPlacement) {
+            if (placement === this.#interstitialPlacement) {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
 
-                this._interstitialContainer?.remove()
-                this._interstitialContainer = null
-            } else if (placement === this._rewardedPlacement) {
+                this.#interstitialContainer?.remove()
+                this.#interstitialContainer = null
+            } else if (placement === this.#rewardedPlacement) {
                 if (reward && isVideoCompleted) {
                     this._setRewardedState(REWARDED_STATE.CLOSED)
                     this._setRewardedState(REWARDED_STATE.REWARDED)
@@ -263,8 +263,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                     this._setRewardedState(REWARDED_STATE.FAILED)
                 }
 
-                this._rewardedContainer?.remove()
-                this._rewardedContainer = null
+                this.#rewardedContainer?.remove()
+                this.#rewardedContainer = null
             }
         }
     }
