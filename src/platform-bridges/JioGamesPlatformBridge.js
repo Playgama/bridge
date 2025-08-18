@@ -214,7 +214,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             adRequestTimeout: 6000,
             adRenderingTimeout: 5000,
         })
-  
+
         this._platformSdk.onAdPrepared = (placement) => {
             if (placement === this.#bannerPlacement) {
                 this._setBannerState(BANNER_STATE.SHOWN)
