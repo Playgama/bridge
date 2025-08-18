@@ -209,7 +209,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     #createIns(placementId, extraAttrs = {}) {
-        const ins = document.createinsement('ins')
+        const ins = document.createElement('ins')
         ins.setAttribute('data-adspot-key', placementId)
         ins.setAttribute('data-source', this.#packageName)
         Object.entries(extraAttrs).forEach(([k, v]) => ins.setAttribute(k, String(v)))
