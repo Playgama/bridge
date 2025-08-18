@@ -125,7 +125,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
                         window.onUserPropertiesResponse = (obj) => {
                             self.#setupAdvertisement(obj)
-                            self.#setupAdvertisementCallbacks()
                         }
 
                         this._platformSdk.onInitialized = () => {
@@ -198,16 +197,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    #setupAdvertisement(obj) {
-        this._platformSdk.setConfiguration({
-            ...obj,
-            reqType: 'prod',
-            logLevel: 1,
-            adRequestTimeout: 6000,
-            adRenderingTimeout: 5000,
-        })
-    }
-
     #createIns(placementId, extraAttrs = {}) {
         const ins = document.createElement('ins')
         ins.setAttribute('data-adspot-key', placementId)
@@ -217,7 +206,15 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return ins
     }
 
-    #setupAdvertisementCallbacks() {
+    #setupAdvertisement(obj) {
+        this._platformSdk.setConfiguration({
+            ...obj,
+            reqType: 'prod',
+            logLevel: 1,
+            adRequestTimeout: 6000,
+            adRenderingTimeout: 5000,
+        })
+  
         this._platformSdk.onAdPrepared = (placement) => {
             if (placement === this.#bannerPlacement) {
                 this._setBannerState(BANNER_STATE.SHOWN)
