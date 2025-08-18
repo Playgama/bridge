@@ -138,7 +138,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
-                    Promise.all([
+                    return Promise.all([
                         this._platformSdk.community.canFollowOfficialPageAsync(),
                         this._platformSdk.community.canJoinOfficialGroupAsync(),
                     ])
