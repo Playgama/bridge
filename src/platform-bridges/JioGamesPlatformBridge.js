@@ -127,6 +127,11 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                             self.#setupAds(obj)
                             self.#setupAdCallbacks()
                         }
+
+                        this._platformSdk.onInitialized = () => {
+                            this._isInitialized = true
+                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        }
                     })
                 })
             }
@@ -213,11 +218,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     #setupAdCallbacks() {
-        this._platformSdk.onInitialized = () => {
-            this._isInitialized = true
-            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-        }
-
         this._platformSdk.onAdPrepared = (placement) => {
             if (placement === this.#bannerPlacement) {
                 this._setBannerState(BANNER_STATE.SHOWN)
@@ -257,8 +257,8 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 this.#interstitialContainer = null
             } else if (placement === this.#rewardedPlacement) {
                 if (reward && isVideoCompleted) {
-                    this._setRewardedState(REWARDED_STATE.CLOSED)
                     this._setRewardedState(REWARDED_STATE.REWARDED)
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
                 } else {
                     this._setRewardedState(REWARDED_STATE.FAILED)
                 }
