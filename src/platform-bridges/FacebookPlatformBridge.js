@@ -92,6 +92,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('inviteAsync')
     }
 
+    get isJoinCommunitySupported() {
+        return this._isJoinCommunitySupported
+    }
+
     get isShareSupported() {
         return this._supportedApis.includes('shareAsync')
     }
@@ -105,6 +109,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     _preloadedRewardedPromises = {}
 
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+    _isJoinCommunitySupported = false
 
     initialize() {
         if (this._isInitialized) {
@@ -132,6 +138,16 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
+                    Promise.all([
+                        this._platformSdk.community.canFollowOfficialPageAsync(),
+                        this._platformSdk.community.canJoinOfficialGroupAsync(),
+                    ])
+                        .then(([canFollow, canJoin]) => {
+                            this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
+                        })
+                        .catch(() => {
+                            this._isJoinCommunitySupported = false
+                        })
 
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -501,13 +517,20 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        let { isPage } = options
+        const { isPage } = options
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        }
 
         if (isPage === true) {
-            return FBInstant.community.followOfficialPageAsync()
-        }else{
-            return FBInstant.community.joinOfficialGroupAsync()
+            this._platformSdk.community.followOfficialPageAsync()
+        } else {
+            this._platformSdk.community.joinOfficialGroupAsync()
         }
+
+        return promiseDecorator.promise
     }
 
     share(options) {
