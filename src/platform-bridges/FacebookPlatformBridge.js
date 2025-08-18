@@ -145,10 +145,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                         .then(([canFollow, canJoin]) => {
                             this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
                         })
-                        .catch(() => {
-                            this._isJoinCommunitySupported = false
-                        })
-
+                })
+                .then(() => {
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -513,21 +511,29 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     joinCommunity(options) {
-        if (!options) {
-            return Promise.reject()
-        }
-
-        const { isPage } = options
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
         }
 
+        if (!options) {
+            this._platformSdk.community.joinOfficialGroupAsync()
+                .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+
+            return promiseDecorator.promise
+        }
+
+        const { isPage } = options
+
         if (isPage === true) {
             this._platformSdk.community.followOfficialPageAsync()
+                .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
         } else {
             this._platformSdk.community.joinOfficialGroupAsync()
+                .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
         }
 
         return promiseDecorator.promise
