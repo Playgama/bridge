@@ -142,9 +142,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     return Promise.allSettled([
                         this._platformSdk.community.canFollowOfficialPageAsync(),
                         this._platformSdk.community.canJoinOfficialGroupAsync(),
-                    ]).then(([rFollow, rJoin]) => {
-                        const canFollow = rFollow.status === 'fulfilled' ? rFollow.value : false
-                        const canJoin = rJoin.status === 'fulfilled' ? rJoin.value : false
+                    ]).then(([pageFollow, groupJoin]) => {
+                        const canFollow = pageFollow.status === 'fulfilled' ? pageFollow.value : false
+                        const canJoin = groupJoin.status === 'fulfilled' ? groupJoin.value : false
                         this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
                     })
                 })
@@ -513,32 +513,22 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     joinCommunity(options) {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY);
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY);
         }
-
-        if (!options) {
-            this._platformSdk.community.joinOfficialGroupAsync()
-                .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
-                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
-
-            return promiseDecorator.promise
-        }
-
-        const { isPage } = options
-
-        if (isPage === true) {
+    
+        if (options && options.isPage === true) {
             this._platformSdk.community.followOfficialPageAsync()
                 .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
-                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err));
         } else {
             this._platformSdk.community.joinOfficialGroupAsync()
                 .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
-                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err));
         }
-
-        return promiseDecorator.promise
+    
+        return promiseDecorator.promise;
     }
 
     share(options) {
