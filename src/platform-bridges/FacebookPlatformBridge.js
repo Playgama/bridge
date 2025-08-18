@@ -138,13 +138,15 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
-                    return Promise.all([
+
+                    return Promise.allSettled([
                         this._platformSdk.community.canFollowOfficialPageAsync(),
                         this._platformSdk.community.canJoinOfficialGroupAsync(),
-                    ])
-                        .then(([canFollow, canJoin]) => {
-                            this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
-                        })
+                    ]).then(([rFollow, rJoin]) => {
+                        const canFollow = rFollow.status === 'fulfilled' ? rFollow.value : false
+                        const canJoin = rJoin.status === 'fulfilled' ? rJoin.value : false
+                        this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
+                    })
                 })
                 .then(() => {
                     this._isInitialized = true
