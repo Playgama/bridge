@@ -513,22 +513,22 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     joinCommunity(options) {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY);
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY);
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
         }
-    
+
         if (options && options.isPage === true) {
             this._platformSdk.community.followOfficialPageAsync()
                 .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
-                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err));
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
         } else {
             this._platformSdk.community.joinOfficialGroupAsync()
                 .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
-                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err));
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
         }
-    
-        return promiseDecorator.promise;
+
+        return promiseDecorator.promise
     }
 
     share(options) {
