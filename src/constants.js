@@ -35,6 +35,7 @@ export const PLATFORM_ID = {
     BITQUEST: 'bitquest',
     GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
+    JIO_GAMES: 'jio_games',
     YOUTUBE: 'youtube',
 }
 
@@ -95,6 +96,8 @@ export const BANNER_POSITION = {
 }
 
 export const BANNER_CONTAINER_ID = 'banner-container'
+export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'
+export const REWARDED_CONTAINER_ID = 'rewarded-container'
 
 export const STORAGE_TYPE = {
     LOCAL_STORAGE: 'local_storage',
@@ -160,4 +163,5 @@ export const ERROR = {
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
     DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
+    JIO_GAMES_GAME_PARAMS_NOT_FOUND: { message: 'JioGames Game params are not found' },
 }
