@@ -113,6 +113,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('inviteAsync')
     }
 
+    get isJoinCommunitySupported() {
+        return this._isJoinCommunitySupported
+    }
+
     get isShareSupported() {
         return this._supportedApis.includes('shareAsync')
     }
@@ -126,6 +130,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     _preloadedRewardedPromises = {}
 
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+    _isJoinCommunitySupported = false
 
     #leaderboardClicked = false
 
@@ -155,9 +161,19 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
-
+              
                     this.#setupLeaderboards()
 
+                    return Promise.allSettled([
+                        this._platformSdk.community.canFollowOfficialPageAsync(),
+                        this._platformSdk.community.canJoinOfficialGroupAsync(),
+                    ]).then(([pageFollow, groupJoin]) => {
+                        const canFollow = pageFollow.status === 'fulfilled' ? pageFollow.value : false
+                        const canJoin = groupJoin.status === 'fulfilled' ? groupJoin.value : false
+                        this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
+                    })
+                })
+                .then(() => {
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -531,6 +547,25 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.INVITE_FRIENDS, error)
                 })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    joinCommunity(options) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+
+            if (options && options.isPage === true) {
+                this._platformSdk.community.followOfficialPageAsync()
+                    .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                    .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+            } else {
+                this._platformSdk.community.joinOfficialGroupAsync()
+                    .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                    .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+            }
         }
 
         return promiseDecorator.promise
