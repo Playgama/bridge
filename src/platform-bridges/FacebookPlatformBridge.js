@@ -16,7 +16,12 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, isBase64Image, waitFor } from '../common/utils'
+import {
+    addJavaScript,
+    createLoadingOverlay,
+    isBase64Image,
+    waitFor,
+} from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -32,17 +37,14 @@ import {
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 
 const LEADERBOARD_XML = `
-    <View style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center">
-        <View style="position: relative; background-color: #2E3C75;color: #fff;padding: 20px;border-radius: 10px;box-shadow: 0 0 10px #2E3C75;font-size: 24px;text-align: center;min-width: 250px;max-width: 30%;flex-direction: column;justify-content: center;align-items: center;">
-            <View style="position: absolute;top: 10px;right: 10px;cursor: pointer;" onTapEvent="close">
-                <Text content="x" style="font-size: 24px; color: rgb(255, 255, 255); margin: 0" />
-            </View>
-            <View style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <For source="{{FBInstant.globalLeaderboards[{{id}}].topPlayers}}" itemName="i" sortKey="score">
+    <View style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center" onTapEvent="close">
+        <View style="position: relative; background-color: #2E3C75;color: #fff;padding: 20px;border-radius: 10px;box-shadow: 0 0 10px #2E3C75;font-size: 24px;text-align: center;min-width: 250px;max-width: 30%;max-height: 80%;overflow: auto;flex-direction: column;justify-content: center;align-items: center;">
+            <View style="display: flex; flex-direction: column; align-items: center; justify-content: center;" onTapEvent="leaderboard">
+                <For source="{{playerSessionIDs}}" itemName="playerSessionID">
                     <View style="display: flex;align-items: center;justify-content: space-between;width: 100%;gap: 10px;">
-                        <Image src="{{i.photo}}" style="width: 50px; height: 50px; border-radius: 50%" />
-                        <Text content="{{i.name}}" style="flex: 1; text-align: start;" />
-                        <Text content="{{i.score}}" />
+                      <Image src="{{FBInstant.players[{{playerSessionID.item}}].photo}}" style="width: 50px; height: 50px; border-radius: 50%" />
+                      <Text content="{{FBInstant.players[{{playerSessionID.item}}].name}}" style="flex: 1; text-align: start;" />
+                      <Text content="{{FBInstant.players[{{playerSessionID.item}}].score}}" />
                     </View>
                 </For>
             </View>
@@ -124,6 +126,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     _preloadedRewardedPromises = {}
 
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+    #leaderboardClicked = false
 
     initialize() {
         if (this._isInitialized) {
@@ -346,13 +350,28 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
 
-            this._platformSdk.overlayViews.createOverlayViewWithXMLStringAsync(
-                LEADERBOARD_XML,
-                document.body,
-                '',
-                '',
-                { id },
-            ).then((overlay) => {
+            const loadingOverlay = createLoadingOverlay()
+            document.body.appendChild(loadingOverlay)
+
+            this._platformSdk.globalLeaderboards.getTopEntriesAsync(id, 20).then((entries) => {
+                const playerSessionIDs = entries.map((entry) => entry.getPlayer().getSessionID())
+
+                const overlay = this._platformSdk.overlayViews.createOverlayViewWithXMLString(
+                    LEADERBOARD_XML,
+                    '',
+                    { playerSessionIDs },
+                    (overlayView) => {
+                        overlayView.showAsync()
+                        this._overlay = overlayView
+                        loadingOverlay.remove()
+
+                        this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
+                    },
+                    (_, error) => {
+                        this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
+                    },
+                )
+
                 const { iframeElement } = overlay
 
                 iframeElement.style.zIndex = 9999
@@ -364,14 +383,12 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 iframeElement.border = 0
                 iframeElement.id = iframeElement.name
 
-                this._overlay = overlay
-
-                this._overlay.showAsync()
-
-                this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
-            }).catch((error) => {
-                this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
+                document.body.appendChild(iframeElement)
             })
+                .catch((error) => {
+                    loadingOverlay.remove()
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
+                })
         }
 
         return promiseDecorator.promise
@@ -549,7 +566,14 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     #setupLeaderboards() {
         const self = this
         self._platformSdk.overlayViews.setCustomEventHandler((eventStr) => {
-            if (eventStr === 'close') {
+            if (eventStr === 'leaderboard') {
+                self.#leaderboardClicked = true
+            } else if (eventStr === 'close') {
+                if (self.#leaderboardClicked) {
+                    self.#leaderboardClicked = false
+                    return
+                }
+
                 if (self._overlay) {
                     document.body.removeChild(
                         document.getElementsByName(self._overlay.iframeElement.name)[0],
