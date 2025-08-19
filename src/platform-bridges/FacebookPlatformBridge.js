@@ -368,6 +368,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                         this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
                     },
                     (_, error) => {
+                        loadingOverlay.remove()
                         this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
                     },
                 )
