@@ -491,6 +491,10 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
+    leaderboardsShowNativePopup() {
+        return Promise.reject()
+    }
+
     // payments
     paymentsPurchase(id) {
         if (this.isPaymentsSupported) {

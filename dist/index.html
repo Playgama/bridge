@@ -186,6 +186,8 @@
                 <hr>
                 <button id="leaderboards-get-entries-button">Get Entries</button>
                 <p id="leaderboards-entries-container"></p>
+                <hr>
+                <button id="leaderboards-show-native-popup-button">Show Native Popup</button>
             </div>
             <div class="section" id="payments-section" style="display: none">
                 <h2>Payments</h2>
@@ -363,6 +365,7 @@
                 const leaderboardsSetScoreButton = document.getElementById('leaderboards-set-score-button')
                 const leaderboardsGetEntriesButton = document.getElementById('leaderboards-get-entries-button')
                 const leaderboardsEntriesContainer = document.getElementById('leaderboards-entries-container')
+                const leaderboardsShowNativePopupButton = document.getElementById('leaderboards-show-native-popup-button')
 
                 const paymentsIsSupportedText = document.getElementById('payments-is-supported-text')
                 const paymentsGetPurchasesButton = document.getElementById('payments-get-purchases-button')
@@ -689,6 +692,11 @@
                             })
                             leaderboardsEntriesContainer.innerText = text
                         })
+                })
+
+                leaderboardsShowNativePopupButton.addEventListener('click', () => {
+                    bridge.leaderboards.showNativePopup(leaderboardsIdInput.value)
+                        .catch((error) => console.log(error))
                 })
 
                 paymentsGetPurchasesButton.addEventListener('click', () => {
