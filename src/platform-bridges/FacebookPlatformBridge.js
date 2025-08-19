@@ -565,10 +565,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     #setupLeaderboards() {
         const self = this
-        self._platformSdk.overlayViews.setCustomEventHandler((eventStr) => {
-            if (eventStr === 'leaderboard') {
+        self._platformSdk.overlayViews.setCustomEventHandler((event) => {
+            if (event === 'leaderboard') {
                 self.#leaderboardClicked = true
-            } else if (eventStr === 'close') {
+            } else if (event === 'close') {
                 if (self.#leaderboardClicked) {
                     self.#leaderboardClicked = false
                     return
@@ -576,7 +576,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
                 if (self._overlay) {
                     document.body.removeChild(
-                        document.getElementsByName(self._overlay.iframeElement.name)[0],
+                        document.getElementById(self._overlay.iframeElement.id),
                     )
 
                     self._overlay.dismissAsync()
