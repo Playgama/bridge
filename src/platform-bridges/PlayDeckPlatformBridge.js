@@ -312,10 +312,14 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(id) {
+    paymentsPurchase(id, options) {
         const product = this._paymentsGetProductPlatformData(id)
         if (!product) {
             return Promise.reject()
+        }
+
+        if (options && options.externalId) {
+            product.externalId = options.externalId
         }
 
         if (!product.externalId) {
