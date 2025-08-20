@@ -652,10 +652,16 @@ class PlatformBridgeBase {
         }
 
         return this._options.payments
-            .map((product) => ({
-                id: product.id,
-                ...product[this.platformId],
-            }))
+            .map((product) => {
+                const mergedProduct = {
+                    ...product[this.platformId],
+                }
+
+                mergedProduct.platformProductId = mergedProduct.id
+                mergedProduct.id = product.id
+
+                return mergedProduct
+            })
     }
 
     _paymentsGetProductPlatformData(id) {
@@ -669,10 +675,14 @@ class PlatformBridgeBase {
             return null
         }
 
-        return {
-            id: product.id,
+        const mergedProduct = {
             ...product[this.platformId],
         }
+
+        mergedProduct.platformProductId = mergedProduct.id
+        mergedProduct.id = product.id
+
+        return mergedProduct
     }
 
     _paymentsGenerateTransactionId(id) {

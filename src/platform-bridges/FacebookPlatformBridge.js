@@ -366,7 +366,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.payments.purchaseAsync({ productID: product.id })
+            this._platformSdk.payments.purchaseAsync({ productID: product.platformProductId })
                 .then((purchase) => {
                     const mergedPurchase = { id, ...purchase }
                     delete mergedPurchase.productID
@@ -417,7 +417,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.payments.getCatalogAsync()
                 .then((facebookProducts) => {
                     const mergedProducts = products.map((product) => {
-                        const facebookProduct = facebookProducts.find((p) => p.productID === product.id)
+                        const facebookProduct = facebookProducts.find((p) => p.productID === product.platformProductId)
 
                         return {
                             id: product.id,

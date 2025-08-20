@@ -162,7 +162,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.commands.startPurchase({ sku_id: product.id })
+            this._platformSdk.commands.startPurchase({ sku_id: product.platformProductId })
                 .then((purchase) => {
                     if (!purchase) {
                         throw new Error('Purchase failed')
@@ -223,7 +223,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.commands.getSkus()
                 .then(({ skus: discordProducts }) => {
                     const mergedProducts = products.map((product) => {
-                        const discordProduct = discordProducts.find((p) => p.id === product.id)
+                        const discordProduct = discordProducts.find((p) => p.id === product.platformProductId)
 
                         return {
                             id: product.id,
