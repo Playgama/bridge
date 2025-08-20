@@ -40,11 +40,11 @@ const LEADERBOARD_XML = `
     <View style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center" onTapEvent="close">
         <View style="position: relative; background-color: #2E3C75;color: #fff;padding: 20px;border-radius: 10px;box-shadow: 0 0 10px #2E3C75;font-size: 24px;text-align: center;min-width: 250px;max-width: 30%;max-height: 80%;overflow: auto;flex-direction: column;justify-content: center;align-items: center;">
             <View style="display: flex; flex-direction: column; align-items: center; justify-content: center;" onTapEvent="leaderboard">
-                <For source="{{playerSessionIDs}}" itemName="playerSessionID">
+                <For source="{{players}}" itemName="player">
                     <View style="display: flex;align-items: center;justify-content: space-between;width: 100%;gap: 10px;">
-                      <Image src="{{FBInstant.players[{{playerSessionID.item}}].photo}}" style="width: 50px; height: 50px; border-radius: 50%" />
-                      <Text content="{{FBInstant.players[{{playerSessionID.item}}].name}}" style="flex: 1; text-align: start;" />
-                      <Text content="{{FBInstant.players[{{playerSessionID.item}}].score}}" />
+                      <Image src="{{FBInstant.players[{{player.sessionID}}].photo}}" style="width: 50px; height: 50px; border-radius: 50%" />
+                      <Text content="{{FBInstant.players[{{player.sessionID}}].name}}" style="flex: 1; text-align: start;" />
+                      <Text content="{{player.score}}" />
                     </View>
                 </For>
             </View>
@@ -349,7 +349,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
-            this._platformSdk.globalLeaderboards.setScoreAsync(id, score)
+            const numericScore = typeof score === 'number' ? score : parseInt(score, 10)
+            this._platformSdk.globalLeaderboards.setScoreAsync(id, numericScore)
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
                 })
@@ -370,12 +371,15 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             document.body.appendChild(loadingOverlay)
 
             this._platformSdk.globalLeaderboards.getTopEntriesAsync(id, 20).then((entries) => {
-                const playerSessionIDs = entries.map((entry) => entry.getPlayer().getSessionID())
+                const players = entries.map((entry) => ({
+                    score: entry.getScore(),
+                    sessionID: entry.getPlayer().getSessionID(),
+                }))
 
                 const overlay = this._platformSdk.overlayViews.createOverlayViewWithXMLString(
                     LEADERBOARD_XML,
                     '',
-                    { playerSessionIDs },
+                    { players },
                     (overlayView) => {
                         overlayView.showAsync()
                         this._overlay = overlayView
@@ -397,7 +401,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 iframeElement.style.left = 0
                 iframeElement.style.height = '100vh'
                 iframeElement.style.width = '100vw'
-                iframeElement.border = 0
+                iframeElement.style.border = 0
                 iframeElement.id = iframeElement.name
 
                 document.body.appendChild(iframeElement)
