@@ -62,6 +62,8 @@
                     Send Message
                 </button>
                 <hr>
+                <p>Is Audio Enabled: <span id="platform-is-audio-enabled-text"></span></p>
+                <hr>
                 <p>Is Get All Games Supported: <span id="platform-is-get-all-games-supported-text"></span></p>
                 <p>Is Get Game By ID Supported: <span id="platform-is-get-game-by-id-supported-text"></span></p>
                 <p id="platform-all-games-container"></p>
@@ -184,6 +186,8 @@
                 <hr>
                 <button id="leaderboards-get-entries-button">Get Entries</button>
                 <p id="leaderboards-entries-container"></p>
+                <hr>
+                <button id="leaderboards-show-native-popup-button">Show Native Popup</button>
             </div>
             <div class="section" id="payments-section" style="display: none">
                 <h2>Payments</h2>
@@ -288,6 +292,7 @@
                 const platformServerTimeButton = document.getElementById('platform-server-time-button')
                 const platformMessageInput = document.getElementById('platform-send-message-input')
                 const platformMessageButton = document.getElementById('platform-send-message-button')
+                const platformIsAudioEnabledText = document.getElementById('platform-is-audio-enabled-text')
                 const platformIsGetAllGamesSupportedText = document.getElementById('platform-is-get-all-games-supported-text')
                 const platformIsGetGameByIdSupportedText = document.getElementById('platform-is-get-game-by-id-supported-text')
                 const platformAllGamesContainer = document.getElementById('platform-all-games-container')
@@ -360,6 +365,7 @@
                 const leaderboardsSetScoreButton = document.getElementById('leaderboards-set-score-button')
                 const leaderboardsGetEntriesButton = document.getElementById('leaderboards-get-entries-button')
                 const leaderboardsEntriesContainer = document.getElementById('leaderboards-entries-container')
+                const leaderboardsShowNativePopupButton = document.getElementById('leaderboards-show-native-popup-button')
 
                 const paymentsIsSupportedText = document.getElementById('payments-is-supported-text')
                 const paymentsGetPurchasesButton = document.getElementById('payments-get-purchases-button')
@@ -404,6 +410,7 @@
                         platformLanguageText.innerText = bridge.platform.language
                         platformPayloadText.innerText = bridge.platform.payload
                         platformTldText.innerText = bridge.platform.tld
+                        platformIsAudioEnabledText.innerText = bridge.platform.isAudioEnabled
                         platformIsGetAllGamesSupportedText.innerText = bridge.platform.isGetAllGamesSupported
                         platformIsGetGameByIdSupportedText.innerText = bridge.platform.isGetGameByIdSupported
 
@@ -685,6 +692,11 @@
                             })
                             leaderboardsEntriesContainer.innerText = text
                         })
+                })
+
+                leaderboardsShowNativePopupButton.addEventListener('click', () => {
+                    bridge.leaderboards.showNativePopup(leaderboardsIdInput.value)
+                        .catch((error) => console.log(error))
                 })
 
                 paymentsGetPurchasesButton.addEventListener('click', () => {

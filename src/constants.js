@@ -33,8 +33,10 @@ export const PLATFORM_ID = {
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
     HUAWEI: 'huawei',
+    BITQUEST: 'bitquest',
     GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
+    JIO_GAMES: 'jio_games',
     YOUTUBE: 'youtube',
 }
 
@@ -58,6 +60,8 @@ export const EVENT_NAME = {
     REWARDED_STATE_CHANGED: 'rewarded_state_changed',
     BANNER_STATE_CHANGED: 'banner_state_changed',
     VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
+    AUDIO_STATE_CHANGED: 'audio_state_changed',
+    PAUSE_STATE_CHANGED: 'pause_state_changed',
 }
 
 export const VISIBILITY_STATE = {
@@ -93,6 +97,8 @@ export const BANNER_POSITION = {
 }
 
 export const BANNER_CONTAINER_ID = 'banner-container'
+export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'
+export const REWARDED_CONTAINER_ID = 'rewarded-container'
 
 export const STORAGE_TYPE = {
     LOCAL_STORAGE: 'local_storage',
@@ -120,6 +126,7 @@ export const LEADERBOARD_TYPE = {
     NOT_AVAILABLE: 'not_available',
     IN_GAME: 'in_game',
     NATIVE: 'native',
+    NATIVE_POPUP: 'native_popup',
 }
 
 export const ACTION_NAME = {
@@ -134,6 +141,7 @@ export const ACTION_NAME = {
     RATE: 'rate',
     LEADERBOARDS_SET_SCORE: 'leaderboards_set_score',
     LEADERBOARDS_GET_ENTRIES: 'leaderboards_get_entries',
+    LEADERBOARDS_SHOW_NATIVE_POPUP: 'leaderboards_show_native_popup',
     GET_PURCHASES: 'get_purchases',
     GET_CATALOG: 'get_catalog',
     PURCHASE: 'purchase',
@@ -142,7 +150,6 @@ export const ACTION_NAME = {
     GET_STORAGE_DATA: 'get_storage_data',
     SET_STORAGE_DATA: 'set_storage_data',
     DELETE_STORAGE_DATA: 'delete_storage_data',
-    SHOW_LEADERBOARD_NATIVE_POPUP: 'show_leaderboard_native_popup',
     CLIPBOARD_WRITE: 'clipboard_write',
     ADBLOCK_DETECT: 'adblock_detect',
     SET_INTERSTITIAL_STATE: 'set_interstitial_state',
@@ -164,4 +171,5 @@ export const ERROR = {
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
     DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
+    JIO_GAMES_GAME_PARAMS_NOT_FOUND: { message: 'JioGames Game params are not found' },
 }

@@ -59,10 +59,12 @@ import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
 import HuaweiPlatformBridge from './platform-bridges/HuaweiPlatformBridge'
+import BitquestPlatformBridge from './platform-bridges/BitquestPlatformBridge'
 import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
 import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
 import YoutubePlatformBridge from './platform-bridges/YoutubePlatformBridge'
 import { deepMerge } from './common/utils'
+import JioGamesPlatformBridge from './platform-bridges/JioGamesPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -197,7 +199,8 @@ class PlaygamaBridge {
                 .then((data) => {
                     modifiedOptions = { ...data }
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.error('Config parsing error.', error)
                     modifiedOptions = { ...options }
                 })
                 .finally(() => {
@@ -284,6 +287,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.POKI
             } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
                 platformId = PLATFORM_ID.MSN
+            } else if (url.hash.includes('customUrl_') || document.referrer.includes('bitquest')) {
+                platformId = PLATFORM_ID.BITQUEST
             } else if (url.hostname.includes('eponesh.')) {
                 platformId = PLATFORM_ID.GAMEPUSH
             } else if (url.hostname.includes('discordsays.com')) {
@@ -363,6 +368,10 @@ class PlaygamaBridge {
                 this.#platformBridge = new HuaweiPlatformBridge(modifiedOptions)
                 break
             }
+            case PLATFORM_ID.BITQUEST: {
+                this.#platformBridge = new BitquestPlatformBridge(modifiedOptions)
+                break
+            }
             case PLATFORM_ID.GAMEPUSH: {
                 this.#platformBridge = new GamePushPlatformBridge(modifiedOptions)
                 break
@@ -373,6 +382,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.YOUTUBE: {
                 this.#platformBridge = new YoutubePlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.JIO_GAMES: {
+                this.#platformBridge = new JioGamesPlatformBridge(modifiedOptions)
                 break
             }
             default: {

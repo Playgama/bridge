@@ -183,7 +183,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     get leaderboardsType() {
-        return LEADERBOARD_TYPE.NATIVE
+        return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
     }
 
     // clipboard
@@ -212,6 +212,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #messageBroker = new MessageBroker()
 
     _supportedFeatures = []
+
+    _leaderboardsType = null
 
     initialize() {
         if (this._isInitialized) {
@@ -259,6 +261,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this._platformLanguage = config.platformLanguage ?? super.platformLanguage
         this._platformTld = config.platformTld ?? super.platformTld
         this._platformPayload = config.platformPayload ?? super.platformPayload
+        this._leaderboardsType = config.leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
 
         this._paymentsPurchases = data.purchases || []
 
@@ -1030,6 +1033,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     leaderboardsSetScore(id, score) {
+        if (this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE) {
+            return Promise.reject(new Error('Leaderboards are not available'))
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
@@ -1052,24 +1059,42 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     leaderboardsGetEntries(id) {
+        if (
+            this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE
+            || this.leaderboardsType === LEADERBOARD_TYPE.NATIVE
+        ) {
+            return Promise.reject(new Error('Leaderboards are not available'))
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
 
             const messageId = this.#messageBroker.generateMessageId()
 
-            const options = {
-                id,
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === MODULE_NAME.LEADERBOARDS
+                    && data.action === ACTION_NAME.LEADERBOARDS_GET_ENTRIES
+                    && data.id === messageId
+                ) {
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, data.entries)
+                    this.#messageBroker.removeListener(messageHandler)
+                } else {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+                }
             }
+
+            this.#messageBroker.addListener(messageHandler)
 
             this.#messageBroker.send({
                 type: MODULE_NAME.LEADERBOARDS,
                 action: ACTION_NAME.LEADERBOARDS_GET_ENTRIES,
                 id: messageId,
-                options,
+                options: {
+                    id,
+                },
             })
-
-            this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         }
 
         return promiseDecorator.promise

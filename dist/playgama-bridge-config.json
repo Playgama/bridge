@@ -27,6 +27,9 @@
         "gamepush": {
             "projectId": "",
             "publicToken": ""
+        },
+        "jio_games": {
+            "packageName": ""
         }
     },
     "advertisement": {

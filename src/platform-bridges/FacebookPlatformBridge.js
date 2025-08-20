@@ -16,7 +16,12 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, isBase64Image, waitFor } from '../common/utils'
+import {
+    addJavaScript,
+    createLoadingOverlay,
+    isBase64Image,
+    waitFor,
+} from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -30,6 +35,22 @@ import {
 } from '../constants'
 
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
+
+const LEADERBOARD_XML = `
+    <View style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center" onTapEvent="close">
+        <View style="position: relative; background-color: #2E3C75;color: #fff;padding: 20px;border-radius: 10px;box-shadow: 0 0 10px #2E3C75;font-size: 24px;text-align: center;min-width: 250px;max-width: 30%;max-height: 80%;overflow: auto;flex-direction: column;justify-content: center;align-items: center;">
+            <View style="display: flex; flex-direction: column; align-items: center; justify-content: center;" onTapEvent="leaderboard">
+                <For source="{{playerSessionIDs}}" itemName="playerSessionID">
+                    <View style="display: flex;align-items: center;justify-content: space-between;width: 100%;gap: 10px;">
+                      <Image src="{{FBInstant.players[{{playerSessionID.item}}].photo}}" style="width: 50px; height: 50px; border-radius: 50%" />
+                      <Text content="{{FBInstant.players[{{playerSessionID.item}}].name}}" style="flex: 1; text-align: start;" />
+                      <Text content="{{FBInstant.players[{{playerSessionID.item}}].score}}" />
+                    </View>
+                </For>
+            </View>
+        </View>
+    </View>
+`
 
 class FacebookPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -79,7 +100,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     get leaderboardsType() {
-        return LEADERBOARD_TYPE.IN_GAME
+        return LEADERBOARD_TYPE.NATIVE_POPUP
     }
 
     // payments
@@ -90,6 +111,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     // social
     get isInviteFriendsSupported() {
         return this._supportedApis.includes('inviteAsync')
+    }
+
+    get isJoinCommunitySupported() {
+        return this._isJoinCommunitySupported
     }
 
     get isShareSupported() {
@@ -105,6 +130,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     _preloadedRewardedPromises = {}
 
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+    _isJoinCommunitySupported = false
+
+    #leaderboardClicked = false
 
     initialize() {
         if (this._isInitialized) {
@@ -132,7 +161,19 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
+              
+                    this.#setupLeaderboards()
 
+                    return Promise.allSettled([
+                        this._platformSdk.community.canFollowOfficialPageAsync(),
+                        this._platformSdk.community.canJoinOfficialGroupAsync(),
+                    ]).then(([pageFollow, groupJoin]) => {
+                        const canFollow = pageFollow.status === 'fulfilled' ? pageFollow.value : false
+                        const canJoin = groupJoin.status === 'fulfilled' ? groupJoin.value : false
+                        this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
+                    })
+                })
+                .then(() => {
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -320,35 +361,50 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    leaderboardsGetEntries(id) {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+    leaderboardsShowNativePopup(id) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
 
-            this._platformSdk.globalLeaderboards.getTopEntriesAsync(id, 10)
-                .then((result) => {
-                    let entries = null
-                    let rank = 0
+            const loadingOverlay = createLoadingOverlay()
+            document.body.appendChild(loadingOverlay)
 
-                    if (result && result.entries.length > 0) {
-                        entries = result.entries.map((e) => {
-                            const entryPlayer = e.getPlayer()
-                            const entryRank = rank
-                            rank += 1
-                            return {
-                                rank: entryRank,
-                                score: e.getScore(),
-                                id: entryPlayer.getID(),
-                                name: entryPlayer.getName(),
-                                photo: entryPlayer.getPhoto(),
-                            }
-                        })
-                    }
+            this._platformSdk.globalLeaderboards.getTopEntriesAsync(id, 20).then((entries) => {
+                const playerSessionIDs = entries.map((entry) => entry.getPlayer().getSessionID())
 
-                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
-                })
+                const overlay = this._platformSdk.overlayViews.createOverlayViewWithXMLString(
+                    LEADERBOARD_XML,
+                    '',
+                    { playerSessionIDs },
+                    (overlayView) => {
+                        overlayView.showAsync()
+                        this._overlay = overlayView
+                        loadingOverlay.remove()
+
+                        this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
+                    },
+                    (_, error) => {
+                        loadingOverlay.remove()
+                        this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
+                    },
+                )
+
+                const { iframeElement } = overlay
+
+                iframeElement.style.zIndex = 9999
+                iframeElement.style.position = 'absolute'
+                iframeElement.style.top = 0
+                iframeElement.style.left = 0
+                iframeElement.style.height = '100vh'
+                iframeElement.style.width = '100vw'
+                iframeElement.border = 0
+                iframeElement.id = iframeElement.name
+
+                document.body.appendChild(iframeElement)
+            })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
+                    loadingOverlay.remove()
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
                 })
         }
 
@@ -371,7 +427,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     const mergedPurchase = { id, ...purchase }
                     delete mergedPurchase.productID
                     this._paymentsPurchases.push(mergedPurchase)
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
@@ -496,6 +552,25 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    joinCommunity(options) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+
+            if (options && options.isPage === true) {
+                this._platformSdk.community.followOfficialPageAsync()
+                    .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                    .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+            } else {
+                this._platformSdk.community.joinOfficialGroupAsync()
+                    .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                    .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+            }
+        }
+
+        return promiseDecorator.promise
+    }
+
     share(options) {
         if (!options.image || !options.text) {
             return Promise.reject()
@@ -522,6 +597,29 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #setupLeaderboards() {
+        const self = this
+        self._platformSdk.overlayViews.setCustomEventHandler((event) => {
+            if (event === 'leaderboard') {
+                self.#leaderboardClicked = true
+            } else if (event === 'close') {
+                if (self.#leaderboardClicked) {
+                    self.#leaderboardClicked = false
+                    return
+                }
+
+                if (self._overlay) {
+                    document.body.removeChild(
+                        document.getElementById(self._overlay.iframeElement.id),
+                    )
+
+                    self._overlay.dismissAsync()
+                    self._overlay = null
+                }
+            }
+        })
     }
 
     #preloadInterstitial(placementId, forciblyPreload = false) {
