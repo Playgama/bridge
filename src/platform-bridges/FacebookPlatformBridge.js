@@ -161,7 +161,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
-              
+
                     this.#setupLeaderboards()
 
                     return Promise.allSettled([
