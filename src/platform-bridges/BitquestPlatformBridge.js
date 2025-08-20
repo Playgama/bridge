@@ -272,9 +272,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             }
 
                             return {
+                                id: product.id,
                                 name: catalogProduct.name,
                                 description: catalogProduct.description,
-                                id: catalogProduct.purchaseId,
                                 price: catalogProduct.priceValue,
                                 priceCurrencyCode: catalogProduct.currencyCode,
                                 priceValue: catalogProduct.price,

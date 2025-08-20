@@ -215,7 +215,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.iap.purchaseAsync({ productId: id })
+            this._platformSdk.iap.purchaseAsync({ productId: product.platformProductId })
                 .then((purchase) => {
                     if (purchase.code === 'IAP_PURCHASE_FAILURE') {
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.description)
@@ -292,7 +292,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     }
 
                     const mergedProducts = products.map((product) => {
-                        const msnProduct = msnProducts.find((p) => p.productId === product.id)
+                        const msnProduct = msnProducts.find((p) => p.productId === product.platformProductId)
 
                         return {
                             id: product.id,
