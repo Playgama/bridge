@@ -30,7 +30,7 @@ import {
 } from '../constants'
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
-const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/embed/paystation/1.3.5/widget.min.js'
+const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/payments-bucket-prod/embed/1.5.0/widget.min.js'
 const XSOLLA_PROJECT_ID = ''
 
 class CrazyGamesPlatformBridge extends PlatformBridgeBase {
