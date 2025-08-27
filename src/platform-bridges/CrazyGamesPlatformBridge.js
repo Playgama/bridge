@@ -31,7 +31,7 @@ import {
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
 const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/payments-bucket-prod/embed/1.5.0/widget.min.js'
-const XSOLLA_PROJECT_ID = ''
+const XSOLLA_SDK_URL = 'https://store.xsolla.com/api/v2/project/'
 
 class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -327,12 +327,10 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsPurchase(id) {
-        // 1) Resolve product → SKU
         let product = this._paymentsGetProductPlatformData(id)
         if (!product) product = { id }
         const sku = product.platformProductId || product.id
 
-        // 2) Promise-decorator pattern
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -340,23 +338,20 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             this.#ensurePaystationLoaded()
                 .then(() => this.#getXsollaToken())
                 .then((token) => {
-                    // Use the global safely (prevents 'no-undef')
                     const Pay = window.XPayStationWidget
                     if (!Pay) {
                         throw new Error('Xsolla Pay Station widget not loaded')
                     }
 
-                    // Init widget (tie open to a user gesture upstream)
                     Pay.init({
                         access_token: token,
-                        sandbox: true, // ← change to false in production or wire your own flag
+                        sandbox: this.options.isSandbox || false,
                         childWindow: { target: '_blank' },
                         settings: { external_id: sku },
                     })
 
                     let resolved = false
 
-                    // Success path
                     Pay.on(Pay.eventTypes.STATUS, (_evt, data) => {
                         try {
                             const info = (data && data.paymentInfo) || {}
@@ -364,9 +359,8 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                                 const orderId = info.order_id || info.invoice
                                 if (!orderId) return
 
-                                this.#getOrder(this._paymentsXsollaProjectId, orderId, token)
+                                this.#getOrder(this.options.xsollaProjectId, orderId, token)
                                     .then((order) => {
-                                        // Analytics to CrazyGames
                                         window.CrazyGames.SDK.analytics.trackOrder('xsolla', order)
 
                                         const mergedPurchase = {
@@ -392,7 +386,6 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    // User closed without finishing
                     Pay.on('close', () => {
                         if (!resolved) {
                             this._rejectPromiseDecorator(
@@ -402,7 +395,6 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    // Open UI (must be triggered from user click upstream)
                     Pay.open()
                 })
                 .catch((error) => {
@@ -425,7 +417,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
             this.#getXsollaToken()
                 .then((token) => fetch(
-                    `https://store.xsolla.com/api/v2/project/${this._paymentsXsollaProjectId}/items?limit=50`,
+                    `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/items?limit=50`,
                     { headers: { Authorization: `Bearer ${token}` } },
                 ))
                 .then((res) => {
@@ -441,9 +433,8 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
                         return {
                             id: product.id,
-                            title: x?.name ?? product.name ?? product.id,
+                            name: x?.name ?? product.name ?? product.id,
                             description: x?.description ?? product.description ?? '',
-                            imageURI: x?.image_url ?? product.imageURI ?? null,
                             price: x?.price?.amount ?? null,
                             priceCurrencyCode: x?.price?.currency ?? null,
                             priceValue: x?.price?.amount ?? null,
@@ -466,9 +457,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             return Promise.reject(new Error('No such purchase to consume'))
         }
 
-        let pd = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
-        if (!pd) {
-            pd = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
             try {
                 this._paymentsPurchases.splice(purchaseIndex, 1)
                 this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
@@ -476,7 +467,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                 this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
             }
         }
-        return pd.promise
+        return promiseDecorator.promise
     }
 
     paymentsGetPurchases() {
@@ -486,7 +477,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
             this.#getXsollaToken()
                 .then((token) => fetch(
-                    `https://store.xsolla.com/api/v2/project/${this._paymentsXsollaProjectId}/user/inventory/items`,
+                    `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/user/inventory/items`,
                     { headers: { Authorization: `Bearer ${token}` } },
                 ))
                 .then((res) => {
@@ -586,7 +577,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     async #getOrder(projectId, orderId, token) {
         const res = await fetch(
-            `https://store.xsolla.com/api/v2/project/${projectId}/order/${orderId}`,
+            `${XSOLLA_SDK_URL}/${projectId}/order/${orderId}`,
             { headers: { Authorization: `Bearer ${token}` } },
         )
         if (!res.ok) throw new Error(`Xsolla order HTTP ${res.status}`)
