@@ -176,10 +176,6 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 .then(() => {
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-
-                    if (this._options.subscribeBot) {
-                        this.#subscribeBotAsync()
-                    }
                 })
                 .catch((e) => this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e))
         }
@@ -192,6 +188,11 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
                 this._platformSdk.setLoadingProgress(100)
+
+                if (this._options.subscribeBot) {
+                    setTimeout(() => this.#subscribeBotAsync(), 0)
+                }
+
                 return new Promise((resolve) => {
                     this._platformSdk.startGameAsync().then(resolve)
                 })
