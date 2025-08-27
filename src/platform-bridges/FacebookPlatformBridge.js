@@ -176,6 +176,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 .then(() => {
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+
+                    if (this._options.subscribeBot) {
+                        this.#subscribeBotAsync()
+                    }
                 })
                 .catch((e) => this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e))
         }
@@ -666,6 +670,38 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
 
         return this._preloadedRewardedPromises[placementId]
+    }
+
+    async #subscribeBotAsync() {
+        try {
+            const isSubscribed = await this._platformSdk.player.isSubscribedBotAsync()
+            if (isSubscribed) {
+                return Promise.resolve()
+            }
+        } catch (e) {
+            if (e?.code === 'INVALID_OPERATION') {
+                // web-messenger platform
+            } else {
+                throw new Error(e)
+            }
+        }
+
+        let canSubscribe = false
+
+        try {
+            canSubscribe = await this._platformSdk.player.canSubscribeBotAsync()
+            if (canSubscribe) {
+                return this._platformSdk.player.subscribeBotAsync()
+            }
+        } catch (e) {
+            if (e?.code === 'INVALID_OPERATION') {
+                return Promise.resolve()
+            }
+
+            throw new Error(e)
+        }
+
+        return Promise.resolve()
     }
 }
 
