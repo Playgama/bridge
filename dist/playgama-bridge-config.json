@@ -29,7 +29,7 @@
             "packageName": ""
         },
         "facebook": {
-            "subscribeBot": true 
+            "subscribeForNotificationsOnStart": true 
         }
     },
     "advertisement": {

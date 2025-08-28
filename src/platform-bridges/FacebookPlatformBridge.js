@@ -189,7 +189,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             case PLATFORM_MESSAGE.GAME_READY: {
                 this._platformSdk.setLoadingProgress(100)
 
-                if (this._options.subscribeBot) {
+                if (this._options.subscribeForNotificationsOnStart) {
                     setTimeout(() => this.#subscribeBotAsync(), 0)
                 }
 
