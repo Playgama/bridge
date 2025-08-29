@@ -188,6 +188,11 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
                 this._platformSdk.setLoadingProgress(100)
+
+                if (this._options.subscribeForNotificationsOnStart) {
+                    setTimeout(() => this.#subscribeBotAsync(), 0)
+                }
+
                 return new Promise((resolve) => {
                     this._platformSdk.startGameAsync().then(resolve)
                 })
@@ -666,6 +671,38 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
 
         return this._preloadedRewardedPromises[placementId]
+    }
+
+    async #subscribeBotAsync() {
+        try {
+            const isSubscribed = await this._platformSdk.player.isSubscribedBotAsync()
+            if (isSubscribed) {
+                return Promise.resolve()
+            }
+        } catch (e) {
+            if (e?.code === 'INVALID_OPERATION') {
+                // web-messenger platform
+            } else {
+                throw new Error(e)
+            }
+        }
+
+        let canSubscribe = false
+
+        try {
+            canSubscribe = await this._platformSdk.player.canSubscribeBotAsync()
+            if (canSubscribe) {
+                return this._platformSdk.player.subscribeBotAsync()
+            }
+        } catch (e) {
+            if (e?.code === 'INVALID_OPERATION') {
+                return Promise.resolve()
+            }
+
+            throw new Error(e)
+        }
+
+        return Promise.resolve()
     }
 }
 

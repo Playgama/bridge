@@ -27,6 +27,9 @@
         },
         "jio_games": {
             "packageName": ""
+        },
+        "facebook": {
+            "subscribeForNotificationsOnStart": true 
         }
     },
     "advertisement": {
