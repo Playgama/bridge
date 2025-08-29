@@ -105,7 +105,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         this.#isUserAccountAvailable = this._platformSdk.user.isUserAccountAvailable
                         const getPlayerInfoPromise = this.#getPlayer()
 
-                        this.#ensurePaystationLoaded().catch(() => {})
+                        this.#ensurePaystationLoaded()
 
                         Promise
                             .all([getPlayerInfoPromise])
@@ -328,7 +328,10 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     paymentsPurchase(id) {
         let product = this._paymentsGetProductPlatformData(id)
-        if (!product) product = { id }
+        if (!product) {
+            product = { id }
+        }
+
         const sku = product.platformProductId || product.id
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -338,12 +341,12 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             this.#ensurePaystationLoaded()
                 .then(() => this.#getXsollaToken())
                 .then((token) => {
-                    const Pay = window.XPayStationWidget
-                    if (!Pay) {
+                    const paystation = window.XPayStationWidget
+                    if (!paystation) {
                         throw new Error('Xsolla Pay Station widget not loaded')
                     }
 
-                    Pay.init({
+                    paystation.init({
                         access_token: token,
                         sandbox: this.options.isSandbox || false,
                         childWindow: { target: '_blank' },
@@ -352,12 +355,14 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
                     let resolved = false
 
-                    Pay.on(Pay.eventTypes.STATUS, (_evt, data) => {
+                    paystation.on(paystation.eventTypes.STATUS, (_evt, data) => {
                         try {
                             const info = (data && data.paymentInfo) || {}
                             if (info.status && /done|charged|success/i.test(String(info.status))) {
                                 const orderId = info.order_id || info.invoice
-                                if (!orderId) return
+                                if (!orderId) {
+                                    return
+                                }
 
                                 this.#getOrder(this.options.xsollaProjectId, orderId, token)
                                     .then((order) => {
@@ -386,7 +391,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    Pay.on('close', () => {
+                    paystation.on('close', () => {
                         if (!resolved) {
                             this._rejectPromiseDecorator(
                                 ACTION_NAME.PURCHASE,
@@ -395,7 +400,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    Pay.open()
+                    paystation.open()
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
@@ -421,7 +426,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     { headers: { Authorization: `Bearer ${token}` } },
                 ))
                 .then((res) => {
-                    if (!res.ok) throw new Error(`Xsolla catalog HTTP ${res.status}`)
+                    if (!res.ok) {
+                        throw new Error(`Xsolla catalog HTTP ${res.status}`)
+                    }
                     return res.json()
                 })
                 .then((data) => {
@@ -481,7 +488,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     { headers: { Authorization: `Bearer ${token}` } },
                 ))
                 .then((res) => {
-                    if (!res.ok) throw new Error(`Xsolla inventory HTTP ${res.status}`)
+                    if (!res.ok) {
+                        throw new Error(`Xsolla inventory HTTP ${res.status}`)
+                    }
                     return res.json()
                 })
                 .then((data) => {
@@ -567,7 +576,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     async #ensurePaystationLoaded() {
-        if (window.XPayStationWidget) return
+        if (window.XPayStationWidget) {
+            return
+        }
         await addJavaScript(XSOLLA_PAYSTATION_EMBED_URL)
     }
 
@@ -580,7 +591,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             `${XSOLLA_SDK_URL}/${projectId}/order/${orderId}`,
             { headers: { Authorization: `Bearer ${token}` } },
         )
-        if (!res.ok) throw new Error(`Xsolla order HTTP ${res.status}`)
+        if (!res.ok) {
+            throw new Error(`Xsolla order HTTP ${res.status}`)
+        }
         return res.json()
     }
 }
