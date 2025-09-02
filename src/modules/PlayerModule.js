@@ -38,6 +38,10 @@ class PlayerModule extends ModuleBase {
         return this._platformBridge.playerPhotos
     }
 
+    get extra() {
+        return this._platformBridge.playerExtra
+    }
+
     authorize(options) {
         if (options) {
             const platformDependedOptions = options[this._platformBridge.platformId]

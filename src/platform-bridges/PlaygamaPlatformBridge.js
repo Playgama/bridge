@@ -325,9 +325,17 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     this._isPlayerAuthorized = player.isAuthorized
                     this._playerName = player.name
                     this._playerPhotos = player.photos
+
+                    this._playerExtra = player
+                    delete this._playerExtra.isAuthorized
+                    delete this._playerExtra.id
+                    delete this._playerExtra.name
+                    delete this._playerExtra.photos
+
                     this._defaultStorageType = this._isPlayerAuthorized
                         ? STORAGE_TYPE.PLATFORM_INTERNAL
                         : STORAGE_TYPE.LOCAL_STORAGE
+
                     if (this._isPlayerAuthorized) {
                         return this.#getDataFromPlatformStorage([])
                     }
