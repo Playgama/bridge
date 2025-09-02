@@ -365,7 +365,21 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         this._playerPhotos = [user.profilePictureUrl]
                     }
 
-                    resolve()
+                    this._playerExtra = user
+                    delete this._playerExtra.username
+                    delete this._playerExtra.profilePictureUrl
+
+                    if (this._options.useUserToken) {
+                        this._platformSdk.user.getUserToken()
+                            .then((jwt) => {
+                                this._playerExtra.jwt = jwt
+                            })
+                            .finally(() => {
+                                resolve()
+                            })
+                    } else {
+                        resolve()
+                    }
                 })
                 .catch((error) => {
                     reject(error)

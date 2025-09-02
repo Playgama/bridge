@@ -29,7 +29,13 @@
             "packageName": ""
         },
         "facebook": {
-            "subscribeForNotificationsOnStart": true 
+            "subscribeForNotificationsOnStart": true
+        },
+        "crazy_games": {
+            "useUserToken": false
+        },
+        "yandex": {
+            "useSignedData": false
         }
     },
     "advertisement": {
