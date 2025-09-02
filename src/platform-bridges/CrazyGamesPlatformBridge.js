@@ -105,7 +105,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         this.#isUserAccountAvailable = this._platformSdk.user.isUserAccountAvailable
                         const getPlayerInfoPromise = this.#getPlayer()
 
-                        this.#ensurePaystationLoaded()
+                        if (this.options.xsollaProjectId) {
+                            this.#ensurePaystationLoaded()
+                        }
 
                         Promise
                             .all([getPlayerInfoPromise])
@@ -366,7 +368,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
                                 this.#getOrder(this.options.xsollaProjectId, orderId, token)
                                     .then((order) => {
-                                        window.CrazyGames.SDK.analytics.trackOrder('xsolla', order)
+                                        this._platformSdk.analytics.trackOrder('xsolla', order)
 
                                         const mergedPurchase = {
                                             id: product.id,
@@ -383,11 +385,15 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                                         }
                                     })
                                     .catch((err) => {
-                                        if (!resolved) this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
+                                        if (!resolved) {
+                                            this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
+                                        }
                                     })
                             }
                         } catch (err) {
-                            if (!resolved) this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
+                            if (!resolved) {
+                                this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
+                            }
                         }
                     })
 
@@ -499,7 +505,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     this._paymentsPurchases = (data.items || [])
                         .map((item) => {
                             const product = products.find((p) => p.id === item.sku)
-                            if (!product) return null
+                            if (!product) {
+                                return null
+                            }
 
                             const mergedPurchase = {
                                 id: product.id,
@@ -583,7 +591,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     async #getXsollaToken() {
-        await window.CrazyGames.SDK.user.getXsollaUserToken()
+        await this._platformSdk.user.getXsollaUserToken()
     }
 
     async #getOrder(projectId, orderId, token) {
