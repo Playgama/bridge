@@ -230,12 +230,16 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     const mergedProducts = products.map((product) => {
                         const discordProduct = discordProducts.find((p) => p.id === product.platformProductId)
 
+                        const priceValue = discordProduct.price.currency_exponent
+                            ? discordProduct.price.amount / (10 ** discordProduct.price.currency_exponent)
+                            : discordProduct.price.amount
+
                         return {
                             id: product.id,
                             title: discordProduct.name,
-                            price: `${discordProduct.price.amount} ${discordProduct.price.currency}`,
+                            price: `${priceValue} ${discordProduct.price.currency}`,
                             priceCurrencyCode: discordProduct.price.currency,
-                            priceValue: discordProduct.price.amount,
+                            priceValue,
                         }
                     })
 
@@ -258,7 +262,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 .then((purchases) => {
                     const products = this._paymentsGetProductsPlatformData()
 
-                    this._paymentsPurchases = purchases.map((purchase) => {
+                    this._paymentsPurchases = purchases.entitlements.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.id)
                         return {
                             id: product.id,
