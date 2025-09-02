@@ -18,7 +18,7 @@
         "msn": {
             "gameId": ""
         },
-        "discord" : {
+        "discord": {
             "appId": ""
         },
         "gamepush": {
@@ -28,11 +28,13 @@
         "jio_games": {
             "packageName": ""
         },
+        "crazy_games": {
+            "xsollaProjectId": "",
+            "isSandbox": false,
+            "useUserToken": false
+        },
         "facebook": {
             "subscribeForNotificationsOnStart": true
-        },
-        "crazy_games": {
-            "useUserToken": false
         },
         "yandex": {
             "useSignedData": false

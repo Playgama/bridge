@@ -30,6 +30,8 @@ import {
 } from '../constants'
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
+const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/payments-bucket-prod/embed/1.5.0/widget.min.js'
+const XSOLLA_SDK_URL = 'https://store.xsolla.com/api/v2/project/'
 
 class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -57,6 +59,10 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     // player
     get isPlayerAuthorizationSupported() {
         return this.#isUserAccountAvailable
+    }
+
+    get isPaymentsSupported() {
+        return this.#isUserAccountAvailable === true
     }
 
     // device
@@ -98,6 +104,10 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     this._platformSdk.init().then(() => {
                         this.#isUserAccountAvailable = this._platformSdk.user.isUserAccountAvailable
                         const getPlayerInfoPromise = this.#getPlayer()
+
+                        if (this.options.xsollaProjectId) {
+                            this.#ensurePaystationLoaded()
+                        }
 
                         Promise
                             .all([getPlayerInfoPromise])
@@ -318,6 +328,206 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         })
     }
 
+    paymentsPurchase(id) {
+        let product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            product = { id }
+        }
+
+        const sku = product.platformProductId || product.id
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            this.#ensurePaystationLoaded()
+                .then(() => this.#getXsollaToken())
+                .then((token) => {
+                    const paystation = window.XPayStationWidget
+                    if (!paystation) {
+                        throw new Error('Xsolla Pay Station widget not loaded')
+                    }
+
+                    paystation.init({
+                        access_token: token,
+                        sandbox: this.options.isSandbox || false,
+                        childWindow: { target: '_blank' },
+                        settings: { external_id: sku },
+                    })
+
+                    let resolved = false
+
+                    paystation.on(paystation.eventTypes.STATUS, (_evt, data) => {
+                        try {
+                            const info = (data && data.paymentInfo) || {}
+                            if (info.status && /done|charged|success/i.test(String(info.status))) {
+                                const orderId = info.order_id || info.invoice
+                                if (!orderId) {
+                                    return
+                                }
+
+                                this.#getOrder(this.options.xsollaProjectId, orderId, token)
+                                    .then((order) => {
+                                        this._platformSdk.analytics.trackOrder('xsolla', order)
+
+                                        const mergedPurchase = {
+                                            id: product.id,
+                                            sku,
+                                            orderId,
+                                            ...order,
+                                        }
+
+                                        this._paymentsPurchases.push(mergedPurchase)
+
+                                        if (!resolved) {
+                                            resolved = true
+                                            this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                                        }
+                                    })
+                                    .catch((err) => {
+                                        if (!resolved) {
+                                            this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
+                                        }
+                                    })
+                            }
+                        } catch (err) {
+                            if (!resolved) {
+                                this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
+                            }
+                        }
+                    })
+
+                    paystation.on('close', () => {
+                        if (!resolved) {
+                            this._rejectPromiseDecorator(
+                                ACTION_NAME.PURCHASE,
+                                new Error('Purchase canceled/closed'),
+                            )
+                        }
+                    })
+
+                    paystation.open()
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject(new Error('No platform products available'))
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
+            this.#getXsollaToken()
+                .then((token) => fetch(
+                    `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/items?limit=50`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                ))
+                .then((res) => {
+                    if (!res.ok) {
+                        throw new Error(`Xsolla catalog HTTP ${res.status}`)
+                    }
+                    return res.json()
+                })
+                .then((data) => {
+                    const bySku = new Map((data.items || []).map((it) => [it.sku, it]))
+
+                    const mergedProducts = products.map((product) => {
+                        const sku = product.platformProductId || product.id
+                        const x = bySku.get(sku)
+
+                        return {
+                            id: product.id,
+                            name: x?.name ?? product.name ?? product.id,
+                            description: x?.description ?? product.description ?? '',
+                            price: x?.price?.amount ?? null,
+                            priceCurrencyCode: x?.price?.currency ?? null,
+                            priceValue: x?.price?.amount ?? null,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject(new Error('No such purchase to consume'))
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            try {
+                this._paymentsPurchases.splice(purchaseIndex, 1)
+                this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
+            } catch (error) {
+                this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+            }
+        }
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+
+            this.#getXsollaToken()
+                .then((token) => fetch(
+                    `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/user/inventory/items`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                ))
+                .then((res) => {
+                    if (!res.ok) {
+                        throw new Error(`Xsolla inventory HTTP ${res.status}`)
+                    }
+                    return res.json()
+                })
+                .then((data) => {
+                    const products = this._paymentsGetProductsPlatformData() || []
+
+                    this._paymentsPurchases = (data.items || [])
+                        .map((item) => {
+                            const product = products.find((p) => p.id === item.sku)
+                            if (!product) {
+                                return null
+                            }
+
+                            const mergedPurchase = {
+                                id: product.id,
+                                ...item,
+                            }
+
+                            return mergedPurchase
+                        })
+                        .filter(Boolean)
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
     #adCallbacks = {
         adStarted: () => {
             if (this.#currentAdvertisementIsRewarded) {
@@ -385,6 +595,28 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     reject(error)
                 })
         })
+    }
+
+    async #ensurePaystationLoaded() {
+        if (window.XPayStationWidget) {
+            return
+        }
+        await addJavaScript(XSOLLA_PAYSTATION_EMBED_URL)
+    }
+
+    async #getXsollaToken() {
+        await this._platformSdk.user.getXsollaUserToken()
+    }
+
+    async #getOrder(projectId, orderId, token) {
+        const res = await fetch(
+            `${XSOLLA_SDK_URL}/${projectId}/order/${orderId}`,
+            { headers: { Authorization: `Bearer ${token}` } },
+        )
+        if (!res.ok) {
+            throw new Error(`Xsolla order HTTP ${res.status}`)
+        }
+        return res.json()
     }
 }
 
