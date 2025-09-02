@@ -132,11 +132,16 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 })
                 .then((response) => response.json())
                 .then((user) => {
-                    this.playerId = user.id
-                    this.playerName = user.username
+                    this._playerId = user.id
+                    this._playerName = user.username
                     if (user.avatar) {
-                        this.playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
+                        this._playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
                     }
+
+                    this._playerExtra = user
+                    delete this._playerExtra.id
+                    delete this._playerExtra.username
+                    delete this._playerExtra.avatar
                 })
                 .catch((error) => {
                     this._accessToken = null

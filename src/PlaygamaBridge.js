@@ -292,6 +292,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.GAMEPUSH
             } else if (url.hostname.includes('discordsays.com')) {
                 platformId = PLATFORM_ID.DISCORD
+            } else if (url.hostname.includes('usercontent.goog')) {
+                platformId = PLATFORM_ID.YOUTUBE
             }
         }
 

@@ -105,6 +105,10 @@ class PlatformBridgeBase {
         return this._playerPhotos
     }
 
+    get playerExtra() {
+        return this._playerExtra
+    }
+
     // storage
     get defaultStorageType() {
         return this._defaultStorageType
@@ -220,6 +224,8 @@ class PlatformBridgeBase {
     _playerName = null
 
     _playerPhotos = []
+
+    _playerExtra = {}
 
     _visibilityState = null
 

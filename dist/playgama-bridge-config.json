@@ -30,7 +30,14 @@
         },
         "crazy_games": {
             "xsollaProjectId": "",
-            "isSandbox": false
+            "isSandbox": false,
+            "useUserToken": false
+        },
+        "facebook": {
+            "subscribeForNotificationsOnStart": true
+        },
+        "yandex": {
+            "useSignedData": false
         }
     },
     "advertisement": {

@@ -259,13 +259,13 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
-    authorizePlayer(options) {
+    authorizePlayer() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
             if (this._isPlayerAuthorized) {
-                this.#playerPromise = this.#getPlayer(options)
+                this.#playerPromise = this.#getPlayer()
 
                 this.#playerPromise.then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -273,7 +273,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
             } else {
                 this._platformSdk.auth.openAuthDialog()
                     .then(() => {
-                        this.#playerPromise = this.#getPlayer(options)
+                        this.#playerPromise = this.#getPlayer()
                         this.#playerPromise.then(() => {
                             this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                         })
@@ -770,17 +770,14 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #getPlayer(options) {
+    #getPlayer() {
         return new Promise((resolve) => {
-            const parameters = {
-                scopes: false,
+            let signed = false
+            if (this._options && this._options.useSignedData) {
+                signed = this._options.useSignedData
             }
 
-            if (options && typeof options.scopes === 'boolean') {
-                parameters.scopes = options.scopes
-            }
-
-            this._platformSdk.getPlayer(parameters)
+            this._platformSdk.getPlayer({ signed })
                 .then((player) => {
                     this._playerId = player.getUniqueID()
                     this._isPlayerAuthorized = player.isAuthorized()
@@ -809,6 +806,14 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
                     if (photoLarge) {
                         this._playerPhotos.push(photoLarge)
+                    }
+
+                    this._playerExtra = {
+                        payingStatus: player.getPayingStatus(),
+                    }
+
+                    if (signed) {
+                        this._playerExtra.signature = player.signature
                     }
 
                     this.#yandexPlayer = player
