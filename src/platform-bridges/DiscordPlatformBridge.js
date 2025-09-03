@@ -132,11 +132,16 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 })
                 .then((response) => response.json())
                 .then((user) => {
-                    this.playerId = user.id
-                    this.playerName = user.username
+                    this._playerId = user.id
+                    this._playerName = user.username
                     if (user.avatar) {
-                        this.playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
+                        this._playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
                     }
+
+                    this._playerExtra = user
+                    delete this._playerExtra.id
+                    delete this._playerExtra.username
+                    delete this._playerExtra.avatar
                 })
                 .catch((error) => {
                     this._accessToken = null
@@ -162,7 +167,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.commands.startPurchase({ sku_id: product.id })
+            this._platformSdk.commands.startPurchase({ sku_id: product.platformProductId })
                 .then((purchase) => {
                     if (!purchase) {
                         throw new Error('Purchase failed')
@@ -223,14 +228,18 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.commands.getSkus()
                 .then(({ skus: discordProducts }) => {
                     const mergedProducts = products.map((product) => {
-                        const discordProduct = discordProducts.find((p) => p.id === product.id)
+                        const discordProduct = discordProducts.find((p) => p.id === product.platformProductId)
+
+                        const priceValue = discordProduct.price.currency_exponent
+                            ? discordProduct.price.amount / (10 ** discordProduct.price.currency_exponent)
+                            : discordProduct.price.amount
 
                         return {
                             id: product.id,
                             title: discordProduct.name,
-                            price: `${discordProduct.price.amount} ${discordProduct.price.currency}`,
+                            price: `${priceValue} ${discordProduct.price.currency}`,
                             priceCurrencyCode: discordProduct.price.currency,
-                            priceValue: discordProduct.price.amount,
+                            priceValue,
                         }
                     })
 
@@ -253,7 +262,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 .then((purchases) => {
                     const products = this._paymentsGetProductsPlatformData()
 
-                    this._paymentsPurchases = purchases.map((purchase) => {
+                    this._paymentsPurchases = purchases.entitlements.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.id)
                         return {
                             id: product.id,
