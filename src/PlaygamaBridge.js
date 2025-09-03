@@ -216,6 +216,8 @@ class PlaygamaBridge {
                 .finally(() => {
                     this.#createPlatformBridge(modifiedOptions)
 
+                    this.#platformBridge.engine = this.engine
+
                     this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.GAME] = new GameModule(this.#platformBridge)
