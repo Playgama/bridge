@@ -131,6 +131,14 @@ class PlaygamaBridge {
         return this.#getModule(MODULE_NAME.CLIPBOARD)
     }
 
+    get engine() {
+        return this.#engine
+    }
+
+    set engine(value) {
+        this.#engine = value
+    }
+
     get PLATFORM_ID() {
         return PLATFORM_ID
     }
@@ -178,6 +186,8 @@ class PlaygamaBridge {
     #platformBridge = null
 
     #modules = {}
+
+    #engine = 'javascript'
 
     initialize(options) {
         if (this.#isInitialized) {
