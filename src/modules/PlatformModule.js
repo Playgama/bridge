@@ -18,6 +18,7 @@
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME, PLATFORM_MESSAGE } from '../constants'
+import { version } from '../../package.json'
 
 class PlatformModule extends ModuleBase {
     get id() {
@@ -78,6 +79,54 @@ class PlatformModule extends ModuleBase {
                 return Promise.reject()
             }
 
+            // Log platform bridge options
+            if (this._platformBridge?.options) {
+                console.info('PlatformBridge options:', this._platformBridge.options)
+                if (this._platformBridge.options.events !== false) {
+                    console.info('events are enabled for current platform')
+                } else {
+                    console.info('events are disabled for current platform')
+                }
+            } else {
+                console.info('PlatformBridge options do not exist')
+            }
+
+            const events = this._platformBridge.options?.events
+            if (events !== false) {
+                console.info(events === true ? 'events enabled' : 'events not defined, enabled by default')
+            }
+
+            console.info('Event payload details:')
+            console.info('  eventName:', 'game_ready')
+            console.info('  pageName:', `${this._platformBridge.platformId}:${this._platformBridge.engine}`)
+            console.info('  userId:', `bridge:${version}`)
+            console.info('  clid:', window.location.href)
+
+            fetch('https://playgama.com/api/v1/events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    eventName: 'game_ready',
+                    pageName: `${this._platformBridge.platformId}:${this._platformBridge.engine}`,
+                    userId: `bridge:${version}`,
+                    clid: window.location.href,
+                }),
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok')
+                    }
+                    return response.json()
+                })
+                .then((data) => {
+                    console.info('Event sent successfully:', data)
+                })
+                .catch((error) => {
+                    console.error('Error sending event:', error)
+                })
+
             this.#isGameReadyMessageSent = true
         }
 
@@ -101,6 +150,10 @@ class PlatformModule extends ModuleBase {
         }
 
         return this._platformBridge.getGameById(options)
+    }
+
+    #sendAnalyticsEvent() {
+        console.info('events are enabled for current platform')
     }
 }
 
