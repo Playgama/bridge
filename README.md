@@ -18,6 +18,7 @@ One SDK for cross-platform publishing HTML5 games.
 + [MSN](https://www.msn.com/en-us/play)
 + [Discord](https://discord.com/gaming)
 + [BitQuest](https://t.me/BitquestGamesBot/start)
++ [Huawei](https://consumer.huawei.com/en/mobileservices/appgallery)
 + Other [Work In Progress]
 
 ## Plugins for game engines

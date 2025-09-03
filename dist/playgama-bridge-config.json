@@ -15,6 +15,9 @@
             "devId": "",
             "publisherId": ""
         },
+        "huawei": {
+            "appId": ""
+        },
         "msn": {
             "gameId": ""
         },

@@ -32,6 +32,7 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    HUAWEI: 'huawei',
     BITQUEST: 'bitquest',
     GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
@@ -147,8 +148,14 @@ export const ACTION_NAME = {
     CONSUME_PURCHASE: 'consume_purchase',
     GET_REMOTE_CONFIG: 'get_remote_config',
     GET_STORAGE_DATA: 'get_storage_data',
+    SET_STORAGE_DATA: 'set_storage_data',
+    DELETE_STORAGE_DATA: 'delete_storage_data',
     CLIPBOARD_WRITE: 'clipboard_write',
     ADBLOCK_DETECT: 'adblock_detect',
+    SET_INTERSTITIAL_STATE: 'set_interstitial_state',
+    SET_REWARDED_STATE: 'set_rewarded_state',
+    SHOW_INTERSTITIAL: 'show_interstitial',
+    SHOW_REWARDED: 'show_rewarded',
 }
 
 export const ERROR = {
@@ -159,6 +166,7 @@ export const ERROR = {
     Y8_GAME_PARAMS_NOT_FOUND: { message: 'Y8 Game params are not found' },
     OK_GAME_PARAMS_NOT_FOUND: { message: 'OK Game params are not found' },
     LAGGED_GAME_PARAMS_NOT_FOUND: { message: 'Lagged Game params are not found' },
+    HUAWEI_GAME_PARAMS_NOT_FOUND: { message: 'Huawei Game params are not found' },
     GAMEPUSH_GAME_PARAMS_NOT_FOUND: { message: 'GamePush Game params are not found' },
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
