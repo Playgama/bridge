@@ -438,3 +438,39 @@ export function deepMerge(firstObject, secondObject) {
 
     return result
 }
+
+export function deformatPrice(priceStr) {
+    const cleaned = priceStr.replace(/[^\d.,-]/g, '')
+
+    if (cleaned.includes('.') && cleaned.includes(',') && cleaned.indexOf(',') < cleaned.indexOf('.')) {
+        return parseFloat(cleaned.replace(/,/g, ''))
+    }
+
+    if (cleaned.includes('.') && cleaned.includes(',') && cleaned.indexOf(',') > cleaned.indexOf('.')) {
+        return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'))
+    }
+
+    if (cleaned.includes(',')
+        && cleaned.lastIndexOf(',') !== -1
+        && cleaned.lastIndexOf(',') === cleaned.length - 4) {
+        return parseInt(cleaned.replace(/,/, ''), 10)
+    }
+
+    if (cleaned.includes(',')
+        && cleaned.lastIndexOf(',') !== -1
+        && cleaned.lastIndexOf(',') !== cleaned.length - 3) {
+        return parseFloat(cleaned.replace(',', '.'))
+    }
+
+    if (cleaned.includes('.')
+        && cleaned.lastIndexOf('.') !== -1
+        && cleaned.lastIndexOf('.') === cleaned.length - 4) {
+        return parseInt(cleaned.replace(/\./, ''), 10)
+    }
+
+    if (cleaned.includes('.')) {
+        return parseFloat(cleaned)
+    }
+
+    return parseInt(cleaned, 10)
+}
