@@ -230,16 +230,12 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     const mergedProducts = products.map((product) => {
                         const discordProduct = discordProducts.find((p) => p.id === product.platformProductId)
 
-                        const priceValue = discordProduct.price.currency_exponent
-                            ? discordProduct.price.amount / (10 ** discordProduct.price.currency_exponent)
-                            : discordProduct.price.amount
-
                         return {
                             id: product.id,
                             title: discordProduct.name,
-                            price: `${priceValue} ${discordProduct.price.currency}`,
+                            price: window.discord.PriceUtils.formatPrice(discordProduct.price),
                             priceCurrencyCode: discordProduct.price.currency,
-                            priceValue,
+                            priceValue: discordProduct.price.amount,
                         }
                     })
 
