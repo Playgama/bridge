@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, deformatPrice, waitFor } from '../common/utils'
 import { ACTION_NAME, ERROR, PLATFORM_ID } from '../constants'
 
 const SDK_URL = '/cdn/discord/discord-v2.0.0.min.js'
@@ -230,12 +230,15 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     const mergedProducts = products.map((product) => {
                         const discordProduct = discordProducts.find((p) => p.id === product.platformProductId)
 
+                        const price = window.discord.PriceUtils.formatPrice(discordProduct.price)
+                        const priceValue = deformatPrice(price)
+
                         return {
                             id: product.id,
                             title: discordProduct.name,
-                            price: window.discord.PriceUtils.formatPrice(discordProduct.price),
-                            priceCurrencyCode: discordProduct.price.currency,
-                            priceValue: discordProduct.price.amount,
+                            price,
+                            priceValue,
+                            priceCurrencyCode: discordProduct.price?.currency?.toUpperCase(),
                         }
                     })
 
