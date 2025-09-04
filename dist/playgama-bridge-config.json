@@ -41,6 +41,9 @@
         },
         "yandex": {
             "useSignedData": false
+        },
+        "youtube": {
+            "events": false
         }
     },
     "advertisement": {
@@ -54,5 +57,6 @@
         "backfillId": ""
     },
     "payments": [],
-    "leaderboards": []
+    "leaderboards": [],
+    "events": true
 }
