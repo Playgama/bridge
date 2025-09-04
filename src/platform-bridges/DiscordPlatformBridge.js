@@ -29,7 +29,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
-        return this._platformLanguage || super.platformLanguage
+        return super.platformLanguage
     }
 
     // player
@@ -45,8 +45,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     _appId = null
 
     _accessToken = null
-
-    _platformLanguage = ''
 
     initialize() {
         if (this._isInitialized) {
