@@ -37,10 +37,12 @@
             "useUserToken": false
         },
         "facebook": {
-            "subscribeForNotificationsOnStart": true
+            "subscribeForNotificationsOnStart": true,
+            "sendAnalyticsEvents": false
         },
         "yandex": {
-            "useSignedData": false
+            "useSignedData": false,
+            "sendAnalyticsEvents": false
         },
         "youtube": {
             "sendAnalyticsEvents": false
