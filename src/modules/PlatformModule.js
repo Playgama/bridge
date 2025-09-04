@@ -106,47 +106,27 @@ class PlatformModule extends ModuleBase {
     }
 
     #sendAnalyticsEvent() {
-        // if (this._platformBridge?.options) {
-        //     console.info('PlatformBridge options:', this._platformBridge.options)
-        //     if (this._platformBridge.options.events !== false) {
-        //         console.info('events are enabled for current platform')
-        //     } else {
-        //         console.info('events are disabled for current platform')
-        //     }
-        // } else {
-        //     console.info('PlatformBridge options do not exist')
-        // }
-
         const events = this._platformBridge.options?.events
         if (events !== false) {
-            console.info(events === true ? 'events enabled' : 'events not defined, enabled by default')
+            fetch('https://playgama.com/api/v1/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventName: 'game_ready',
+                    pageName: `${this._platformBridge.platformId}:${this._platformBridge.engine}`,
+                    userId: `bridge:${version}`,
+                    clid: window.location.href,
+                }),
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`)
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error sending event:', error)
+                })
         }
-
-        console.info('Event payload details:')
-        console.info('  eventName:', 'game_ready')
-        console.info('  pageName:', `${this._platformBridge.platformId}:${this._platformBridge.engine}`)
-        console.info('  userId:', `bridge:${version}`)
-        console.info('  clid:', window.location.href)
-
-        fetch('https://playgama.com/api/v1/events', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                eventName: 'game_ready',
-                pageName: `${this._platformBridge.platformId}:${this._platformBridge.engine}`,
-                userId: `bridge:${version}`,
-                clid: window.location.href,
-            }),
-        })
-            .then((response) => {
-                console.info('Response status:', response.status)
-                if (!response.ok) {
-                    throw new Error(`Network response was not ok: ${response.status}`)
-                }
-            })
-            .catch((error) => {
-                console.error('Error sending event:', error)
-            })
     }
 }
 
