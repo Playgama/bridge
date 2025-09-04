@@ -106,8 +106,8 @@ class PlatformModule extends ModuleBase {
     }
 
     #trySendAnalyticsEvent() {
-        const events = this._platformBridge.options?.events
-        if (events !== false) {
+        const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
+        if (sendAnalyticsEvents !== false) {
             fetch('https://playgama.com/api/v1/events', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

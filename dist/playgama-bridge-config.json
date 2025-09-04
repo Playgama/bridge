@@ -43,7 +43,7 @@
             "useSignedData": false
         },
         "youtube": {
-            "events": false
+            "sendAnalyticsEvents": false
         }
     },
     "advertisement": {
@@ -58,5 +58,5 @@
     },
     "payments": [],
     "leaderboards": [],
-    "events": true
+    "sendAnalyticsEvents": true
 }
