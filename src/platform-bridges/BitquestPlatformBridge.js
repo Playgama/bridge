@@ -27,6 +27,8 @@ import {
     LEADERBOARD_TYPE,
 } from '../constants'
 
+const SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
+
 class BitquestPlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.BITQUEST
@@ -65,8 +67,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            const SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
-
             addJavaScript(SDK_URL).then(() => {
                 waitFor('bq').then(() => {
                     this._platformSdk = window.bq
@@ -81,6 +81,10 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._playerName = name
                             this._isPlayerAuthorized = true
                             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+                            this._playerExtra = player
+                            delete this._playerExtra.id
+                            delete this._playerExtra.name
 
                             this.#setupAdvertisementHandlers()
                             this.showPreRoll()
@@ -272,9 +276,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             }
 
                             return {
+                                id: product.id,
                                 name: catalogProduct.name,
                                 description: catalogProduct.description,
-                                id: catalogProduct.purchaseId,
                                 price: catalogProduct.priceValue,
                                 priceCurrencyCode: catalogProduct.currencyCode,
                                 priceValue: catalogProduct.price,

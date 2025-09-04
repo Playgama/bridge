@@ -68,6 +68,40 @@ export function createAdvertisementBannerContainer(position) {
     return container
 }
 
+export function createLoadingOverlay() {
+    const overlay = document.createElement('div')
+    overlay.style.position = 'fixed'
+    overlay.style.top = '0'
+    overlay.style.left = '0'
+    overlay.style.width = '100vw'
+    overlay.style.height = '100vh'
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'
+    overlay.style.display = 'flex'
+    overlay.style.justifyContent = 'center'
+    overlay.style.alignItems = 'center'
+    overlay.style.zIndex = '9999'
+    overlay.id = 'loading-overlay'
+
+    const loading = document.createElement('div')
+    loading.style.fontSize = '24px'
+    loading.style.color = '#fff'
+    loading.innerText = 'Loading...'
+    overlay.appendChild(loading)
+
+    return overlay
+}
+
+export function createAdContainer(containerId) {
+    const container = document.createElement('div')
+    container.id = containerId
+    container.style.position = 'fixed'
+    container.style.inset = '0'
+    container.style.zIndex = '9999999'
+    document.body.appendChild(container)
+
+    return container
+}
+
 export function showInfoPopup(message) {
     if (!document.getElementById('bridge-info-popup-styles')) {
         const style = document.createElement('style')
@@ -403,4 +437,40 @@ export function deepMerge(firstObject, secondObject) {
     }
 
     return result
+}
+
+export function deformatPrice(priceStr) {
+    const cleaned = priceStr.replace(/[^\d.,-]/g, '')
+
+    if (cleaned.includes('.') && cleaned.includes(',') && cleaned.indexOf(',') < cleaned.indexOf('.')) {
+        return parseFloat(cleaned.replace(/,/g, ''))
+    }
+
+    if (cleaned.includes('.') && cleaned.includes(',') && cleaned.indexOf(',') > cleaned.indexOf('.')) {
+        return parseFloat(cleaned.replace(/\./g, '').replace(',', '.'))
+    }
+
+    if (cleaned.includes(',')
+        && cleaned.lastIndexOf(',') !== -1
+        && cleaned.lastIndexOf(',') === cleaned.length - 4) {
+        return parseInt(cleaned.replace(/,/, ''), 10)
+    }
+
+    if (cleaned.includes(',')
+        && cleaned.lastIndexOf(',') !== -1
+        && cleaned.lastIndexOf(',') !== cleaned.length - 3) {
+        return parseFloat(cleaned.replace(',', '.'))
+    }
+
+    if (cleaned.includes('.')
+        && cleaned.lastIndexOf('.') !== -1
+        && cleaned.lastIndexOf('.') === cleaned.length - 4) {
+        return parseInt(cleaned.replace(/\./, ''), 10)
+    }
+
+    if (cleaned.includes('.')) {
+        return parseFloat(cleaned)
+    }
+
+    return parseInt(cleaned, 10)
 }

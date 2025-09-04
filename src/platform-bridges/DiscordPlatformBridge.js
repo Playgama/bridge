@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, deformatPrice, waitFor } from '../common/utils'
 import { ACTION_NAME, ERROR, PLATFORM_ID } from '../constants'
 
 const SDK_URL = '/cdn/discord/discord-v2.0.0.min.js'
@@ -26,10 +26,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
         return PLATFORM_ID.DISCORD
-    }
-
-    get platformLanguage() {
-        return this._platformLanguage
     }
 
     // player
@@ -45,8 +41,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     _appId = null
 
     _accessToken = null
-
-    _platformLanguage = 'en'
 
     initialize() {
         if (this._isInitialized) {
@@ -132,11 +126,16 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 })
                 .then((response) => response.json())
                 .then((user) => {
-                    this.playerId = user.id
-                    this.playerName = user.username
+                    this._playerId = user.id
+                    this._playerName = user.username
                     if (user.avatar) {
-                        this.playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
+                        this._playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
                     }
+
+                    this._playerExtra = user
+                    delete this._playerExtra.id
+                    delete this._playerExtra.username
+                    delete this._playerExtra.avatar
                 })
                 .catch((error) => {
                     this._accessToken = null
@@ -162,7 +161,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.commands.startPurchase({ sku_id: product.id })
+            this._platformSdk.commands.startPurchase({ sku_id: product.platformProductId })
                 .then((purchase) => {
                     if (!purchase) {
                         throw new Error('Purchase failed')
@@ -223,14 +222,19 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.commands.getSkus()
                 .then(({ skus: discordProducts }) => {
                     const mergedProducts = products.map((product) => {
-                        const discordProduct = discordProducts.find((p) => p.id === product.id)
+                        const discordProduct = discordProducts.find((p) => p.id === product.platformProductId)
+
+                        const formattedPrice = window.discord.PriceUtils.formatPrice(discordProduct.price)
+                        const priceValue = deformatPrice(formattedPrice)
+                        const priceCurrencyCode = discordProduct.price?.currency?.toUpperCase()
+                        const price = `${priceValue} ${priceCurrencyCode}`
 
                         return {
                             id: product.id,
                             title: discordProduct.name,
-                            price: `${discordProduct.price.amount} ${discordProduct.price.currency}`,
-                            priceCurrencyCode: discordProduct.price.currency,
-                            priceValue: discordProduct.price.amount,
+                            price,
+                            priceValue,
+                            priceCurrencyCode,
                         }
                     })
 
@@ -253,7 +257,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 .then((purchases) => {
                     const products = this._paymentsGetProductsPlatformData()
 
-                    this._paymentsPurchases = purchases.map((purchase) => {
+                    this._paymentsPurchases = purchases.entitlements.map((purchase) => {
                         const product = products.find((p) => p.id === purchase.id)
                         return {
                             id: product.id,

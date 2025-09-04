@@ -33,6 +33,11 @@ class LeaderboardsModule extends ModuleBase {
         return this._platformBridge.leaderboardsGetEntries(modifiedId)
     }
 
+    showNativePopup(id) {
+        const modifiedId = this.#getPlatformLeaderboardId(id)
+        return this._platformBridge.leaderboardsShowNativePopup(modifiedId)
+    }
+
     #getPlatformLeaderboardId(id) {
         if (!id) {
             return id

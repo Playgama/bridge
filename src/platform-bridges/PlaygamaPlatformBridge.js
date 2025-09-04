@@ -59,7 +59,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
-        return this._platformSdk.platformService.getLanguage()
+        return this._platformSdk.platformService.getLanguage() || super.platformLanguage
     }
 
     initialize() {
@@ -264,10 +264,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(id) {
+    paymentsPurchase(id, options) {
         const product = this._paymentsGetProductPlatformData(id)
         if (!product) {
             return Promise.reject()
+        }
+
+        if (options && options.externalId) {
+            product.externalId = options.externalId
         }
 
         if (!product.externalId) {
@@ -321,9 +325,17 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     this._isPlayerAuthorized = player.isAuthorized
                     this._playerName = player.name
                     this._playerPhotos = player.photos
+
+                    this._playerExtra = player
+                    delete this._playerExtra.isAuthorized
+                    delete this._playerExtra.id
+                    delete this._playerExtra.name
+                    delete this._playerExtra.photos
+
                     this._defaultStorageType = this._isPlayerAuthorized
                         ? STORAGE_TYPE.PLATFORM_INTERNAL
                         : STORAGE_TYPE.LOCAL_STORAGE
+
                     if (this._isPlayerAuthorized) {
                         return this.#getDataFromPlatformStorage([])
                     }

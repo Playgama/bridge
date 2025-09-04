@@ -58,11 +58,13 @@ import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
+import HuaweiPlatformBridge from './platform-bridges/HuaweiPlatformBridge'
 import BitquestPlatformBridge from './platform-bridges/BitquestPlatformBridge'
 import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
 import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
 import YoutubePlatformBridge from './platform-bridges/YoutubePlatformBridge'
 import { deepMerge } from './common/utils'
+import JioGamesPlatformBridge from './platform-bridges/JioGamesPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -129,6 +131,14 @@ class PlaygamaBridge {
         return this.#getModule(MODULE_NAME.CLIPBOARD)
     }
 
+    get engine() {
+        return this.#engine
+    }
+
+    set engine(value) {
+        this.#engine = value
+    }
+
     get PLATFORM_ID() {
         return PLATFORM_ID
     }
@@ -177,6 +187,8 @@ class PlaygamaBridge {
 
     #modules = {}
 
+    #engine = 'javascript'
+
     initialize(options) {
         if (this.#isInitialized) {
             return Promise.resolve()
@@ -203,6 +215,8 @@ class PlaygamaBridge {
                 })
                 .finally(() => {
                     this.#createPlatformBridge(modifiedOptions)
+
+                    this.#platformBridge.engine = this.engine
 
                     this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(this.#platformBridge)
@@ -291,6 +305,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.GAMEPUSH
             } else if (url.hostname.includes('discordsays.com')) {
                 platformId = PLATFORM_ID.DISCORD
+            } else if (url.hostname.includes('usercontent.goog')) {
+                platformId = PLATFORM_ID.YOUTUBE
             }
         }
 
@@ -362,6 +378,10 @@ class PlaygamaBridge {
                 this.#platformBridge = new MsnPlatformBridge(modifiedOptions)
                 break
             }
+            case PLATFORM_ID.HUAWEI: {
+                this.#platformBridge = new HuaweiPlatformBridge(modifiedOptions)
+                break
+            }
             case PLATFORM_ID.BITQUEST: {
                 this.#platformBridge = new BitquestPlatformBridge(modifiedOptions)
                 break
@@ -376,6 +396,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.YOUTUBE: {
                 this.#platformBridge = new YoutubePlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.JIO_GAMES: {
+                this.#platformBridge = new JioGamesPlatformBridge(modifiedOptions)
                 break
             }
             default: {

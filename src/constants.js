@@ -32,9 +32,11 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    HUAWEI: 'huawei',
     BITQUEST: 'bitquest',
     GAMEPUSH: 'gamepush',
     DISCORD: 'discord',
+    JIO_GAMES: 'jio_games',
     YOUTUBE: 'youtube',
 }
 
@@ -95,6 +97,8 @@ export const BANNER_POSITION = {
 }
 
 export const BANNER_CONTAINER_ID = 'banner-container'
+export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'
+export const REWARDED_CONTAINER_ID = 'rewarded-container'
 
 export const STORAGE_TYPE = {
     LOCAL_STORAGE: 'local_storage',
@@ -122,6 +126,7 @@ export const LEADERBOARD_TYPE = {
     NOT_AVAILABLE: 'not_available',
     IN_GAME: 'in_game',
     NATIVE: 'native',
+    NATIVE_POPUP: 'native_popup',
 }
 
 export const ACTION_NAME = {
@@ -136,15 +141,21 @@ export const ACTION_NAME = {
     RATE: 'rate',
     LEADERBOARDS_SET_SCORE: 'leaderboards_set_score',
     LEADERBOARDS_GET_ENTRIES: 'leaderboards_get_entries',
+    LEADERBOARDS_SHOW_NATIVE_POPUP: 'leaderboards_show_native_popup',
     GET_PURCHASES: 'get_purchases',
     GET_CATALOG: 'get_catalog',
     PURCHASE: 'purchase',
     CONSUME_PURCHASE: 'consume_purchase',
     GET_REMOTE_CONFIG: 'get_remote_config',
     GET_STORAGE_DATA: 'get_storage_data',
-    SHOW_LEADERBOARD_NATIVE_POPUP: 'show_leaderboard_native_popup',
+    SET_STORAGE_DATA: 'set_storage_data',
+    DELETE_STORAGE_DATA: 'delete_storage_data',
     CLIPBOARD_WRITE: 'clipboard_write',
     ADBLOCK_DETECT: 'adblock_detect',
+    SET_INTERSTITIAL_STATE: 'set_interstitial_state',
+    SET_REWARDED_STATE: 'set_rewarded_state',
+    SHOW_INTERSTITIAL: 'show_interstitial',
+    SHOW_REWARDED: 'show_rewarded',
 }
 
 export const ERROR = {
@@ -155,8 +166,10 @@ export const ERROR = {
     Y8_GAME_PARAMS_NOT_FOUND: { message: 'Y8 Game params are not found' },
     OK_GAME_PARAMS_NOT_FOUND: { message: 'OK Game params are not found' },
     LAGGED_GAME_PARAMS_NOT_FOUND: { message: 'Lagged Game params are not found' },
+    HUAWEI_GAME_PARAMS_NOT_FOUND: { message: 'Huawei Game params are not found' },
     GAMEPUSH_GAME_PARAMS_NOT_FOUND: { message: 'GamePush Game params are not found' },
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
     DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
+    JIO_GAMES_GAME_PARAMS_NOT_FOUND: { message: 'JioGames Game params are not found' },
 }

@@ -105,6 +105,10 @@ class PlatformBridgeBase {
         return this._playerPhotos
     }
 
+    get playerExtra() {
+        return this._playerExtra
+    }
+
     // storage
     get defaultStorageType() {
         return this._defaultStorageType
@@ -221,6 +225,8 @@ class PlatformBridgeBase {
 
     _playerPhotos = []
 
+    _playerExtra = {}
+
     _visibilityState = null
 
     _localStorage = null
@@ -270,7 +276,7 @@ class PlatformBridgeBase {
 
     getServerTime() {
         return new Promise((resolve, reject) => {
-            fetch('https://worldtimeapi.org/api/timezone/Etc/UTC')
+            fetch('https://playgama.com/api/v1/timestamp/now')
                 .then((response) => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok')
@@ -278,7 +284,7 @@ class PlatformBridgeBase {
                     return response.json()
                 })
                 .then((data) => {
-                    resolve(data.unixtime * 1000)
+                    resolve(data.timestamp * 1000)
                 })
                 .catch(() => {
                     reject()
@@ -491,6 +497,10 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
+    leaderboardsShowNativePopup() {
+        return Promise.reject()
+    }
+
     // payments
     paymentsPurchase(id) {
         if (this.isPaymentsSupported) {
@@ -648,10 +658,16 @@ class PlatformBridgeBase {
         }
 
         return this._options.payments
-            .map((product) => ({
-                id: product.id,
-                ...product[this.platformId],
-            }))
+            .map((product) => {
+                const mergedProduct = {
+                    ...product[this.platformId],
+                }
+
+                mergedProduct.platformProductId = mergedProduct.id
+                mergedProduct.id = product.id
+
+                return mergedProduct
+            })
     }
 
     _paymentsGetProductPlatformData(id) {
@@ -665,10 +681,14 @@ class PlatformBridgeBase {
             return null
         }
 
-        return {
-            id: product.id,
+        const mergedProduct = {
             ...product[this.platformId],
         }
+
+        mergedProduct.platformProductId = mergedProduct.id
+        mergedProduct.id = product.id
+
+        return mergedProduct
     }
 
     _paymentsGenerateTransactionId(id) {

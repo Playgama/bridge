@@ -18,6 +18,7 @@
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME, PLATFORM_MESSAGE } from '../constants'
+import { version } from '../../package.json'
 
 class PlatformModule extends ModuleBase {
     get id() {
@@ -79,6 +80,7 @@ class PlatformModule extends ModuleBase {
             }
 
             this.#isGameReadyMessageSent = true
+            this.#trySendAnalyticsEvent()
         }
 
         return this._platformBridge.sendMessage(message)
@@ -101,6 +103,30 @@ class PlatformModule extends ModuleBase {
         }
 
         return this._platformBridge.getGameById(options)
+    }
+
+    #trySendAnalyticsEvent() {
+        const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
+        if (sendAnalyticsEvents !== false) {
+            fetch('https://playgama.com/api/v1/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventName: 'game_ready',
+                    pageName: `${this._platformBridge.platformId}:${this._platformBridge.engine}`,
+                    userId: `bridge:${version}`,
+                    clid: window.location.href,
+                }),
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status}`)
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error sending event:', error)
+                })
+        }
     }
 }
 
