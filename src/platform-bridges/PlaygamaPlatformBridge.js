@@ -59,7 +59,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
-        return this._platformSdk.platformService.getLanguage()
+        return this._platformSdk.platformService.getLanguage() || super.platformLanguage
     }
 
     initialize() {

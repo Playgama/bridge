@@ -28,10 +28,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.DISCORD
     }
 
-    get platformLanguage() {
-        return this._platformLanguage
-    }
-
     // player
     get isPlayerAuthorizationSupported() {
         return true
@@ -45,8 +41,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     _appId = null
 
     _accessToken = null
-
-    _platformLanguage = 'en'
 
     initialize() {
         if (this._isInitialized) {

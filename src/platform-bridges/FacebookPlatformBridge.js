@@ -59,7 +59,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
-        return this._platformLanguage
+        return this._platformLanguage || super.platformLanguage
     }
 
     // advertisement
@@ -155,9 +155,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     this._playerId = this._platformSdk.player.getID()
                     this._contextId = this._platformSdk.context.getID()
 
-                    const language = this._platformSdk.getLocale()
-                    if (language && language.length > 2) {
-                        this._platformLanguage = language.substring(0, 2).toLowerCase()
+                    this._platformLanguage = this._platformSdk.getLocale()
+                    if (typeof this._platformLanguage === 'string') {
+                        this._platformLanguage = this._platformLanguage.substring(0, 2).toLowerCase()
                     }
 
                     this._supportedApis = this._platformSdk.getSupportedAPIs()
