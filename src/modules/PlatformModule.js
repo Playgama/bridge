@@ -80,7 +80,7 @@ class PlatformModule extends ModuleBase {
             }
 
             this.#isGameReadyMessageSent = true
-            this.#sendAnalyticsEvent()
+            this.#trySendAnalyticsEvent()
         }
 
         return this._platformBridge.sendMessage(message)
@@ -105,7 +105,7 @@ class PlatformModule extends ModuleBase {
         return this._platformBridge.getGameById(options)
     }
 
-    #sendAnalyticsEvent() {
+    #trySendAnalyticsEvent() {
         const events = this._platformBridge.options?.events
         if (events !== false) {
             fetch('https://playgama.com/api/v1/events', {
