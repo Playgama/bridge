@@ -108,7 +108,12 @@ class PlatformModule extends ModuleBase {
     #trySendAnalyticsEvent() {
         const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
         if (sendAnalyticsEvents !== false) {
-            fetch('https://playgama.com/api/v1/events', {
+            let url = 'https://playgama.com/api/v1/events'
+            if (this._platformBridge.platformId === 'discord') {
+                url = '/playgama/api/v1/events'
+            }
+
+            fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
