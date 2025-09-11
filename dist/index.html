@@ -94,11 +94,6 @@
                 <p>ID: <span id="player-id-text"></span></p>
                 <p>Name: <span id="player-name-text"></span></p>
                 <p>Photos: <span id="player-photos-text"></span></p>
-                <hr>
-                <label for="authorize-player-yandex-scopes-input">Yandex: Authorization Scopes</label>
-                <input type="checkbox" id="authorize-player-yandex-scopes-input">
-                <br>
-                <br>
                 <button id="authorize-player-button">Authorize</button>
             </div>
 
@@ -310,7 +305,6 @@
                 const playerIdText = document.getElementById('player-id-text')
                 const playerNameText = document.getElementById('player-name-text')
                 const playerPhotosText = document.getElementById('player-photos-text')
-                const authorizePlayerYandexScopesInput = document.getElementById('authorize-player-yandex-scopes-input')
                 const authorizePlayerButton = document.getElementById('authorize-player-button')
 
                 const isStorageLocalStorageSupportedText = document.getElementById('is-storage-local-storage-supported-text')
@@ -559,7 +553,7 @@
                 authorizePlayerButton.addEventListener('click', () => {
                     bridge
                         .player
-                        .authorize({ yandex: { scopes: authorizePlayerYandexScopesInput.checked } })
+                        .authorize()
                         .then(() => {
                             isPlayerAuthorizedText.innerText = bridge.player.isAuthorized
                             playerIdText.innerText = bridge.player.id
