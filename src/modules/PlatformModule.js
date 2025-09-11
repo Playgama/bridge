@@ -107,6 +107,11 @@ class PlatformModule extends ModuleBase {
 
     #trySendAnalyticsEvent() {
         const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
+        const { href } = window.location.href
+        if (href.startsWith('file://') || href.includes('localhost') || href.includes('127.0.0.1')) {
+            return
+        }
+
         if (sendAnalyticsEvents !== false) {
             let url = 'https://playgama.com/api/v1/events'
             if (this._platformBridge.platformId === 'discord') {
