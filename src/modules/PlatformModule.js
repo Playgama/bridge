@@ -107,7 +107,7 @@ class PlatformModule extends ModuleBase {
 
     #trySendAnalyticsEvent() {
         const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
-        const { href } = window.location.href
+        const { href } = window.location
         if (href.startsWith('file://') || href.includes('localhost') || href.includes('127.0.0.1')) {
             return
         }
