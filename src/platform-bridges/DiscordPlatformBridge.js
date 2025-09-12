@@ -77,7 +77,9 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
-    authorizePlayer() {
+    authorizePlayer(options) {
+        const scope = options.scope || []
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -87,9 +89,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 response_type: 'code',
                 state: '',
                 prompt: 'none',
-                scope: [
-                    'identify',
-                ],
+                scope,
             })
                 .then(({ code }) => fetch(`${APPLICATION_SERVER_PROXY_URL}/token`, {
                     method: 'POST',
