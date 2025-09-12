@@ -132,7 +132,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                         this._playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
                     }
 
-                    this._playerExtra = user
+                    this._playerExtra = {
+                        ...user,
+                        access_token: this._accessToken,
+                    }
+
                     delete this._playerExtra.id
                     delete this._playerExtra.username
                     delete this._playerExtra.avatar
