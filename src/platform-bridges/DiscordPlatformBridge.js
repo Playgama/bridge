@@ -105,6 +105,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     this._accessToken = data.access_token
 
                     this._playerExtra = {
+                        token: data.token,
                         accessToken: this._accessToken,
                         channelId: this._platformSdk.channelId,
                     }
