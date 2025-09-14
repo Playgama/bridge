@@ -134,7 +134,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
 
                     this._playerExtra = {
                         ...user,
-                        access_token: this._accessToken,
+                        accessToken: this._accessToken,
                     }
 
                     delete this._playerExtra.id
