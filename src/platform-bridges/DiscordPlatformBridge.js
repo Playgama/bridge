@@ -104,6 +104,10 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 .then((data) => {
                     this._accessToken = data.access_token
 
+                    this._playerExtra = {
+                        accessToken: this._accessToken,
+                    }
+
                     return this._platformSdk.commands.authenticate({
                         access_token: this._accessToken,
                     })
@@ -133,8 +137,8 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._playerExtra = {
+                        ...this._playerExtra,
                         ...user,
-                        accessToken: this._accessToken,
                     }
 
                     delete this._playerExtra.id
