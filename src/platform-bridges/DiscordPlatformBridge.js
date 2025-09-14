@@ -77,7 +77,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
-    authorizePlayer(options) {
+    authorizePlayer(options = {}) {
         const scope = options.scope || ['identify']
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
