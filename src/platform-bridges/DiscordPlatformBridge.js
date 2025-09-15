@@ -77,7 +77,9 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
-    authorizePlayer() {
+    authorizePlayer(options) {
+        const scope = options?.scope || ['identify']
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -87,9 +89,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 response_type: 'code',
                 state: '',
                 prompt: 'none',
-                scope: [
-                    'identify',
-                ],
+                scope,
             })
                 .then(({ code }) => fetch(`${APPLICATION_SERVER_PROXY_URL}/token`, {
                     method: 'POST',
@@ -103,6 +103,12 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 .then((response) => response.json())
                 .then((data) => {
                     this._accessToken = data.access_token
+
+                    this._playerExtra = {
+                        token: data.token,
+                        accessToken: this._accessToken,
+                        channelId: this._platformSdk.channelId,
+                    }
 
                     return this._platformSdk.commands.authenticate({
                         access_token: this._accessToken,
@@ -132,7 +138,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                         this._playerPhotos.push(`https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`)
                     }
 
-                    this._playerExtra = user
+                    this._playerExtra = {
+                        ...this._playerExtra,
+                        ...user,
+                    }
+
                     delete this._playerExtra.id
                     delete this._playerExtra.username
                     delete this._playerExtra.avatar
