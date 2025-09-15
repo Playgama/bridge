@@ -72,26 +72,188 @@ const REWARD_STATUS = {
     FAILED: 'failed',
 }
 
+
+const PLAYER_SUPPORTED_FEATURES = [
+    {
+        key: 'isPlayerAuthorizationSupported',
+        path: 'player.isAuthorizationSupported',
+        module: 'player',
+    },
+]
+
+const PAYMENTS_SUPPORTED_FEATURES = [
+    {
+        key: 'isPaymentsSupported',
+        path: 'payments.isSupported',
+        module: 'payments',
+    },
+]
+
+const REMOTE_CONFIG_SUPPORTED_FEATURES = [
+    {
+        key: 'isRemoteConfigSupported',
+        path: 'remoteConfig.isSupported',
+        module: 'remoteConfig',
+    },
+]
+
+const SOCIAL_SUPPORTED_FEATURES = [
+    {
+        key: 'isShareSupported',
+        path: 'social.isShareSupported',
+        module: 'social',
+    },
+    {
+        key: 'isJoinCommunitySupported',
+        path: 'social.isJoinCommunitySupported',
+        module: 'social',
+    },
+    {
+        key: 'isInviteFriendsSupported',
+        path: 'social.isInviteFriendsSupported',
+        module: 'social',
+    },
+    {
+        key: 'isCreatePostSupported',
+        path: 'social.isCreatePostSupported',
+        module: 'social',
+    },
+    {
+        key: 'isAddToFavoritesSupported',
+        path: 'social.isAddToFavoritesSupported',
+        module: 'social',
+    },
+    {
+        key: 'isAddToHomeScreenSupported',
+        path: 'social.isAddToHomeScreenSupported',
+        module: 'social',
+    },
+    {
+        key: 'isRateSupported',
+        path: 'social.isRateSupported',
+        module: 'social',
+    },
+]
+
+const STORAGE_SUPPORTED_FEATURES = [
+    {
+        key: 'isLocalStorageSupported',
+        path: 'storage.isSupported',
+        module: 'storage',
+    },
+    {
+        key: 'isPlatformInternalStorageSupported',
+        path: 'storage.isSupported',
+        module: 'storage',
+    },
+]
+
+const ADVERTISEMENT_SUPPORTED_FEATURES = [
+    {
+        key: 'isBannerSupported',
+        path: 'advertisement.isBannerSupported',
+        module: 'advertisement',
+    },
+    {
+        key: 'isInterstitialSupported',
+        path: 'advertisement.isInterstitialSupported',
+        module: 'advertisement',
+    },
+    {
+        key: 'isRewardedSupported',
+        path: 'advertisement.isRewardedSupported',
+        module: 'advertisement',
+    },
+]
+
+const CLIPBOARD_SUPPORTED_FEATURES = [
+    {
+        key: 'isClipboardSupported',
+        path: 'clipboard.isSupported',
+        module: 'clipboard',
+    },
+]
+
+const ACHIEVEMENTS_SUPPORTED_FEATURES = [
+    {
+        key: 'isAchievementsSupported',
+        path: 'achievements.isSupported',
+        module: 'achievements',
+    },
+    {
+        key: 'isGetAchievementsListSupported',
+        path: 'achievements.isGetListSupported',
+        module: 'achievements',
+    },
+    {
+        key: 'isAchievementsNativePopupSupported',
+        path: 'achievements.isNativePopupSupported',
+        module: 'achievements',
+    },
+]
+
+const PLATFORM_SUPPORTED_FEATURES = [
+    {
+        key: 'platformModuleSupported',
+        path: 'platform.isSupported',
+        module: 'platform',
+    },
+    {
+        key: 'isPlatformGetGameByIdSupported',
+        path: 'platform.isGetGameByIdSupported',
+        module: 'platform',
+    },
+    {
+        key: 'isPlatformGetAllGamesSupported',
+        path: 'platform.isGetAllGamesSupported',
+        module: 'platform',
+    },
+]
+
 const SUPPORTED_FEATURES = {
+    // player
     PLAYER_AUTHORIZATION: 'isPlayerAuthorizationSupported',
+
+    // payments
     PAYMENTS: 'isPaymentsSupported',
+
+    // remote config
     REMOTE_CONFIG: 'isRemoteConfigSupported',
-    INVITE_FRIENDS: 'isInviteFriendsSupported',
-    JOIN_COMMUNITY: 'isJoinCommunitySupported',
-    SHARE: 'isShareSupported',
-    CREATE_POST: 'isCreatePostSupported',
-    ADD_TO_HOME_SCREEN: 'isAddToHomeScreenSupported',
-    ADD_TO_FAVORITES: 'isAddToFavoritesSupported',
-    RATE: 'isRateSupported',
-    STORAGE_INTERNAL: 'isStorageInternalSupported',
-    STORAGE_LOCAL: 'isStorageLocalSupported',
-    BANNER: 'isBannerSupported',
-    INTERSTITIAL: 'isInterstitialSupported',
-    REWARDED: 'isRewardedSupported',
+
+    // social
+    SOCIAL_SHARE: 'isShareSupported',
+    SOCIAL_JOIN_COMMUNITY: 'isJoinCommunitySupported',
+    SOCIAL_INVITE_FRIENDS: 'isInviteFriendsSupported',
+    SOCIAL_CREATE_POST: 'isCreatePostSupported',
+    SOCIAL_ADD_TO_FAVORITES: 'isAddToFavoritesSupported',
+    SOCIAL_ADD_TO_HOME_SCREEN: 'isAddToHomeScreenSupported',
+    SOCIAL_RATE: 'isRateSupported',
+
+    // storage
+    STORAGE_LOCAL: 'isLocalStorageSupported',
+    STORAGE_INTERNAL: 'isPlatformInternalStorageSupported',
+
+    // advertisement
+    BANNER: 'isBannerSupported',     // ADVERTISEMENT_BANNER
+    INTERSTITIAL: 'isInterstitialSupported',     // ADVERTISEMENT_INTERSTITIAL
+    REWARDED: 'isRewardedSupported',     // ADVERTISEMENT_REWARDED
+
+    // clipboard
     CLIPBOARD: 'isClipboardSupported',
-    ACHIEVEMENTS: 'isAchievementsSupported',
-    ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
-    ACHIEVEMENTS_NATIVE_POPUP: 'isAchievementsNativePopupSupported',
+
+    // achievements
+    ACHIEVEMENTS: 'isAchievementsSupported',     // ACHIEVEMENTS
+    ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',     // ACHIEVEMENTS_GET_LIST
+    ACHIEVEMENTS_NATIVE_POPUP: 'isAchievementsNativePopupSupported',     // ACHIEVEMENTS_NATIVE_POPUP
+
+
+    // platform
+    PLATFORM: 'isPlatformSupported',  // (-)
+    PLATFORM_GET_GAME_BY_ID: 'isPlatformGetGameByIdSupported',  // (-)
+    PLATFORM_GET_ALL_GAMES: 'isPlatformGetAllGamesSupported',  // (-)
+
+
+    // ???
     STORAGE_REMOTE_LOCAL: 'isStorageRemoteLocalSupported',
     LANGUAGE_SUPPORTED: 'isGetLanguageSupported',
 }
@@ -154,31 +316,31 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     // social
     get isInviteFriendsSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INVITE_FRIENDS)
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_INVITE_FRIENDS)
     }
 
     get isJoinCommunitySupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.JOIN_COMMUNITY)
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_JOIN_COMMUNITY)
     }
 
     get isShareSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SHARE)
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_SHARE)
     }
 
     get isCreatePostSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CREATE_POST)
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_CREATE_POST)
     }
 
     get isAddToHomeScreenSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ADD_TO_HOME_SCREEN)
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_HOME_SCREEN)
     }
 
     get isAddToFavoritesSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ADD_TO_FAVORITES)
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_FAVORITES)
     }
 
     get isRateSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.RATE)
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_RATE)
     }
 
     // leaderboards
