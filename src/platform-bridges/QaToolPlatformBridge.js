@@ -318,14 +318,19 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     const { player, auth } = data
 
                     if (auth.status === 'success') {
-                        this._isPlayerAuthorized = true
-
                         this._playerId = player.userId
+                        this._isPlayerAuthorized = true
                         this._playerName = player.name
 
-                        if (player.profilePictureUrl) {
-                            this._playerPhotos = [player.profilePictureUrl]
+                        if (Array.isArray(player.photos)) {
+                            this._playerPhotos = [...player.photos]
                         }
+
+                        this._playerExtra = player
+                        delete this._playerExtra.isAuthorized
+                        delete this._playerExtra.userId
+                        delete this._playerExtra.name
+                        delete this._playerExtra.photos
 
                         this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                     } else {
