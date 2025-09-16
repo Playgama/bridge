@@ -319,7 +319,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
                     if (auth.status === 'success') {
                         this._playerId = player.userId
-                        this._isPlayerAuthorized = true
+                        this._isPlayerAuthorized = player.isAuthorized
                         this._playerName = player.name
 
                         if (Array.isArray(player.photos)) {
