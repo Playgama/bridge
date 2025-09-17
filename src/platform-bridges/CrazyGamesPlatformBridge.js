@@ -576,8 +576,6 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._playerExtra = user
-                    delete this._playerExtra.username
-                    delete this._playerExtra.profilePictureUrl
 
                     if (this._options.useUserToken) {
                         this._platformSdk.user.getUserToken()

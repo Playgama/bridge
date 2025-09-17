@@ -142,10 +142,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                         ...this._playerExtra,
                         ...user,
                     }
-
-                    delete this._playerExtra.id
-                    delete this._playerExtra.username
-                    delete this._playerExtra.avatar
                 })
                 .catch((error) => {
                     this._accessToken = null

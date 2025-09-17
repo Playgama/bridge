@@ -81,10 +81,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._playerName = name
                             this._isPlayerAuthorized = true
                             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-
                             this._playerExtra = player
-                            delete this._playerExtra.id
-                            delete this._playerExtra.name
 
                             this.#setupAdvertisementHandlers()
                             this.showPreRoll()

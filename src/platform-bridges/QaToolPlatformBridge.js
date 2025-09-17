@@ -327,11 +327,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         }
 
                         this._playerExtra = player
-                        delete this._playerExtra.isAuthorized
-                        delete this._playerExtra.userId
-                        delete this._playerExtra.name
-                        delete this._playerExtra.photos
-
                         this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                     } else {
                         this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, auth.error)

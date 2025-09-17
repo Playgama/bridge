@@ -435,10 +435,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             this._isPlayerAuthorized = true
             this._playerId = data.playerId
             this._playerName = data.playerDisplayName
-
             this._playerExtra = data
-            delete this._playerExtra.playerId
-            delete this._playerExtra.playerDisplayName
         }
     }
 }
