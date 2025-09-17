@@ -24,8 +24,8 @@ import {
 
 class AdvertisementModule extends ModuleBase {
     get isBannerSupported() {
-        const disabled = this._platformBridge.options?.advertisement?.banner?.disabled
-        if (disabled === true) {
+        const disable = this._platformBridge.options?.advertisement?.banner?.disable
+        if (disable === true) {
             return false
         }
 
@@ -37,8 +37,8 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isInterstitialSupported() {
-        const disabled = this._platformBridge.options?.advertisement?.interstitial?.disabled
-        if (disabled === true) {
+        const disable = this._platformBridge.options?.advertisement?.interstitial?.disable
+        if (disable === true) {
             return false
         }
 
@@ -50,8 +50,8 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isRewardedSupported() {
-        const disabled = this._platformBridge.options?.advertisement?.rewarded?.disabled
-        if (disabled === true) {
+        const disable = this._platformBridge.options?.advertisement?.rewarded?.disable
+        if (disable === true) {
             return false
         }
 
@@ -141,12 +141,11 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
+        this.#setBannerState(BANNER_STATE.LOADING)
         if (!this.isBannerSupported) {
             this.#setBannerState(BANNER_STATE.FAILED)
             return
         }
-
-        this.#setBannerState(BANNER_STATE.LOADING)
 
         let modifiedPlacement = placement
         if (!modifiedPlacement) {
@@ -189,15 +188,16 @@ class AdvertisementModule extends ModuleBase {
     }
 
     showInterstitial(placement = null) {
-        if (!this.isInterstitialSupported) {
-            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            return
-        }
         if (this.#hasAdvertisementInProgress()) {
             return
         }
 
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
+
+        if (!this.isInterstitialSupported) {
+            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
 
         if (this._platformBridge.isMinimumDelayBetweenInterstitialEnabled) {
             if (this.#interstitialTimer && this.#interstitialTimer.state === TIMER_STATE.STARTED) {
@@ -235,10 +235,6 @@ class AdvertisementModule extends ModuleBase {
     }
 
     showRewarded(placement = null) {
-        if (!this.isRewardedSupported) {
-            this.#setRewardedState(REWARDED_STATE.FAILED)
-            return
-        }
         if (this.#hasAdvertisementInProgress()) {
             return
         }
@@ -254,6 +250,10 @@ class AdvertisementModule extends ModuleBase {
         const platformPlacement = this.#getPlatformPlacement(this.#rewardedPlacement, placements)
 
         this.#setRewardedState(REWARDED_STATE.LOADING)
+        if (!this.isRewardedSupported) {
+            this.#setRewardedState(REWARDED_STATE.FAILED)
+            return
+        }
         this._platformBridge.showRewarded(platformPlacement)
     }
 
