@@ -24,6 +24,11 @@ import {
 
 class AdvertisementModule extends ModuleBase {
     get isBannerSupported() {
+        const disabled = this._platformBridge.options?.advertisement?.banner?.disabled
+        if (disabled === true) {
+            return false
+        }
+
         return this._platformBridge.isBannerSupported
     }
 
@@ -32,6 +37,11 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isInterstitialSupported() {
+        const disabled = this._platformBridge.options?.advertisement?.interstitial?.disabled
+        if (disabled === true) {
+            return false
+        }
+
         return this._platformBridge.isInterstitialSupported
     }
 
@@ -40,6 +50,11 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isRewardedSupported() {
+        const disabled = this._platformBridge.options?.advertisement?.rewarded?.disabled
+        if (disabled === true) {
+            return false
+        }
+
         return this._platformBridge.isRewardedSupported
     }
 
@@ -126,11 +141,12 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this.#setBannerState(BANNER_STATE.LOADING)
         if (!this.isBannerSupported) {
             this.#setBannerState(BANNER_STATE.FAILED)
             return
         }
+
+        this.#setBannerState(BANNER_STATE.LOADING)
 
         let modifiedPlacement = placement
         if (!modifiedPlacement) {
@@ -157,6 +173,9 @@ class AdvertisementModule extends ModuleBase {
     }
 
     preloadInterstitial(placement = null) {
+        if (!this.isInterstitialSupported) {
+            return
+        }
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
@@ -170,6 +189,10 @@ class AdvertisementModule extends ModuleBase {
     }
 
     showInterstitial(placement = null) {
+        if (!this.isInterstitialSupported) {
+            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
         if (this.#hasAdvertisementInProgress()) {
             return
         }
@@ -196,6 +219,9 @@ class AdvertisementModule extends ModuleBase {
     }
 
     preloadRewarded(placement = null) {
+        if (!this.isRewardedSupported) {
+            return
+        }
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.rewarded?.placementFallback) {
@@ -209,6 +235,10 @@ class AdvertisementModule extends ModuleBase {
     }
 
     showRewarded(placement = null) {
+        if (!this.isRewardedSupported) {
+            this.#setRewardedState(REWARDED_STATE.FAILED)
+            return
+        }
         if (this.#hasAdvertisementInProgress()) {
             return
         }
