@@ -80,44 +80,6 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    showInterstitial() {
-        this._platformSdk.requestAd()
-            .then(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-            })
-            .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            })
-    }
-
-    showRewarded() {
-        this._platformSdk.requestRewardAd()
-            .then((success) => {
-                if (success) {
-                    this._setRewardedState(REWARDED_STATE.OPENED)
-                    this._setRewardedState(REWARDED_STATE.REWARDED)
-                    this._setRewardedState(REWARDED_STATE.CLOSED)
-                } else {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
-                }
-            })
-            .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            })
-    }
-
-    sendMessage(message) {
-        switch (message) {
-            case PLATFORM_MESSAGE.GAME_READY: {
-                this.platformsdk.gameReady()
-                return Promise.resolve()
-            }
-            default:
-                return super.sendMessage(message)
-        }
-    }
-
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return true
@@ -168,44 +130,70 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
         return super.getDataFromStorage(key, storageType, tryParseJson)
     }
 
-    async setDataToStorage(key, value, storageType) {
+    setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
                 if (!Array.isArray(value)) {
-                    throw new Error('Value must be an array if key is an array')
+                    return Promise.reject(new Error('Value must be an array if key is an array'))
                 }
-
                 if (key.length !== value.length) {
-                    throw new Error('Key and value arrays must have the same length')
+                    return Promise.reject(new Error('Key and value arrays must have the same length'))
                 }
-
-                await Promise.all(key.map((k, i) => Promise.resolve(this._platformSdk.setValue(k, value[i]))))
-                return
+                const promises = key.map((k, i) => Promise.resolve(this._platformSdk.setValue(k, value[i])))
+                return Promise.all(promises)
             }
-
-            await Promise.resolve(this._platformSdk.setValue(key, value))
-            return
+            return Promise.resolve(this._platformSdk.setValue(key, value))
         }
-
-        await super.setDataToStorage(key, value, storageType)
+        return super.setDataToStorage(key, value, storageType)
     }
 
-    async deleteDataFromStorage(key, storageType) {
+    deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                /* eslint-disable no-await-in-loop */
-                for (let i = 0; i < key.length; i++) {
-                    await Promise.resolve(this._platformSdk.removeValue(key[i]))
-                }
-                /* eslint-enable no-await-in-loop */
-                return
+                const promises = key.map((k) => Promise.resolve(this._platformSdk.removeValue(k)))
+                return Promise.all(promises)
             }
-
-            await Promise.resolve(this._platformSdk.removeValue(key))
-            return
+            return Promise.resolve(this._platformSdk.removeValue(key))
         }
+        return super.deleteDataFromStorage(key, storageType)
+    }
 
-        await super.deleteDataFromStorage(key, storageType)
+    showInterstitial() {
+        this._platformSdk.requestAd()
+            .then(() => {
+                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+            })
+            .catch(() => {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            })
+    }
+
+    showRewarded() {
+        this._platformSdk.requestRewardAd()
+            .then((success) => {
+                if (success) {
+                    this._setRewardedState(REWARDED_STATE.OPENED)
+                    this._setRewardedState(REWARDED_STATE.REWARDED)
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                } else {
+                    this._setRewardedState(REWARDED_STATE.FAILED)
+                }
+            })
+            .catch(() => {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            })
+    }
+
+    sendMessage(message) {
+        switch (message) {
+            case PLATFORM_MESSAGE.GAME_READY: {
+                this.platformsdk.gameReady()
+                return Promise.resolve()
+            }
+            default:
+                return super.sendMessage(message)
+        }
     }
 
     // payments
@@ -303,12 +291,17 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
 
                     this._paymentsPurchases = purchases.map((purchase) => {
                         const platformProductId = purchase.id
-                        const product = products.find((p) => (p.platformProductId || p.id) === platformProductId)
+                        const product = products.find((p) => p.id === platformProductId)
                         if (!product) {
                             return null
                         }
 
-                        return { id: product.id }
+                        const mergedPurchase = {
+                            id: product.id,
+                            ...purchase,
+                        }
+
+                        return mergedPurchase
                     }).filter(Boolean)
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
@@ -320,7 +313,6 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
 
         return promiseDecorator.promise
     }
-    // Note: No explicit consume API in Portal IAP; use base implementation
 }
 
 export default OrbitPlatformBridge
