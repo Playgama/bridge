@@ -249,7 +249,7 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
 
                     const mergedProducts = products
                         .map((product) => {
-                            const platformId = product.platformProductId || product.id
+                            const platformId = product.id
                             const catalogProduct = catalog.find((p) => p && p.id === platformId)
 
                             if (!catalogProduct) {
