@@ -24,6 +24,11 @@ import {
 
 class AdvertisementModule extends ModuleBase {
     get isBannerSupported() {
+        const disable = this._platformBridge.options?.advertisement?.banner?.disable
+        if (disable === true) {
+            return false
+        }
+
         return this._platformBridge.isBannerSupported
     }
 
@@ -32,6 +37,11 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isInterstitialSupported() {
+        const disable = this._platformBridge.options?.advertisement?.interstitial?.disable
+        if (disable === true) {
+            return false
+        }
+
         return this._platformBridge.isInterstitialSupported
     }
 
@@ -40,6 +50,11 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isRewardedSupported() {
+        const disable = this._platformBridge.options?.advertisement?.rewarded?.disable
+        if (disable === true) {
+            return false
+        }
+
         return this._platformBridge.isRewardedSupported
     }
 
@@ -157,6 +172,9 @@ class AdvertisementModule extends ModuleBase {
     }
 
     preloadInterstitial(placement = null) {
+        if (!this.isInterstitialSupported) {
+            return
+        }
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
@@ -175,6 +193,11 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
+
+        if (!this.isInterstitialSupported) {
+            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
 
         if (this._platformBridge.isMinimumDelayBetweenInterstitialEnabled) {
             if (this.#interstitialTimer && this.#interstitialTimer.state === TIMER_STATE.STARTED) {
@@ -196,6 +219,9 @@ class AdvertisementModule extends ModuleBase {
     }
 
     preloadRewarded(placement = null) {
+        if (!this.isRewardedSupported) {
+            return
+        }
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.rewarded?.placementFallback) {
@@ -224,6 +250,10 @@ class AdvertisementModule extends ModuleBase {
         const platformPlacement = this.#getPlatformPlacement(this.#rewardedPlacement, placements)
 
         this.#setRewardedState(REWARDED_STATE.LOADING)
+        if (!this.isRewardedSupported) {
+            this.#setRewardedState(REWARDED_STATE.FAILED)
+            return
+        }
         this._platformBridge.showRewarded(platformPlacement)
     }
 
