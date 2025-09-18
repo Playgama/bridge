@@ -29,7 +29,7 @@ import {
     LEADERBOARD_TYPE,
 } from '../constants'
 import PromiseDecorator from '../common/PromiseDecorator'
-import { showInfoPopup } from '../common/utils'
+import { getGuestUser, showInfoPopup } from '../common/utils'
 
 class PlatformBridgeBase {
     get options() {
@@ -715,6 +715,12 @@ class PlatformBridgeBase {
         }
 
         return Promise.resolve()
+    }
+
+    _playerApplyGuestData() {
+        const guest = getGuestUser()
+        this._playerId = guest.id
+        this._playerName = guest.name
     }
 }
 

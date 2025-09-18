@@ -97,7 +97,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return true
@@ -291,6 +290,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
     #authorizePlayer(data) {
         if (!data.success) {
+            this._playerApplyGuestData()
             this._rejectPromiseDecorator(
                 ACTION_NAME.AUTHORIZE_PLAYER,
                 new Error(data),
@@ -306,7 +306,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-
     #setInterstitialState(data) {
         if (Object.values(INTERSTITIAL_STATE).includes(data.state)) {
             this._setInterstitialState(
@@ -326,7 +325,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-
     #getCatalog(data) {
         if (!data.success) {
             this._rejectPromiseDecorator(
@@ -425,7 +423,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-
     #getStorageData(data) {
         if (!data.success) {
             this._rejectPromiseDecorator(

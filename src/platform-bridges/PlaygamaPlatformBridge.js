@@ -321,21 +321,21 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return new Promise((resolve) => {
             this._platformSdk.userService.getUser()
                 .then((player) => {
-                    this._playerId = player.id
-                    this._isPlayerAuthorized = player.isAuthorized
-                    this._playerName = player.name
-                    this._playerPhotos = player.photos
-                    this._playerExtra = player
-
-                    this._defaultStorageType = this._isPlayerAuthorized
-                        ? STORAGE_TYPE.PLATFORM_INTERNAL
-                        : STORAGE_TYPE.LOCAL_STORAGE
-
-                    if (this._isPlayerAuthorized) {
+                    if (player.isAuthorized) {
+                        this._isPlayerAuthorized = true
+                        this._playerId = player.id
+                        this._playerName = player.name
+                        this._playerPhotos = player.photos
+                        this._playerExtra = player
+                        this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
                         return this.#getDataFromPlatformStorage([])
                     }
 
+                    this._playerApplyGuestData()
                     return Promise.resolve()
+                })
+                .catch(() => {
+                    this._playerApplyGuestData()
                 })
                 .finally(() => {
                     resolve()

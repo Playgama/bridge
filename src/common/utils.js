@@ -474,3 +474,32 @@ export function deformatPrice(priceStr) {
 
     return parseInt(cleaned, 10)
 }
+
+export function getGuestUser() {
+    const localStorageKey = 'bridge_player_guest_id'
+    let id
+
+    try {
+        id = localStorage.getItem(localStorageKey)
+    } catch (_) {
+        // ignore
+    }
+
+    if (!id) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+        const randomPart = Array.from({ length: 8 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('')
+        const timestampPart = Date.now().toString(36)
+        id = `${randomPart}${timestampPart}`
+
+        try {
+            localStorage.setItem(localStorageKey, id)
+        } catch (_) {
+            // ignore
+        }
+    }
+
+    return {
+        id,
+        name: `Guest ${id}`,
+    }
+}

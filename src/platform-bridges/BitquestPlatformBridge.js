@@ -353,10 +353,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     // leaderboards
     leaderboardsSetScore(id, score) {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)

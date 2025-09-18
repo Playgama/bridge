@@ -75,6 +75,8 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
                             if (avatar) {
                                 this._playerPhotos.push(avatar)
                             }
+                        } else {
+                            this._playerApplyGuestData()
                         }
 
                         this._isInitialized = true

@@ -89,6 +89,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                         .then((data) => {
                             this.#updatePlayerInfo(data)
                         })
+                        .catch(() => {
+                            this.#updatePlayerInfo(null)
+                        })
                         .finally(() => {
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -126,6 +129,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     resolve()
                 })
                 .catch((e) => {
+                    this.#updatePlayerInfo(null)
                     reject(e)
                 })
         })
@@ -431,11 +435,13 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     #updatePlayerInfo(data) {
-        if (data.playerId) {
+        if (data?.playerId) {
             this._isPlayerAuthorized = true
             this._playerId = data.playerId
             this._playerName = data.playerDisplayName
             this._playerExtra = data
+        } else {
+            this._playerApplyGuestData()
         }
     }
 }

@@ -555,6 +555,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     #getPlayer() {
         if (!this.#isUserAccountAvailable) {
+            this._playerApplyGuestData()
             return Promise.reject()
         }
 
@@ -562,6 +563,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.user.getUser()
                 .then((user) => {
                     if (!user) {
+                        this._playerApplyGuestData()
                         reject()
                         return
                     }
@@ -590,6 +592,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     }
                 })
                 .catch((error) => {
+                    this._playerApplyGuestData()
                     reject(error)
                 })
         })
