@@ -196,14 +196,13 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
         }
     }
 
-    // payments
     paymentsPurchase(id) {
         const product = this._paymentsGetProductPlatformData(id)
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            const platformProductId = product ? (product.platformProductId || product.id) : id
+            const platformProductId = product.id
 
             Promise.resolve(this._platformSdk.getShopItems())
                 .then((catalog) => {
@@ -256,16 +255,12 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
                                 return null
                             }
 
-                            const priceValue = catalogProduct.price
-                            const price = priceValue
-
                             return {
-                                id: product.id,
+                                id: catalogProduct.id,
                                 name: catalogProduct.name,
-                                description: catalogProduct.description,
-                                price,
-                                priceCurrencyCode: null,
-                                priceValue,
+                                price: `${catalogProduct.price} Gems`,
+                                priceCurrencyCode: 'Gems',
+                                priceValue: catalogProduct.price,
                             }
                         })
                         .filter(Boolean)
