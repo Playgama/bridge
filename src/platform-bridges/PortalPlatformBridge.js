@@ -188,7 +188,7 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
     sendMessage(message) {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
-                this.platformsdk.gameReady()
+                this.platformSdk.gameReady()
                 return Promise.resolve()
             }
             default:
@@ -215,7 +215,10 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
                 })
                 .then((purchase) => {
                     if (purchase && (purchase.status === 'success')) {
-                        const mergedPurchase = { id }
+                        const mergedPurchase = {
+                            id,
+                            ...purchase,
+                        }
                         this._paymentsPurchases.push(mergedPurchase)
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
@@ -256,7 +259,7 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
                             }
 
                             return {
-                                id: catalogProduct.id,
+                                id: product.id,
                                 name: catalogProduct.name,
                                 price: `${catalogProduct.price} Gems`,
                                 priceCurrencyCode: 'Gems',
