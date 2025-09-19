@@ -99,13 +99,17 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                     waitFor('JioAds').then(() => {
                         const self = this
 
+                        this._platformSdk = window.JioAds
+                        this._platformSdk.onInitialised = () => {
+                            this._isInitialized = true
+                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        }
+
                         window.onUserPropertiesResponse = (obj) => {
                             self.#setupAdvertisement(obj)
                         }
 
                         this.#packageName = this._options.packageName
-
-                        this._platformSdk = window.JioAds
 
                         if (window.DroidHandler) {
                             window.DroidHandler.getUserProfile()
@@ -125,11 +129,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                             }
 
                             self._isPlayerAuthorized = true
-                        }
-
-                        this._platformSdk.onInitialised = () => {
-                            this._isInitialized = true
-                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         }
                     })
                 })
