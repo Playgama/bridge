@@ -471,8 +471,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         && data.action === ACTION_NAME_QA.GET_DATA_FROM_STORAGE
                         && data.id === messageId
                     ) {
-                        const values = Object.values(data.storage)
-                        resolve(values)
+                        resolve(Array.isArray(key) ? Object.values(data.storage) : data.storage[key])
+
                         this.#messageBroker.removeListener(messageHandler)
                     }
                 }
