@@ -99,9 +99,17 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                     waitFor('JioAds').then(() => {
                         const self = this
 
-                        this.#packageName = this._options.packageName
-
                         this._platformSdk = window.JioAds
+                        this._platformSdk.onInitialised = () => {
+                            this._isInitialized = true
+                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        }
+
+                        window.onUserPropertiesResponse = (obj) => {
+                            self.#setupAdvertisement(obj)
+                        }
+
+                        this.#packageName = this._options.packageName
 
                         if (window.DroidHandler) {
                             window.DroidHandler.getUserProfile()
@@ -121,15 +129,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                             }
 
                             self._isPlayerAuthorized = true
-                        }
-
-                        window.onUserPropertiesResponse = (obj) => {
-                            self.#setupAdvertisement(obj)
-                        }
-
-                        this._platformSdk.onInitialised = () => {
-                            this._isInitialized = true
-                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         }
                     })
                 })
@@ -199,6 +198,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     #createIns(placementId, extraAttrs = {}) {
         const ins = document.createElement('ins')
+        ins.id = placementId
         ins.setAttribute('data-adspot-key', placementId)
         ins.setAttribute('data-source', this.#packageName)
         Object.entries(extraAttrs).forEach(([k, v]) => ins.setAttribute(k, String(v)))
