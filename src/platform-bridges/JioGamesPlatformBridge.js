@@ -99,6 +99,10 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                     waitFor('JioAds').then(() => {
                         const self = this
 
+                        window.onUserPropertiesResponse = (obj) => {
+                            self.#setupAdvertisement(obj)
+                        }
+
                         this.#packageName = this._options.packageName
 
                         this._platformSdk = window.JioAds
@@ -121,10 +125,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                             }
 
                             self._isPlayerAuthorized = true
-                        }
-
-                        window.onUserPropertiesResponse = (obj) => {
-                            self.#setupAdvertisement(obj)
                         }
 
                         this._platformSdk.onInitialised = () => {
