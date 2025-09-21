@@ -22,6 +22,8 @@ import {
     BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE,
 } from '../constants'
 
+const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
+
 class AdvertisementModule extends ModuleBase {
     get isBannerSupported() {
         const disable = this._platformBridge.options?.advertisement?.banner?.disable
@@ -76,7 +78,7 @@ class AdvertisementModule extends ModuleBase {
 
     #interstitialTimer
 
-    #minimumDelayBetweenInterstitial = 60
+    #minimumDelayBetweenInterstitial = DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL
 
     #rewardedState = REWARDED_STATE.CLOSED
 
@@ -105,35 +107,24 @@ class AdvertisementModule extends ModuleBase {
             EVENT_NAME.REWARDED_STATE_CHANGED,
             (state) => this.#setRewardedState(state),
         )
+
+        this.#applyConfigMinimumDelayBetweenInterstitial()
     }
 
-    setMinimumDelayBetweenInterstitial(options) {
-        const optionsType = typeof options
-        let delay = this.#minimumDelayBetweenInterstitial
-
-        switch (optionsType) {
-            case 'number': {
-                delay = options
-                break
-            }
-            case 'string': {
-                delay = parseInt(options, 10)
-                if (Number.isNaN(delay)) {
-                    return
-                }
-                break
-            }
-            default: {
-                return
-            }
+    setMinimumDelayBetweenInterstitial(value) {
+        const configDelay = this.#normalizeMinimumDelayBetweenInterstitial(
+            this.#getConfigMinimumDelayBetweenInterstitial(),
+        )
+        if (configDelay !== null) {
+            return
         }
 
-        this.#minimumDelayBetweenInterstitial = delay
-
-        if (this.#interstitialTimer) {
-            this.#interstitialTimer.stop()
-            this.#startInterstitialTimer()
+        const delay = this.#normalizeMinimumDelayBetweenInterstitial(value)
+        if (delay === null) {
+            return
         }
+
+        this.#applyMinimumDelayBetweenInterstitial(delay)
     }
 
     showBanner(position = BANNER_POSITION.BOTTOM, placement = null) {
@@ -261,8 +252,55 @@ class AdvertisementModule extends ModuleBase {
         return this._platformBridge.checkAdBlock()
     }
 
+    #applyMinimumDelayBetweenInterstitial(delay) {
+        this.#minimumDelayBetweenInterstitial = delay
+
+        if (this.#interstitialTimer) {
+            this.#interstitialTimer.stop()
+            this.#startInterstitialTimer()
+        }
+    }
+
+    #normalizeMinimumDelayBetweenInterstitial(value) {
+        if (typeof value === 'number') {
+            return value
+        }
+
+        if (typeof value === 'string') {
+            const delay = parseInt(value, 10)
+            if (Number.isNaN(delay)) {
+                return null
+            }
+
+            return delay
+        }
+
+        return null
+    }
+
+    #applyConfigMinimumDelayBetweenInterstitial() {
+        const configDelay = this.#getConfigMinimumDelayBetweenInterstitial()
+        if (configDelay === undefined) {
+            return
+        }
+
+        const delay = this.#normalizeMinimumDelayBetweenInterstitial(configDelay)
+        if (delay === null) {
+            return
+        }
+
+        this.#applyMinimumDelayBetweenInterstitial(delay)
+    }
+
+    #getConfigMinimumDelayBetweenInterstitial() {
+        return this._platformBridge.options?.advertisement?.minimumDelayBetweenInterstitial
+    }
+
     #startInterstitialTimer() {
-        if (this.#minimumDelayBetweenInterstitial > 0 && this._platformBridge.isMinimumDelayBetweenInterstitialEnabled) {
+        if (
+            this.#minimumDelayBetweenInterstitial > 0
+            && this._platformBridge.isMinimumDelayBetweenInterstitialEnabled
+        ) {
             this.#interstitialTimer = new Timer(this.#minimumDelayBetweenInterstitial)
             this.#interstitialTimer.start()
         }
