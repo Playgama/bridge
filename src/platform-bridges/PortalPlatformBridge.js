@@ -188,7 +188,7 @@ class PortalPlatformBridge extends PlatformBridgeBase {
     sendMessage(message) {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
-                this.platformSdk.gameReady()
+                this._platformSdk.gameReady()
                 return Promise.resolve()
             }
             default:

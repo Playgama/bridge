@@ -405,7 +405,7 @@ class PlaygamaBridge {
                 this.#platformBridge = new JioGamesPlatformBridge(modifiedOptions)
                 break
             }
-            case PLATFORM_ID.Portal: {
+            case PLATFORM_ID.PORTAL: {
                 this.#platformBridge = new PortalPlatformBridge(modifiedOptions)
                 break
             }
