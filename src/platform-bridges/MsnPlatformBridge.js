@@ -67,10 +67,12 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     // payments
     get isPaymentsSupported() {
-        return true
+        return this.#isPaymentsSupported
     }
 
     #playgamaAds = null
+
+    #isPaymentsSupported = false
 
     initialize() {
         if (this._isInitialized) {
@@ -435,11 +437,12 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     #updatePlayerInfo(data) {
-        if (data?.playerId) {
+        if (data) {
             this._isPlayerAuthorized = true
             this._playerId = data.playerId
             this._playerName = data.playerDisplayName
             this._playerExtra = data
+            this.#isPaymentsSupported = data.userAccountType.toLowerCase() === 'personal'
         } else {
             this._playerApplyGuestData()
         }
