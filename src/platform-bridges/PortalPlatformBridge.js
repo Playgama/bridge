@@ -28,9 +28,9 @@ import {
 
 const SDK_URL = 'https://storage.googleapis.com/social-networth/scripts/sdk.umd.js'
 
-class OrbitPlatformBridge extends PlatformBridgeBase {
+class PortalPlatformBridge extends PlatformBridgeBase {
     get platformId() {
-        return PLATFORM_ID.ORBIT
+        return PLATFORM_ID.PORTAL
     }
 
     get isPaymentsSupported() {
@@ -313,4 +313,4 @@ class OrbitPlatformBridge extends PlatformBridgeBase {
     }
 }
 
-export default OrbitPlatformBridge
+export default PortalPlatformBridge

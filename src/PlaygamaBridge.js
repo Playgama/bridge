@@ -65,7 +65,7 @@ import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
 import YoutubePlatformBridge from './platform-bridges/YoutubePlatformBridge'
 import { deepMerge } from './common/utils'
 import JioGamesPlatformBridge from './platform-bridges/JioGamesPlatformBridge'
-import OrbitPlatformBridge from './platform-bridges/PortalPlatformBridge'
+import PortalPlatformBridge from './platform-bridges/PortalPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -405,8 +405,8 @@ class PlaygamaBridge {
                 this.#platformBridge = new JioGamesPlatformBridge(modifiedOptions)
                 break
             }
-            case PLATFORM_ID.ORBIT: {
-                this.#platformBridge = new OrbitPlatformBridge(modifiedOptions)
+            case PLATFORM_ID.Portal: {
+                this.#platformBridge = new PortalPlatformBridge(modifiedOptions)
                 break
             }
             default: {
