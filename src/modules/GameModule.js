@@ -34,7 +34,8 @@ class GameModule extends ModuleBase {
         )
 
         if (!this._platformBridge.options.disableLoadingLogo) {
-            createProgressLogo()
+            const variant = this._platformBridge.options.fullLogo ? 'fullBridge' : 'bridge'
+            createProgressLogo({ variant })
         }
     }
 

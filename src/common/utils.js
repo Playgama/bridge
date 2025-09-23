@@ -198,7 +198,7 @@ export function showInfoPopup(message) {
     })
 }
 
-export function createProgressLogo() {
+export function createProgressLogo(logoOptions = {}) {
     const style = document.createElement('style')
     style.textContent = `
         .fullscreen {
@@ -266,9 +266,86 @@ export function createProgressLogo() {
     overlay.className = 'fullscreen'
     document.body.appendChild(overlay)
 
+    const defaultPreset = {
+        viewBox: '0 0 633 819',
+        paths: [
+            'M632 1V632H1V1H632ZM350 125.586V507.414L380.586 538H546V451H478.599L478.308 451.278L454.598 474H443.406L450.944 452.328L451 452.169V187.459L457.369 182H546V95H380.586L350 125.586ZM283 125.586L252.414 95H87V182H175.631L182 187.459V445.54L175.631 451H87V538H252.414L283 507.414V125.586Z',
+            'M633 687V660H548V687H560V791H548V819H633V792H601L592 801H587L590 792V752H627V725H590V687H633Z',
+            'M533 718V675L518 660H450L435 675V802L450 819H518L533 804V734H482V761H503V788L499 792H476L467 801H462L465 792V691L469 687H499L503 691V718H533Z',
+            'M402 660H310V687H322V792H310V819H402L417 804V675L402 660ZM387 788L383 792H363L354 801H349L352 792V687H383L387 691V788Z',
+            'M295 687V660H239V687H251V792H239V819H295V792H283V687H295Z',
+            'M215 791L200 760H209L224 745V675L209 660H121V687H132V792H121V819H162V760H166L193 819H227V791H215ZM194 729L190 733H173L164 742H159L162 733V687H190L194 691V729Z',
+            'M106 724V675L91 660H0V687H12V792H0V819H91L106 804V749L89 744V728L106 724ZM73 788L69 792H53L44 801H39L42 792V752H73V788ZM73 725H53L44 734H39L42 725V687H69L73 691V725Z',
+        ],
+        fillColor: '#aa76ff',
+        strokeColor: '#aa76ff',
+        gradientStops: [
+            { offset: '0.235577', color: '#aa76ff' },
+            { offset: '0.240685', color: 'white' },
+            { offset: '0.659749', color: '#aa76ff' },
+        ],
+    }
+
+    const fullBridgePreset = {
+        viewBox: '0 0 633 918',
+        paths: [
+            'M633 687V660H548V687H560V791H548V819H633V792H601L592 801H587L590 792V752H627V725H590V687H633Z',
+            'M533 718V675L518 660H450L435 675V802L450 819H518L533 804V734H482V761H503V788L499 792H476L467 801H462L465 792V691L469 687H499L503 691V718H533Z',
+            'M612 847H564V894H579V861H591V894H606V861H612C615 861 617 864 617 867V894H633V868C633 856 623 847 612 847Z',
+            'M533 846C519 846 508 857 508 870C508 884 519 895 533 895C546 895 557 884 557 870C557 857 546 846 533 846ZM533 880C528 880 524 875 524 870C524 865 528 861 533 861C538 861 542 865 542 870C542 875 538 880 533 880Z',
+            'M402 660H310V687H322V792H310V819H402L417 804V675L402 660ZM387 788L383 792H363L354 801H349L352 792V687H383L387 691V788Z',
+            'M484 861H502V847H482C469 847 459 858 459 871C459 884 469 894 482 894H502V880H484C478 880 474 876 474 871C474 865 478 861 484 861Z',
+            'M444 875C438 875 434 879 434 885C434 890 438 895 444 895C449 895 454 890 454 885C454 879 449 875 444 875Z',
+            'M402 847C389 847 378 857 378 870C378 883 389 894 402 894H425V847H402ZM410 880H403C398 880 394 876 394 870C394 865 398 861 403 861H410V880Z',
+            'M295 687V660H239V687H251V792H239V819H295V792H283V687H295Z',
+            'M350 847H303V894H318V861H329V894H345V861H350C353 861 356 864 356 867V894H371V868C371 856 362 847 350 847Z',
+            'M215 791L200 760H209L224 745V675L209 660H121V687H132V792H121V819H162V760H166L193 819H227V791H215ZM194 729L190 733H173L164 742H159L162 733V687H190L194 691V729Z',
+            'M269 847C256 847 247 857 247 870C247 883 256 894 269 894H293V847H269ZM277 880H271C265 880 261 876 261 870C261 865 265 861 271 861H277V880Z',
+            'M214 847C201 847 190 857 190 870C190 883 201 894 214 894H224V895C224 900 220 903 215 903H195V918H216C229 918 239 908 239 895V847H214ZM224 880H215C210 880 206 876 206 870C206 865 210 861 215 861H224V880Z',
+            'M106 724V675L91 660H0V687H12V792H0V819H91L106 804V749L89 744V728L106 724ZM73 788L69 792H53L44 801H39L42 792V752H73V788ZM73 725H53L44 734H39L42 725V687H69L73 691V725Z',
+            'M167 847V880H153V847H137V894H167V895C167 900 163 904 157 904H137V918H158C172 918 182 909 182 896V847H167Z',
+            'M104 847C91 847 80 857 80 870C80 883 91 894 104 894H127V847H104ZM112 880H105C100 880 96 876 96 870C96 865 100 861 105 861H112V880Z',
+            'M56 833V894H72V833H56Z',
+            'M25 847H2V908H17V894H25C38 894 49 883 49 870C49 857 38 847 25 847ZM24 880H17V861H24C29 861 33 865 33 870C33 876 29 880 24 880Z',
+            'M0 0V633H633V0H0ZM451 452L443 475H456L480 452H546V537H382L352 507V126L382 96H546V181H458L451 187V452ZM252 96L282 126V507L252 537H88V452H176L183 446V187L176 181H88V96H252Z',
+        ],
+        fillColor: '#aa76ff',
+        strokeColor: '#aa76ff',
+        gradientStops: [
+            { offset: '0.235577', color: '#aa76ff' },
+            { offset: '0.240685', color: 'white' },
+            { offset: '0.659749', color: '#aa76ff' },
+        ],
+    }
+
+    const presets = {
+        bridge: defaultPreset,
+        fullBridge: fullBridgePreset,
+    }
+
+    const selectedPresetName = (logoOptions.variant && presets[logoOptions.variant])
+        ? logoOptions.variant
+        : 'bridge'
+    const base = presets[selectedPresetName]
+
+    const resolved = {
+        viewBox: logoOptions.viewBox || base.viewBox,
+        paths: Array.isArray(logoOptions.paths) && logoOptions.paths.length > 0 ? logoOptions.paths : base.paths,
+        fillColor: logoOptions.fillColor || base.fillColor,
+        strokeColor: logoOptions.strokeColor || base.strokeColor,
+        gradientStops: Array.isArray(logoOptions.gradientStops) && logoOptions.gradientStops.length > 0
+            ? logoOptions.gradientStops
+            : base.gradientStops,
+        gradientWidthMultiplier: logoOptions.gradientWidthMultiplier || 4,
+    }
+
+    const [,, vbWidthStr, vbHeightStr] = (resolved.viewBox || '0 0 633 819').split(/[ ,]+/)
+    const vbWidth = Number(vbWidthStr) || 633
+    const vbHeight = Number(vbHeightStr) || 819
+
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('id', 'logo')
-    svg.setAttribute('viewBox', '0 0 633 819')
+    svg.setAttribute('viewBox', resolved.viewBox)
     svg.setAttribute('fill', 'none')
     svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
 
@@ -285,17 +362,7 @@ export function createProgressLogo() {
     blackRect.setAttribute('fill', 'black')
     mask.appendChild(blackRect)
 
-    const whitePaths = [
-        'M632 1V632H1V1H632ZM350 125.586V507.414L380.586 538H546V451H478.599L478.308 451.278L454.598 474H443.406L450.944 452.328L451 452.169V187.459L457.369 182H546V95H380.586L350 125.586ZM283 125.586L252.414 95H87V182H175.631L182 187.459V445.54L175.631 451H87V538H252.414L283 507.414V125.586Z',
-        'M633 687V660H548V687H560V791H548V819H633V792H601L592 801H587L590 792V752H627V725H590V687H633Z',
-        'M533 718V675L518 660H450L435 675V802L450 819H518L533 804V734H482V761H503V788L499 792H476L467 801H462L465 792V691L469 687H499L503 691V718H533Z',
-        'M402 660H310V687H322V792H310V819H402L417 804V675L402 660ZM387 788L383 792H363L354 801H349L352 792V687H383L387 691V788Z',
-        'M295 687V660H239V687H251V792H239V819H295V792H283V687H295Z',
-        'M215 791L200 760H209L224 745V675L209 660H121V687H132V792H121V819H162V760H166L193 819H227V791H215ZM194 729L190 733H173L164 742H159L162 733V687H190L194 691V729Z',
-        'M106 724V675L91 660H0V687H12V792H0V819H91L106 804V749L89 744V728L106 724ZM73 788L69 792H53L44 801H39L42 792V752H73V788ZM73 725H53L44 734H39L42 725V687H69L73 691V725Z',
-    ]
-
-    whitePaths.forEach((d) => {
+    resolved.paths.forEach((d) => {
         const path = document.createElementNS(svg.namespaceURI, 'path')
         path.setAttribute('d', d)
         path.setAttribute('fill', 'white')
@@ -312,12 +379,7 @@ export function createProgressLogo() {
     gradient.setAttribute('y2', '633')
     gradient.setAttribute('gradientUnits', 'userSpaceOnUse')
 
-    const stops = [
-        { offset: '0.235577', color: '#aa76ff' },
-        { offset: '0.240685', color: 'white' },
-        { offset: '0.659749', color: '#aa76ff' },
-    ]
-
+    const stops = resolved.gradientStops
     stops.forEach(({ offset, color }) => {
         const stop = document.createElementNS(svg.namespaceURI, 'stop')
         stop.setAttribute('offset', offset)
@@ -328,7 +390,6 @@ export function createProgressLogo() {
     defs.appendChild(gradient)
     svg.appendChild(defs)
 
-    // gradient rect group
     const gradGroup = document.createElementNS(svg.namespaceURI, 'g')
     gradGroup.setAttribute('mask', 'url(#logo-mask)')
 
@@ -336,8 +397,8 @@ export function createProgressLogo() {
     gradRect.setAttribute('id', 'gradientMover')
     gradRect.setAttribute('x', '0')
     gradRect.setAttribute('y', '0')
-    gradRect.setAttribute('width', '2532')
-    gradRect.setAttribute('height', '819')
+    gradRect.setAttribute('width', String(vbWidth * (resolved.gradientWidthMultiplier || 4)))
+    gradRect.setAttribute('height', String(vbHeight))
     gradRect.setAttribute('fill', 'url(#shineGradient)')
     gradRect.style.transform = 'translateX(0)'
     gradGroup.appendChild(gradRect)
@@ -353,16 +414,15 @@ export function createProgressLogo() {
     fillRect.setAttribute('x', '0')
     fillRect.setAttribute('y', '0')
     fillRect.setAttribute('width', '100%')
-    fillRect.setAttribute('height', '819')
-    fillRect.setAttribute('fill', '#aa76ff')
+    fillRect.setAttribute('height', String(vbHeight))
+    fillRect.setAttribute('fill', resolved.fillColor)
     fillGroup.appendChild(fillRect)
     svg.appendChild(fillGroup)
 
-    // stroked paths
-    whitePaths.forEach((d) => {
+    resolved.paths.forEach((d) => {
         const outline = document.createElementNS(svg.namespaceURI, 'path')
         outline.setAttribute('d', d)
-        outline.setAttribute('stroke', '#aa76ff')
+        outline.setAttribute('stroke', resolved.strokeColor)
         outline.setAttribute('stroke-width', '3')
         svg.appendChild(outline)
     })
