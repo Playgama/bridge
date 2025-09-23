@@ -323,25 +323,20 @@ export function createProgressLogo(logoOptions = {}) {
         fullBridge: fullBridgePreset,
     }
 
-    const selectedPresetName = (logoOptions.variant && presets[logoOptions.variant])
-        ? logoOptions.variant
-        : 'bridge'
-    const base = presets[selectedPresetName]
+    const base = presets[logoOptions.variant]
 
     const resolved = {
-        viewBox: logoOptions.viewBox || base.viewBox,
-        paths: Array.isArray(logoOptions.paths) && logoOptions.paths.length > 0 ? logoOptions.paths : base.paths,
-        fillColor: logoOptions.fillColor || base.fillColor,
-        strokeColor: logoOptions.strokeColor || base.strokeColor,
-        gradientStops: Array.isArray(logoOptions.gradientStops) && logoOptions.gradientStops.length > 0
-            ? logoOptions.gradientStops
-            : base.gradientStops,
-        gradientWidthMultiplier: logoOptions.gradientWidthMultiplier || 4,
+        viewBox: base.viewBox,
+        paths: base.paths,
+        fillColor: base.fillColor,
+        strokeColor: base.strokeColor,
+        gradientStops: base.gradientStops,
+        gradientWidthMultiplier: 4,
     }
 
-    const [,, vbWidthStr, vbHeightStr] = (resolved.viewBox || '0 0 633 819').split(/[ ,]+/)
-    const vbWidth = Number(vbWidthStr) || 633
-    const vbHeight = Number(vbHeightStr) || 819
+    const [, , vbWidthStr, vbHeightStr] = resolved.viewBox.split(/[ ,]+/)
+    const vbWidth = Number(vbWidthStr)
+    const vbHeight = Number(vbHeightStr)
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('id', 'logo')
@@ -379,8 +374,7 @@ export function createProgressLogo(logoOptions = {}) {
     gradient.setAttribute('y2', '633')
     gradient.setAttribute('gradientUnits', 'userSpaceOnUse')
 
-    const stops = resolved.gradientStops
-    stops.forEach(({ offset, color }) => {
+    resolved.gradientStops.forEach(({ offset, color }) => {
         const stop = document.createElementNS(svg.namespaceURI, 'stop')
         stop.setAttribute('offset', offset)
         stop.setAttribute('stop-color', color)
@@ -397,14 +391,13 @@ export function createProgressLogo(logoOptions = {}) {
     gradRect.setAttribute('id', 'gradientMover')
     gradRect.setAttribute('x', '0')
     gradRect.setAttribute('y', '0')
-    gradRect.setAttribute('width', String(vbWidth * (resolved.gradientWidthMultiplier || 4)))
+    gradRect.setAttribute('width', String(vbWidth * resolved.gradientWidthMultiplier))
     gradRect.setAttribute('height', String(vbHeight))
     gradRect.setAttribute('fill', 'url(#shineGradient)')
     gradRect.style.transform = 'translateX(0)'
     gradGroup.appendChild(gradRect)
     svg.appendChild(gradGroup)
 
-    // fill rect group
     const fillGroup = document.createElementNS(svg.namespaceURI, 'g')
     fillGroup.setAttribute('mask', 'url(#logo-mask)')
 
