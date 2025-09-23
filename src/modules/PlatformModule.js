@@ -81,6 +81,10 @@ class PlatformModule extends ModuleBase {
 
             this.#isGameReadyMessageSent = true
             this.#trySendAnalyticsEvent()
+            const overlay = document.getElementById('loading-overlay')
+            if (overlay) {
+                overlay.remove()
+            }
         }
 
         return this._platformBridge.sendMessage(message)
