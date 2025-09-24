@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 /*
  * This file is part of Playgama Bridge.
  *
@@ -1199,6 +1200,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
 export default QaToolPlatformBridge
 =======
+=======
+>>>>>>> 1d64e02d69f3556c7b12534136513f77cb8d6af7
 /*
  * This file is part of Playgama Bridge.
  *
@@ -2556,4 +2559,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 }
 
 export default QaToolPlatformBridge
+<<<<<<< HEAD
 >>>>>>> 1d64e02 (Refactor QaToolPlatformBridge to enhance feature support structure and improve readability. Consolidated supported features into categorized arrays for better organization and maintainability.)
+=======
+>>>>>>> 1d64e02d69f3556c7b12534136513f77cb8d6af7
