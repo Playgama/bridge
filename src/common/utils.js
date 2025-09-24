@@ -198,8 +198,7 @@ export function showInfoPopup(message) {
     })
 }
 
-export function createProgressLogo(showFullLogo) {
-    const useFullLogo = Boolean(showFullLogo)
+export function createProgressLogo(showFullLoadingLogo) {
     const style = document.createElement('style')
     style.textContent = `
         .fullscreen {
@@ -319,7 +318,7 @@ export function createProgressLogo(showFullLogo) {
         ],
     }
 
-    const resolved = useFullLogo ? fullBridgePreset : defaultPreset
+    const resolved = showFullLoadingLogo ? fullBridgePreset : defaultPreset
     resolved.gradientWidthMultiplier = 4
 
     const [, , vbWidthStr, vbHeightStr] = resolved.viewBox.split(/[ ,]+/)

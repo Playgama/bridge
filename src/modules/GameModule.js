@@ -34,7 +34,7 @@ class GameModule extends ModuleBase {
         )
 
         if (!this._platformBridge.options.disableLoadingLogo) {
-            createProgressLogo(this._platformBridge.options.fullLogo)
+            createProgressLogo(this._platformBridge.options.showFullLoadingLogo)
         }
     }
 
