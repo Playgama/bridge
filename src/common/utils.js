@@ -198,7 +198,8 @@ export function showInfoPopup(message) {
     })
 }
 
-export function createProgressLogo(logoOptions = {}) {
+export function createProgressLogo(showFullLogo) {
+    const useFullLogo = Boolean(showFullLogo)
     const style = document.createElement('style')
     style.textContent = `
         .fullscreen {
@@ -318,21 +319,8 @@ export function createProgressLogo(logoOptions = {}) {
         ],
     }
 
-    const presets = {
-        bridge: defaultPreset,
-        fullBridge: fullBridgePreset,
-    }
-
-    const base = presets[logoOptions.variant]
-
-    const resolved = {
-        viewBox: base.viewBox,
-        paths: base.paths,
-        fillColor: base.fillColor,
-        strokeColor: base.strokeColor,
-        gradientStops: base.gradientStops,
-        gradientWidthMultiplier: 4,
-    }
+    const resolved = useFullLogo ? fullBridgePreset : defaultPreset
+    resolved.gradientWidthMultiplier = 4
 
     const [, , vbWidthStr, vbHeightStr] = resolved.viewBox.split(/[ ,]+/)
     const vbWidth = Number(vbWidthStr)
