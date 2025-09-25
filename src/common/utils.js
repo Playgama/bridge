@@ -318,7 +318,7 @@ export function createProgressLogo(showFullLoadingLogo) {
         ],
     }
 
-    const resolved = showFullLoadingLogo ? fullBridgePreset : defaultPreset
+    const resolved = showFullLoadingLogo === false ? defaultPreset : fullBridgePreset
     resolved.gradientWidthMultiplier = 4
 
     const [, , vbWidthStr, vbHeightStr] = resolved.viewBox.split(/[ ,]+/)
