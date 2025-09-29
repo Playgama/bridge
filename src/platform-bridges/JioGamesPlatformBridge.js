@@ -100,7 +100,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 this._isBannerAvailable = true
             }
 
-            addJavaScript(SDK_URL)
+            addJavaScript(SDK_URL, this._options.adTestMode ? { 'data-jg-test-environment': 'on' } : {})
                 .catch((error) => {
                     this._rejectPromiseDecorator(
                         ACTION_NAME.INITIALIZE,
