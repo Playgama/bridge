@@ -17,10 +17,6 @@
 
 import ModuleBase from './ModuleBase'
 
-export const PLAYER_MODULE_ERRORS = {
-    AUTHORIZATION_NOT_SUPPORTED: { code: 'PLAYER_AUTHORIZATION_NOT_SUPPORTED' },
-}
-
 class PlayerModule extends ModuleBase {
     get isAuthorizationSupported() {
         return this._platformBridge.isPlayerAuthorizationSupported

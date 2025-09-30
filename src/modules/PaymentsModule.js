@@ -17,9 +17,6 @@
 
 import ModuleBase from './ModuleBase'
 
-export const PAYMENTS_MODULE_ERRORS = {
-    NOT_SUPPORTED: { code: 'PAYMENTS_NOT_SUPPORTED' },
-}
 class PaymentsModule extends ModuleBase {
     get isSupported() {
         return this._platformBridge.isPaymentsSupported

@@ -16,9 +16,6 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { SDKError } from '../common/SDKError'
-import { PLAYER_MODULE_ERRORS } from '../modules/PlayerModule'
-import { PAYMENTS_MODULE_ERRORS } from '../modules/PaymentsModule'
 import MessageBroker from '../common/MessageBroker'
 import {
     PLATFORM_ID,
@@ -765,7 +762,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     paymentsPurchase(id) {
         if (!this.isPaymentsSupported) {
-            throw new SDKError(PAYMENTS_MODULE_ERRORS.NOT_SUPPORTED.code)
+            return Promise.reject()
         }
 
         const product = this._paymentsGetProductPlatformData(id)
@@ -821,7 +818,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     paymentsConsumePurchase(id) {
         if (!this.isPaymentsSupported) {
-            throw new SDKError(PAYMENTS_MODULE_ERRORS.NOT_SUPPORTED.code)
+            return Promise.reject()
         }
 
         const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
@@ -881,7 +878,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     paymentsGetCatalog() {
         if (!this.isPaymentsSupported) {
-            throw new SDKError(PAYMENTS_MODULE_ERRORS.NOT_SUPPORTED.code)
+            return Promise.reject()
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
@@ -923,7 +920,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     paymentsGetPurchases() {
         if (!this.isPaymentsSupported) {
-            throw new SDKError(PAYMENTS_MODULE_ERRORS.NOT_SUPPORTED.code)
+            return Promise.reject()
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
