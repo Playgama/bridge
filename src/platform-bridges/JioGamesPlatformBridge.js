@@ -119,7 +119,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     showInterstitial() {
         this.#preloadInterstitial().then(() => {
-            window._platformSdk.showAd(window.AdType?.Interstitial, {
+            this._platformSdk.showAd(window.AdType?.Interstitial, {
                 onAdClosed: () => {
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                 },
@@ -139,7 +139,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     showRewarded() {
         this.#preloadRewarded().then(() => {
-            window._platformSdk.showAd(window.AdType?.Rewarded, {
+            this._platformSdk.showAd(window.AdType?.Rewarded, {
                 onAdClosed: (isRewardUser) => {
                     if (isRewardUser) {
                         this._setRewardedState(REWARDED_STATE.REWARDED)
@@ -190,7 +190,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             ? parseInt(score, 10)
             : score
 
-        window._platformSdk.postScore(value)
+        this._platformSdk.postScore(value)
 
         return Promise.resolve()
     }
@@ -202,7 +202,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         this._preloadInterstitialPromise = new Promise((resolve, reject) => {
-            window._platformSdk.cacheAd(window?.AdType.Interstitial || 'Interstitial', {
+            this._platformSdk.cacheAd(window?.AdType.Interstitial || 'Interstitial', {
                 onAdPrepared: resolve,
                 onAdFailedToLoad: (error) => {
                     self._preloadInterstitialPromise = null
@@ -221,7 +221,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         this._preloadRewardedPromise = new Promise((resolve, reject) => {
-            window._platformSdk.cacheAd(window?.AdType.Rewarded || 'Rewarded', {
+            this._platformSdk.cacheAd(window?.AdType.Rewarded || 'Rewarded', {
                 onAdPrepared: resolve,
                 onAdFailedToLoad: (error) => {
                     self._preloadRewardedPromise = null
