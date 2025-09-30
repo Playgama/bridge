@@ -66,6 +66,7 @@ import YoutubePlatformBridge from './platform-bridges/YoutubePlatformBridge'
 import { deepMerge } from './common/utils'
 import JioGamesPlatformBridge from './platform-bridges/JioGamesPlatformBridge'
 import PortalPlatformBridge from './platform-bridges/PortalPlatformBridge'
+import RedditPlatformBridge from './platform-bridges/RedditPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -310,6 +311,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.YOUTUBE
             } else if (url.hostname.includes('portalapp.')) {
                 platformId = PLATFORM_ID.PORTAL
+            } else if (url.hostname.includes('devvit.')) {
+                platformId = PLATFORM_ID.REDDIT
             }
         }
 
@@ -407,6 +410,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.PORTAL: {
                 this.#platformBridge = new PortalPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.REDDIT: {
+                this.#platformBridge = new RedditPlatformBridge(modifiedOptions)
                 break
             }
             default: {

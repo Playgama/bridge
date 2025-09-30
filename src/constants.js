@@ -39,6 +39,7 @@ export const PLATFORM_ID = {
     JIO_GAMES: 'jio_games',
     YOUTUBE: 'youtube',
     PORTAL: 'portal',
+    REDDIT: 'reddit',
 }
 
 export const MODULE_NAME = {
