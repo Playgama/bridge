@@ -27,6 +27,7 @@ import {
     BANNER_STATE,
     STORAGE_TYPE,
     LEADERBOARD_TYPE,
+    ERROR,
 } from '../constants'
 
 const ADVERTISEMENT_TYPE = {
@@ -73,30 +74,32 @@ const REWARD_STATUS = {
 }
 
 const SUPPORTED_FEATURES = {
-    // player
     PLAYER_AUTHORIZATION: 'isPlayerAuthorizationSupported',
 
-    // payments
     PAYMENTS: 'isPaymentsSupported',
+
     REMOTE_CONFIG: 'isRemoteConfigSupported',
-    INVITE_FRIENDS: 'isInviteFriendsSupported',
-    JOIN_COMMUNITY: 'isJoinCommunitySupported',
-    SHARE: 'isShareSupported',
-    CREATE_POST: 'isCreatePostSupported',
-    ADD_TO_HOME_SCREEN: 'isAddToHomeScreenSupported',
-    ADD_TO_FAVORITES: 'isAddToFavoritesSupported',
-    RATE: 'isRateSupported',
-    STORAGE_INTERNAL: 'isStorageInternalSupported',
-    STORAGE_LOCAL: 'isStorageLocalSupported',
+
+    SOCIAL_SHARE: 'isShareSupported',
+    SOCIAL_JOIN_COMMUNITY: 'isJoinCommunitySupported',
+    SOCIAL_INVITE_FRIENDS: 'isInviteFriendsSupported',
+    SOCIAL_CREATE_POST: 'isCreatePostSupported',
+    SOCIAL_ADD_TO_FAVORITES: 'isAddToFavoritesSupported',
+    SOCIAL_ADD_TO_HOME_SCREEN: 'isAddToHomeScreenSupported',
+    SOCIAL_RATE: 'isRateSupported',
+
+    STORAGE_LOCAL: 'isLocalStorageSupported',
+    STORAGE_INTERNAL: 'isPlatformInternalStorageSupported',
+
     BANNER: 'isBannerSupported',
     INTERSTITIAL: 'isInterstitialSupported',
     REWARDED: 'isRewardedSupported',
+
     CLIPBOARD: 'isClipboardSupported',
+
     ACHIEVEMENTS: 'isAchievementsSupported',
     ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
     ACHIEVEMENTS_NATIVE_POPUP: 'isAchievementsNativePopupSupported',
-    STORAGE_REMOTE_LOCAL: 'isStorageRemoteLocalSupported',
-    LANGUAGE_SUPPORTED: 'isGetLanguageSupported',
 }
 
 class QaToolPlatformBridge extends PlatformBridgeBase {
@@ -106,15 +109,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
-        if (this._supportedFeatures.includes(SUPPORTED_FEATURES.LANGUAGE_SUPPORTED)) {
-            this.#messageBroker.send({
-                type: MODULE_NAME.PLATFORM,
-                action: ACTION_NAME_QA.GET_LANGUAGE,
-                options: {
-                    language: this._platformLanguage,
-                },
-            })
-        }
+        this.#messageBroker.send({
+            type: MODULE_NAME.PLATFORM,
+            action: ACTION_NAME_QA.GET_LANGUAGE,
+            options: {
+                language: this._platformLanguage,
+            },
+        })
 
         return this._platformLanguage
     }
@@ -129,82 +130,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     get platformPayload() {
         return this._platformPayload
-    }
-
-    // advertisement
-    get isInterstitialSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INTERSTITIAL)
-    }
-
-    get isRewardedSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REWARDED)
-    }
-
-    // player
-    get isPlayerAuthorizationSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.PLAYER_AUTHORIZATION)
-    }
-
-    // config
-    get isRemoteConfigSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REMOTE_CONFIG)
-    }
-
-    // social
-    get isInviteFriendsSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INVITE_FRIENDS)
-    }
-
-    get isJoinCommunitySupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.JOIN_COMMUNITY)
-    }
-
-    get isShareSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SHARE)
-    }
-
-    get isCreatePostSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CREATE_POST)
-    }
-
-    get isAddToHomeScreenSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ADD_TO_HOME_SCREEN)
-    }
-
-    get isAddToFavoritesSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ADD_TO_FAVORITES)
-    }
-
-    get isRateSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.RATE)
-    }
-
-    // leaderboards
-    get leaderboardsType() {
-        return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
-    }
-
-    // clipboard
-    get isClipboardSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CLIPBOARD)
-    }
-
-    // achievements
-    get isAchievementsSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS)
-    }
-
-    get isGetAchievementsListSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_GET_LIST)
-    }
-
-    get isAchievementsNativePopupSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_NATIVE_POPUP)
-    }
-
-    // storage
-    get #isStorageRemoteLocalSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_REMOTE_LOCAL)
     }
 
     #messageBroker = new MessageBroker()
@@ -300,9 +225,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
+    get isPlayerAuthorizationSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.PLAYER_AUTHORIZATION)
+    }
+
     authorizePlayer(options) {
         if (!this.isPlayerAuthorizationSupported) {
-            throw new SDKError(PLAYER_MODULE_ERRORS.AUTHORIZATION_NOT_SUPPORTED.code)
+            return Promise.reject()
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -350,7 +279,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    // platform
     sendMessage(message) {
         const actions = [
             PLATFORM_MESSAGE.GAME_READY,
@@ -460,9 +388,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     getDataFromStorage(key, storageType, tryParseJson) {
+        if (!this.isStorageSupported(storageType)) {
+            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        }
+
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.#isStorageRemoteLocalSupported)
+            || storageType === STORAGE_TYPE.LOCAL_STORAGE
         ) {
             const messageId = this.#messageBroker.generateMessageId()
 
@@ -510,9 +442,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             options: { key, value, storageType },
         })
 
+        if (!this.isStorageSupported(storageType)) {
+            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        }
+
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.#isStorageRemoteLocalSupported)
+            || (storageType === STORAGE_TYPE.LOCAL_STORAGE)
         ) {
             return Promise.resolve()
         }
@@ -527,9 +463,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             options: { key, storageType },
         })
 
+        if (!this.isStorageSupported(storageType)) {
+            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        }
+
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE && this.#isStorageRemoteLocalSupported)
+            || (storageType === STORAGE_TYPE.LOCAL_STORAGE)
         ) {
             return Promise.resolve()
         }
@@ -538,7 +478,23 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
+    get isBannerSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+    }
+
+    get isInterstitialSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INTERSTITIAL)
+    }
+
+    get isRewardedSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REWARDED)
+    }
+
     showInterstitial(placement) {
+        if (!this.isInterstitialSupported) {
+            return
+        }
+
         const showInterstitialHandler = ({ data }) => {
             if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
                 return
@@ -573,6 +529,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     showRewarded(placement) {
+        if (!this.isRewardedSupported) {
+            return
+        }
+
         const showRewardedHandler = ({ data }) => {
             if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
                 return
@@ -610,6 +570,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     showBanner(position, placement) {
+        if (!this.isBannerSupported) {
+            return
+        }
+
         this._setBannerState(BANNER_STATE.SHOWN)
 
         this.#messageBroker.send({
@@ -624,6 +588,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     hideBanner() {
+        if (!this.isBannerSupported) {
+            return
+        }
+
         this._setBannerState(BANNER_STATE.HIDDEN)
 
         this.#messageBroker.send({
@@ -642,8 +610,40 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return super.checkAdBlock()
     }
 
-    // social
+    // Social
+    get isInviteFriendsSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_INVITE_FRIENDS)
+    }
+
+    get isJoinCommunitySupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_JOIN_COMMUNITY)
+    }
+
+    get isShareSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_SHARE)
+    }
+
+    get isCreatePostSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_CREATE_POST)
+    }
+
+    get isAddToHomeScreenSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_HOME_SCREEN)
+    }
+
+    get isAddToFavoritesSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_FAVORITES)
+    }
+
+    get isRateSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_RATE)
+    }
+
     inviteFriends() {
+        if (!this.isInviteFriendsSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
@@ -660,6 +660,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     joinCommunity() {
+        if (!this.isJoinCommunitySupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
@@ -676,6 +680,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     share() {
+        if (!this.isShareSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
@@ -692,6 +700,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     createPost() {
+        if (!this.isCreatePostSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
@@ -708,6 +720,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     addToHomeScreen() {
+        if (!this.isAddToHomeScreenSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
@@ -724,6 +740,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     addToFavorites() {
+        if (!this.isAddToFavoritesSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
@@ -740,6 +760,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     rate() {
+        if (!this.isRateSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.RATE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.RATE)
@@ -962,7 +986,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // config
+    get isRemoteConfigSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REMOTE_CONFIG)
+    }
+
     getRemoteConfig() {
+        if (!this.isRemoteConfigSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_REMOTE_CONFIG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_REMOTE_CONFIG)
@@ -993,7 +1025,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // clipboard
+    get isClipboardSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CLIPBOARD)
+    }
+
     clipboardWrite(text) {
+        if (!this.isClipboardSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CLIPBOARD_WRITE)
 
         if (!promiseDecorator) {
@@ -1026,6 +1066,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     clipboardRead() {
+        if (!this.isClipboardSupported) {
+            return Promise.reject()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME_QA.CLIPBOARD_READ)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME_QA.CLIPBOARD_READ)
@@ -1058,6 +1102,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // leaderboards
+    get leaderboardsType() {
+        return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
+    }
+
     leaderboardsSetScore(id, score) {
         if (this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE) {
             return Promise.reject(new Error('Leaderboards are not available'))
@@ -1127,7 +1175,29 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // achievements
+    get isAchievementsSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS)
+    }
+
+    get isGetAchievementsListSupported() {
+        return (
+            this.isAchievementsSupported
+            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_GET_LIST)
+        )
+    }
+
+    get isAchievementsNativePopupSupported() {
+        return (
+            this.isAchievementsSupported
+            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_NATIVE_POPUP)
+        )
+    }
+
     unlockAchievement(options) {
+        if (!this.isAchievementsSupported) {
+            return Promise.reject()
+        }
+
         return new Promise((resolve) => {
             const messageId = this.#messageBroker.generateMessageId()
 
@@ -1154,6 +1224,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     getAchievementsList(options) {
+        if (!this.isGetAchievementsListSupported) {
+            return Promise.reject()
+        }
+
         return new Promise((resolve) => {
             const messageId = this.#messageBroker.generateMessageId()
 
@@ -1180,6 +1254,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     showAchievementsNativePopup() {
+        if (!this.isAchievementsNativePopupSupported) {
+            return Promise.reject()
+        }
+
         this.#messageBroker.send({
             type: MODULE_NAME.ACHIEVEMENTS,
             action: ACTION_NAME_QA.SHOW_ACHIEVEMENTS_NATIVE_POPUP,
