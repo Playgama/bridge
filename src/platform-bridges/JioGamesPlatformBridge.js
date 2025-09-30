@@ -119,7 +119,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     showInterstitial() {
         this.#preloadInterstitial().then(() => {
-            window.JioGames?.showAd(window?.AdType.Interstitial || 'Interstitial', {
+            window._platformSdk.showAd(window.AdType?.Interstitial, {
                 onAdClosed: () => {
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                 },
@@ -139,7 +139,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
 
     showRewarded() {
         this.#preloadRewarded().then(() => {
-            window.JioGames?.showAd(window?.AdType.Rewarded || 'Rewarded', {
+            window._platformSdk.showAd(window.AdType?.Rewarded, {
                 onAdClosed: (isRewardUser) => {
                     if (isRewardUser) {
                         this._setRewardedState(REWARDED_STATE.REWARDED)
@@ -181,7 +181,6 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // leaderboards
-
     leaderboardsSetScore(_, score, isMain) {
         if (!isMain) {
             return Promise.reject()
@@ -191,7 +190,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             ? parseInt(score, 10)
             : score
 
-        window.JioGames?.postScore(value)
+        window._platformSdk.postScore(value)
 
         return Promise.resolve()
     }
@@ -203,7 +202,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         this._preloadInterstitialPromise = new Promise((resolve, reject) => {
-            window.JioGames?.cacheAd(window?.AdType.Interstitial || 'Interstitial', {
+            window._platformSdk.cacheAd(window?.AdType.Interstitial || 'Interstitial', {
                 onAdPrepared: resolve,
                 onAdFailedToLoad: (error) => {
                     self._preloadInterstitialPromise = null
@@ -222,7 +221,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         this._preloadRewardedPromise = new Promise((resolve, reject) => {
-            window.JioGames?.cacheAd(window?.AdType.Rewarded || 'Rewarded', {
+            window._platformSdk.cacheAd(window?.AdType.Rewarded || 'Rewarded', {
                 onAdPrepared: resolve,
                 onAdFailedToLoad: (error) => {
                     self._preloadRewardedPromise = null
