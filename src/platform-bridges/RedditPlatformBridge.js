@@ -59,8 +59,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
-
-            this._platformSdk = window.reddit
             this._isInitialized = true
             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
         }
