@@ -70,7 +70,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._localStorage !== null
+            return true
         }
 
         return super.isStorageSupported(storageType)
@@ -78,7 +78,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._localStorage !== null
+            return true
         }
 
         return super.isStorageAvailable(storageType)
