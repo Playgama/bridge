@@ -60,6 +60,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
+            this._platformSdk = window.reddit
             this._isInitialized = true
             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
         }
@@ -85,63 +86,81 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._localStorage) {
-                return Promise.reject()
-            }
-
             if (Array.isArray(key)) {
-                const values = []
-                for (let i = 0; i < key.length; i++) {
-                    values.push(this._getDataFromLocalStorage(key[i], tryParseJson))
-                }
-                return Promise.resolve(values)
+                const promises = key.map((k) => this._platformSdk.storage.get(k, 'platform_internal').then((rawValue) => {
+                    let parsedValue = rawValue
+
+                    if (tryParseJson && typeof rawValue === 'string') {
+                        try {
+                            parsedValue = JSON.parse(rawValue)
+                        } catch (e) {
+                            // keep parsedValue as-is
+                        }
+                    }
+
+                    return parsedValue
+                }))
+
+                return Promise.all(promises)
             }
 
-            const value = this._getDataFromLocalStorage(key, tryParseJson)
-            return Promise.resolve(value)
+            return this._platformSdk.storage.get(key, 'platform_internal').then((rawValue) => {
+                let parsedValue = rawValue
+
+                if (tryParseJson && typeof rawValue === 'string') {
+                    try {
+                        parsedValue = JSON.parse(rawValue)
+                    } catch (e) {
+                        // keep parsedValue as-is
+                    }
+                }
+
+                return parsedValue
+            })
         }
 
         return super.getDataFromStorage(key, storageType, tryParseJson)
     }
 
-    setDataToStorage(key, value, storageType) {
+    async setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._localStorage) {
-                return Promise.reject()
-            }
-
             if (Array.isArray(key)) {
-                for (let i = 0; i < key.length; i++) {
-                    this._setDataToLocalStorage(key[i], value[i])
+                if (!Array.isArray(value)) {
+                    throw new Error('Value must be an array if key is an array')
                 }
-                return Promise.resolve()
+
+                if (key.length !== value.length) {
+                    throw new Error('Key and value arrays must have the same length')
+                }
+
+                await this._platformSdk.storage.set(key, value, 'platform_internal')
+                return
             }
 
-            this._setDataToLocalStorage(key, value)
-            return Promise.resolve()
+            await this._platformSdk.storage.set(key, value, 'platform_internal')
+            return
         }
 
-        return super.setDataToStorage(key, value, storageType)
+        await super.setDataToStorage(key, value, storageType)
     }
 
-    deleteDataFromStorage(key, storageType) {
+    async deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._localStorage) {
-                return Promise.reject()
-            }
-
             if (Array.isArray(key)) {
+                /* eslint-disable no-await-in-loop */
                 for (let i = 0; i < key.length; i++) {
-                    this._deleteDataFromLocalStorage(key[i])
+                    await this._platformSdk.storage.delete(key[i], 'platform_internal')
                 }
-                return Promise.resolve()
+                /* eslint-enable no-await-in-loop */
+
+                return
             }
 
-            this._deleteDataFromLocalStorage(key)
-            return Promise.resolve()
+            await this._platformSdk.storage.delete(key, 'platform_internal')
+            return
         }
 
-        return super.deleteDataFromStorage(key, storageType)
+        await super.deleteDataFromStorage(key, storageType)
     }
 }
 
