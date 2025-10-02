@@ -87,35 +87,29 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                const promises = key.map((k) => this._platformSdk.storage.get(k, 'platform_internal').then((rawValue) => {
-                    let parsedValue = rawValue
-
+                const promises = key.map((singleKey) => this.#storageGet(singleKey).then((rawValue) => {
                     if (tryParseJson && typeof rawValue === 'string') {
                         try {
-                            parsedValue = JSON.parse(rawValue)
-                        } catch (e) {
-                            // keep parsedValue as-is
+                            return JSON.parse(rawValue)
+                        } catch (error) {
+                            return rawValue
                         }
                     }
-
-                    return parsedValue
+                    return rawValue
                 }))
 
                 return Promise.all(promises)
             }
 
-            return this._platformSdk.storage.get(key, 'platform_internal').then((rawValue) => {
-                let parsedValue = rawValue
-
+            return this.#storageGet(key).then((rawValue) => {
                 if (tryParseJson && typeof rawValue === 'string') {
                     try {
-                        parsedValue = JSON.parse(rawValue)
-                    } catch (e) {
-                        // keep parsedValue as-is
+                        return JSON.parse(rawValue)
+                    } catch (error) {
+                        return rawValue
                     }
                 }
-
-                return parsedValue
+                return rawValue
             })
         }
 
@@ -133,11 +127,11 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                     throw new Error('Key and value arrays must have the same length')
                 }
 
-                await this._platformSdk.storage.set(key, value, 'platform_internal')
+                await Promise.all(key.map((singleKey, index) => this.#storageSet(singleKey, value[index])))
                 return
             }
 
-            await this._platformSdk.storage.set(key, value, 'platform_internal')
+            await this.#storageSet(key, value)
             return
         }
 
@@ -147,20 +141,43 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     async deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                /* eslint-disable no-await-in-loop */
-                for (let i = 0; i < key.length; i++) {
-                    await this._platformSdk.storage.delete(key[i], 'platform_internal')
-                }
-                /* eslint-enable no-await-in-loop */
-
+                const deletePromises = key.map((singleKey) => this.#storageDelete(singleKey))
+                await Promise.all(deletePromises)
                 return
             }
 
-            await this._platformSdk.storage.delete(key, 'platform_internal')
+            await this.#storageDelete(key)
             return
         }
 
         await super.deleteDataFromStorage(key, storageType)
+    }
+
+    async #postJSON(path, body) {
+        const response = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body ?? {}),
+        })
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+        }
+
+        return response.json()
+    }
+
+    async #storageGet(key) {
+        const result = await this.#postJSON('/api/storage/get', { key })
+        return result.data ?? null
+    }
+
+    async #storageSet(key, value) {
+        await this.#postJSON('/api/storage/set', { key, value })
+    }
+
+    async #storageDelete(key) {
+        await this.#postJSON('/api/storage/delete', { key })
     }
 }
 
