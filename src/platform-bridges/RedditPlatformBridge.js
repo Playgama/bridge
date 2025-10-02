@@ -39,18 +39,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isAddToHomeScreenSupported() {
-        return false
-    }
-
-    get isAddToFavoritesSupported() {
-        return false
-    }
-
-    get isRateSupported() {
-        return false
-    }
-
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
