@@ -17,10 +17,17 @@
 
 import { BANNER_CONTAINER_ID, BANNER_POSITION } from '../constants'
 
-export const addJavaScript = function addJavaScript(src) {
+export const addJavaScript = function addJavaScript(src, options = {}) {
     return new Promise((resolve) => {
         const script = document.createElement('script')
         script.src = src
+
+        for (let i = 0; i < Object.keys(options).length; i++) {
+            const key = Object.keys(options)[i]
+            const value = options[key]
+            script.setAttribute(key, value)
+        }
+
         script.addEventListener('load', resolve)
         document.head.appendChild(script)
     })

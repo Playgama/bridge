@@ -18,9 +18,6 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import {
     addJavaScript,
-    createAdContainer,
-    createAdvertisementBannerContainer,
-    waitFor,
 } from '../common/utils'
 
 import {
@@ -28,16 +25,11 @@ import {
     ACTION_NAME,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    ERROR,
     LEADERBOARD_TYPE,
-    BANNER_CONTAINER_ID,
     BANNER_STATE,
-    REWARDED_CONTAINER_ID,
-    INTERSTITIAL_CONTAINER_ID,
 } from '../constants'
 
-const SDK_URL = 'https://jioadsweb.akamaized.net/jioads/websdk/default/stable/v2/jioAds.js'
-
+const SDK_URL = 'https://jiogames.akamaized.net/gameSDK/jiogames/stable/v2.0/jiogames_sdk.js'
 class JioGamesPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
@@ -53,6 +45,10 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isBannerSupported() {
+        return true
+    }
+
     // leaderboards
     get leaderboardsType() {
         return LEADERBOARD_TYPE.NATIVE
@@ -63,19 +59,11 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    #packageName = null
+    _preloadInterstitialPromise = null
 
-    #bannerPlacement = null
+    _preloadRewardedPromise = null
 
-    #bannerContainer = null
-
-    #interstitialPlacement = null
-
-    #interstitialContainer = null
-
-    #rewardedPlacement = null
-
-    #rewardedContainer = null
+    _isBannerAvailable = false
 
     initialize() {
         if (this._isInitialized) {
@@ -86,105 +74,115 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            if (
-                !this._options
-                || !this._options.packageName
-            ) {
-                this._rejectPromiseDecorator(
-                    ACTION_NAME.INITIALIZE,
-                    ERROR.JIO_GAMES_GAME_PARAMS_NOT_FOUND,
-                )
-            } else {
-                addJavaScript(SDK_URL).then(() => {
-                    waitFor('JioAds').then(() => {
-                        const self = this
+            window.onSdkReady = () => {
+                this._platformSdk = window.JioGames
 
-                        this._platformSdk = window.JioAds
-                        this._platformSdk.onInitialised = () => {
-                            this._isInitialized = true
-                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-                        }
+                if (this._platformSdk.playerInfo) {
+                    const {
+                        gamer_id: id, gamer_name: name, gamer_avatar_url: photo, ...extra
+                    } = this._platformSdk.playerInfo
 
-                        window.onUserPropertiesResponse = (obj) => {
-                            self.#setupAdvertisement(obj)
-                        }
+                    this.playerId = id || null
+                    this.playerName = name || null
+                    if (photo) {
+                        this.playerPhotos.push(photo)
+                    }
+                    this.playerExtra = extra
 
-                        this.#packageName = this._options.packageName
+                    this._isPlayerAuthorized = true
+                }
 
-                        if (window.DroidHandler) {
-                            window.DroidHandler.getUserProfile()
-                            window.DroidHandler.postMessage(JSON.stringify({ key: 'getUserProperties' }))
-                        } else {
-                            window.onUserPropertiesResponse({ detail: { uid: '', ifa: '' } })
-                        }
-
-                        window.onUserProfileResponse = (message) => {
-                            const obj = JSON.parse(message)
-
-                            self.playerId = obj.gamer_id || null
-                            self.playerName = obj.gamer_name || null
-
-                            if (obj.gamer_avatar_url) {
-                                self.playerPhotos.push(obj.gamer_avatar_url)
-                            }
-
-                            self._isPlayerAuthorized = true
-                        }
-                    })
-                })
+                this._isInitialized = true
+                this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
             }
+
+            window.onBannerReady = () => {
+                this._isBannerAvailable = true
+            }
+
+            addJavaScript(SDK_URL, this._options.adTestMode ? { 'data-jg-test-environment': 'on' } : {})
+                .catch((error) => {
+                    this._rejectPromiseDecorator(
+                        ACTION_NAME.INITIALIZE,
+                        JSON.stringify(error),
+                    )
+                })
         }
 
         return promiseDecorator.promise
     }
 
     // advertisement
-    showBanner(position, placement) {
-        if (this.#bannerContainer) {
+    preloadInterstitial() {
+        this.#preloadInterstitial()
+    }
+
+    showInterstitial() {
+        this.#preloadInterstitial().then(() => {
+            this._platformSdk.showAd(window.AdType?.Interstitial, {
+                onAdClosed: () => {
+                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                },
+                onAdFailedToLoad: (error) => {
+                    console.error(error)
+                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                },
+            })
+            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            this._preloadInterstitialPromise = null
+        })
+    }
+
+    preloadRewarded() {
+        this.#preloadRewarded()
+    }
+
+    showRewarded() {
+        this.#preloadRewarded().then(() => {
+            this._platformSdk.showAd(window.AdType?.Rewarded, {
+                onAdClosed: (isRewardUser) => {
+                    if (isRewardUser) {
+                        this._setRewardedState(REWARDED_STATE.REWARDED)
+                    }
+
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                },
+                onAdFailedToLoad: (error) => {
+                    console.error(error)
+                    this._setRewardedState(REWARDED_STATE.FAILED)
+                },
+            })
+            this._setRewardedState(REWARDED_STATE.OPENED)
+            this._preloadRewardedPromise = null
+        })
+    }
+
+    showBanner(position) {
+        if (!this._isBannerAvailable) {
+            this._setBannerState(BANNER_STATE.FAILED)
             return
         }
 
-        this.#bannerPlacement = placement
-        this.#bannerContainer = createAdvertisementBannerContainer(position)
-
-        const ins = this.#createIns(placement, { 'data-container-id': BANNER_CONTAINER_ID })
-        this.#bannerContainer.appendChild(ins)
+        window.JGBanner?.loadBanner()
+            .then(() => {
+                this._setBannerState(BANNER_STATE.SHOWN)
+                window.JGBanner?.showBanner(position || window.BannerPosition?.TOP)
+            })
+            .catch((error) => {
+                console.error(error)
+                this._setBannerState(BANNER_STATE.FAILED)
+            })
     }
 
     hideBanner() {
-        this.#bannerContainer?.remove()
-        this.#bannerContainer = null
+        window.JGBanner?.hideBanner()
 
         this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
-    showInterstitial(placement) {
-        if (this.#interstitialContainer) {
-            return
-        }
-
-        this.#interstitialPlacement = placement
-        this.#interstitialContainer = createAdContainer(INTERSTITIAL_CONTAINER_ID)
-
-        const ins = this.#createIns(placement, { 'data-container-id': INTERSTITIAL_CONTAINER_ID })
-        this.#interstitialContainer.appendChild(ins)
-    }
-
-    showRewarded(placement) {
-        if (this.#rewardedContainer) {
-            return
-        }
-
-        this.#rewardedPlacement = placement
-        this.#rewardedContainer = createAdContainer(REWARDED_CONTAINER_ID)
-
-        const ins = this.#createIns(placement, { 'data-container-id': REWARDED_CONTAINER_ID })
-        this.#rewardedContainer.appendChild(ins)
-    }
-
     // leaderboards
-    leaderboardsSetScore(id, score, isMain) {
-        if (!isMain || !window.DroidHandler) {
+    leaderboardsSetScore(_, score, isMain) {
+        if (!isMain) {
             return Promise.reject()
         }
 
@@ -192,77 +190,47 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
             ? parseInt(score, 10)
             : score
 
-        window.DroidHandler.postScore(value)
+        this._platformSdk.postScore(value)
+
         return Promise.resolve()
     }
 
-    #createIns(placementId, extraAttrs = {}) {
-        const ins = document.createElement('ins')
-        ins.id = placementId
-        ins.setAttribute('data-adspot-key', placementId)
-        ins.setAttribute('data-source', this.#packageName)
-        Object.entries(extraAttrs).forEach(([k, v]) => ins.setAttribute(k, String(v)))
+    #preloadInterstitial() {
+        const self = this
+        if (this._preloadInterstitialPromise) {
+            return this._preloadInterstitialPromise
+        }
 
-        return ins
-    }
-
-    #setupAdvertisement(obj) {
-        this._platformSdk.setConfiguration({
-            ...obj,
-            reqType: 'prod',
-            logLevel: 1,
-            adRequestTimeout: 6000,
-            adRenderingTimeout: 5000,
+        this._preloadInterstitialPromise = new Promise((resolve, reject) => {
+            this._platformSdk.cacheAd(window?.AdType.Interstitial || 'Interstitial', {
+                onAdPrepared: resolve,
+                onAdFailedToLoad: (error) => {
+                    self._preloadInterstitialPromise = null
+                    reject(new Error(error))
+                },
+            })
         })
 
-        this._platformSdk.onAdPrepared = (placement) => {
-            if (placement === this.#bannerPlacement) {
-                this._setBannerState(BANNER_STATE.SHOWN)
-            } else if (placement === this.#interstitialPlacement) {
-                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-            } else if (placement === this.#rewardedPlacement) {
-                this._setRewardedState(REWARDED_STATE.OPENED)
-            }
+        return this._preloadInterstitialPromise
+    }
+
+    #preloadRewarded() {
+        const self = this
+        if (this._preloadRewardedPromise) {
+            return this._preloadRewardedPromise
         }
 
-        this._platformSdk.onAdFailedToLoad = (placement, options) => {
-            console.error(JSON.stringify(options))
+        this._preloadRewardedPromise = new Promise((resolve, reject) => {
+            this._platformSdk.cacheAd(window?.AdType.Rewarded || 'Rewarded', {
+                onAdPrepared: resolve,
+                onAdFailedToLoad: (error) => {
+                    self._preloadRewardedPromise = null
+                    reject(new Error(error))
+                },
+            })
+        })
 
-            if (placement === this.#bannerPlacement) {
-                this.#bannerContainer?.remove()
-                this.#bannerContainer = null
-
-                this._setBannerState(BANNER_STATE.FAILED)
-            } else if (placement === this.#interstitialPlacement) {
-                this.#interstitialContainer?.remove()
-                this.#interstitialContainer = null
-
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            } else if (placement === this.#rewardedPlacement) {
-                this.#rewardedContainer?.remove()
-                this.#rewardedContainer = null
-
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            }
-        }
-
-        this._platformSdk.onAdClosed = (placement, isVideoCompleted, reward) => {
-            if (placement === this.#interstitialPlacement) {
-                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-
-                this.#interstitialContainer?.remove()
-                this.#interstitialContainer = null
-            } else if (placement === this.#rewardedPlacement) {
-                if (reward && isVideoCompleted) {
-                    this._setRewardedState(REWARDED_STATE.REWARDED)
-                }
-
-                this._setRewardedState(REWARDED_STATE.CLOSED)
-
-                this.#rewardedContainer?.remove()
-                this.#rewardedContainer = null
-            }
-        }
+        return this._preloadRewardedPromise
     }
 }
 
