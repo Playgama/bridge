@@ -132,11 +132,97 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._platformPayload
     }
 
-    #messageBroker = new MessageBroker()
+    // player
+    get isPlayerAuthorizationSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.PLAYER_AUTHORIZATION)
+    }
+
+    // advertisement
+    get isBannerSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+    }
+
+    get isInterstitialSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INTERSTITIAL)
+    }
+
+    get isRewardedSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REWARDED)
+    }
+
+    // achievements
+    get isAchievementsSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS)
+    }
+
+    get isGetAchievementsListSupported() {
+        return (
+            this.isAchievementsSupported
+            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_GET_LIST)
+        )
+    }
+
+    get isAchievementsNativePopupSupported() {
+        return (
+            this.isAchievementsSupported
+            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_NATIVE_POPUP)
+        )
+    }
+
+    // Social
+    get isInviteFriendsSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_INVITE_FRIENDS)
+    }
+
+    get isJoinCommunitySupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_JOIN_COMMUNITY)
+    }
+
+    get isShareSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_SHARE)
+    }
+
+    get isCreatePostSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_CREATE_POST)
+    }
+
+    get isAddToHomeScreenSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_HOME_SCREEN)
+    }
+
+    get isAddToFavoritesSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_FAVORITES)
+    }
+
+    get isRateSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_RATE)
+    }
+
+    // payments
+    get isPaymentsSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
+    }
+
+    // config
+    get isRemoteConfigSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REMOTE_CONFIG)
+    }
+
+    // clipboard
+    get isClipboardSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CLIPBOARD)
+    }
+
+    // leaderboards
+    get leaderboardsType() {
+        return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
+    }
 
     _supportedFeatures = []
 
     _leaderboardsType = null
+
+    #messageBroker = new MessageBroker()
 
     initialize() {
         if (this._isInitialized) {
@@ -175,60 +261,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #handleInitializeResponse(data) {
-        this._supportedFeatures = data.supportedFeatures || []
-        this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
-
-        const { config = {} } = data
-        this._deviceType = config.deviceType ?? super.deviceType
-        this._platformLanguage = config.platformLanguage ?? super.platformLanguage
-        this._platformTld = config.platformTld ?? super.platformTld
-        this._platformPayload = config.platformPayload ?? super.platformPayload
-        this._leaderboardsType = config.leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
-
-        this._paymentsPurchases = data.purchases || []
-
-        this._isInitialized = true
-        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-
-        this.#messageBroker.send({
-            type: MODULE_NAME_QA.LIVENESS,
-            action: ACTION_NAME_QA.LIVENESS_PING,
-            options: { version: PLUGIN_VERSION },
-        })
-    }
-
-    #getPerformanceResources(messageId, requestedProps = []) {
-        const props = Array.isArray(requestedProps) ? requestedProps : []
-        const resources = performance.getEntriesByType('resource') || []
-        const defaultProps = ['name', 'initiatorType']
-        const propsToExtract = props.length > 0 ? props : defaultProps
-
-        const serializableResources = resources.map((resource) => {
-            const extracted = {}
-            propsToExtract.forEach((prop) => {
-                if (prop in resource) {
-                    extracted[prop] = resource[prop]
-                }
-            })
-            return extracted
-        })
-
-        this.#messageBroker.send({
-            type: MODULE_NAME.PLATFORM,
-            action: ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES,
-            id: messageId,
-            options: { resources: serializableResources },
-        })
-
-        return Promise.resolve(resources)
-    }
-
     // player
-    get isPlayerAuthorizationSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.PLAYER_AUTHORIZATION)
-    }
-
     authorizePlayer(options) {
         if (!this.isPlayerAuthorizationSupported) {
             return Promise.reject()
@@ -478,18 +511,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    get isBannerSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
-    }
-
-    get isInterstitialSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.INTERSTITIAL)
-    }
-
-    get isRewardedSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REWARDED)
-    }
-
     showInterstitial(placement) {
         if (!this.isInterstitialSupported) {
             return
@@ -611,34 +632,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // Social
-    get isInviteFriendsSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_INVITE_FRIENDS)
-    }
-
-    get isJoinCommunitySupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_JOIN_COMMUNITY)
-    }
-
-    get isShareSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_SHARE)
-    }
-
-    get isCreatePostSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_CREATE_POST)
-    }
-
-    get isAddToHomeScreenSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_HOME_SCREEN)
-    }
-
-    get isAddToFavoritesSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_ADD_TO_FAVORITES)
-    }
-
-    get isRateSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.SOCIAL_RATE)
-    }
-
     inviteFriends() {
         if (!this.isInviteFriendsSupported) {
             return Promise.reject()
@@ -780,10 +773,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    get isPaymentsSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.PAYMENTS)
-    }
-
     paymentsPurchase(id) {
         if (!this.isPaymentsSupported) {
             return Promise.reject()
@@ -986,10 +975,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // config
-    get isRemoteConfigSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.REMOTE_CONFIG)
-    }
-
     getRemoteConfig() {
         if (!this.isRemoteConfigSupported) {
             return Promise.reject()
@@ -1025,10 +1010,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // clipboard
-    get isClipboardSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.CLIPBOARD)
-    }
-
     clipboardWrite(text) {
         if (!this.isClipboardSupported) {
             return Promise.reject()
@@ -1102,10 +1083,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // leaderboards
-    get leaderboardsType() {
-        return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
-    }
-
     leaderboardsSetScore(id, score) {
         if (this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE) {
             return Promise.reject(new Error('Leaderboards are not available'))
@@ -1175,24 +1152,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // achievements
-    get isAchievementsSupported() {
-        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS)
-    }
-
-    get isGetAchievementsListSupported() {
-        return (
-            this.isAchievementsSupported
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_GET_LIST)
-        )
-    }
-
-    get isAchievementsNativePopupSupported() {
-        return (
-            this.isAchievementsSupported
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_NATIVE_POPUP)
-        )
-    }
-
     unlockAchievement(options) {
         if (!this.isAchievementsSupported) {
             return Promise.reject()
@@ -1293,6 +1252,55 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             id: product.id,
             ...product.playgama,
         }
+    }
+
+    #handleInitializeResponse(data) {
+        this._supportedFeatures = data.supportedFeatures || []
+        this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+
+        const { config = {} } = data
+        this._deviceType = config.deviceType ?? super.deviceType
+        this._platformLanguage = config.platformLanguage ?? super.platformLanguage
+        this._platformTld = config.platformTld ?? super.platformTld
+        this._platformPayload = config.platformPayload ?? super.platformPayload
+        this._leaderboardsType = config.leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
+
+        this._paymentsPurchases = data.purchases || []
+
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+
+        this.#messageBroker.send({
+            type: MODULE_NAME_QA.LIVENESS,
+            action: ACTION_NAME_QA.LIVENESS_PING,
+            options: { version: PLUGIN_VERSION },
+        })
+    }
+
+    #getPerformanceResources(messageId, requestedProps = []) {
+        const props = Array.isArray(requestedProps) ? requestedProps : []
+        const resources = performance.getEntriesByType('resource') || []
+        const defaultProps = ['name', 'initiatorType']
+        const propsToExtract = props.length > 0 ? props : defaultProps
+
+        const serializableResources = resources.map((resource) => {
+            const extracted = {}
+            propsToExtract.forEach((prop) => {
+                if (prop in resource) {
+                    extracted[prop] = resource[prop]
+                }
+            })
+            return extracted
+        })
+
+        this.#messageBroker.send({
+            type: MODULE_NAME.PLATFORM,
+            action: ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES,
+            id: messageId,
+            options: { resources: serializableResources },
+        })
+
+        return Promise.resolve(resources)
     }
 }
 
