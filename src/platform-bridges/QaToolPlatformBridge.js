@@ -803,7 +803,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
                     if (data.purchase?.status) {
                         const mergedPurchase = { id, ...data.purchase.purchaseData }
-                        delete mergedPurchase.commonId
                         this._paymentsPurchases.push(mergedPurchase)
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
