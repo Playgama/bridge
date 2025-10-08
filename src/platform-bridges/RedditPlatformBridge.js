@@ -46,9 +46,37 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
+            window.addEventListener('message', (event) => {
+                if (event.data.type === 'devvit-message') {
+                    const { message } = event.data.data
+                    if (message.type === ACTION_NAME.INITIALIZE) {
+                        this._isInitialized = true
+                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                    } else if (message.type === ACTION_NAME.GET_STORAGE_DATA) {
+                        if (message.data?.success) {
+                            this._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, message.data.data ?? null)
+                        } else {
+                            this._rejectPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+                        }
+                    } else if (message.type === ACTION_NAME.SET_STORAGE_DATA) {
+                        if (message.data?.success) {
+                            this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+                        } else {
+                            this._rejectPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+                        }
+                    } else if (message.type === ACTION_NAME.DELETE_STORAGE_DATA) {
+                        if (message.data?.success) {
+                            this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+                        } else {
+                            this._rejectPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+                        }
+                    }
+                }
+            })
+
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
-            this._isInitialized = true
-            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            this.#postMessage(ACTION_NAME.INITIALIZE)
         }
 
         return promiseDecorator.promise
@@ -72,31 +100,14 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises = key.map((singleKey) => this.#storageGet(singleKey).then((rawValue) => {
-                    if (tryParseJson && typeof rawValue === 'string') {
-                        try {
-                            return JSON.parse(rawValue)
-                        } catch (error) {
-                            return rawValue
-                        }
-                    }
-                    return rawValue
-                }))
+            let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+            if (!promiseDecorator) {
+                promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
 
-                return Promise.all(promises)
+                this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, { key })
             }
 
-            return this.#storageGet(key).then((rawValue) => {
-                if (tryParseJson && typeof rawValue === 'string') {
-                    try {
-                        return JSON.parse(rawValue)
-                    } catch (error) {
-                        return rawValue
-                    }
-                }
-                return rawValue
-            })
+            return promiseDecorator.promise
         }
 
         return super.getDataFromStorage(key, storageType, tryParseJson)
@@ -104,66 +115,39 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     async setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                if (!Array.isArray(value)) {
-                    throw new Error('Value must be an array if key is an array')
-                }
+            let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+            if (!promiseDecorator) {
+                promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
 
-                if (key.length !== value.length) {
-                    throw new Error('Key and value arrays must have the same length')
-                }
-
-                await Promise.all(key.map((singleKey, index) => this.#storageSet(singleKey, value[index])))
-                return
+                this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
             }
 
-            await this.#storageSet(key, value)
-            return
+            return promiseDecorator.promise
         }
 
-        await super.setDataToStorage(key, value, storageType)
+        return super.setDataToStorage(key, value, storageType)
     }
 
     async deleteDataFromStorage(key, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const deletePromises = key.map((singleKey) => this.#storageDelete(singleKey))
-                await Promise.all(deletePromises)
-                return
+            let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+            if (!promiseDecorator) {
+                promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+
+                this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, { key })
             }
 
-            await this.#storageDelete(key)
-            return
+            return promiseDecorator.promise
         }
 
-        await super.deleteDataFromStorage(key, storageType)
+        return super.deleteDataFromStorage(key, storageType)
     }
 
-    async #postJSON(path, body) {
-        const response = await fetch(path, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body ?? {}),
-        })
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`)
-        }
-
-        return response.json()
-    }
-
-    async #storageGet(key) {
-        const result = await this.#postJSON('/api/storage/get', { key })
-        return result.data ?? null
-    }
-
-    async #storageSet(key, value) {
-        await this.#postJSON('/api/storage/set', { key, value })
-    }
-
-    async #storageDelete(key) {
-        await this.#postJSON('/api/storage/delete', { key })
+    async #postMessage(type, data = {}) {
+        window.parent.postMessage({
+            type,
+            data,
+        }, '*')
     }
 }
 
