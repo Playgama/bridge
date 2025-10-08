@@ -50,26 +50,13 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                 if (event.data.type === 'devvit-message') {
                     const { message } = event.data.data
                     if (message.type === ACTION_NAME.INITIALIZE) {
-                        this._isInitialized = true
-                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        this.#handleInitilize()
                     } else if (message.type === ACTION_NAME.GET_STORAGE_DATA) {
-                        if (message.data?.success) {
-                            this._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, message.data.data ?? null)
-                        } else {
-                            this._rejectPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-                        }
+                        this.#handleGetStorage(message)
                     } else if (message.type === ACTION_NAME.SET_STORAGE_DATA) {
-                        if (message.data?.success) {
-                            this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-                        } else {
-                            this._rejectPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-                        }
+                        this.#handleSetStorage(message)
                     } else if (message.type === ACTION_NAME.DELETE_STORAGE_DATA) {
-                        if (message.data?.success) {
-                            this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-                        } else {
-                            this._rejectPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-                        }
+                        this.#handleDeleteStorage(message)
                     }
                 }
             })
@@ -148,6 +135,35 @@ class RedditPlatformBridge extends PlatformBridgeBase {
             type,
             data,
         }, '*')
+    }
+
+    #handleInitilize() {
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+    }
+
+    #handleGetStorage(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, message.data.data ?? null)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+        }
+    }
+
+    #handleSetStorage(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+        }
+    }
+
+    #handleDeleteStorage(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+        }
     }
 }
 
