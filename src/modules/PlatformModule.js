@@ -121,6 +121,39 @@ class PlatformModule extends ModuleBase {
             if (this._platformBridge.platformId === 'discord') {
                 url = '/playgama/api/v1/events'
             }
+            const { options } = this._platformBridge
+            let gameName = null
+
+            switch (this._platformBridge.platformId) {
+                case 'game_distribution':
+                    gameName = options.gameId
+                    break
+                case 'telegram':
+                    gameName = options.adsgramBlockId
+                    break
+                case 'y8':
+                    gameName = options.gameId
+                    break
+                case 'huawei':
+                    gameName = options.appId
+                    break
+                case 'msn':
+                    gameName = options.gameId
+                    break
+                case 'discord':
+                    gameName = options.appId
+                    break
+                case 'gamepush':
+                    gameName = options.projectId
+                    break
+                default:
+                    gameName = null
+                    break
+            }
+
+            if (!gameName) {
+                gameName = this.#getGameName(window.location.href)
+            }
 
             fetch(url, {
                 method: 'POST',
@@ -129,7 +162,7 @@ class PlatformModule extends ModuleBase {
                     eventName: 'game_ready',
                     pageName: `${this._platformBridge.platformId}:${this._platformBridge.engine}`,
                     userId: `bridge:${version}`,
-                    clid: window.location.href,
+                    clid: gameName,
                 }),
             })
                 .then((response) => {
@@ -141,6 +174,69 @@ class PlatformModule extends ModuleBase {
                     console.error('Error sending event:', error)
                 })
         }
+    }
+
+    #getGameName(url) {
+        try {
+            const parsedUrl = new URL(url)
+            const parts = parsedUrl.pathname.split('/').filter(Boolean)
+            const host = parsedUrl.hostname
+
+            switch (true) {
+                case host.includes('yandex.com'): {
+                    const i = parts.indexOf('app')
+                    const id = i !== -1 ? parts[i + 1] : null
+                    if (id) {
+                        return `Yandex Game #${id}`
+                    }
+                    break
+                }
+
+                case host.includes('lagged.com'): {
+                    const i = parts.indexOf('g')
+                    const slug = i !== -1 ? parts[i + 1] : null
+                    if (slug) {
+                        return this.#formatGameName(slug)
+                    }
+                    break
+                }
+
+                case host.includes('crazygames.com'): {
+                    const i = parts.indexOf('game')
+                    const slug = i !== -1 ? parts[i + 1] : null
+                    if (slug) {
+                        return this.#formatGameName(slug)
+                    }
+                    break
+                }
+
+                case host.includes('playgama.com'): {
+                    const i = parts.indexOf('game')
+                    const slug = i !== -1 ? parts[i + 1] : null
+                    if (slug) return this.#formatGameName(slug)
+                    const id = parts[0]
+                    const isInternalId = typeof id === 'string' && /^[a-z0-9]{10,}$/i.test(id)
+                    if (isInternalId) {
+                        return `Playgama #${id}`
+                    }
+                    break
+                }
+                default:
+                    break
+            }
+        } catch (err) {
+            return null
+        }
+        return null
+    }
+
+    #formatGameName(s) {
+        if (typeof s !== 'string' || s.length === 0) {
+            return ''
+        }
+        return s
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase())
     }
 }
 
