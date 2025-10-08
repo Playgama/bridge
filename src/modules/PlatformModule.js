@@ -230,11 +230,11 @@ class PlatformModule extends ModuleBase {
         return null
     }
 
-    #formatGameName(s) {
-        if (typeof s !== 'string' || s.length === 0) {
+    #formatGameName(name) {
+        if (typeof name !== 'string' || name.length === 0) {
             return ''
         }
-        return s
+        return name
             .replace(/-/g, ' ')
             .replace(/\b\w/g, (c) => c.toUpperCase())
     }
