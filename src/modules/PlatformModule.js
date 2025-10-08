@@ -180,19 +180,18 @@ class PlatformModule extends ModuleBase {
         try {
             const parsedUrl = new URL(url)
             const parts = parsedUrl.pathname.split('/').filter(Boolean)
-            const host = parsedUrl.hostname
 
-            switch (true) {
-                case host.includes('yandex.com'): {
+            switch (this._platformBridge.platformId) {
+                case 'yandex': {
                     const i = parts.indexOf('app')
                     const id = i !== -1 ? parts[i + 1] : null
                     if (id) {
-                        return `Yandex Game #${id}`
+                        return `Yandex ${id}`
                     }
                     break
                 }
 
-                case host.includes('lagged.com'): {
+                case 'lagged': {
                     const i = parts.indexOf('g')
                     const slug = i !== -1 ? parts[i + 1] : null
                     if (slug) {
@@ -201,7 +200,7 @@ class PlatformModule extends ModuleBase {
                     break
                 }
 
-                case host.includes('crazygames.com'): {
+                case 'crazygames': {
                     const i = parts.indexOf('game')
                     const slug = i !== -1 ? parts[i + 1] : null
                     if (slug) {
@@ -210,14 +209,16 @@ class PlatformModule extends ModuleBase {
                     break
                 }
 
-                case host.includes('playgama.com'): {
+                case 'playgama': {
                     const i = parts.indexOf('game')
                     const slug = i !== -1 ? parts[i + 1] : null
-                    if (slug) return this.#formatGameName(slug)
+                    if (slug) {
+                        return this.#formatGameName(slug)
+                    }
                     const id = parts[0]
                     const isInternalId = typeof id === 'string' && /^[a-z0-9]{10,}$/i.test(id)
                     if (isInternalId) {
-                        return `Playgama #${id}`
+                        return `Playgama ${id}`
                     }
                     break
                 }
