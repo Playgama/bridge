@@ -48,9 +48,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             window.addEventListener('message', (event) => {
                 if (event.data.type === 'devvit-message') {
-                    // eslint-disable-next-line no-console
-                    console.log('RedditPlatformBridge received message', event.data)
-
                     const { message } = event.data.data
                     if (message.type === ACTION_NAME.INITIALIZE) {
                         this.#handleInitilize()
@@ -217,7 +214,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (message.data?.success) {
             this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, message.data)
         } else {
-            this._rejectPromiseDecorator(ACTION_NAME.PURCHASE)
+            this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, message.data)
         }
     }
 
@@ -225,7 +222,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (message.data?.success) {
             this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, message.data)
         } else {
-            this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG)
+            this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, message.data)
         }
     }
 
@@ -233,7 +230,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (message.data?.success) {
             this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, message.data)
         } else {
-            this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+            this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, message.data)
         }
     }
 }
