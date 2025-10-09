@@ -219,8 +219,15 @@ class PlatformModule extends ModuleBase {
                     }
                     break
                 }
-                default:
-                    break
+                default: {
+                    let hash = 0
+                    const len = url.length
+                    for (let i = 0; i < len; i += 1) {
+                        hash = (hash * 31 + url.charCodeAt(i)) % 4294967296
+                    }
+                    const hex = Math.abs(hash).toString(16).padStart(8, '0')
+                    return `Hashed ${this._platformBridge.platformId} ${hex.slice(0, 12)}`
+                }
             }
         } catch (err) {
             return null
