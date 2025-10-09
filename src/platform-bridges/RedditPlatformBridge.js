@@ -177,7 +177,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    async #postMessage(type, data = {}) {
+    #postMessage(type, data = {}) {
         window.parent.postMessage({ type, data }, '*')
     }
 
