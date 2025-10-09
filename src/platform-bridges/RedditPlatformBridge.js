@@ -50,7 +50,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                 if (event.data.type === 'devvit-message') {
                     const { message } = event.data.data
                     if (message.type === ACTION_NAME.INITIALIZE) {
-                        this.#handleInitilize()
+                        this.#handleInitialize(message)
                     } else if (message.type === ACTION_NAME.GET_STORAGE_DATA) {
                         this.#handleGetStorage(message)
                     } else if (message.type === ACTION_NAME.SET_STORAGE_DATA) {
@@ -181,7 +181,17 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         window.parent.postMessage({ type, data }, '*')
     }
 
-    #handleInitilize() {
+    #handleInitialize(message) {
+        this._isPlayerAuthorized = message.isPlayerAuthorized
+
+        if (this._isPlayerAuthorized) {
+            this._playerId = message.playerId
+            this._playerName = message.playerName
+            if (message.playerPhoto) {
+                this._playerPhotos.push(message.playerPhoto)
+            }
+        }
+
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
     }
