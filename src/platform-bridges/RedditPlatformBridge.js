@@ -48,6 +48,9 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             window.addEventListener('message', (event) => {
                 if (event.data.type === 'devvit-message') {
+                    // eslint-disable-next-line no-console
+                    console.log('RedditPlatformBridge received message', event.data)
+
                     const { message } = event.data.data
                     if (message.type === ACTION_NAME.INITIALIZE) {
                         this.#handleInitilize()
@@ -57,6 +60,12 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                         this.#handleSetStorage(message)
                     } else if (message.type === ACTION_NAME.DELETE_STORAGE_DATA) {
                         this.#handleDeleteStorage(message)
+                    } else if (message.type === ACTION_NAME.GET_CATALOG) {
+                        this.#handleGetCatalog(message)
+                    } else if (message.type === ACTION_NAME.PURCHASE) {
+                        this.#handlePurchase(message)
+                    } else if (message.type === ACTION_NAME.GET_PURCHASES) {
+                        this.#handleGetPurchases(message)
                     }
                 }
             })
@@ -69,6 +78,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // storage
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return true
@@ -130,11 +140,48 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return super.deleteDataFromStorage(key, storageType)
     }
 
+    // payments
+    paymentsPurchase(id) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            this.#postMessage(ACTION_NAME.PURCHASE, { id })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+
+        if (!products) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
+            this.#postMessage(ACTION_NAME.GET_CATALOG)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+
+            this.#postMessage(ACTION_NAME.GET_PURCHASES)
+        }
+
+        return promiseDecorator.promise
+    }
+
     async #postMessage(type, data = {}) {
-        window.parent.postMessage({
-            type,
-            data,
-        }, '*')
+        window.parent.postMessage({ type, data }, '*')
     }
 
     #handleInitilize() {
@@ -163,6 +210,30 @@ class RedditPlatformBridge extends PlatformBridgeBase {
             this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
         } else {
             this._rejectPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+        }
+    }
+
+    #handlePurchase(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, message.data)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.PURCHASE)
+        }
+    }
+
+    #handleGetCatalog(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, message.data)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        }
+    }
+
+    #handleGetPurchases(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, message.data)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         }
     }
 }
