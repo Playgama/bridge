@@ -18,7 +18,7 @@
 import { BANNER_CONTAINER_ID, BANNER_POSITION } from '../constants'
 
 export const addJavaScript = function addJavaScript(src, options = {}) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const script = document.createElement('script')
         script.src = src
 
@@ -29,6 +29,7 @@ export const addJavaScript = function addJavaScript(src, options = {}) {
         }
 
         script.addEventListener('load', resolve)
+        script.addEventListener('error', () => reject(new Error(`Failed to load: ${src}`)))
         document.head.appendChild(script)
     })
 }
