@@ -17,7 +17,7 @@
 
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
-import { EVENT_NAME, PLATFORM_MESSAGE } from '../constants'
+import { EVENT_NAME, PLATFORM_ID, PLATFORM_MESSAGE } from '../constants'
 import { version } from '../../package.json'
 
 class PlatformModule extends ModuleBase {
@@ -125,25 +125,22 @@ class PlatformModule extends ModuleBase {
             let gameName = null
 
             switch (this._platformBridge.platformId) {
-                case 'game_distribution':
+                case PLATFORM_ID.GAME_DISTRIBUTION:
                     gameName = options.gameId
                     break
-                case 'telegram':
-                    gameName = options.adsgramBlockId
-                    break
-                case 'y8':
+                case PLATFORM_ID.Y8:
                     gameName = options.gameId
                     break
-                case 'huawei':
+                case PLATFORM_ID.HUAWEI:
                     gameName = options.appId
                     break
-                case 'msn':
+                case PLATFORM_ID.MSN:
                     gameName = options.gameId
                     break
-                case 'discord':
+                case PLATFORM_ID.DISCORD:
                     gameName = options.appId
                     break
-                case 'gamepush':
+                case PLATFORM_ID.GAMEPUSH:
                     gameName = options.projectId
                     break
                 default:
@@ -182,7 +179,7 @@ class PlatformModule extends ModuleBase {
             const parts = parsedUrl.pathname.split('/').filter(Boolean)
 
             switch (this._platformBridge.platformId) {
-                case 'yandex': {
+                case PLATFORM_ID.YANDEX: {
                     const i = parts.indexOf('app')
                     const id = i !== -1 ? parts[i + 1] : null
                     if (id) {
@@ -191,7 +188,7 @@ class PlatformModule extends ModuleBase {
                     break
                 }
 
-                case 'lagged': {
+                case PLATFORM_ID.LAGGED: {
                     const i = parts.indexOf('g')
                     const slug = i !== -1 ? parts[i + 1] : null
                     if (slug) {
@@ -200,7 +197,7 @@ class PlatformModule extends ModuleBase {
                     break
                 }
 
-                case 'crazy_games': {
+                case PLATFORM_ID.CRAZY_GAMES: {
                     const i = parts.indexOf('game')
                     const slug = i !== -1 ? parts[i + 1] : null
                     if (slug) {
@@ -209,7 +206,7 @@ class PlatformModule extends ModuleBase {
                     break
                 }
 
-                case 'playgama': {
+                case PLATFORM_ID.PLAYGAMA: {
                     const i = parts.indexOf('game')
                     const slug = i !== -1 ? parts[i + 1] : null
                     if (slug) {
