@@ -149,10 +149,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase(id) {
-        return super.paymentsConsumePurchase(id)
-    }
-
     paymentsGetCatalog() {
         const products = this._paymentsGetProductsPlatformData()
 
