@@ -17,7 +17,7 @@
 
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
-import { EVENT_NAME, PLATFORM_MESSAGE } from '../constants'
+import { EVENT_NAME, PLATFORM_ID, PLATFORM_MESSAGE } from '../constants'
 import { version } from '../../package.json'
 
 class PlatformModule extends ModuleBase {
@@ -121,6 +121,36 @@ class PlatformModule extends ModuleBase {
             if (this._platformBridge.platformId === 'discord') {
                 url = '/playgama/api/v1/events'
             }
+            const { options } = this._platformBridge
+            let gameName = null
+
+            switch (this._platformBridge.platformId) {
+                case PLATFORM_ID.GAME_DISTRIBUTION:
+                    gameName = options.gameId
+                    break
+                case PLATFORM_ID.Y8:
+                    gameName = options.gameId
+                    break
+                case PLATFORM_ID.HUAWEI:
+                    gameName = options.appId
+                    break
+                case PLATFORM_ID.MSN:
+                    gameName = options.gameId
+                    break
+                case PLATFORM_ID.DISCORD:
+                    gameName = options.appId
+                    break
+                case PLATFORM_ID.GAMEPUSH:
+                    gameName = options.projectId
+                    break
+                default:
+                    gameName = null
+                    break
+            }
+
+            if (!gameName) {
+                gameName = this.#getGameName(window.location.href)
+            }
 
             fetch(url, {
                 method: 'POST',
@@ -129,7 +159,7 @@ class PlatformModule extends ModuleBase {
                     eventName: 'game_ready',
                     pageName: `${this._platformBridge.platformId}:${this._platformBridge.engine}`,
                     userId: `bridge:${version}`,
-                    clid: window.location.href,
+                    clid: gameName,
                 }),
             })
                 .then((response) => {
@@ -141,6 +171,70 @@ class PlatformModule extends ModuleBase {
                     console.error('Error sending event:', error)
                 })
         }
+    }
+
+    #getGameName(url) {
+        try {
+            const parsedUrl = new URL(url)
+            const parts = parsedUrl.pathname.split('/').filter(Boolean)
+
+            switch (this._platformBridge.platformId) {
+                case PLATFORM_ID.YANDEX: {
+                    const i = parts.indexOf('app')
+                    const id = i !== -1 ? parts[i + 1] : null
+                    if (id) {
+                        return `Yandex ${id}`
+                    }
+                    break
+                }
+
+                case PLATFORM_ID.LAGGED: {
+                    const i = parts.indexOf('g')
+                    const slug = i !== -1 ? parts[i + 1] : null
+                    if (slug) {
+                        return this.#formatGameName(slug)
+                    }
+                    break
+                }
+
+                case PLATFORM_ID.CRAZY_GAMES: {
+                    const i = parts.indexOf('game')
+                    const slug = i !== -1 ? parts[i + 1] : null
+                    if (slug) {
+                        return this.#formatGameName(slug)
+                    }
+                    break
+                }
+
+                case PLATFORM_ID.PLAYGAMA: {
+                    const i = parts.indexOf('game')
+                    const slug = i !== -1 ? parts[i + 1] : null
+                    if (slug) {
+                        return this.#formatGameName(slug)
+                    }
+                    const id = parts[0]
+                    const isInternalId = typeof id === 'string' && /^[a-z0-9]{10,}$/i.test(id)
+                    if (isInternalId) {
+                        return `Playgama ${id}`
+                    }
+                    break
+                }
+                default:
+                    break
+            }
+        } catch (err) {
+            return null
+        }
+        return null
+    }
+
+    #formatGameName(name) {
+        if (typeof name !== 'string' || name.length === 0) {
+            return ''
+        }
+        return name
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase())
     }
 }
 
