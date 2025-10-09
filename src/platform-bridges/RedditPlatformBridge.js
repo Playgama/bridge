@@ -63,6 +63,8 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                         this.#handlePurchase(message)
                     } else if (message.type === ACTION_NAME.GET_PURCHASES) {
                         this.#handleGetPurchases(message)
+                    } else if (message.type === ACTION_NAME.CREATE_POST) {
+                        this.#handleCreatePost(message)
                     }
                 }
             })
@@ -177,6 +179,18 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // social
+    createPost(options = {}) {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
+
+            this.#postMessage(ACTION_NAME.CREATE_POST, { options })
+        }
+
+        return promiseDecorator.promise
+    }
+
     #postMessage(type, data = {}) {
         window.parent.postMessage({ type, data }, '*')
     }
@@ -241,6 +255,14 @@ class RedditPlatformBridge extends PlatformBridgeBase {
             this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, message.data)
         } else {
             this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, message.data)
+        }
+    }
+
+    #handleCreatePost(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.CREATE_POST)
         }
     }
 }
