@@ -200,7 +200,7 @@ class PlatformModule extends ModuleBase {
                     break
                 }
 
-                case 'crazygames': {
+                case 'crazy_games': {
                     const i = parts.indexOf('game')
                     const slug = i !== -1 ? parts[i + 1] : null
                     if (slug) {
