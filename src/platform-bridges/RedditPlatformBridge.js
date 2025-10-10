@@ -189,6 +189,17 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    joinCommunity() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+
+            this.#postMessage(ACTION_NAME.JOIN_COMMUNITY)
+        }
+
+        return promiseDecorator.promise
+    }
+
     #postMessage(type, data = {}) {
         window.parent.postMessage({ type, data }, '*')
     }
