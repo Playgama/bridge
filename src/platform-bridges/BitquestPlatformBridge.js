@@ -27,7 +27,8 @@ import {
     LEADERBOARD_TYPE,
 } from '../constants'
 
-const SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
+const RELATIVE_SDK_URL = '/bqsdk.min.js'
+const ABSOLUTE_SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
     get platformId() {
@@ -67,7 +68,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            addJavaScript(SDK_URL).then(() => {
+            this.#loadSdkWithFallback().then(() => {
                 waitFor('bq').then(() => {
                     this._platformSdk = window.bq
 
@@ -447,6 +448,14 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                 this._setBannerState(mappedState)
             }
         })
+    }
+
+    async #loadSdkWithFallback() {
+        try {
+            await addJavaScript(RELATIVE_SDK_URL)
+        } catch (e1) {
+            await addJavaScript(ABSOLUTE_SDK_URL)
+        }
     }
 }
 
