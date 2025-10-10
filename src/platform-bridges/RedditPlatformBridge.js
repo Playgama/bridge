@@ -31,10 +31,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isShareSupported() {
-        return true
-    }
-
     get isCreatePostSupported() {
         return true
     }
@@ -65,6 +61,8 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                         this.#handleGetPurchases(message)
                     } else if (message.type === ACTION_NAME.CREATE_POST) {
                         this.#handleCreatePost(message)
+                    } else if (message.type === ACTION_NAME.JOIN_COMMUNITY) {
+                        this.#handleJoinCommunity()
                     }
                 }
             })
@@ -263,6 +261,14 @@ class RedditPlatformBridge extends PlatformBridgeBase {
             this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST)
         } else {
             this._rejectPromiseDecorator(ACTION_NAME.CREATE_POST)
+        }
+    }
+
+    #handleJoinCommunity(message) {
+        if (message.data?.success) {
+            this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        } else {
+            this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
         }
     }
 }
