@@ -73,6 +73,59 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             addJavaScript(SDK_URL).then(() => {
                 waitFor('PLAYGAMA_SDK').then(() => {
                     this._platformSdk = window.PLAYGAMA_SDK
+
+                    this._platformSdk.advService.subscribeToAdStateChanges((adType, state) => {
+                        if (adType === 'interstitial') {
+                            switch (state) {
+                                case 'open': {
+                                    this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                                    break
+                                }
+                                case 'empty': {
+                                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                                    break
+                                }
+                                case 'close': {
+                                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                                    break
+                                }
+                                case 'error': {
+                                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                                    break
+                                }
+                                default: {
+                                    break
+                                }
+                            }
+                        } else if (adType === 'rewarded') {
+                            switch (state) {
+                                case 'open': {
+                                    this._setRewardedState(REWARDED_STATE.OPENED)
+                                    break
+                                }
+                                case 'empty': {
+                                    this._setRewardedState(REWARDED_STATE.FAILED)
+                                    break
+                                }
+                                case 'rewarded': {
+                                    this._setRewardedState(REWARDED_STATE.REWARDED)
+                                    break
+                                }
+                                case 'close': {
+                                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                                    break
+                                }
+                                case 'error': {
+                                    this._setRewardedState(REWARDED_STATE.FAILED)
+                                    break
+                                }
+                                default: {
+                                    break
+                                }
+                            }
+                        }
+                    })
+
                     this.#getPlayer().then(() => {
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -200,40 +253,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showInterstitial() {
-        this._platformSdk.advService.showInterstitial({
-            onOpen: () => {
-                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-            },
-            onEmpty: () => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            },
-            onClose: () => {
-                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-            },
-            onError: () => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            },
-        })
+        this._platformSdk.advService.showInterstitial()
     }
 
     showRewarded() {
-        this._platformSdk.advService.showRewarded({
-            onOpen: () => {
-                this._setRewardedState(REWARDED_STATE.OPENED)
-            },
-            onRewarded: () => {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-            },
-            onEmpty: () => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            },
-            onClose: () => {
-                this._setRewardedState(REWARDED_STATE.CLOSED)
-            },
-            onError: () => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            },
-        })
+        this._platformSdk.advService.showRewarded()
     }
 
     authorizePlayer(options) {
