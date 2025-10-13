@@ -27,8 +27,9 @@ import {
     LEADERBOARD_TYPE,
 } from '../constants'
 
-const RELATIVE_SDK_URL = '/bqsdk.min.js'
-const ABSOLUTE_SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
+const PROD_SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
+const STAGE_SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
+const BANK_SDK_URL = 'https://app-global.memebeat.io/bqsdk.min.js'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
     get platformId() {
@@ -68,7 +69,25 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            this.#loadSdkWithFallback().then(() => {
+            const urlParams = new URLSearchParams(window.location.search)
+            const target = urlParams.get('target')
+            let sdkUrl
+
+            switch (target) {
+                case 'prod':
+                    sdkUrl = PROD_SDK_URL
+                    break
+                case 'stage':
+                    sdkUrl = STAGE_SDK_URL
+                    break
+                case 'bank':
+                    sdkUrl = BANK_SDK_URL
+                    break
+                default:
+                    sdkUrl = PROD_SDK_URL
+            }
+
+            addJavaScript(sdkUrl).then(() => {
                 waitFor('bq').then(() => {
                     this._platformSdk = window.bq
 
@@ -448,14 +467,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                 this._setBannerState(mappedState)
             }
         })
-    }
-
-    async #loadSdkWithFallback() {
-        try {
-            await addJavaScript(RELATIVE_SDK_URL)
-        } catch (e1) {
-            await addJavaScript(ABSOLUTE_SDK_URL)
-        }
     }
 }
 
