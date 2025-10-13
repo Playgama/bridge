@@ -23,6 +23,8 @@ import {
     STORAGE_TYPE,
     PLATFORM_MESSAGE,
     LEADERBOARD_TYPE,
+    REWARDED_STATE,
+    INTERSTITIAL_STATE,
 } from '../constants'
 
 const SDK_URL = 'https://www.youtube.com/game_api/v1'
@@ -39,6 +41,15 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         }
 
         return super.platformLanguage
+    }
+
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
     }
 
     // social
@@ -246,6 +257,30 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 return super.sendMessage(message)
             }
         }
+    }
+
+    // advertisement
+    showInterstitial() {
+        this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+        this._platformSdk.ads.requestInterstitialAd()
+            .then(() => {
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+            })
+            .catch(() => {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            })
+    }
+
+    showRewarded() {
+        this._setRewardedState(REWARDED_STATE.OPENED)
+        this._platformSdk.ads.requestInterstitialAd()
+            .then(() => {
+                this._setRewardedState(REWARDED_STATE.REWARDED)
+                this._setRewardedState(REWARDED_STATE.CLOSED)
+            })
+            .catch(() => {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            })
     }
 
     // leaderboards
