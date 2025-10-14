@@ -606,7 +606,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     async #getXsollaToken() {
-        await this._platformSdk.user.getXsollaUserToken()
+        return this._platformSdk.user.getXsollaUserToken()
     }
 
     async #getOrder(projectId, orderId, token) {
