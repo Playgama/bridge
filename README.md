@@ -20,6 +20,7 @@ One SDK for cross-platform publishing HTML5 games.
 + [BitQuest](https://t.me/BitquestGamesBot/start)
 + [Huawei](https://appgallery.huawei.com)
 + [JioGames](https://play.jiogames.com)
++ [YouTube](https://www.youtube.com/playables)
 + Other [Work In Progress]
 
 ## Plugins for game engines
