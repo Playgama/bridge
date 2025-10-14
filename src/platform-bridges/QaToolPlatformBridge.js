@@ -1259,7 +1259,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         const { config = {} } = data
         this._deviceType = config.deviceType ?? super.deviceType
-        this._platformLanguage = config.platformLanguage ?? super.platformLanguage
+        this._platformLanguage = config.platformLanguage
+            ? config.platformLanguage.toLowerCase()
+            : super.platformLanguage
         this._platformTld = config.platformTld ?? super.platformTld
         this._platformPayload = config.platformPayload ?? super.platformPayload
         this._leaderboardsType = config.leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
