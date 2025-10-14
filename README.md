@@ -21,6 +21,7 @@ One SDK for cross-platform publishing HTML5 games.
 + [Huawei](https://appgallery.huawei.com)
 + [JioGames](https://play.jiogames.com)
 + [YouTube](https://www.youtube.com/playables)
++ [Reddit](https://www.reddit.com/r/GamesOnReddit/)
 + Other [Work In Progress]
 
 ## Plugins for game engines
