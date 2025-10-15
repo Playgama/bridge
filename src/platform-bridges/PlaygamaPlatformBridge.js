@@ -24,6 +24,7 @@ import {
     REWARDED_STATE,
     STORAGE_TYPE,
     ERROR,
+    PLATFORM_MESSAGE,
 } from '../constants'
 
 const SDK_URL = 'https://developer.playgama.com/sdk/v1.js'
@@ -135,6 +136,19 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // platform
+    sendMessage(message) {
+        switch (message) {
+            case PLATFORM_MESSAGE.GAME_READY: {
+                this._platformSdk.platformService.gameReady()
+                return Promise.resolve()
+            }
+            default: {
+                return super.sendMessage(message)
+            }
+        }
     }
 
     // storage
