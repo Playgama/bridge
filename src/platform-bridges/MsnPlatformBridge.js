@@ -233,7 +233,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                         ...purchase.receipt,
                         receiptSignature: purchase.receiptSignature,
                     }
-                    delete mergedPurchase.productId
 
                     this._paymentsPurchases.push(mergedPurchase)
                     this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
@@ -344,7 +343,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             receiptSignature: response.receiptSignature,
                         }
 
-                        delete mergedPurchase.productId
                         return mergedPurchase
                     })
 
