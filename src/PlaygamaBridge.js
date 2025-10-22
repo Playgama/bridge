@@ -291,6 +291,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.ABSOLUTE_GAMES
             } else if (url.searchParams.has('playdeck')) {
                 platformId = PLATFORM_ID.PLAYDECK
+            } else if (url.hostname.includes('portalapp.')) {
+                platformId = PLATFORM_ID.PORTAL
             } else if (url.hash.includes('tgWebAppData')) {
                 platformId = PLATFORM_ID.TELEGRAM
             } else if (url.hostname.includes('y8')) {
@@ -309,11 +311,11 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.DISCORD
             } else if (url.hostname.includes('usercontent.goog')) {
                 platformId = PLATFORM_ID.YOUTUBE
-            } else if (url.hostname.includes('portalapp.')) {
-                platformId = PLATFORM_ID.PORTAL
             } else if (url.hostname.includes('devvit.')) {
                 platformId = PLATFORM_ID.REDDIT
             }
+
+            console.info('Version 4', platformId)
         }
 
         let modifiedOptions = options
