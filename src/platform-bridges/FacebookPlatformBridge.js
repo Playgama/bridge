@@ -321,11 +321,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             })
             .then(() => {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-            })
-            .catch(() => this._advertisementShowErrorPopup(false))
-            .finally(() => {
                 this.#preloadInterstitial(placement, true)
             })
+            .catch(() => this._advertisementShowErrorPopup(false))
     }
 
     preloadRewarded(placement) {
@@ -341,11 +339,9 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             .then(() => {
                 this._setRewardedState(REWARDED_STATE.REWARDED)
                 this._setRewardedState(REWARDED_STATE.CLOSED)
-            })
-            .catch(() => this._advertisementShowErrorPopup(true))
-            .finally(() => {
                 this.#preloadRewarded(placement, true)
             })
+            .catch(() => this._advertisementShowErrorPopup(true))
     }
 
     // leaderboards
