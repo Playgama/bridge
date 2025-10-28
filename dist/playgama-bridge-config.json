@@ -1,5 +1,5 @@
 {
-    "$schema": "https://bridge.playgama.com/v1.26.0/schema.json",
+    "$schema": "https://bridge.playgama.com/v1.26.1/schema.json",
     "platforms": {
         "game_distribution": {
             "gameId": ""
