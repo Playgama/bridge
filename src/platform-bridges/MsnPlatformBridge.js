@@ -327,30 +327,34 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this._platformSdk.iap.getAllPurchasesAsync({ productId: this._options.gameId })
-                .then((response) => {
-                    if (response.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, response.description)
-                        return
-                    }
-
-                    const products = this._paymentsGetProductsPlatformData()
-                    this._paymentsPurchases = response.receipts.map((purchase) => {
-                        const product = products.find((p) => p.id === purchase.productId)
-                        const mergedPurchase = {
-                            id: product.id,
-                            ...purchase,
-                            receiptSignature: response.receiptSignature,
+            if (!this._isPlayerAuthorized) {
+                this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, 'User not authorized')
+            } else {
+                this._platformSdk.iap.getAllPurchasesAsync({ productId: this._options.gameId })
+                    .then((response) => {
+                        if (response.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
+                            this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, response.description)
+                            return
                         }
 
-                        return mergedPurchase
-                    })
+                        const products = this._paymentsGetProductsPlatformData()
+                        this._paymentsPurchases = response.receipts.map((purchase) => {
+                            const product = products.find((p) => p.id === purchase.productId)
+                            const mergedPurchase = {
+                                id: product.id,
+                                ...purchase,
+                                receiptSignature: response.receiptSignature,
+                            }
 
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
-                })
+                            return mergedPurchase
+                        })
+
+                        this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                    })
+                    .catch((error) => {
+                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                    })
+            }
         }
 
         return promiseDecorator.promise
