@@ -41,6 +41,7 @@ import PaymentsModule from './modules/PaymentsModule'
 import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
 import AchievementsModule from './modules/AchievementsModule'
+import analyticsModule from './modules/AnalyticsModule'
 
 import PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
 import VkPlatformBridge from './platform-bridges/VkPlatformBridge'
@@ -133,6 +134,10 @@ class PlaygamaBridge {
         return this.#getModule(MODULE_NAME.CLIPBOARD)
     }
 
+    get analytics() {
+        return this.#getModule(MODULE_NAME.ANALYTICS)
+    }
+
     get engine() {
         return this.#engine
     }
@@ -199,6 +204,8 @@ class PlaygamaBridge {
         if (!this.#initializationPromiseDecorator) {
             this.#initializationPromiseDecorator = new PromiseDecorator()
 
+            const startTime = performance.now()
+
             let configFilePath = './playgama-bridge-config.json'
             if (options && options.configFilePath) {
                 configFilePath = options.configFilePath
@@ -232,12 +239,17 @@ class PlaygamaBridge {
                     this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.ANALYTICS] = analyticsModule.initialize(this.#platformBridge)
 
                     this.#platformBridge
                         .initialize()
                         .then(() => {
                             this.#isInitialized = true
                             console.info(`%c PlaygamaBridge v${this.version} initialized. `, 'background: #01A5DA; color: white')
+
+                            const endTime = performance.now()
+                            const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
+                            analyticsModule.send('initialization_completed', { time_s: timeInSeconds })
 
                             if (this.#initializationPromiseDecorator) {
                                 this.#initializationPromiseDecorator.resolve()
@@ -253,6 +265,13 @@ class PlaygamaBridge {
                                 const placement = this.#platformBridge.options.advertisement.rewarded.preloadOnStart
                                 this.#modules[MODULE_NAME.ADVERTISEMENT].preloadRewarded(placement)
                             }
+                        })
+                        .catch((error) => {
+                            const endTime = performance.now()
+                            const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
+                            const errorMessage = error?.message || String(error)
+                            analyticsModule.send('initialization_failed', { error: errorMessage, time_s: timeInSeconds })
+                            console.error('PlaygamaBridge initialization failed:', error)
                         })
                         .finally(() => {
                             setTimeout(

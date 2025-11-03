@@ -55,6 +55,7 @@ export const MODULE_NAME = {
     REMOTE_CONFIG: 'remote_config',
     CLIPBOARD: 'clipboard',
     ACHIEVEMENTS: 'achievements',
+    ANALYTICS: 'analytics',
 }
 
 export const EVENT_NAME = {
