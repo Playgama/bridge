@@ -237,7 +237,10 @@ class PlaygamaBridge {
                         .initialize()
                         .then(() => {
                             this.#isInitialized = true
-                            console.info(`%c PlaygamaBridge v${this.version} initialized. `, 'background: #01A5DA; color: white')
+
+                            if (!options.silent) {
+                                console.info(`%c PlaygamaBridge v${this.version} initialized. `, 'background: #01A5DA; color: white')
+                            }
 
                             if (this.#initializationPromiseDecorator) {
                                 this.#initializationPromiseDecorator.resolve()

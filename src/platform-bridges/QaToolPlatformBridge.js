@@ -73,7 +73,7 @@ const REWARD_STATUS = {
     FAILED: 'failed',
 }
 
-const SUPPORTED_FEATURES = {
+export const SUPPORTED_FEATURES = {
     PLAYER_AUTHORIZATION: 'isPlayerAuthorizationSupported',
 
     PAYMENTS: 'isPaymentsSupported',
