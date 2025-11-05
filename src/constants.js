@@ -40,6 +40,7 @@ export const PLATFORM_ID = {
     YOUTUBE: 'youtube',
     PORTAL: 'portal',
     REDDIT: 'reddit',
+    XIAOMI: 'xiaomi',
 }
 
 export const MODULE_NAME = {
@@ -174,4 +175,5 @@ export const ERROR = {
     FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
     DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
+    XIAOMI_GAME_PARAMS_NOT_FOUND: { message: 'Xiaomi Game params are not found' },
 }
