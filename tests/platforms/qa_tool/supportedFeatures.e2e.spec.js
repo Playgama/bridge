@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, test, expect } from 'vitest'
 import { PLATFORM_ID, STORAGE_TYPE } from '../../../src/constants'
 import { createBridgeByPlatformId } from '../../_helpers/bridge'
 import { SUPPORTED_FEATURES } from '../../../src/platform-bridges/QaToolPlatformBridge'
@@ -98,21 +98,15 @@ const FEATURES = [
 ]
 
 describe('Platform QA Tool (integration, PlaygamaBridge)', () => {
-    it('Disabled all features', async () => {
+    test.each(FEATURES)('Disabled feature %s', async (feature) => {
         const { bridge } = await createBridgeByPlatformId(PLATFORM_ID.QA_TOOL)
-
-        for (const feature of FEATURES) {
-            expect(feature.check(bridge)).toBe(false)
-        }
-
+        expect(feature.check(bridge)).toBe(false)
     })
 
-    it('Enabled features', async () => {
-        for (const feature of FEATURES) {
-            const { bridge } = await createBridgeByPlatformId(PLATFORM_ID.QA_TOOL, { 
-                supportedFeatures: feature.keys 
-            })
-            expect(feature.check(bridge)).toBe(true)
-        }
+    test.each(FEATURES)('Enabled feature %s', async (feature) => {
+        const { bridge } = await createBridgeByPlatformId(PLATFORM_ID.QA_TOOL, { 
+            supportedFeatures: feature.keys
+        })
+        expect(feature.check(bridge)).toBe(true)
     })
 })

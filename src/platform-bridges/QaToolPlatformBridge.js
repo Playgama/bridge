@@ -36,11 +36,13 @@ const ADVERTISEMENT_TYPE = {
     BANNER: 'banner',
 }
 
+const MESSAGE_SENDER = 'bridge'
+
 const MODULE_NAME_QA = {
     LIVENESS: 'liveness',
 }
 
-const ACTION_NAME_QA = {
+export const ACTION_NAME_QA = {
     IS_STORAGE_AVAILABLE: 'is_storage_available',
     IS_STORAGE_SUPPORTED: 'is_storage_supported',
     GET_DATA_FROM_STORAGE: 'get_data_from_storage',
@@ -437,6 +439,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         data?.type === MODULE_NAME.STORAGE
                         && data.action === ACTION_NAME_QA.GET_DATA_FROM_STORAGE
                         && data.id === messageId
+                        && data.sender !== MESSAGE_SENDER
                     ) {
                         if (Array.isArray(key)) {
                             resolve(key.map((k) => data.storage[k]))
@@ -454,6 +457,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     type: MODULE_NAME.STORAGE,
                     action: ACTION_NAME_QA.GET_DATA_FROM_STORAGE,
                     id: messageId,
+                    sender: MESSAGE_SENDER,
                     options: { key, storageType, tryParseJson },
                 })
             })

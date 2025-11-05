@@ -24,6 +24,20 @@ export function createMessageBroker(window) {
         }
     }
 
+    const mockMessageResponse = (moduleName, actionName, callback) => {
+        addListener('message', async ({ data }) => {
+            if (data.type === moduleName && data.action === actionName && data.sender !== 'platform') {
+                const result = callback(data)
+                send({
+                    type: moduleName,
+                    action: actionName,
+                    sender: 'platform',
+                    ...result,
+                })
+            }
+        })
+    }
+
     window.addEventListener = (message, cb) => {
         addListener(message, cb)
     }
@@ -38,5 +52,6 @@ export function createMessageBroker(window) {
         addListener,
         removeListener,
         send,
+        mockMessageResponse
     }
 }
