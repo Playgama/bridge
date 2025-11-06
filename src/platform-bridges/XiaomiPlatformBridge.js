@@ -20,10 +20,12 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     ERROR,
+    BANNER_STATE,
+    BANNER_CONTAINER_ID,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    BANNER_STATE,
 } from '../constants'
+import { addAdsByGoogle, createAdvertisementBannerContainer } from '../common/utils'
 
 class XiaomiPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -55,16 +57,25 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
             if (
                 !this._options
-                || !this._options.devId
-                || !this._options.publisherId
+                || !this._options.adSenseId
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
                     ERROR.XIAOMI_GAME_PARAMS_NOT_FOUND,
                 )
             } else {
-                this._isInitialized = true
-                this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                addAdsByGoogle({
+                    adSenseId: this._options.adSenseId,
+                }).then((showAd) => {
+                    this._showAd = showAd
+                    this._isInitialized = true
+                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                }).catch((error) => {
+                    this._rejectPromiseDecorator(
+                        ACTION_NAME.INITIALIZE,
+                        error,
+                    )
+                })
             }
         }
 
@@ -72,20 +83,84 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
     }
 
     // advertisement
-    showBanner() {
-        this._setBannerState(BANNER_STATE.FAILED)
+    showBanner(position, placement) {
+        if (this._bannerContainer) {
+            return
+        }
+
+        this._bannerPlacement = placement
+        this._bannerContainer = createAdvertisementBannerContainer(position)
+
+        const ins = this.#createIns(placement, { 'data-container-id': BANNER_CONTAINER_ID })
+        this._bannerContainer.appendChild(ins)
     }
 
     hideBanner() {
-        this._setBannerState(BANNER_STATE.FAILED)
+        this._bannerContainer?.remove()
+        this._bannerContainer = null
+
+        this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
-    showInterstitial() {
-        this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+    showInterstitial(placement) {
+        if (!this._showAd) {
+            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
+
+        this._showAd({
+            type: 'start',
+            name: placement,
+            beforeAd: () => {
+                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            },
+            afterAd: () => {
+                if (this.interstitialState !== INTERSTITIAL_STATE.FAILED) {
+                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                }
+            },
+            adBreakDone: (placementInfo) => {
+                if (placementInfo.breakStatus !== 'viewed') {
+                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                }
+            },
+        })
     }
 
-    showRewarded() {
-        this._setRewardedState(REWARDED_STATE.FAILED)
+    showRewarded(placement) {
+        if (!this._showAd) {
+            this._setRewardedState(REWARDED_STATE.FAILED)
+            return
+        }
+
+        this._showAd({
+            type: 'reward',
+            name: placement,
+            beforeAd: () => {
+                this._setRewardedState(REWARDED_STATE.OPENED)
+            },
+            afterAd: () => {
+                if (this.rewardedState !== REWARDED_STATE.FAILED) {
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                }
+            },
+            beforeReward: (showAdFn) => { showAdFn(0) },
+            adDismissed: () => {},
+            adViewed: () => { this._setRewardedState(REWARDED_STATE.REWARDED) },
+            adBreakDone: (placementInfo) => {
+                if (placementInfo.breakStatus === 'frequencyCapped' || placementInfo.breakStatus === 'other') {
+                    this._setRewardedState(REWARDED_STATE.FAILED)
+                }
+            },
+        })
+    }
+
+    #createIns(placementId, extraAttrs = {}) {
+        const ins = document.createinsement('ins')
+        ins.setAttribute('data-adspot-key', placementId)
+        Object.entries(extraAttrs).forEach(([k, v]) => ins.setAttribute(k, String(v)))
+
+        return ins
     }
 }
 
