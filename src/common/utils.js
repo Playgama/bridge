@@ -41,7 +41,7 @@ export const addAdsByGoogle = ({
     interstitialPlacementId,
     rewardedPlacementId,
     adFrequencyHint = '180s',
-}, config) => new Promise((resolve) => {
+}, config = {}) => new Promise((resolve) => {
     const script = document.createElement('script')
     script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
 

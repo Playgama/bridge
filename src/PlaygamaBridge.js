@@ -68,6 +68,7 @@ import { deepMerge } from './common/utils'
 import JioGamesPlatformBridge from './platform-bridges/JioGamesPlatformBridge'
 import PortalPlatformBridge from './platform-bridges/PortalPlatformBridge'
 import RedditPlatformBridge from './platform-bridges/RedditPlatformBridge'
+import XiaomiPlatformBridge from './platform-bridges/XiaomiPlatformBridge'
 
 class PlaygamaBridge {
     get version() {
@@ -433,6 +434,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.REDDIT: {
                 this.#platformBridge = new RedditPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.XIAOMI: {
+                this.#platformBridge = new XiaomiPlatformBridge(modifiedOptions)
                 break
             }
             default: {
