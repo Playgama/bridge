@@ -91,7 +91,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         this._bannerPlacement = placement
         this._bannerContainer = createAdvertisementBannerContainer(position)
 
-        const ins = this.#createIns(placement, { 'data-container-id': BANNER_CONTAINER_ID })
+        const ins = this.#createIns(placement)
         this._bannerContainer.appendChild(ins)
     }
 
@@ -145,7 +145,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                 }
             },
             beforeReward: (showAdFn) => { showAdFn(0) },
-            adDismissed: () => {},
+            adDismissed: () => { },
             adViewed: () => { this._setRewardedState(REWARDED_STATE.REWARDED) },
             adBreakDone: (placementInfo) => {
                 if (placementInfo.breakStatus === 'frequencyCapped' || placementInfo.breakStatus === 'other') {
@@ -155,10 +155,12 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    #createIns(placementId, extraAttrs = {}) {
+    #createIns(placementId) {
         const ins = document.createinsement('ins')
-        ins.setAttribute('data-adspot-key', placementId)
-        Object.entries(extraAttrs).forEach(([k, v]) => ins.setAttribute(k, String(v)))
+        ins.setAttribute('data-ad-client', this._options.adSenseId)
+        ins.setAttribute('data-ad-slot-key', placementId)
+        ins.setAttribute('data-ad-format', 'auto')
+        ins.setAttribute('data-container-id', BANNER_CONTAINER_ID)
 
         return ins
     }
