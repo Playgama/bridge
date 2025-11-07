@@ -64,11 +64,9 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                     ERROR.XIAOMI_GAME_PARAMS_NOT_FOUND,
                 )
             } else {
-                const testOptions = this._options.testMode ? { 'data-adbreak-test': 'on' } : {}
-
                 addAdsByGoogle({
                     adSenseId: this._options.adSenseId,
-                    ...testOptions,
+                    testMode: !!this._options.testMode,
                 }).then((showAd) => {
                     this._showAd = showAd
                     this._isInitialized = true

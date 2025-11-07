@@ -41,6 +41,7 @@ export const addAdsByGoogle = ({
     interstitialPlacementId,
     rewardedPlacementId,
     adFrequencyHint = '180s',
+    testMode = false,
 }, config = {}) => new Promise((resolve) => {
     const script = document.createElement('script')
     script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
@@ -59,6 +60,10 @@ export const addAdsByGoogle = ({
 
     if (rewardedPlacementId) {
         script.setAttribute('data-admob-rewarded-slot', rewardedPlacementId)
+    }
+
+    if (testMode) {
+        script.setAttribute('data-adbreak-test', 'on')
     }
 
     script.setAttribute('data-ad-frequency-hint', adFrequencyHint)
