@@ -89,22 +89,13 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this._setBannerState(BANNER_STATE.LOADING)
         this._bannerPlacement = placement
         this._bannerContainer = createAdvertisementBannerContainer(position)
 
         const ins = this.#createIns(placement)
         this._bannerContainer.appendChild(ins)
 
-        try {
-            window.adsbygoogle = window.adsbygoogle || []
-            window.adsbygoogle.push({})
-            this._setBannerState(BANNER_STATE.SHOWN)
-        } catch (error) {
-            this._bannerContainer.remove()
-            this._bannerContainer = null
-            this._setBannerState(BANNER_STATE.FAILED)
-        }
+        this._setBannerState(BANNER_STATE.SHOWN)
     }
 
     hideBanner() {
