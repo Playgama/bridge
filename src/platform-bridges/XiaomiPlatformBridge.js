@@ -96,6 +96,8 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
         const ins = this.#createIns(placement)
         this._bannerContainer.appendChild(ins)
+
+        this._setBannerState(BANNER_STATE.SHOWN)
     }
 
     hideBanner() {
@@ -159,11 +161,13 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
     }
 
     #createIns(placementId) {
-        const ins = document.createinsement('ins')
+        const ins = document.createElement('ins')
+        ins.style.display = 'block'
         ins.setAttribute('data-ad-client', this._options.adSenseId)
-        ins.setAttribute('data-ad-slot-key', placementId)
+        ins.setAttribute('data-ad-slot', placementId)
         ins.setAttribute('data-ad-format', 'auto')
         ins.setAttribute('data-container-id', BANNER_CONTAINER_ID)
+        ins.setAttribute('data-full-width-responsive', 'true')
 
         return ins
     }

@@ -62,6 +62,7 @@ export const addAdsByGoogle = ({
     }
 
     script.setAttribute('data-ad-frequency-hint', adFrequencyHint)
+    script.setAttribute('crossorigin', 'anonymous')
 
     script.addEventListener('load', () => {
         window.adsbygoogle = window.adsbygoogle || []
