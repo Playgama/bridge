@@ -168,6 +168,10 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         ins.setAttribute('data-container-id', BANNER_CONTAINER_ID)
         ins.setAttribute('data-full-width-responsive', 'true')
 
+        if (this._options.testMode) {
+            ins.setAttribute('data-adtest', 'on')
+        }
+
         return ins
     }
 }
