@@ -1,5 +1,6 @@
 {
     "$schema": "https://bridge.playgama.com/v1.26.1/schema.json",
+    "forciblySetPlatformId": "xiaomi",
     "platforms": {
         "game_distribution": {
             "gameId": ""
@@ -47,10 +48,19 @@
         },
         "xiaomi": {
             "adSenseId": "",
-            "testMode": false
+            "hostId": ""
         }
     },
     "advertisement": {
+        "banner": {
+            "placementFallback": "banner-placement",
+            "placements": [
+                {
+                    "id": "banner-placement",
+                    "xiaomi": "6265265296"
+                }
+            ]
+        },
         "interstitial": {
             "preloadOnStart": true
         },

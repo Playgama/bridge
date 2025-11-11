@@ -67,6 +67,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             if (
                 !this._options
                 || !this._options.adSenseId
+                || !this._options.hostId
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
@@ -75,6 +76,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             } else {
                 addAdsByGoogle({
                     adSenseId: this._options.adSenseId,
+                    hostId: this._options.hostId,
                     testMode: !!this._options.testMode,
                 }).then((showAd) => {
                     this._showAd = showAd
