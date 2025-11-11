@@ -24,6 +24,7 @@ import {
     BANNER_CONTAINER_ID,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    PLATFORM_MESSAGE,
 } from '../constants'
 import { addAdsByGoogle, createAdvertisementBannerContainer } from '../common/utils'
 
@@ -49,6 +50,14 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
+        }
+
+        try {
+            if (window.funmax && window.funmax.loadStart) {
+                window.funmax.loadStart()
+            }
+        } catch (e) {
+            console.error(e)
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -81,6 +90,26 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    sendMessage(message) {
+        switch (message) {
+            case PLATFORM_MESSAGE.GAME_READY: {
+                return new Promise((resolve) => {
+                    try {
+                        if (window.funmax && window.funmax.loadReady) {
+                            window.funmax.loadReady()
+                        }
+                    } catch (e) {
+                        console.error(e)
+                    }
+                    resolve()
+                })
+            }
+            default: {
+                return super.sendMessage(message)
+            }
+        }
     }
 
     // advertisement
