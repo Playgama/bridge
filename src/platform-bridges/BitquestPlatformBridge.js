@@ -177,14 +177,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     async setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                if (!Array.isArray(value)) {
-                    throw new Error('Value must be an array if key is an array')
-                }
-
-                if (key.length !== value.length) {
-                    throw new Error('Key and value arrays must have the same length')
-                }
-
                 await this._platformSdk.storage.set(key, value, 'platform_internal')
                 return
             }
