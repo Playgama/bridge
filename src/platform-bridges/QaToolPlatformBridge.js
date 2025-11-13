@@ -722,7 +722,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, new Error('Invalid purchase'))
                     return
                 }
-    
                 if (purchase?.status) {
                     const mergedPurchase = { id, ...purchase.purchaseData }
                     this._paymentsPurchases.push(mergedPurchase)
@@ -1068,7 +1067,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #requestMessage(type, action, payload = {}, options = {}) {
         const messageId = this.#messageBroker.generateMessageId()
 
-        const mergedOptions = Object.assign({ timeout: 0 }, options)
+        const mergedOptions = {
+            timeout: 0,
+            ...options,
+        }
 
         return new Promise((resolve, reject) => {
             const messageHandler = ({ data }) => {
