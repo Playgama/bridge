@@ -176,15 +176,9 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     async setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                await this._platformSdk.storage.set(key, value, 'platform_internal')
-                return
-            }
-
             await this._platformSdk.storage.set(key, value, 'platform_internal')
             return
         }
-
         await super.setDataToStorage(key, value, storageType)
     }
 
