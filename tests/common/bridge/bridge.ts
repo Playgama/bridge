@@ -25,6 +25,8 @@ async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeRe
     const messageBroker = createMessageBroker(testGlobal)
     const bridge = new PlaygamaBridge()
 
+    testGlobal.console.info = vi.fn().mockImplementation(() => {})
+
     await PlaygamaSdkEmulator.create(testGlobal)
     await AbsoluteGamesSdkEmulator.create(testGlobal)
     const qaToolSdk = await QaToolSdkEmulator.create(testGlobal, messageBroker)
@@ -51,7 +53,6 @@ async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeRe
     }
 
     mergedOptions.bridgeOptions = mergedOptions.bridgeOptions || {}
-    mergedOptions.bridgeOptions.silent = true
     await bridge.initialize(mergedOptions.bridgeOptions)
     
     return { bridge, messageBroker, mockPlatformAction }
