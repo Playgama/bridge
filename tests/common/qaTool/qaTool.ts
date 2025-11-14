@@ -1,77 +1,106 @@
 import { MODULE_NAME } from '../../../src/constants'
 import { ACTION_NAME_QA } from '../../../src/platform-bridges/QaToolPlatformBridge'
 import { ACTION_NAME } from '../../../src/constants'
-import type { MessageBrokerInterface } from '../messageBrokerMock'
 import type { TestGlobalThis } from '../../common/types'
-
-type MockFunction = (callback: (...args: unknown[]) => unknown) => void
+import { StateManager } from '../stateManager/stateManager'
+import type { QaToolMessageAuthorizePlayer, QaToolMessageAuthorizePlayerResponse, QaToolMessageData, QaToolMessageGetDataFromStorage, QaToolMessageGetDataFromStorageResponse } from './qaTool.types'
 
 export class QaToolSdkEmulator {
     static async create(
         testGlobalThis: TestGlobalThis, 
-        messageBroker: MessageBrokerInterface
+        stateManager: StateManager
     ): Promise<QaToolSdkEmulator> {
-        const instance = new QaToolSdkEmulator(testGlobalThis, messageBroker)
+        const instance = new QaToolSdkEmulator(
+            testGlobalThis, 
+            stateManager
+        )
         await instance.initialize()
         return instance
     }
 
     constructor(
         private readonly testGlobalThis: TestGlobalThis,
-        private readonly messageBroker: MessageBrokerInterface
+        private readonly stateManager: StateManager
     ) {}
 
-    async initialize(): Promise<void> {}
+    async initialize(): Promise<void> {
+        this.testGlobalThis.addEventListener('message', ({ data }) => {
+            const messageData = data as QaToolMessageData
 
-    // mockState(state: string): void {}
+            if (messageData.source === 'platform' || !messageData.type || !messageData.action) return
 
-    mockFunction(functionName: string, callback: (...args: unknown[]) => unknown): void {
-       const mockFunction = this.getMockFunction(functionName)
-       if (mockFunction) {
-            return mockFunction.call(this, callback)
-       }
-       
-       throw new Error(`Mock function for ${functionName} not found`)
+            if (messageData.type === MODULE_NAME.PLATFORM) {
+                // 
+            } 
+            else if (messageData.type === MODULE_NAME.PLAYER) {
+                if (messageData.action === ACTION_NAME.AUTHORIZE_PLAYER) {
+                    this.handleAuthorizePlayer(messageData as QaToolMessageAuthorizePlayer)
+                } else {
+                    console.error('Unsupported action', messageData.type, messageData.action)
+                }
+            }
+            else if (messageData.type === 'liveness') {
+                // 
+            }
+            else if (messageData.type === MODULE_NAME.STORAGE) {
+                if (messageData.action === ACTION_NAME_QA.GET_DATA_FROM_STORAGE) {
+                    this.handleGetDataFromStorage(messageData as QaToolMessageGetDataFromStorage)
+                } else {
+                    if (![
+                        ACTION_NAME_QA.IS_STORAGE_AVAILABLE, 
+                        ACTION_NAME_QA.IS_STORAGE_SUPPORTED
+                    ].includes(messageData.action)) {
+                        console.error('Unsupported action', messageData.type, messageData.action)
+                    }
+                }
+            } else {
+                console.error('Unsupported module', messageData.type)
+            }
+        })
     }
 
-    private getMockFunction(functionName: string): MockFunction | null {
-        switch (functionName) {
-            case 'storage.get':
-                return this._getStorageMockFunction
-            case 'player.authorize':
-                return this._getPlayerAuthorizeMockFunction
-            default:
-                return null
+    private handleGetDataFromStorage(data: QaToolMessageGetDataFromStorage): void {
+        const key = data.options.key
+        const storageType = data.options.storageType
+
+        const result: QaToolMessageGetDataFromStorageResponse['storage'] = {}
+        if (Array.isArray(key)) {
+            for (const k of key) {
+                result[k] = this.stateManager.getStorageKey(storageType, k)
+            }
+        } else {
+            result[key] = this.stateManager.getStorageKey(storageType, key)
         }
+
+        const response: QaToolMessageGetDataFromStorageResponse = {
+            type: data.type,
+            action: data.action,
+            id: data.id,
+            source: 'platform',
+            storage: result,
+        }
+
+        this.testGlobalThis.postMessage(response, '*')
     }
 
-    private _getStorageMockFunction(callback: (...args: unknown[]) => unknown): void {
-        this.messageBroker.mockMessageResponse(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, (data) => {
-            const messageData = data as { type?: string; action?: string; id?: string; options?: { key?: string | string[] }; [key: string]: unknown }
-            return {
-                type: messageData.type,
-                action: messageData.action,
-                id: messageData.id,
-                storage: callback(messageData.options?.key),
-            }
-        })
-    }
-
-    private _getPlayerAuthorizeMockFunction(callback: (...args: unknown[]) => unknown): void {
-        this.messageBroker.mockMessageResponse(MODULE_NAME.PLAYER, ACTION_NAME.AUTHORIZE_PLAYER, (data) => {
-            const messageData = data as { type?: string; action?: string; id?: string; options?: Record<string, unknown>; [key: string]: unknown }
-            return {
-                type: messageData.type,
-                action: messageData.action,
-                id: messageData.id,
-                ...(callback(messageData.options || {}) as Record<string, unknown>),
-            }
-        })
-    }
-
-    mockState(state: string): void {
-        // Implementation for mocking state
-        throw new Error(`Mock state for ${state} not implemented`)
+    private handleAuthorizePlayer(data: QaToolMessageAuthorizePlayer): void {
+        const state = this.stateManager.getPlayerState()
+        const response: QaToolMessageAuthorizePlayerResponse = {
+            type: data.type,
+            action: data.action,
+            id: data.id,
+            source: 'platform',
+            auth: {
+                status: state?.authorized ? 'success' : 'failed',
+            },
+            player: state?.authorized ? {
+                id: state.id || '',
+                name: state.name || '',
+                isAuthorized: state.authorized,
+                photos: state.photos || [],
+                extra: state.extra || {},
+            } : null,
+        }
+        this.testGlobalThis.postMessage(response, '*')
     }
 }
-

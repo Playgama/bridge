@@ -21,4 +21,3 @@ describe('initialize (integration, PlaygamaBridge)', () => {
         expect(bridge.platform.id).toBe(platformId)
     })
 })
-

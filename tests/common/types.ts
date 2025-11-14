@@ -1,6 +1,5 @@
 import { vi } from 'vitest'
 import type { PlaygamaSdk } from './playgama/playgama.types'
-import type { MessageListener } from './messageBrokerMock'
 
 export type TestGlobalThis = Omit<typeof globalThis, 'addEventListener' | 'removeEventListener'> & {
     PLUGIN_VERSION?: string
@@ -18,10 +17,9 @@ export type TestGlobalThis = Omit<typeof globalThis, 'addEventListener' | 'remov
         on: (event: string, callback: () => void) => unknown
         getUsers: (playerIds: unknown, callback: (response: { data: unknown[] }) => void) => void
     }
-    addEventListener: (message: string, cb: MessageListener) => void
-    removeEventListener: (message: string, cb: MessageListener) => void
+    addEventListener: (message: string, cb: (event: { data: any }) => unknown) => void
+    removeEventListener: (message: string, cb: (event: { data: any }) => unknown) => void
     parent?: {
         postMessage: (message: unknown, target: string) => void
     }
 }
-

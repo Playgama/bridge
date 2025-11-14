@@ -17,13 +17,14 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
     ])(`Storage.get single key with ${STORAGE_TYPE.LOCAL_STORAGE} for %s platform`, async (platformId: string) => {
         const storageType = STORAGE_TYPE.LOCAL_STORAGE
 
-        const { bridge, mockPlatformAction } = await createBridgeByPlatformId(platformId, { supportedFeatures: [SUPPORTED_FEATURES.STORAGE_LOCAL] })
+        const { bridge, stateManager } = await createBridgeByPlatformId(platformId, { supportedFeatures: [SUPPORTED_FEATURES.STORAGE_LOCAL] })
         expect(bridge.storage.isSupported(storageType)).toBe(true)
         expect(bridge.storage.isAvailable(storageType)).toBe(true)
 
-        mockPlatformAction('storage.get', (key: unknown) => ({ [key as string]: 'value_1' }))
+        stateManager.setStorageKey(STORAGE_TYPE.LOCAL_STORAGE, 'test', 'value_1')
 
         const value = await bridge.storage.get('test', storageType)
+        console.log('value', value)
 
         expect(value).toBe('value_1')
     })
@@ -33,14 +34,12 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
     ])(`Storage.get multiple keys with ${STORAGE_TYPE.LOCAL_STORAGE} for %s platform`, async (platformId: string) => {
         const storageType = STORAGE_TYPE.LOCAL_STORAGE
 
-        const { bridge, mockPlatformAction } = await createBridgeByPlatformId(platformId, { supportedFeatures: [SUPPORTED_FEATURES.STORAGE_LOCAL] })
+        const { bridge, stateManager } = await createBridgeByPlatformId(platformId, { supportedFeatures: [SUPPORTED_FEATURES.STORAGE_LOCAL] })
         expect(bridge.storage.isSupported(storageType)).toBe(true)
         expect(bridge.storage.isAvailable(storageType)).toBe(true)
 
-        mockPlatformAction('storage.get', (...args: unknown[]) => {
-            const [key1, key2] = args[0] as unknown[]
-            return { [key1 as string]: 'value_1', [key2 as string]: 'value_2' }
-        })
+        stateManager.setStorageKey(STORAGE_TYPE.LOCAL_STORAGE, 'test', 'value_1')
+        stateManager.setStorageKey(STORAGE_TYPE.LOCAL_STORAGE, 'test_2', 'value_2')
 
         const value = await bridge.storage.get(['test', 'test_2'], storageType)
 
@@ -53,11 +52,11 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
     ])(`Cloud Storage should be not available for unauthorized player on %s platform`, async (platformId: string) => {
         const storageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
-        const { bridge, mockPlatformAction } = await createBridgeByPlatformId(platformId, { supportedFeatures: [SUPPORTED_FEATURES.STORAGE_INTERNAL] })
+        const { bridge, stateManager } = await createBridgeByPlatformId(platformId, { supportedFeatures: [SUPPORTED_FEATURES.STORAGE_INTERNAL] })
         expect(bridge.storage.isSupported(storageType)).toBe(true)
         expect(bridge.storage.isAvailable(storageType)).toBe(false)
 
-        mockPlatformAction('storage.get', (key: unknown) => ({ [key as string]: 'value_1' }))
+        stateManager.setStorageKey(STORAGE_TYPE.PLATFORM_INTERNAL, 'test', 'value_1')
         const value = bridge.storage.get('test', storageType)
 
         expect(value).rejects.toBe(undefined)
@@ -67,17 +66,17 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
         PLATFORM_ID.QA_TOOL
     ])(`Cloud Storage should be available for authorized player on %s platform`, async (platformId: string) => {
         const storageType = STORAGE_TYPE.PLATFORM_INTERNAL
-        const { bridge, mockPlatformAction } = await createBridgeByPlatformId(platformId, { supportedFeatures: [
+        const { bridge, stateManager } = await createBridgeByPlatformId(platformId, { supportedFeatures: [
             SUPPORTED_FEATURES.PLAYER_AUTHORIZATION,
             SUPPORTED_FEATURES.STORAGE_INTERNAL
         ]})
 
-        mockPlatformAction('player.authorize', () => ({ auth: { status: 'success' }, player: { userId: '123', isAuthorized: true } }))
+        stateManager.setPlayerState({ authorized: true, id: '123' })
         await bridge.player.authorize()
         
         expect(bridge.storage.isAvailable(storageType)).toBe(true)
 
-        mockPlatformAction('storage.get', (key: unknown) => ({ [key as string]: 'value_1' }))
+        stateManager.setStorageKey(STORAGE_TYPE.PLATFORM_INTERNAL, 'test', 'value_1')
         const value = await bridge.storage.get('test', storageType)
 
         expect(value).toBe('value_1')

@@ -10,64 +10,52 @@ export interface MessageBrokerInterface {
     mockMessageResponse: (moduleName: string, actionName: string, callback: MessageCallback) => void
 }
 
-export function createMessageBroker(testGlobalThis: TestGlobalThis): MessageBrokerInterface {
-    const listeners = new Map<string, Set<MessageListener>>()
+export class MessageBroker {
+    private listeners: Map<string, Set<MessageListener>> = new Map()
 
-    const addListener = (message: string, cb: MessageListener): void => {
-        const messageListeners = listeners.get(message) || new Set<MessageListener>()
-        messageListeners.add(cb)
-        listeners.set(message, messageListeners)
+    constructor(private readonly testGlobalThis: TestGlobalThis) {
+        testGlobalThis.addEventListener = (message: string, cb: MessageListener): void => {
+            this.addListener(message, cb)
+        }
+        testGlobalThis.removeEventListener = (message: string, cb: MessageListener): void => {
+            this.removeListener(message, cb)
+        }
+        if (testGlobalThis.parent) {
+            testGlobalThis.parent.postMessage = (message: unknown, target: string = '*'): void => {
+                this.send(message, target)
+            }
+        }
     }
 
-    const removeListener = (message: string, cb: MessageListener): void => {
-        const messageListeners = listeners.get(message)
+    addListener(message: string, cb: MessageListener): void {
+        const messageListeners = this.listeners.get(message) || new Set<MessageListener>()
+        messageListeners.add(cb)
+        this.listeners.set(message, messageListeners)
+    }
+
+    removeListener(message: string, cb: MessageListener): void {
+        const messageListeners = this.listeners.get(message)
         if (messageListeners) {
             messageListeners.delete(cb)
         }
     }
 
-    const send = (data: unknown, target: string = '*'): void => {
-        const messageListeners = listeners.get('message')
+    send(data: unknown, target: string = '*'): void {
+        const messageListeners = this.listeners.get('message')
         if (messageListeners) {
-            // ! Important: we need to use queueMicrotask to ensure that the listeners are called in the correct order
             queueMicrotask(() => {
                 messageListeners.forEach((cb) => cb({ data }))
             })
         }
     }
 
-    const mockMessageResponse = (moduleName: string, actionName: string, callback: MessageCallback): void => {
-        addListener('message', async ({ data }: { data: unknown }) => {
+    mockMessageResponse(moduleName: string, actionName: string, callback: MessageCallback): void {
+        this.addListener('message', async ({ data }: { data: unknown }) => {
             const messageData = data as { type?: string; action?: string; sender?: string; [key: string]: unknown }
             if (messageData.type === moduleName && messageData.action === actionName && messageData.sender !== 'platform') {
                 const result = callback(data)
-                send({
-                    type: moduleName,
-                    action: actionName,
-                    sender: 'platform',
-                    ...(result as Record<string, unknown>),
-                })
+                this.testGlobalThis.parent.postMessage(result, '*')
             }
         })
     }
-
-    testGlobalThis.addEventListener = (message: string, cb: MessageListener): void => {
-        addListener(message, cb)
-    }
-    testGlobalThis.removeEventListener = (message: string, cb: MessageListener): void => {
-        removeListener(message, cb)
-    }
-    if (testGlobalThis.parent) {
-        testGlobalThis.parent.postMessage = (message: unknown, target: string = '*'): void => {
-            send(message, target)
-        }
-    }
-
-    return {
-        addListener,
-        removeListener,
-        send,
-        mockMessageResponse
-    }
 }
-

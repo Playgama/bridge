@@ -1,12 +1,13 @@
 import { vi } from 'vitest'
 import PlaygamaBridge from '../../../src/PlaygamaBridge'
-import { createMessageBroker } from '../messageBrokerMock'
+import { MessageBroker } from '../messageBrokerMock'
 import { MODULE_NAME, ACTION_NAME, PLATFORM_ID } from '../../../src/constants'
 import { AbsoluteGamesSdkEmulator } from '../absoluteGames/absoluteGames'
 import { PlaygamaSdkEmulator } from '../playgama/playgama'
 import { QaToolSdkEmulator } from '../qaTool/qaTool'
 import { BridgeOptions, CreateBridgeResult, defaultOptions } from './bridge.types'
 import type { TestGlobalThis } from '../../common/types'
+import { StateManager } from '../stateManager/stateManager'
 
 // mock function addJavaScript from src/common/utils.js
 vi.mock('../../../src/common/utils', async (importOriginal) => {
@@ -19,17 +20,18 @@ vi.mock('../../../src/common/utils', async (importOriginal) => {
 
 async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeResult> {
     const testGlobal = globalThis as unknown as TestGlobalThis
-    testGlobal.PLUGIN_VERSION = ' LATEST'
+
+    testGlobal.PLUGIN_VERSION = 'LATEST'
+    testGlobal.console.info = vi.fn().mockImplementation(() => {})
 
     const mergedOptions = { ...defaultOptions, ...options }
-    const messageBroker = createMessageBroker(testGlobal)
+    const messageBroker = new MessageBroker(testGlobal)
+    const stateManager = new StateManager()
     const bridge = new PlaygamaBridge()
-
-    testGlobal.console.info = vi.fn().mockImplementation(() => {})
 
     await PlaygamaSdkEmulator.create(testGlobal)
     await AbsoluteGamesSdkEmulator.create(testGlobal)
-    const qaToolSdk = await QaToolSdkEmulator.create(testGlobal, messageBroker)
+    await QaToolSdkEmulator.create(testGlobal, stateManager)
 
     messageBroker.addListener('message', ({ data }) => {
         const messageData = data as { type?: string; action?: string; sender?: string; [key: string]: unknown }
@@ -39,23 +41,23 @@ async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeRe
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
                 supportedFeatures: mergedOptions.supportedFeatures,
-            })
+            }, '*')
         }
     })
 
-    const mockPlatformAction = (functionName: string, callback: (...args: unknown[]) => unknown): void => {
-        switch (bridge.platform.id) {
-            case PLATFORM_ID.QA_TOOL:
-                return qaToolSdk.mockFunction(functionName, callback)
-            default:
-                throw new Error(`Mock function for platform ${bridge.platform.id} not found`)
-        }
-    }
+    // const mockPlatformAction = (functionName: string, callback: (...args: unknown[]) => unknown): void => {
+    //     switch (bridge.platform.id) {
+    //         case PLATFORM_ID.QA_TOOL:
+    //             return qaToolSdk.mockFunction(functionName, callback)
+    //         default:
+    //             throw new Error(`Mock function for platform ${bridge.platform.id} not found`)
+    //     }
+    // }
 
     mergedOptions.bridgeOptions = mergedOptions.bridgeOptions || {}
     await bridge.initialize(mergedOptions.bridgeOptions)
     
-    return { bridge, messageBroker, mockPlatformAction }
+    return { bridge, stateManager }
 }
 
 export function createBridgeByPlatformId(platformId: string, options: BridgeOptions = {}): Promise<CreateBridgeResult> {

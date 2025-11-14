@@ -116,4 +116,3 @@ describe('Platform QA Tool (integration, PlaygamaBridge)', () => {
         expect(feature.check(bridge)).toBe(true)
     })
 })
-

@@ -1,5 +1,5 @@
 import type PlaygamaBridge from '../../../src/PlaygamaBridge'
-import type { MessageBrokerInterface } from '../messageBrokerMock'
+import type { StateManager } from '../stateManager/stateManager'
 
 export interface BridgeOptions {
     supportedFeatures?: string[]
@@ -8,8 +8,7 @@ export interface BridgeOptions {
 
 export interface CreateBridgeResult {
     bridge: PlaygamaBridge
-    messageBroker: MessageBrokerInterface
-    mockPlatformAction: (functionName: string, callback: (...args: unknown[]) => unknown) => void
+    stateManager: StateManager
 }
 
 export const defaultOptions: BridgeOptions = {
