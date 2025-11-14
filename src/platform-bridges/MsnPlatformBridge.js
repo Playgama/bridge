@@ -190,7 +190,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     data[key] = value
                 }
 
-                this.platformSdk.cloudSave.saveDataAsync(data)
+                this.platformSdk.cloudSave.saveDataAsync({ data, gameId: this._options.gameId })
                     .then(() => {
                         this._platformStorageCachedData = data
                         resolve()
@@ -222,7 +222,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     delete this._platformStorageCachedData[key]
                 }
 
-                this.platformSdk.cloudSave.saveDataAsync(data)
+                this.platformSdk.cloudSave.saveDataAsync({ data, gameId: this._options.gameId })
                     .then(() => {
                         resolve()
                     })
