@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, getKeysFromObject, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -25,9 +25,10 @@ import {
     REWARDED_STATE,
     BANNER_POSITION,
     LEADERBOARD_TYPE,
+    STORAGE_TYPE,
 } from '../constants'
 
-const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
+const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 class MsnPlatformBridge extends PlatformBridgeBase {
@@ -95,6 +96,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this.#updatePlayerInfo(null)
                         })
                         .finally(() => {
+                            this._defaultStorageType = this._isPlayerAuthorized
+                                ? STORAGE_TYPE.PLATFORM_INTERNAL
+                                : STORAGE_TYPE.LOCAL_STORAGE
+
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -135,6 +140,99 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     reject(e)
                 })
         })
+    }
+
+    // storage
+    isStorageSupported(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageSupported(storageType)
+    }
+
+    isStorageAvailable(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return this._isPlayerAuthorized
+        }
+
+        return super.isStorageAvailable(storageType)
+    }
+
+    getDataFromStorage(key, storageType, tryParseJson) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
+            return this.#getDataFromPlatformStorage(key, tryParseJson)
+        }
+
+        return super.getDataFromStorage(key, storageType, tryParseJson)
+    }
+
+    setDataToStorage(key, value, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
+            return new Promise((resolve, reject) => {
+                const data = this._platformStorageCachedData !== null
+                    ? { ...this._platformStorageCachedData }
+                    : {}
+
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        data[key[i]] = value[i]
+                    }
+                } else {
+                    data[key] = value
+                }
+
+                this.platformSdk.cloudSave.saveDataAsync(data)
+                    .then(() => {
+                        this._platformStorageCachedData = data
+                        resolve()
+                    })
+                    .catch((error) => {
+                        reject(error)
+                    })
+            })
+        }
+
+        return super.setDataToStorage(key, value, storageType)
+    }
+
+    deleteDataFromStorage(key, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+            return new Promise((resolve, reject) => {
+                const data = {}
+
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        data[key[i]] = null
+                        delete this._platformStorageCachedData[key[i]]
+                    }
+                } else {
+                    data[key] = null
+                    delete this._platformStorageCachedData[key]
+                }
+
+                this.platformSdk.cloudSave.saveDataAsync(data)
+                    .then(() => {
+                        resolve()
+                    })
+                    .catch((error) => {
+                        reject(error)
+                    })
+            })
+        }
+
+        return super.deleteDataFromStorage(key, storageType)
     }
 
     // social
@@ -448,6 +546,14 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         } else {
             this._playerApplyGuestData()
         }
+    }
+
+    async #getDataFromPlatformStorage(key, tryParseJson = false) {
+        if (!this._platformStorageCachedData) {
+            this._platformStorageCachedData = await this.platformSdk.cloudSave.getDataAsync()
+        }
+
+        return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
     }
 }
 
