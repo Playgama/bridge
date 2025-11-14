@@ -272,7 +272,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
-
             this.#requestMessage(MODULE_NAME.PLAYER, ACTION_NAME.AUTHORIZE_PLAYER, {
                 options,
             }).then(({ player, auth }) => {

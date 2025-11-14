@@ -1,5 +1,6 @@
 import { MODULE_NAME } from '../../src/constants'
 import { ACTION_NAME_QA } from '../../src/platform-bridges/QaToolPlatformBridge'
+import { ACTION_NAME } from '../../src/constants'
 
 export class QaToolSdkEmulator {
     static async create(globalThis, messageBroker) {
@@ -28,6 +29,8 @@ export class QaToolSdkEmulator {
         switch (functionName) {
             case 'storage.get':
                 return this._getStorageMockFunction
+            case 'player.authorize':
+                return this._getPlayerAuthorizeMockFunction
             default:
                 return null
         }
@@ -40,6 +43,17 @@ export class QaToolSdkEmulator {
                 action: data.action,
                 id: data.id,
                 storage: callback(data.options.key),
+            }
+        })
+    }
+
+    _getPlayerAuthorizeMockFunction(callback) {
+        this.messageBroker.mockMessageResponse(MODULE_NAME.PLAYER, ACTION_NAME.AUTHORIZE_PLAYER, (data) => {
+            return {
+                type: data.type,
+                action: data.action,
+                id: data.id,
+                ...callback(data.options),
             }
         })
     }
