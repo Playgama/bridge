@@ -323,11 +323,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             options: {},
         }, { timeout: 5_000 }).then(({ time }) => {
             if (!time) {
-                Promise.reject(new Error('Invalid server time'))
-                return
+                throw new Error('Invalid server time')
             }
-            Promise.resolve(time)
-        }).catch(() => Promise.reject(new Error('Server time request timeout')))
+            return time
+        }).catch(() => {
+            throw new Error('Server time request timeout')
+        })
     }
 
     // storage
