@@ -24,7 +24,6 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
         stateManager.setStorageKey(STORAGE_TYPE.LOCAL_STORAGE, 'test', 'value_1')
 
         const value = await bridge.storage.get('test', storageType)
-        console.log('value', value)
 
         expect(value).toBe('value_1')
     })
