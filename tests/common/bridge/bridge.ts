@@ -3,8 +3,8 @@ import PlaygamaBridge from '../../../src/PlaygamaBridge'
 import { MessageBroker } from '../messageBrokerMock'
 import { MODULE_NAME, ACTION_NAME, PLATFORM_ID } from '../../../src/constants'
 import { AbsoluteGamesSdkEmulator } from '../absoluteGames/absoluteGames'
-import { PlaygamaSdkEmulator } from '../playgama/playgama'
-import { QaToolSdkEmulator } from '../qaTool/qaTool'
+import { createPlaygamaSdk } from '../playgama/playgama'
+import { createQaToolSdk } from '../qaTool/qaTool'
 import { BridgeOptions, CreateBridgeResult, defaultOptions } from './bridge.types'
 import type { TestGlobalThis } from '../../common/types'
 import { StateManager } from '../stateManager/stateManager'
@@ -29,9 +29,9 @@ async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeRe
     const stateManager = new StateManager()
     const bridge = new PlaygamaBridge()
 
-    await PlaygamaSdkEmulator.create(testGlobal)
+    await createPlaygamaSdk(testGlobal, stateManager)
+    await createQaToolSdk(testGlobal, stateManager)
     await AbsoluteGamesSdkEmulator.create(testGlobal)
-    await QaToolSdkEmulator.create(testGlobal, stateManager)
 
     messageBroker.addListener('message', ({ data }) => {
         const messageData = data as { type?: string; action?: string; sender?: string; [key: string]: unknown }

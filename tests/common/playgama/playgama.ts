@@ -1,37 +1,52 @@
 import { vi } from 'vitest'
 import type { TestGlobalThis } from '../../common/types'
+import { StateManager } from '../stateManager/stateManager'
+import type { PlaygamaPlayer, PlaygamaSdk } from './playgama.types'
 
-export class PlaygamaSdkEmulator {
-    static async create(testGlobalThis: TestGlobalThis): Promise<PlaygamaSdkEmulator> {
-        const instance = new PlaygamaSdkEmulator(testGlobalThis)
-        await instance.initialize()
-        return instance
-    }
+export function createPlaygamaSdk(
+    testGlobalThis: TestGlobalThis, 
+    stateManager: StateManager
+): Promise<void> {
 
-    constructor(
-        private readonly testGlobalThis: TestGlobalThis
-    ) {}
-
-    async initialize(): Promise<void> {
-        this.testGlobalThis.PLAYGAMA_SDK = new PlaygamaSdk()
-    }
-}
-class PlaygamaSdk {
-    userService: {
-        getUser: () => Promise<unknown>
-    }
-    advService: {
-        subscribeToAdStateChanges: ReturnType<typeof vi.fn>
-    }
-
-    constructor() {
-        this.userService = {
-            getUser(): Promise<unknown> {
-                return Promise.reject()
+    const userService = {
+        getUser(): Promise<PlaygamaPlayer> {
+            const player = stateManager.getPlayerState()
+            if (player?.authorized) {
+                return Promise.resolve({
+                    authorized: true,
+                    id: player.id,
+                    name: player.name ?? '',
+                    photos: player.photos ?? [],
+                    extra: player.extra ?? {},
+                })
             }
-        }
-        this.advService = {
-            subscribeToAdStateChanges: vi.fn().mockResolvedValue(Promise.resolve()),
-        }
+            return Promise.reject(new Error('Player not authorized'))
+        },
+
+        authorizeUser(): Promise<boolean> {
+            const player = stateManager.getPlayerState()
+            if (player?.authorized) {
+                return Promise.resolve(true)
+            }
+            return Promise.reject()
+        },
     }
+
+    const advService = {
+        subscribeToAdStateChanges: vi.fn().mockResolvedValue(Promise.resolve()),
+    }
+
+    const cloudSaveApi = {
+        getState: vi.fn().mockResolvedValue(Promise.resolve({})),
+        setItems: vi.fn().mockResolvedValue(Promise.resolve()),
+    }
+
+
+    testGlobalThis.PLAYGAMA_SDK = {
+        userService,
+        advService,
+        cloudSaveApi,
+    }
+
+    return Promise.resolve()
 }
