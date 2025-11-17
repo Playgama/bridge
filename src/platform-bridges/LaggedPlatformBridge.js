@@ -70,7 +70,7 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
-                    ERROR.LAGGED_GAME_PARAMS_NOT_FOUND,
+                    ERROR.GAME_PARAMS_NOT_FOUND,
                 )
             } else {
                 addJavaScript(SDK_URL).then(() => {

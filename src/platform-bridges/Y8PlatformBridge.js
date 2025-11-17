@@ -80,7 +80,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
             if (!this._options?.gameId) {
-                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.Y8_GAME_PARAMS_NOT_FOUND)
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.GAME_PARAMS_NOT_FOUND)
             } else {
                 addJavaScript(SDK_URL).then(() => {
                     waitFor('ID').then(() => {
