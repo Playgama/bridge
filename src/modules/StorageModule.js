@@ -61,6 +61,11 @@ class StorageModule extends ModuleBase {
             return Promise.reject()
         }
 
+        // Validate array input
+        if (Array.isArray(key) && key.length === 0) {
+            return Promise.resolve([])
+        }
+
         return this._platformBridge.getDataFromStorage(key, storageType, tryParseJson)
     }
 
@@ -81,6 +86,19 @@ class StorageModule extends ModuleBase {
             return Promise.reject()
         }
 
+        // Validate array inputs
+        if (Array.isArray(key)) {
+            if (!Array.isArray(value)) {
+                return Promise.reject(new Error('Value must be an array when key is an array'))
+            }
+            if (key.length !== value.length) {
+                return Promise.reject(new Error('Key and value arrays must have the same length'))
+            }
+            if (key.length === 0) {
+                return Promise.resolve()
+            }
+        }
+
         return this._platformBridge.setDataToStorage(key, value, storageType)
     }
 
@@ -99,6 +117,11 @@ class StorageModule extends ModuleBase {
 
         if (!this._platformBridge.isStorageAvailable(storageType)) {
             return Promise.reject()
+        }
+
+        // Validate array input
+        if (Array.isArray(key) && key.length === 0) {
+            return Promise.resolve()
         }
 
         return this._platformBridge.deleteDataFromStorage(key, storageType)
