@@ -17,6 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
+import { getKeysFromObject } from '../common/utils'
 import {
     PLATFORM_ID,
     MODULE_NAME,
@@ -438,12 +439,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         && data.action === ACTION_NAME_QA.GET_DATA_FROM_STORAGE
                         && data.id === messageId
                     ) {
-                        if (Array.isArray(key)) {
-                            resolve(key.map((k) => data.storage[k]))
-                        } else {
-                            resolve(data.storage[key])
-                        }
-
+                        resolve(getKeysFromObject(key, data.storage, tryParseJson))
                         this.#messageBroker.removeListener(messageHandler)
                     }
                 }
