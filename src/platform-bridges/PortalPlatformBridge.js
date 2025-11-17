@@ -133,12 +133,6 @@ class PortalPlatformBridge extends PlatformBridgeBase {
     setDataToStorage(key, value, storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (Array.isArray(key)) {
-                if (!Array.isArray(value)) {
-                    return Promise.reject(new Error('Value must be an array if key is an array'))
-                }
-                if (key.length !== value.length) {
-                    return Promise.reject(new Error('Key and value arrays must have the same length'))
-                }
                 const promises = key.map((k, i) => Promise.resolve(this._platformSdk.setValue(k, value[i])))
                 return Promise.all(promises)
             }
