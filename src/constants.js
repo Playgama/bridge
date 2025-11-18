@@ -40,6 +40,7 @@ export const PLATFORM_ID = {
     YOUTUBE: 'youtube',
     PORTAL: 'portal',
     REDDIT: 'reddit',
+    XIAOMI: 'xiaomi',
 }
 
 export const MODULE_NAME = {

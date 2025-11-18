@@ -35,10 +35,18 @@ export const addJavaScript = function addJavaScript(src, options = {}) {
 }
 
 export const addAdsByGoogle = ({
-    hostId, adsenseId, channelId, adFrequencyHint = '180s',
-}) => new Promise((resolve) => {
+    adSenseId,
+    channelId,
+    hostId,
+    interstitialPlacementId,
+    rewardedPlacementId,
+    adFrequencyHint = '180s',
+    testMode = false,
+}, config = {}) => new Promise((resolve) => {
     const script = document.createElement('script')
-    script.setAttribute('data-ad-client', adsenseId)
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
+
+    script.setAttribute('data-ad-client', adSenseId)
 
     if (channelId) {
         script.setAttribute('data-ad-channel', channelId)
@@ -46,10 +54,32 @@ export const addAdsByGoogle = ({
         script.setAttribute('data-ad-host', hostId)
     }
 
-    script.setAttribute('data-ad-frequency-hint', adFrequencyHint)
-    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
+    if (interstitialPlacementId) {
+        script.setAttribute('data-admob-interstitial-slot', interstitialPlacementId)
+    }
 
-    script.addEventListener('load', resolve)
+    if (rewardedPlacementId) {
+        script.setAttribute('data-admob-rewarded-slot', rewardedPlacementId)
+    }
+
+    if (testMode) {
+        script.setAttribute('data-adbreak-test', 'on')
+    }
+
+    script.setAttribute('data-ad-frequency-hint', adFrequencyHint)
+    script.setAttribute('crossorigin', 'anonymous')
+
+    script.addEventListener('load', () => {
+        window.adsbygoogle = window.adsbygoogle || []
+        window.adsbygoogle.push({
+            preloadAdBreaks: 'on',
+            sound: 'on',
+            onReady: () => {},
+            ...config,
+        })
+
+        resolve((adOptions) => window.adsbygoogle.push(adOptions))
+    })
     document.head.appendChild(script)
 })
 
