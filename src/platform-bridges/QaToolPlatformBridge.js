@@ -17,7 +17,6 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
-import { getKeysFromObject } from '../common/utils'
 import {
     PLATFORM_ID,
     MODULE_NAME,
@@ -58,6 +57,7 @@ export const ACTION_NAME_QA = {
     SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
     GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
     GET_LANGUAGE: 'get_language',
+    GET_PLAYER: 'get_player',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -236,14 +236,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-
             const messageHandler = ({ data }) => {
                 if (!data?.type || data?.source === MESSAGE_SOURCE) return
 
                 if (data.type === MODULE_NAME.PLATFORM) {
                     if (data.action === ACTION_NAME.INITIALIZE) {
-                        this.#handleInitializeResponse(data)
+                        this.#getPlayer().then(() => {
+                            this.#handleInitializeResponse(data)
+                        })
                     }
 
                     if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
@@ -275,18 +275,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
             this.#requestMessage(MODULE_NAME.PLAYER, ACTION_NAME.AUTHORIZE_PLAYER, {
                 options,
-            }).then(({ player, auth }) => {
+            }).then(({ auth }) => {
                 if (auth.status === 'success') {
-                    this._playerId = player.userId
-                    this._isPlayerAuthorized = player.isAuthorized
-                    this._playerName = player.name
-
-                    if (Array.isArray(player.photos)) {
-                        this._playerPhotos = [...player.photos]
-                    }
-
-                    this._playerExtra = player
-                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    this.#getPlayer().then(() => {
+                        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    })
                 } else {
                     this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, auth.error)
                 }
@@ -1100,6 +1093,25 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this.#messageBroker.removeListener(messageHandler)
                 }, mergedOptions.timeout)
             }
+        })
+    }
+
+    async #getPlayer() {
+        return this.#requestMessage(MODULE_NAME.PLAYER, ACTION_NAME_QA.GET_PLAYER).then(({ player }) => {
+            if (player?.isAuthorized) {
+                this._playerId = player.userId
+                this._isPlayerAuthorized = player.isAuthorized
+                this._playerName = player.name
+                if (Array.isArray(player.photos)) {
+                    this._playerPhotos = [...player.photos]
+                }
+                this._playerExtra = player
+                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+            } else {
+                this._playerApplyGuestData()
+            }
+        }).catch(() => {
+            this._playerApplyGuestData()
         })
     }
 }
