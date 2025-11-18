@@ -71,7 +71,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
-                    ERROR.HUAWEI_GAME_PARAMS_NOT_FOUND,
+                    ERROR.GAME_PARAMS_NOT_FOUND,
                 )
             } else {
                 this._appId = this._options.appId

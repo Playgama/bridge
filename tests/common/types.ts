@@ -1,0 +1,25 @@
+import { vi } from 'vitest'
+import type { PlaygamaSdk } from './playgama/playgama.types'
+
+export type TestGlobalThis = Omit<typeof globalThis, 'addEventListener' | 'removeEventListener'> & {
+    PLUGIN_VERSION?: string
+    fetch?: ReturnType<typeof vi.fn>
+    location?: Location
+    PLAYGAMA_SDK?: PlaygamaSdk
+    AgRuSdkMethods?: {
+        ShowCampaign: string
+    }
+    AgRuSdk?: new () => {
+        options: {
+            player_id: string
+            guest: string
+        }
+        on: (event: string, callback: () => void) => unknown
+        getUsers: (playerIds: unknown, callback: (response: { data: unknown[] }) => void) => void
+    }
+    addEventListener: (message: string, cb: (event: { data: any }) => unknown) => void
+    removeEventListener: (message: string, cb: (event: { data: any }) => unknown) => void
+    parent?: {
+        postMessage: (message: unknown, target: string) => void
+    }
+}

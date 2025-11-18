@@ -245,6 +245,7 @@ class PlaygamaBridge {
                         .initialize()
                         .then(() => {
                             this.#isInitialized = true
+
                             console.info(`%c PlaygamaBridge v${this.version} initialized. `, 'background: #01A5DA; color: white')
 
                             const endTime = performance.now()

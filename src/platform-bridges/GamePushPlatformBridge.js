@@ -58,7 +58,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
-                    ERROR.GAMEPUSH_GAME_PARAMS_NOT_FOUND,
+                    ERROR.GAME_PARAMS_NOT_FOUND,
                 )
             } else {
                 const SDK_URL = `https://gamepush.com/sdk/game-score.js?projectId=${this._options.projectId}&publicToken=${this._options.publicToken}`

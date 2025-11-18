@@ -37,11 +37,13 @@ const ADVERTISEMENT_TYPE = {
     BANNER: 'banner',
 }
 
+const MESSAGE_SOURCE = 'bridge'
+
 const MODULE_NAME_QA = {
     LIVENESS: 'liveness',
 }
 
-const ACTION_NAME_QA = {
+export const ACTION_NAME_QA = {
     IS_STORAGE_AVAILABLE: 'is_storage_available',
     IS_STORAGE_SUPPORTED: 'is_storage_supported',
     GET_DATA_FROM_STORAGE: 'get_data_from_storage',
@@ -74,7 +76,7 @@ const REWARD_STATUS = {
     FAILED: 'failed',
 }
 
-const SUPPORTED_FEATURES = {
+export const SUPPORTED_FEATURES = {
     PLAYER_AUTHORIZATION: 'isPlayerAuthorizationSupported',
 
     PAYMENTS: 'isPaymentsSupported',
@@ -110,7 +112,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage() {
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.PLATFORM,
             action: ACTION_NAME_QA.GET_LANGUAGE,
             options: {
@@ -237,7 +239,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
             const messageHandler = ({ data }) => {
-                if (!data?.type) return
+                if (!data?.type || data?.source === MESSAGE_SOURCE) return
 
                 if (data.type === MODULE_NAME.PLATFORM) {
                     if (data.action === ACTION_NAME.INITIALIZE) {
@@ -253,7 +255,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             }
 
             this.#messageBroker.addListener(messageHandler)
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
             })
@@ -271,42 +273,23 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+            this.#requestMessage(MODULE_NAME.PLAYER, ACTION_NAME.AUTHORIZE_PLAYER, {
+                options,
+            }).then(({ player, auth }) => {
+                if (auth.status === 'success') {
+                    this._playerId = player.userId
+                    this._isPlayerAuthorized = player.isAuthorized
+                    this._playerName = player.name
 
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PLAYER
-                    && data.action === ACTION_NAME.AUTHORIZE_PLAYER
-                    && data.id === messageId
-                ) {
-                    const { player, auth } = data
-
-                    if (auth.status === 'success') {
-                        this._playerId = player.userId
-                        this._isPlayerAuthorized = player.isAuthorized
-                        this._playerName = player.name
-
-                        if (Array.isArray(player.photos)) {
-                            this._playerPhotos = [...player.photos]
-                        }
-
-                        this._playerExtra = player
-                        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
-                    } else {
-                        this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, auth.error)
+                    if (Array.isArray(player.photos)) {
+                        this._playerPhotos = [...player.photos]
                     }
 
-                    this.#messageBroker.removeListener(messageHandler)
+                    this._playerExtra = player
+                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                } else {
+                    this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, auth.error)
                 }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-            this.#messageBroker.send({
-                type: MODULE_NAME.PLAYER,
-                action: ACTION_NAME.AUTHORIZE_PLAYER,
-                id: messageId,
-                options,
             })
         }
 
@@ -325,7 +308,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         ]
 
         if (actions.includes(message)) {
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: message,
             })
@@ -337,44 +320,21 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     getServerTime() {
-        return new Promise((resolve, reject) => {
-            let timeoutId
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PLATFORM
-                    && data.action === ACTION_NAME_QA.GET_SERVER_TIME
-                    && data.id === messageId
-                ) {
-                    if (!data.time) {
-                        reject(new Error('Invalid server time'))
-                        return
-                    }
-                    clearTimeout(timeoutId)
-                    resolve(data.time)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
+        return this.#requestMessage(MODULE_NAME.PLATFORM, ACTION_NAME_QA.GET_SERVER_TIME, {
+            options: {},
+        }, { timeout: 5_000 }).then(({ time }) => {
+            if (!time) {
+                throw new Error('Invalid server time')
             }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.PLATFORM,
-                action: ACTION_NAME_QA.GET_SERVER_TIME,
-                id: messageId,
-            })
-
-            timeoutId = setTimeout(() => {
-                reject(new Error('Server time request timeout'))
-                this.#messageBroker.removeListener(messageHandler)
-            }, 5_000)
+            return time
+        }).catch(() => {
+            throw new Error('Server time request timeout')
         })
     }
 
     // storage
     isStorageSupported(storageType) {
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.IS_STORAGE_SUPPORTED,
             options: { storageType },
@@ -398,7 +358,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     isStorageAvailable(storageType) {
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.IS_STORAGE_AVAILABLE,
             options: { storageType },
@@ -407,15 +367,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_INTERNAL)
+            && this._isPlayerAuthorized
         ) {
-            return true
+            return super.isStorageAvailable(STORAGE_TYPE.LOCAL_STORAGE)
         }
 
         if (
             storageType === STORAGE_TYPE.LOCAL_STORAGE
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_LOCAL)
         ) {
-            return true
+            return super.isStorageAvailable(STORAGE_TYPE.LOCAL_STORAGE)
         }
 
         return false
@@ -426,46 +387,18 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
         }
 
-        if (
-            storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || storageType === STORAGE_TYPE.LOCAL_STORAGE
-        ) {
-            const messageId = this.#messageBroker.generateMessageId()
-
-            return new Promise((resolve) => {
-                const messageHandler = ({ data }) => {
-                    if (
-                        data?.type === MODULE_NAME.STORAGE
-                        && data.action === ACTION_NAME_QA.GET_DATA_FROM_STORAGE
-                        && data.id === messageId
-                    ) {
-                        resolve(getKeysFromObject(key, data.storage, tryParseJson))
-                        this.#messageBroker.removeListener(messageHandler)
-                    }
-                }
-
-                this.#messageBroker.addListener(messageHandler)
-
-                this.#messageBroker.send({
-                    type: MODULE_NAME.STORAGE,
-                    action: ACTION_NAME_QA.GET_DATA_FROM_STORAGE,
-                    id: messageId,
-                    options: { key, storageType, tryParseJson },
-                })
-            })
-        }
-
-        this.#messageBroker.send({
-            type: MODULE_NAME.STORAGE,
-            action: ACTION_NAME_QA.GET_DATA_FROM_STORAGE,
+        return this.#requestMessage(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, {
             options: { key, storageType, tryParseJson },
+        }).then(({ storage }) => {
+            if (Array.isArray(key)) {
+                return key.map((k) => storage[k])
+            }
+            return storage[key]
         })
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
     }
 
     setDataToStorage(key, value, storageType) {
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.SET_DATA_TO_STORAGE,
             options: { key, value, storageType },
@@ -486,7 +419,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     deleteDataFromStorage(key, storageType) {
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.DELETE_DATA_FROM_STORAGE,
             options: { key, storageType },
@@ -538,7 +471,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         this.#messageBroker.addListener(showInterstitialHandler)
 
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.INTERSTITIAL,
             options: { placement },
@@ -579,7 +512,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         this.#messageBroker.addListener(showRewardedHandler)
 
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.REWARD,
             options: { placement },
@@ -593,7 +526,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         this._setBannerState(BANNER_STATE.SHOWN)
 
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: BANNER_STATE.SHOWN,
             options: {
@@ -611,7 +544,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         this._setBannerState(BANNER_STATE.HIDDEN)
 
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: BANNER_STATE.HIDDEN,
             options: { type: ADVERTISEMENT_TYPE.BANNER },
@@ -619,7 +552,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     checkAdBlock() {
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: ACTION_NAME_QA.CHECK_ADBLOCK,
             action: ACTION_NAME.ADBLOCK_DETECT,
         })
@@ -639,7 +572,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this._resolvePromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.SOCIAL,
                 action: ACTION_NAME.INVITE_FRIENDS,
             })
@@ -659,7 +592,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.SOCIAL,
                 action: ACTION_NAME.JOIN_COMMUNITY,
             })
@@ -679,7 +612,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this._resolvePromiseDecorator(ACTION_NAME.SHARE)
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.SOCIAL,
                 action: ACTION_NAME.SHARE,
             })
@@ -699,7 +632,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST)
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.SOCIAL,
                 action: ACTION_NAME.CREATE_POST,
             })
@@ -719,7 +652,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.SOCIAL,
                 action: ACTION_NAME.ADD_TO_HOME_SCREEN,
             })
@@ -739,7 +672,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.SOCIAL,
                 action: ACTION_NAME.ADD_TO_FAVORITES,
             })
@@ -759,7 +692,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
             this._resolvePromiseDecorator(ACTION_NAME.RATE)
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.SOCIAL,
                 action: ACTION_NAME.RATE,
             })
@@ -783,41 +716,23 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.PURCHASE
-                    && data.id === messageId
-                ) {
-                    if (!data.purchase || typeof data.purchase !== 'object') {
-                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, new Error('Invalid purchase'))
-                        this.#messageBroker.removeListener(messageHandler)
-                        return
-                    }
-
-                    if (data.purchase?.status) {
-                        const mergedPurchase = { id, ...data.purchase.purchaseData }
-                        this._paymentsPurchases.push(mergedPurchase)
-                        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
-                    } else {
-                        this._rejectPromiseDecorator(
-                            ACTION_NAME.PURCHASE,
-                            data.purchase?.error || new Error('Unknown purchase error'),
-                        )
-                    }
-
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-            this.#messageBroker.send({
-                type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.PURCHASE,
-                id: messageId,
+            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.PURCHASE, {
                 options: { product },
+            }).then(({ purchase }) => {
+                if (!purchase || typeof purchase !== 'object') {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, new Error('Invalid purchase'))
+                    return
+                }
+                if (purchase?.status) {
+                    const mergedPurchase = { id, ...purchase.purchaseData }
+                    this._paymentsPurchases.push(mergedPurchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+                } else {
+                    this._rejectPromiseDecorator(
+                        ACTION_NAME.PURCHASE,
+                        purchase?.error || new Error('Unknown purchase error'),
+                    )
+                }
             })
         }
 
@@ -838,47 +753,26 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.CONSUME_PURCHASE
-                    && data.id === messageId
-                ) {
-                    if (!data.purchase || typeof data.purchase !== 'object') {
-                        this._rejectPromiseDecorator(
-                            ACTION_NAME.CONSUME_PURCHASE,
-                            new Error('Invalid purchase'),
-                        )
-                        this.#messageBroker.removeListener(messageHandler)
-                        return
-                    }
-
-                    if (data.purchase?.status) {
-                        const result = {
-                            id,
-                            ...data.purchase,
-                        }
-                        this._paymentsPurchases.splice(purchaseIndex, 1)
-                        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
-                    } else {
-                        this._rejectPromiseDecorator(
-                            ACTION_NAME.CONSUME_PURCHASE,
-                            data.purchase?.error || new Error('Unknown consume purchase error'),
-                        )
-                    }
-
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-            this.#messageBroker.send({
-                type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.CONSUME_PURCHASE,
-                id: messageId,
+            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.CONSUME_PURCHASE, {
                 options: { product: this._paymentsPurchases[purchaseIndex] },
+            }).then(({ purchase }) => {
+                if (!purchase || typeof purchase !== 'object') {
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, new Error('Invalid purchase'))
+                    return
+                }
+                if (purchase?.status) {
+                    const result = {
+                        id,
+                        ...purchase,
+                    }
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
+                } else {
+                    this._rejectPromiseDecorator(
+                        ACTION_NAME.CONSUME_PURCHASE,
+                        purchase?.error || new Error('Unknown consume purchase error'),
+                    )
+                }
             })
         }
         return promiseDecorator.promise
@@ -894,32 +788,19 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
             const products = this._paymentsGetProductsPlatformData()
-            const messageId = this.#messageBroker.generateMessageId()
 
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.GET_CATALOG
-                    && data.id === messageId
-                ) {
-                    const mergedProducts = products.map((product) => ({
-                        id: product.id,
-                        price: `${product.amount} Gam`,
-                        priceCurrencyCode: 'Gam',
-                        priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
-                        priceValue: product.amount,
-                    }))
+            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.GET_CATALOG, {
+                options: { products },
+            }).then(() => {
+                const mergedProducts = products.map((product) => ({
+                    id: product.id,
+                    price: `${product.amount} Gam`,
+                    priceCurrencyCode: 'Gam',
+                    priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
+                    priceValue: product.amount,
+                }))
 
-                    this.#messageBroker.removeListener(messageHandler)
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-            this.#messageBroker.send({
-                type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.GET_CATALOG,
-                id: messageId,
+                this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
             })
         }
 
@@ -935,34 +816,20 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            const messageId = this.#messageBroker.generateMessageId()
+            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.GET_PURCHASES, {
+                options: { products: this._paymentsGetProductsPlatformData() },
+            }).then(({ purchases }) => {
+                const products = this._paymentsGetProductsPlatformData()
 
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.PAYMENTS
-                    && data.action === ACTION_NAME.GET_PURCHASES
-                    && data.id === messageId
-                ) {
-                    const products = this._paymentsGetProductsPlatformData()
+                this._paymentsPurchases = purchases.map((purchase) => {
+                    const product = products.find((p) => p.id === purchase.id)
+                    return {
+                        id: product.id,
+                        ...purchase.purchaseData,
+                    }
+                })
 
-                    this._paymentsPurchases = data.purchases.map((purchase) => {
-                        const product = products.find((p) => p.id === purchase.id)
-                        return {
-                            id: product.id,
-                            ...purchase.purchaseData,
-                        }
-                    })
-
-                    this.#messageBroker.removeListener(messageHandler)
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-            this.#messageBroker.send({
-                type: MODULE_NAME.PAYMENTS,
-                action: ACTION_NAME.GET_PURCHASES,
-                id: messageId,
+                this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
             })
         }
 
@@ -979,25 +846,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_REMOTE_CONFIG)
 
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.REMOTE_CONFIG
-                    && data.action === ACTION_NAME.GET_REMOTE_CONFIG
-                    && data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_REMOTE_CONFIG, data.result)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.REMOTE_CONFIG,
-                action: ACTION_NAME.GET_REMOTE_CONFIG,
-                id: messageId,
+            this.#requestMessage(MODULE_NAME.REMOTE_CONFIG, ACTION_NAME.GET_REMOTE_CONFIG).then(({ result }) => {
+                this._resolvePromiseDecorator(ACTION_NAME.GET_REMOTE_CONFIG, result)
             })
         }
 
@@ -1015,26 +865,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CLIPBOARD_WRITE)
 
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.CLIPBOARD
-                    && data.action === ACTION_NAME.CLIPBOARD_WRITE
-                    && data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.CLIPBOARD_WRITE, true)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.CLIPBOARD,
-                action: ACTION_NAME.CLIPBOARD_WRITE,
-                id: messageId,
+            this.#requestMessage(MODULE_NAME.CLIPBOARD, ACTION_NAME.CLIPBOARD_WRITE, {
                 options: { text },
+            }).then(() => {
+                this._resolvePromiseDecorator(ACTION_NAME.CLIPBOARD_WRITE, true)
             })
         }
 
@@ -1050,27 +884,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME_QA.CLIPBOARD_READ)
 
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.CLIPBOARD
-                    && data.action === ACTION_NAME_QA.CLIPBOARD_READ
-                    && data.id === messageId
-                ) {
-                    const { text } = data
-                    this._resolvePromiseDecorator(ACTION_NAME_QA.CLIPBOARD_READ, text)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.CLIPBOARD,
-                action: ACTION_NAME_QA.CLIPBOARD_READ,
-                id: messageId,
+            this.#requestMessage(MODULE_NAME.CLIPBOARD, ACTION_NAME_QA.CLIPBOARD_READ, {
                 options: {},
+            }).then(({ text }) => {
+                this._resolvePromiseDecorator(ACTION_NAME_QA.CLIPBOARD_READ, text)
             })
         }
 
@@ -1092,7 +909,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 score,
             }
 
-            this.#messageBroker.send({
+            this.#sendMessage({
                 type: MODULE_NAME.LEADERBOARDS,
                 action: ACTION_NAME.LEADERBOARDS_SET_SCORE,
                 options,
@@ -1116,30 +933,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
 
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.LEADERBOARDS
-                    && data.action === ACTION_NAME.LEADERBOARDS_GET_ENTRIES
-                    && data.id === messageId
-                ) {
-                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, data.entries)
-                    this.#messageBroker.removeListener(messageHandler)
-                } else {
-                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.LEADERBOARDS,
-                action: ACTION_NAME.LEADERBOARDS_GET_ENTRIES,
-                id: messageId,
-                options: {
-                    id,
-                },
+            this.#requestMessage(MODULE_NAME.LEADERBOARDS, ACTION_NAME.LEADERBOARDS_GET_ENTRIES, {
+                options: { id },
+            }, { timeout: 5_000 }).then(({ entries }) => {
+                this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
+            }).catch(() => {
+                this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
             })
         }
 
@@ -1152,59 +951,18 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        return new Promise((resolve) => {
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.ACHIEVEMENTS
-                    && data.action === ACTION_NAME_QA.UNLOCK_ACHIEVEMENT
-                    && data.id === messageId
-                ) {
-                    resolve(data.result)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.ACHIEVEMENTS,
-                action: ACTION_NAME_QA.UNLOCK_ACHIEVEMENT,
-                id: messageId,
-                options,
-            })
-        })
+        return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.UNLOCK_ACHIEVEMENT, {
+            options,
+        }).then(({ result }) => result)
     }
 
     getAchievementsList(options) {
         if (!this.isGetAchievementsListSupported) {
             return Promise.reject()
         }
-
-        return new Promise((resolve) => {
-            const messageId = this.#messageBroker.generateMessageId()
-
-            const messageHandler = ({ data }) => {
-                if (
-                    data?.type === MODULE_NAME.ACHIEVEMENTS
-                    && data.action === ACTION_NAME_QA.GET_ACHIEVEMENTS
-                    && data.id === messageId
-                ) {
-                    resolve(data.result)
-                    this.#messageBroker.removeListener(messageHandler)
-                }
-            }
-
-            this.#messageBroker.addListener(messageHandler)
-
-            this.#messageBroker.send({
-                type: MODULE_NAME.ACHIEVEMENTS,
-                action: ACTION_NAME_QA.GET_ACHIEVEMENTS,
-                id: messageId,
-                options,
-            })
-        })
+        return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.GET_ACHIEVEMENTS, {
+            options,
+        }).then(({ result }) => result)
     }
 
     showAchievementsNativePopup() {
@@ -1212,7 +970,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.ACHIEVEMENTS,
             action: ACTION_NAME_QA.SHOW_ACHIEVEMENTS_NATIVE_POPUP,
         })
@@ -1267,7 +1025,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
 
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME_QA.LIVENESS,
             action: ACTION_NAME_QA.LIVENESS_PING,
             options: { version: PLUGIN_VERSION },
@@ -1290,7 +1048,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             return extracted
         })
 
-        this.#messageBroker.send({
+        this.#sendMessage({
             type: MODULE_NAME.PLATFORM,
             action: ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES,
             id: messageId,
@@ -1298,6 +1056,51 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         })
 
         return Promise.resolve(resources)
+    }
+
+    #sendMessage(message) {
+        this.#messageBroker.send({
+            source: MESSAGE_SOURCE,
+            ...message,
+        })
+    }
+
+    #requestMessage(type, action, payload = {}, options = {}) {
+        const messageId = this.#messageBroker.generateMessageId()
+
+        const mergedOptions = {
+            timeout: 0,
+            ...options,
+        }
+
+        return new Promise((resolve, reject) => {
+            const messageHandler = ({ data }) => {
+                if (
+                    data?.type === type
+                    && data?.action === action
+                    && data?.id === messageId
+                    && data?.source !== MESSAGE_SOURCE
+                ) {
+                    this.#messageBroker.removeListener(messageHandler)
+                    resolve(data)
+                }
+            }
+            this.#messageBroker.addListener(messageHandler)
+            this.#sendMessage({
+                type,
+                action,
+                id: messageId,
+                options,
+                ...payload,
+            })
+
+            if (mergedOptions.timeout > 0) {
+                setTimeout(() => {
+                    reject(new Error('Request timeout'))
+                    this.#messageBroker.removeListener(messageHandler)
+                }, mergedOptions.timeout)
+            }
+        })
     }
 }
 
