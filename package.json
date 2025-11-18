@@ -6,6 +6,7 @@
     "scripts": {
         "build": "webpack",
         "develop": "webpack --mode=development",
+        "dev": "webpack serve --mode=development",
         "test": "vitest run",
         "test:watch": "vitest"
     },
@@ -35,6 +36,7 @@
         "typescript": "^5.9.3",
         "vitest": "^1.6.0",
         "webpack": "^5.70.0",
-        "webpack-cli": "^4.9.2"
+        "webpack-cli": "^4.9.2",
+        "webpack-dev-server": "^4.15.2"
     }
 }
