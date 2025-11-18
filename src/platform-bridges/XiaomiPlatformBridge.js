@@ -79,7 +79,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                     hostId: this._options.hostId,
                     testMode: !!this._options.testMode,
                 }).then((showAd) => {
-                    this._showAd = showAd
+                    this.#showAd = showAd
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 }).catch((error) => {
@@ -137,12 +137,12 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
     }
 
     showInterstitial(placement) {
-        if (!this._showAd) {
+        if (!this.#showAd) {
             this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
             return
         }
 
-        this._showAd({
+        this.#showAd({
             type: 'start',
             name: placement,
             beforeAd: () => {
@@ -162,12 +162,12 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
     }
 
     showRewarded(placement) {
-        if (!this._showAd) {
+        if (!this.#showAd) {
             this._setRewardedState(REWARDED_STATE.FAILED)
             return
         }
 
-        this._showAd({
+        this.#showAd({
             type: 'reward',
             name: placement,
             beforeAd: () => {
@@ -205,6 +205,8 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
         return ins
     }
+
+    #showAd() {}
 }
 
 export default XiaomiPlatformBridge
