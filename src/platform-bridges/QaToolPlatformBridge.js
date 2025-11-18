@@ -389,12 +389,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         return this.#requestMessage(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, {
             options: { key, storageType, tryParseJson },
-        }).then(({ storage }) => {
-            if (Array.isArray(key)) {
-                return key.map((k) => storage[k])
-            }
-            return storage[key]
-        })
+        }).then(({ storage }) => getKeysFromObject(key, storage, tryParseJson))
     }
 
     setDataToStorage(key, value, storageType) {
