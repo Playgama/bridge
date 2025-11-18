@@ -91,13 +91,14 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 prompt: 'none',
                 scope,
             })
-                .then(({ code }) => fetch(`${APPLICATION_SERVER_PROXY_URL}/token`, {
+                .then(({ code }) => fetch(`${APPLICATION_SERVER_PROXY_URL}/discord/auth-token`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
                         code,
+                        appId: this._appId,
                     }),
                 }))
                 .then((response) => response.json())
