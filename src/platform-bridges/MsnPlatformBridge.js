@@ -550,7 +550,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     async #getDataFromPlatformStorage(key, tryParseJson = false) {
         if (!this._platformStorageCachedData) {
-            this._platformStorageCachedData = await this.platformSdk.cloudSave.getDataAsync()
+            this._platformStorageCachedData = await this.platformSdk.cloudSave.getDataAsync({
+                gameId: this._options.gameId,
+            })
         }
 
         return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
