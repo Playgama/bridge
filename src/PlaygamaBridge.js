@@ -251,7 +251,7 @@ class PlaygamaBridge {
 
                             const endTime = performance.now()
                             const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
-                            analyticsModule.send('initialization_completed', { time_s: timeInSeconds })
+                            analyticsModule.send('initialization_completed', MODULE_NAME.CORE, { time_s: timeInSeconds })
 
                             if (this.#initializationPromiseDecorator) {
                                 this.#initializationPromiseDecorator.resolve()
@@ -272,7 +272,7 @@ class PlaygamaBridge {
                             const endTime = performance.now()
                             const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
                             const errorMessage = error?.message || String(error)
-                            analyticsModule.send('initialization_failed', { error: errorMessage, time_s: timeInSeconds })
+                            analyticsModule.send('initialization_failed', MODULE_NAME.CORE, { error: errorMessage, time_s: timeInSeconds })
                             console.error('PlaygamaBridge initialization failed:', error)
                         })
                         .finally(() => {

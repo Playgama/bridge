@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { PLATFORM_ID } from '../constants'
+import { MODULE_NAME, PLATFORM_ID } from '../constants'
 import { version } from '../../package.json'
 import ModuleBase from './ModuleBase'
 
@@ -38,6 +38,7 @@ class AnalyticsModule extends ModuleBase {
 
         const event = {
             type: 'initialization_started',
+            module: MODULE_NAME.CORE,
             bridge_version: version,
             platform_id: this._platformBridge.platformId,
             game_id: this.#gameId,
@@ -49,7 +50,7 @@ class AnalyticsModule extends ModuleBase {
         return this
     }
 
-    send(eventType, eventData = {}) {
+    send(eventType, module, eventData = {}) {
         const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
         if (sendAnalyticsEvents === false) {
             return
@@ -61,7 +62,8 @@ class AnalyticsModule extends ModuleBase {
         }
 
         const event = {
-            type: eventType,
+            event_name: eventType,
+            module,
             bridge_version: version,
             platform_id: this._platformBridge.platformId,
             game_id: this.#gameId,

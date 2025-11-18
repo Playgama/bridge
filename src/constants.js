@@ -44,6 +44,7 @@ export const PLATFORM_ID = {
 }
 
 export const MODULE_NAME = {
+    CORE: 'core',
     PLATFORM: 'platform',
     PLAYER: 'player',
     GAME: 'game',

@@ -17,6 +17,7 @@
 
 import ModuleBase from './ModuleBase'
 import analyticsModule from './AnalyticsModule'
+import { MODULE_NAME } from '../constants'
 
 class PaymentsModule extends ModuleBase {
     get isSupported() {
@@ -24,15 +25,15 @@ class PaymentsModule extends ModuleBase {
     }
 
     purchase(id, options) {
-        analyticsModule.send('purchase_started', { id })
+        analyticsModule.send('purchase_started', MODULE_NAME.PAYMENTS, { id })
 
         return this._platformBridge.paymentsPurchase(id, options)
             .then((result) => {
-                analyticsModule.send('purchase_completed', { id })
+                analyticsModule.send('purchase_completed', MODULE_NAME.PAYMENTS, { id })
                 return result
             })
             .catch((error) => {
-                analyticsModule.send('purchase_failed', { id })
+                analyticsModule.send('purchase_failed', MODULE_NAME.PAYMENTS, { id })
                 throw error
             })
     }

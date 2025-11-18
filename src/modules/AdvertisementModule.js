@@ -19,7 +19,7 @@ import EventLite from 'event-lite'
 import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import ModuleBase from './ModuleBase'
 import {
-    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE,
+    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
 } from '../constants'
 import analyticsModule from './AnalyticsModule'
 
@@ -338,7 +338,7 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#bannerState = state
-        analyticsModule.send(`banner_${state}`, { position: this.#bannerPosition, placement: this.#bannerPlacement })
+        analyticsModule.send(`banner_${state}`, MODULE_NAME.ADVERTISEMENT, { position: this.#bannerPosition, placement: this.#bannerPlacement })
 
         this.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
     }
@@ -349,7 +349,7 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#interstitialState = state
-        analyticsModule.send(`interstitial_${state}`, { placement: this.#interstitialPlacement })
+        analyticsModule.send(`interstitial_${state}`, MODULE_NAME.ADVERTISEMENT, { placement: this.#interstitialPlacement })
 
         this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
     }
@@ -360,7 +360,7 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#rewardedState = state
-        analyticsModule.send(`rewarded_${state}`, { placement: this.#rewardedPlacement })
+        analyticsModule.send(`rewarded_${state}`, MODULE_NAME.ADVERTISEMENT, { placement: this.#rewardedPlacement })
 
         this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
     }

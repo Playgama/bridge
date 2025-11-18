@@ -17,7 +17,7 @@
 
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
-import { EVENT_NAME, PLATFORM_MESSAGE } from '../constants'
+import { EVENT_NAME, MODULE_NAME, PLATFORM_MESSAGE } from '../constants'
 import analyticsModule from './AnalyticsModule'
 
 class PlatformModule extends ModuleBase {
@@ -95,7 +95,7 @@ class PlatformModule extends ModuleBase {
             }
         }
 
-        analyticsModule.send(message, data)
+        analyticsModule.send(message, MODULE_NAME.PLATFORM, data)
         return this._platformBridge.sendMessage(message)
     }
 
