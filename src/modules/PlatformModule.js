@@ -95,7 +95,7 @@ class PlatformModule extends ModuleBase {
             }
         }
 
-        analyticsModule.send(message, MODULE_NAME.PLATFORM, data)
+        analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, MODULE_NAME.PLATFORM, data)
         return this._platformBridge.sendMessage(message)
     }
 

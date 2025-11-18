@@ -25,15 +25,15 @@ class PaymentsModule extends ModuleBase {
     }
 
     purchase(id, options) {
-        analyticsModule.send('purchase_started', MODULE_NAME.PAYMENTS, { id })
+        analyticsModule.send(`${MODULE_NAME.PAYMENTS}_purchase_started`, MODULE_NAME.PAYMENTS, { id })
 
         return this._platformBridge.paymentsPurchase(id, options)
             .then((result) => {
-                analyticsModule.send('purchase_completed', MODULE_NAME.PAYMENTS, { id })
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_purchase_completed`, MODULE_NAME.PAYMENTS, { id })
                 return result
             })
             .catch((error) => {
-                analyticsModule.send('purchase_failed', MODULE_NAME.PAYMENTS, { id })
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_purchase_failed`, MODULE_NAME.PAYMENTS, { id })
                 throw error
             })
     }
