@@ -37,7 +37,7 @@ class AnalyticsModule extends ModuleBase {
         this.#gameId = this.#extractGameId()
 
         const event = {
-            type: 'initialization_started',
+            event_name: 'initialization_started',
             module: MODULE_NAME.CORE,
             bridge_version: version,
             platform_id: this._platformBridge.platformId,
