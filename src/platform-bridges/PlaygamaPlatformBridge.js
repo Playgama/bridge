@@ -381,7 +381,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    async #getDataFromPlatformStorage(key, tryParseJson = false) {
+    async #getDataFromPlatformStorage(key, tryParseJson = true) {
         if (!this._platformStorageCachedData) {
             this._platformStorageCachedData = await this.platformSdk.cloudSaveApi.getState()
         }

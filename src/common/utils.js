@@ -494,7 +494,15 @@ export function getKeysFromObject(keys, data, tryParseJson = false) {
         }, new Array(keys.length))
     }
 
-    return getKeyOrNull(data, keys)
+    let value = getKeyOrNull(data, keys)
+    if (tryParseJson && typeof value === 'string') {
+        try {
+            value = JSON.parse(value)
+        } catch (e) {
+            // keep value as is
+        }
+    }
+    return value
 }
 
 export function deepMerge(firstObject, secondObject) {

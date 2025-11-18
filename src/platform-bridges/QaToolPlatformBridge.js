@@ -17,6 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
+import { getKeysFromObject } from '../common/utils'
 import {
     PLATFORM_ID,
     MODULE_NAME,
