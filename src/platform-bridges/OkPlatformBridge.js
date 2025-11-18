@@ -109,7 +109,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
 
                             const params = this._platformSdk.Util.getRequestParameters() || {}
                             if (!params.api_server || !params.apiconnection) {
-                                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.OK_GAME_PARAMS_NOT_FOUND)
+                                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.GAME_PARAMS_NOT_FOUND)
                             } else {
                                 this._platformSdk.init(
                                     params.api_server,
