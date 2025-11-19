@@ -3,7 +3,7 @@ import { ACTION_NAME_QA } from '../../../src/platform-bridges/QaToolPlatformBrid
 import { ACTION_NAME } from '../../../src/constants'
 import type { TestGlobalThis } from '../../common/types'
 import { StateManager } from '../stateManager/stateManager'
-import type { QaToolMessageAuthorizePlayer, QaToolMessageAuthorizePlayerResponse, QaToolMessageData, QaToolMessageGetDataFromStorage, QaToolMessageGetDataFromStorageResponse } from './qaTool.types'
+import type { QaToolMessageAuthorizePlayer, QaToolMessageAuthorizePlayerResponse, QaToolMessageData, QaToolMessageGetDataFromStorage, QaToolMessageGetDataFromStorageResponse, QaToolMessageGetPlayer, QaToolMessageGetPlayerResponse } from './qaTool.types'
 
 
 export function createQaToolSdk(
@@ -15,32 +15,39 @@ export function createQaToolSdk(
 
         if (messageData.source === 'platform' || !messageData.type || !messageData.action) return
 
-        if (messageData.type === MODULE_NAME.PLATFORM) {
-            // 
-        } 
-        else if (messageData.type === MODULE_NAME.PLAYER) {
-            if (messageData.action === ACTION_NAME.AUTHORIZE_PLAYER) {
-                handleAuthorizePlayer(messageData as QaToolMessageAuthorizePlayer)
-            } else {
-                console.error('Unsupported action', messageData.type, messageData.action)
-            }
-        }
-        else if (messageData.type === 'liveness') {
-            // 
-        }
-        else if (messageData.type === MODULE_NAME.STORAGE) {
-            if (messageData.action === ACTION_NAME_QA.GET_DATA_FROM_STORAGE) {
-                handleGetDataFromStorage(messageData as QaToolMessageGetDataFromStorage)
-            } else {
-                if (![
-                    ACTION_NAME_QA.IS_STORAGE_AVAILABLE, 
-                    ACTION_NAME_QA.IS_STORAGE_SUPPORTED
-                ].includes(messageData.action)) {
+        switch (messageData.type) {
+            case MODULE_NAME.PLATFORM:
+                break
+
+            case MODULE_NAME.PLAYER:
+                if (messageData.action === ACTION_NAME.AUTHORIZE_PLAYER) {
+                    handleAuthorizePlayer(messageData as QaToolMessageAuthorizePlayer)
+                } else if (messageData.action === ACTION_NAME_QA.GET_PLAYER) {
+                    handleGetPlayer(messageData as QaToolMessageGetPlayer)
+                } else {
                     console.error('Unsupported action', messageData.type, messageData.action)
                 }
-            }
-        } else {
-            console.error('Unsupported module', messageData.type)
+                break
+
+            case 'liveness':
+                break
+
+            case MODULE_NAME.STORAGE:
+                if (messageData.action === ACTION_NAME_QA.GET_DATA_FROM_STORAGE) {
+                    handleGetDataFromStorage(messageData as QaToolMessageGetDataFromStorage)
+                } else {
+                    if (![
+                        ACTION_NAME_QA.IS_STORAGE_AVAILABLE, 
+                        ACTION_NAME_QA.IS_STORAGE_SUPPORTED
+                    ].includes(messageData.action)) {
+                        console.error('Unsupported action', messageData.type, messageData.action)
+                    }
+                }
+                break
+
+            default:
+                console.error('Unsupported module', messageData.type)
+                break
         }
     })
 
@@ -77,15 +84,33 @@ export function createQaToolSdk(
             source: 'platform',
             auth: {
                 status: state?.authorized ? 'success' : 'failed',
-            },
-            player: state?.authorized ? {
-                id: state.id || '',
+            }
+        }
+        testGlobalThis.postMessage(response, '*')
+    }
+
+    function handleGetPlayer(data: QaToolMessageGetPlayer): void {
+        const state = stateManager.getPlayerState()
+        let playerData: QaToolMessageGetPlayerResponse['player'] = null;
+
+        if (state?.authorized) {
+            playerData = {
+                userId: state.id,
                 name: state.name || '',
                 isAuthorized: state.authorized,
                 photos: state.photos || [],
-                extra: state.extra || {},
-            } : null,
+                jwt: state.jwt || '',
+            }
         }
+
+        const response: QaToolMessageGetPlayerResponse = {
+            type: data.type,
+            action: data.action,
+            id: data.id,
+            source: 'platform',
+            player: playerData,
+        }
+
         testGlobalThis.postMessage(response, '*')
     }
 

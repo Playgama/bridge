@@ -63,6 +63,26 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
 
     test.each([
         PLATFORM_ID.QA_TOOL
+    ])(`Default storage type should be changed to ${STORAGE_TYPE.PLATFORM_INTERNAL} on %s platform`, async (platformId: string) => {
+        const { bridge, stateManager } = await createBridgeByPlatformId(platformId, { supportedFeatures: [
+            SUPPORTED_FEATURES.PLAYER_AUTHORIZATION,
+            SUPPORTED_FEATURES.STORAGE_INTERNAL,
+            SUPPORTED_FEATURES.STORAGE_LOCAL,
+        ]})
+
+        expect(bridge.storage.isSupported(STORAGE_TYPE.PLATFORM_INTERNAL)).toBe(true)
+        expect(bridge.storage.isSupported(STORAGE_TYPE.LOCAL_STORAGE)).toBe(true)
+
+        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
+
+        stateManager.setPlayerState({ authorized: true, id: '123' })
+        await bridge.player.authorize()
+
+        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
+    })
+
+    test.each([
+        PLATFORM_ID.QA_TOOL
     ])(`Cloud Storage should be available for authorized player on %s platform`, async (platformId: string) => {
         const storageType = STORAGE_TYPE.PLATFORM_INTERNAL
         const { bridge, stateManager } = await createBridgeByPlatformId(platformId, { supportedFeatures: [
@@ -73,7 +93,7 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
         stateManager.setPlayerState({ authorized: true, id: '123' })
         await bridge.player.authorize()
         
-        expect(bridge.storage.isAvailable(storageType)).toBe(true)
+        expect(bridge.storage.isAvailable(storageType)).toBe(true) 
 
         stateManager.setStorageKey(STORAGE_TYPE.PLATFORM_INTERNAL, 'test', 'value_1')
         const value = await bridge.storage.get('test', storageType)
