@@ -21,6 +21,7 @@ import { ACTION_NAME, ERROR, PLATFORM_ID } from '../constants'
 
 const SDK_URL = '/cdn/discord/discord-v2.0.0.min.js'
 const APPLICATION_SERVER_PROXY_URL = '/api'
+const DISCORD_BASE_URL = 'https://discord.com/api/v10'
 
 class DiscordPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -124,7 +125,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     this._isPlayerAuthorized = true
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
-                    return fetch('/users/@me', {
+                    return fetch(`${DISCORD_BASE_URL}/users/@me`, {
                         method: 'GET',
                         headers: {
                             Authorization: `Bearer ${this._accessToken}`,
@@ -198,7 +199,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            fetch(`/applications/${this._appId}/entitlements/${this._paymentsPurchases[purchaseIndex].purchaseToken}/consume`, {
+            fetch(`${DISCORD_BASE_URL}/applications/${this._appId}/entitlements/${this._paymentsPurchases[purchaseIndex].purchaseToken}/consume`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${this._accessToken}`,
