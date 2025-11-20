@@ -39,15 +39,45 @@ class PaymentsModule extends ModuleBase {
     }
 
     getPurchases() {
+        analyticsModule.send(`${MODULE_NAME.PAYMENTS}_get_purchases_started`, MODULE_NAME.PAYMENTS)
+
         return this._platformBridge.paymentsGetPurchases()
+            .then((result) => {
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_get_purchases_completed`, MODULE_NAME.PAYMENTS)
+                return result
+            })
+            .catch((error) => {
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_get_purchases_failed`, MODULE_NAME.PAYMENTS)
+                throw error
+            })
     }
 
     getCatalog() {
+        analyticsModule.send(`${MODULE_NAME.PAYMENTS}_get_catalog_started`, MODULE_NAME.PAYMENTS)
+
         return this._platformBridge.paymentsGetCatalog()
+            .then((result) => {
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_get_catalog_completed`, MODULE_NAME.PAYMENTS)
+                return result
+            })
+            .catch((error) => {
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_get_catalog_failed`, MODULE_NAME.PAYMENTS)
+                throw error
+            })
     }
 
     consumePurchase(id) {
+        analyticsModule.send(`${MODULE_NAME.PAYMENTS}_consume_purchase_started`, MODULE_NAME.PAYMENTS, { id })
+
         return this._platformBridge.paymentsConsumePurchase(id)
+            .then((result) => {
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_consume_purchase_completed`, MODULE_NAME.PAYMENTS, { id })
+                return result
+            })
+            .catch((error) => {
+                analyticsModule.send(`${MODULE_NAME.PAYMENTS}_consume_purchase_failed`, MODULE_NAME.PAYMENTS, { id })
+                throw error
+            })
     }
 }
 
