@@ -103,7 +103,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 }))
                 .then((response) => response.json())
                 .then((data) => {
-                    this._accessToken = data.access_token
+                    this._accessToken = data.accessToken
 
                     this._playerExtra = {
                         token: data.token,
