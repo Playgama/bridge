@@ -122,9 +122,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                         throw new Error('Authorization failed')
                     }
 
-                    this._isPlayerAuthorized = true
-                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
-
                     return fetch(`${DISCORD_BASE_URL}/users/@me`, {
                         method: 'GET',
                         headers: {
@@ -145,6 +142,9 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                         ...this._playerExtra,
                         ...user,
                     }
+
+                    this._isPlayerAuthorized = true
+                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                 })
                 .catch((error) => {
                     this._playerApplyGuestData()
