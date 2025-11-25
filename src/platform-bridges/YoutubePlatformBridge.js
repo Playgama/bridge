@@ -20,7 +20,6 @@ import { waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
-    EVENT_NAME,
     STORAGE_TYPE,
     PLATFORM_MESSAGE,
     LEADERBOARD_TYPE,
