@@ -28,8 +28,6 @@ import {
     INTERSTITIAL_STATE,
 } from '../constants'
 
-// const SDK_URL = 'https://www.youtube.com/game_api/v1'
-
 class YoutubePlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
@@ -247,14 +245,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
     sendMessage(message) {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
-                const currentAudioState = this._platformSdk.system.isAudioEnabled()
-                setTimeout(() => {
-                    this.emit(EVENT_NAME.AUDIO_STATE_CHANGED, !currentAudioState)
-                    setTimeout(() => {
-                        this.emit(EVENT_NAME.AUDIO_STATE_CHANGED, currentAudioState)
-                    }, 100)
-                }, 200)
-
                 this._platformSdk.game.gameReady()
                 return Promise.resolve()
             }
