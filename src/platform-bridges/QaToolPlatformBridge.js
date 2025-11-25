@@ -1082,7 +1082,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             }
             switch (payload.status) {
                 case REWARD_STATUS.START:
-                    this._setRewardedState(INTERSTITIAL_STATE.LOADING)
+                    this._setRewardedState(REWARDED_STATE.LOADING)
                     break
                 case REWARD_STATUS.OPEN: {
                     this._setRewardedState(REWARDED_STATE.OPENED)
