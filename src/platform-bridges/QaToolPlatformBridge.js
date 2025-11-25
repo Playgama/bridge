@@ -64,7 +64,6 @@ export const ACTION_NAME_QA = {
 const INTERSTITIAL_STATUS = {
     START: 'start',
     OPEN: 'open',
-    SHOW: 'show',
     CLOSE: 'close',
     FAILED: 'failed',
 }
@@ -252,6 +251,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         const requestedProps = data?.options?.resources || []
                         this.#getPerformanceResources(messageId, requestedProps)
                     }
+                } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
+                    this.#handleAdvertisement(data)
                 }
             }
 
@@ -433,33 +434,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!this.isInterstitialSupported) {
             return
         }
-
-        const showInterstitialHandler = ({ data }) => {
-            if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
-                return
-            }
-
-            switch (data.payload.status) {
-                case INTERSTITIAL_STATUS.START:
-                    this._setInterstitialState(INTERSTITIAL_STATE.LOADING)
-                    break
-                case INTERSTITIAL_STATUS.OPEN:
-                    this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-                    break
-                case INTERSTITIAL_STATUS.FAILED:
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-                    break
-                case INTERSTITIAL_STATUS.CLOSE:
-                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-                    this.#messageBroker.removeListener(showInterstitialHandler)
-                    break
-                default:
-                    break
-            }
-        }
-
-        this.#messageBroker.addListener(showInterstitialHandler)
-
         this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.INTERSTITIAL,
@@ -471,36 +445,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!this.isRewardedSupported) {
             return
         }
-
-        const showRewardedHandler = ({ data }) => {
-            if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
-                return
-            }
-
-            switch (data.payload.status) {
-                case REWARD_STATUS.START:
-                    this._setRewardedState(REWARDED_STATE.LOADING)
-                    break
-                case REWARD_STATUS.OPEN:
-                    this._setRewardedState(REWARDED_STATE.OPENED)
-                    break
-                case REWARD_STATUS.FAILED:
-                    this._setRewardedState(REWARDED_STATE.FAILED)
-                    break
-                case REWARD_STATUS.REWARDED:
-                    this._setRewardedState(REWARDED_STATE.REWARDED)
-                    break
-                case REWARD_STATUS.CLOSE:
-                    this._setRewardedState(REWARDED_STATE.CLOSED)
-                    this.#messageBroker.removeListener(showRewardedHandler)
-                    break
-                default:
-                    break
-            }
-        }
-
-        this.#messageBroker.addListener(showRewardedHandler)
-
         this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.REWARD,
@@ -1109,6 +1053,58 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         }).catch(() => {
             this._playerApplyGuestData()
         })
+    }
+
+    #handleAdvertisement({ action, payload }) {
+        if (action === 'interstitial') {
+            if (!this.isInterstitialSupported) {
+                return
+            }
+            switch (payload.status) {
+                case INTERSTITIAL_STATUS.START:
+                    this._setInterstitialState(INTERSTITIAL_STATE.LOADING)
+                    break
+                case INTERSTITIAL_STATUS.OPEN:
+                    this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                    break
+                case INTERSTITIAL_STATUS.FAILED:
+                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    break
+                case INTERSTITIAL_STATUS.CLOSE:
+                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                    break
+                default:
+                    break
+            }
+        } else if (action === 'reward') {
+            if (!this.isRewardedSupported) {
+                return
+            }
+            switch (payload.status) {
+                case REWARD_STATUS.START:
+                    this._setRewardedState(INTERSTITIAL_STATE.LOADING)
+                    break
+                case REWARD_STATUS.OPEN: {
+                    this._setRewardedState(REWARDED_STATE.OPENED)
+                    break
+                }
+                case REWARD_STATUS.REWARDED: {
+                    this._setRewardedState(REWARDED_STATE.REWARDED)
+                    break
+                }
+                case REWARD_STATUS.CLOSE: {
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                    break
+                }
+                case REWARD_STATUS.FAILED: {
+                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    break
+                }
+                default: {
+                    break
+                }
+            }
+        }
     }
 }
 
