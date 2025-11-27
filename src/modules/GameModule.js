@@ -17,7 +17,7 @@
 
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
-import { EVENT_NAME } from '../constants'
+import { EVENT_NAME, PLATFORM_ID } from '../constants'
 import { createProgressLogo } from '../common/utils'
 
 class GameModule extends ModuleBase {
@@ -34,7 +34,10 @@ class GameModule extends ModuleBase {
         )
 
         if (!this._platformBridge.options.disableLoadingLogo) {
-            createProgressLogo(this._platformBridge.options.showFullLoadingLogo)
+            const showFullLogo = this._platformBridge.platformId === PLATFORM_ID.YANDEX
+                ? false
+                : this._platformBridge.options.showFullLoadingLogo
+            createProgressLogo(showFullLogo)
         }
     }
 
