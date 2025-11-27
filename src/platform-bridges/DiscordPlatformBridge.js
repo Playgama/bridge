@@ -39,6 +39,15 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // social
+    get isInviteFriendsSupported() {
+        return true
+    }
+
+    get isShareSupported() {
+        return true
+    }
+
     _appId = null
 
     _accessToken = null
