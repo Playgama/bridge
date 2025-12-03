@@ -25,6 +25,7 @@ import {
     STORAGE_TYPE,
     VISIBILITY_STATE,
     DEVICE_TYPE,
+    DEVICE_ORIENTATION,
     PLATFORM_MESSAGE,
     ERROR,
 } from './constants'
@@ -185,6 +186,10 @@ class PlaygamaBridge {
 
     get DEVICE_TYPE() {
         return DEVICE_TYPE
+    }
+
+    get DEVICE_ORIENTATION() {
+        return DEVICE_ORIENTATION
     }
 
     #isInitialized = false

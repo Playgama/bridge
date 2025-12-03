@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BANNER_CONTAINER_ID, BANNER_POSITION } from '../constants'
+import { BANNER_CONTAINER_ID, BANNER_POSITION, ORIENTATION_OVERLAY_ID } from '../constants'
 
 export const addJavaScript = function addJavaScript(src, options = {}) {
     return new Promise((resolve, reject) => {
@@ -138,6 +138,70 @@ export function createAdContainer(containerId) {
     document.body.appendChild(container)
 
     return container
+}
+
+export function createOrientationOverlay() {
+    if (!document.getElementById('bridge-orientation-overlay-styles')) {
+        const style = document.createElement('style')
+        style.id = 'bridge-orientation-overlay-styles'
+        style.textContent = `
+            #${ORIENTATION_OVERLAY_ID} {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.95);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999999;
+            }
+
+            #bridge-orientation-icon {
+                width: 80px;
+                height: 80px;
+                animation: bridge-rotate-phone 1.5s ease-in-out infinite;
+            }
+
+            #bridge-orientation-message {
+                color: #fff;
+                font-size: 18px;
+                font-family: Arial, sans-serif;
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            @keyframes bridge-rotate-phone {
+                0%, 100% { transform: rotate(0deg); }
+                50% { transform: rotate(90deg); }
+            }
+        `
+        document.head.appendChild(style)
+    }
+
+    const overlay = document.createElement('div')
+    overlay.id = ORIENTATION_OVERLAY_ID
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    icon.setAttribute('id', 'bridge-orientation-icon')
+    icon.setAttribute('viewBox', '0 0 24 24')
+    icon.setAttribute('fill', 'none')
+    icon.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    icon.innerHTML = `
+        <rect x="5" y="2" width="14" height="20" rx="2" stroke="white" stroke-width="2"/>
+        <line x1="12" y1="18" x2="12" y2="18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    `
+
+    const message = document.createElement('div')
+    message.id = 'bridge-orientation-message'
+    message.innerText = 'Please rotate your device'
+
+    overlay.appendChild(icon)
+    overlay.appendChild(message)
+
+    return overlay
 }
 
 export function showInfoPopup(message) {
