@@ -24,6 +24,7 @@ import {
     REWARDED_STATE,
     STORAGE_TYPE,
 } from '../constants'
+import { postToParent } from '../common/utils'
 
 class PlayDeckPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -105,7 +106,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
 
             window.addEventListener('message', getUserProfileHandler)
 
-            window.parent.postMessage({ playdeck: { method: 'getUserProfile' } }, '*')
+            postToParent({ playdeck: { method: 'getUserProfile' } }, '*')
         }
 
         return promiseDecorator.promise
@@ -115,11 +116,11 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     sendMessage(message) {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_OVER: {
-                window.parent.postMessage({ playdeck: { method: 'gameEnd' } }, '*')
+                postToParent({ playdeck: { method: 'gameEnd' } }, '*')
                 return Promise.resolve()
             }
             case PLATFORM_MESSAGE.GAME_READY: {
-                window.parent.postMessage({ playdeck: { method: 'loading', value: 100 } }, '*')
+                postToParent({ playdeck: { method: 'loading', value: 100 } }, '*')
                 return Promise.resolve()
             }
             default: {
@@ -158,7 +159,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
         }
 
         window.addEventListener('message', showAdHandler)
-        window.parent.postMessage({ playdeck: { method: 'showAd' } }, '*')
+        postToParent({ playdeck: { method: 'showAd' } }, '*')
     }
 
     showRewarded() {
@@ -194,7 +195,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
         }
 
         window.addEventListener('message', showAdHandler)
-        window.parent.postMessage({ playdeck: { method: 'showAd' } }, '*')
+        postToParent({ playdeck: { method: 'showAd' } }, '*')
     }
 
     // player
@@ -245,7 +246,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
 
                 window.addEventListener('message', getDataHandler)
 
-                keys.forEach((k) => window.parent.postMessage({ playdeck: { method: 'getData', key: k } }, '*'))
+                keys.forEach((k) => postToParent({ playdeck: { method: 'getData', key: k } }, '*'))
             })
         }
 
@@ -264,7 +265,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                     return v
                 })
 
-                keys.forEach((k, i) => window.parent.postMessage({ playdeck: { method: 'setData', key: k, value: valuesString[i] } }, '*'))
+                keys.forEach((k, i) => postToParent({ playdeck: { method: 'setData', key: k, value: valuesString[i] } }, '*'))
 
                 resolve()
             })
@@ -278,7 +279,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
             return new Promise((resolve) => {
                 const keys = Array.isArray(key) ? key : [key]
 
-                keys.forEach((k) => window.parent.postMessage({ playdeck: { method: 'setData', key: k, value: '' } }, '*'))
+                keys.forEach((k) => postToParent({ playdeck: { method: 'setData', key: k, value: '' } }, '*'))
 
                 resolve()
             })
@@ -305,7 +306,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
 
             window.addEventListener('message', shareHandler)
 
-            window.parent.postMessage({ playdeck: { method: 'customShare', value: this.#urlParams } }, '*')
+            postToParent({ playdeck: { method: 'customShare', value: this.#urlParams } }, '*')
         }
 
         return promiseDecorator.promise
@@ -335,7 +336,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                 if (!playdeck) return
 
                 if (playdeck.method === 'requestPayment') {
-                    window.parent.postMessage(
+                    postToParent(
                         {
                             playdeck: {
                                 method: 'openTelegramLink',
@@ -370,7 +371,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
 
             window.addEventListener('message', invoiceClosedHandler)
 
-            window.parent.postMessage({
+            postToParent({
                 playdeck: {
                     method: 'requestPayment',
                     value: product,

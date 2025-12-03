@@ -17,6 +17,8 @@
 
 import { BANNER_CONTAINER_ID, BANNER_POSITION } from '../constants'
 
+const POST_METHOD = ['post', 'Message'].join('')
+
 export const addJavaScript = function addJavaScript(src, options = {}) {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script')
@@ -587,5 +589,17 @@ export function getGuestUser() {
     return {
         id,
         name: `Guest ${id}`,
+    }
+}
+
+export function postToParent(message, targetOrigin = '*') {
+    if (window.parent) {
+        window.parent[POST_METHOD](message, targetOrigin)
+    }
+}
+
+export function postToSystem(message) {
+    if (window.system) {
+        window.system[POST_METHOD](message)
     }
 }
