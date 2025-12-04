@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, getKeysFromObject, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -25,9 +25,10 @@ import {
     REWARDED_STATE,
     BANNER_POSITION,
     LEADERBOARD_TYPE,
+    STORAGE_TYPE,
 } from '../constants'
 
-const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.20.min.js'
+const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 class MsnPlatformBridge extends PlatformBridgeBase {
@@ -95,6 +96,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this.#updatePlayerInfo(null)
                         })
                         .finally(() => {
+                            this._defaultStorageType = this._isPlayerAuthorized
+                                ? STORAGE_TYPE.PLATFORM_INTERNAL
+                                : STORAGE_TYPE.LOCAL_STORAGE
+
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -135,6 +140,99 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     reject(e)
                 })
         })
+    }
+
+    // storage
+    isStorageSupported(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageSupported(storageType)
+    }
+
+    isStorageAvailable(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return this._isPlayerAuthorized
+        }
+
+        return super.isStorageAvailable(storageType)
+    }
+
+    getDataFromStorage(key, storageType, tryParseJson) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
+            return this.#getDataFromPlatformStorage(key, tryParseJson)
+        }
+
+        return super.getDataFromStorage(key, storageType, tryParseJson)
+    }
+
+    setDataToStorage(key, value, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+
+            return new Promise((resolve, reject) => {
+                const data = this._platformStorageCachedData !== null
+                    ? { ...this._platformStorageCachedData }
+                    : {}
+
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        data[key[i]] = value[i]
+                    }
+                } else {
+                    data[key] = value
+                }
+
+                this.platformSdk.cloudSave.saveDataAsync({ data, gameId: this._options.gameId })
+                    .then(() => {
+                        this._platformStorageCachedData = data
+                        resolve()
+                    })
+                    .catch((error) => {
+                        reject(error)
+                    })
+            })
+        }
+
+        return super.setDataToStorage(key, value, storageType)
+    }
+
+    deleteDataFromStorage(key, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject()
+            }
+            return new Promise((resolve, reject) => {
+                const data = {}
+
+                if (Array.isArray(key)) {
+                    for (let i = 0; i < key.length; i++) {
+                        data[key[i]] = null
+                        delete this._platformStorageCachedData[key[i]]
+                    }
+                } else {
+                    data[key] = null
+                    delete this._platformStorageCachedData[key]
+                }
+
+                this.platformSdk.cloudSave.saveDataAsync({ data, gameId: this._options.gameId })
+                    .then(() => {
+                        resolve()
+                    })
+                    .catch((error) => {
+                        reject(error)
+                    })
+            })
+        }
+
+        return super.deleteDataFromStorage(key, storageType)
     }
 
     // social
@@ -211,7 +309,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(id) {
+    async paymentsPurchase(id) {
         const product = this._paymentsGetProductPlatformData(id)
         if (!product) {
             return Promise.reject()
@@ -221,31 +319,34 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.iap.purchaseAsync({ productId: product.platformProductId })
-                .then((purchase) => {
-                    if (purchase.code === 'IAP_PURCHASE_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.description)
-                        return
-                    }
+            try {
+                if (!this._isPlayerAuthorized) {
+                    await this.authorizePlayer()
+                }
 
-                    const mergedPurchase = {
-                        id,
-                        ...purchase.receipt,
-                        receiptSignature: purchase.receiptSignature,
-                    }
+                const purchase = await this._platformSdk.iap.purchaseAsync({ productId: product.platformProductId })
 
-                    this._paymentsPurchases.push(mergedPurchase)
-                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
-                })
+                if (purchase.code === 'IAP_PURCHASE_FAILURE') {
+                    throw new Error(purchase.description)
+                }
+
+                const mergedPurchase = {
+                    id,
+                    ...purchase.receipt,
+                    receiptSignature: purchase.receiptSignature,
+                }
+
+                this._paymentsPurchases.push(mergedPurchase)
+                this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+            } catch (e) {
+                this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, e)
+            }
         }
 
         return promiseDecorator.promise
     }
 
-    paymentsConsumePurchase(id) {
+    async paymentsConsumePurchase(id) {
         const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
         if (purchaseIndex < 0) {
             return Promise.reject()
@@ -255,26 +356,31 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            this._platformSdk.iap.consumeAsync({ productId: this._paymentsPurchases[purchaseIndex].id })
-                .then((response) => {
-                    if (response.code === 'IAP_CONSUME_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, response.description)
-                        return
-                    }
+            try {
+                if (!this._isPlayerAuthorized) {
+                    await this.authorizePlayer()
+                }
 
-                    this._paymentsPurchases.splice(purchaseIndex, 1)
-                    const result = {
-                        id,
-                        ...response.consumptionReceipt,
-                        consumptionSignature: response.consumptionSignature,
-                    }
+                const response = await this._platformSdk.iap.consumeAsync({
+                    productId: this._paymentsPurchases[purchaseIndex].productId,
+                })
 
-                    delete result.productId
-                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
-                })
+                if (response.code === 'IAP_CONSUME_FAILURE') {
+                    throw new Error(response.description)
+                }
+
+                this._paymentsPurchases.splice(purchaseIndex, 1)
+                const result = {
+                    id,
+                    ...response.consumptionReceipt,
+                    consumptionSignature: response.consumptionSignature,
+                }
+
+                delete result.productId
+                this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, result)
+            } catch (error) {
+                this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+            }
         }
         return promiseDecorator.promise
     }
@@ -322,35 +428,40 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    paymentsGetPurchases() {
+    async paymentsGetPurchases() {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this._platformSdk.iap.getAllPurchasesAsync({ productId: this._options.gameId })
-                .then((response) => {
-                    if (response.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
-                        this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, response.description)
-                        return
+            try {
+                if (!this._isPlayerAuthorized) {
+                    await this.authorizePlayer()
+                }
+
+                const response = await this._platformSdk.iap.getAllPurchasesAsync({
+                    productId: this._options.gameId,
+                })
+
+                if (response.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
+                    throw new Error(response.description)
+                }
+
+                const products = this._paymentsGetProductsPlatformData()
+                this._paymentsPurchases = response.receipts.map((purchase) => {
+                    const product = products.find((p) => p.platformProductId === purchase.productId)
+                    const mergedPurchase = {
+                        id: product.id,
+                        ...purchase,
+                        receiptSignature: response.receiptSignature,
                     }
 
-                    const products = this._paymentsGetProductsPlatformData()
-                    this._paymentsPurchases = response.receipts.map((purchase) => {
-                        const product = products.find((p) => p.id === purchase.productId)
-                        const mergedPurchase = {
-                            id: product.id,
-                            ...purchase,
-                            receiptSignature: response.receiptSignature,
-                        }
-
-                        return mergedPurchase
-                    })
-
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                    return mergedPurchase
                 })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
-                })
+
+                this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+            } catch (error) {
+                this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+            }
         }
 
         return promiseDecorator.promise
@@ -444,6 +555,16 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         } else {
             this._playerApplyGuestData()
         }
+    }
+
+    async #getDataFromPlatformStorage(key, tryParseJson = false) {
+        if (!this._platformStorageCachedData) {
+            this._platformStorageCachedData = await this.platformSdk.cloudSave.getDataAsync({
+                gameId: this._options.gameId,
+            })
+        }
+
+        return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
     }
 }
 

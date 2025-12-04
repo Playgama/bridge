@@ -80,7 +80,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
             if (!this._options?.gameId) {
-                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.Y8_GAME_PARAMS_NOT_FOUND)
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.GAME_PARAMS_NOT_FOUND)
             } else {
                 addJavaScript(SDK_URL).then(() => {
                     waitFor('ID').then(() => {
@@ -88,19 +88,13 @@ class Y8PlatformBridge extends PlatformBridgeBase {
 
                         this._platformSdk.Event.subscribe('id.init', (() => {
                             addAdsByGoogle({
-                                hostId: `ca-host-pub-${ADS_ID}`,
-                                adsenseId: this._options.channelId
+                                adSenseId: this._options.channelId
                                     ? `ca-pub-${ADS_ID}`
                                     : this._options.adsenseId,
                                 channelId: this._options.channelId,
-                            }).then(() => {
-                                this._showAd = (o) => { window.adsbygoogle.push(o) }
-
-                                window.adsbygoogle.push({
-                                    preloadAdBreaks: 'on',
-                                    sound: 'on',
-                                    onReady: () => {},
-                                })
+                                hostId: `ca-host-pub-${ADS_ID}`,
+                            }).then((showAd) => {
+                                this._showAd = showAd
                             })
 
                             this._platformSdk.getLoginStatus((data) => {

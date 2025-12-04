@@ -15,12 +15,120 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
+import { EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE } from '../constants'
+import { createOrientationOverlay } from '../common/utils'
 
 class DeviceModule extends ModuleBase {
+    #currentOrientation = null
+
+    #overlayElement = null
+
+    #supportedOrientations = null
+
+    #useBuiltInOverlay = false
+
     get type() {
         return this._platformBridge.deviceType
     }
+
+    get orientation() {
+        return this.#currentOrientation
+    }
+
+    constructor(platformBridge) {
+        super(platformBridge)
+        this.#initializeOrientationTracking()
+    }
+
+    #initializeOrientationTracking() {
+        const { deviceType } = this._platformBridge
+        const isMobileDevice = deviceType === DEVICE_TYPE.MOBILE || deviceType === DEVICE_TYPE.TABLET
+
+        if (!isMobileDevice) {
+            return
+        }
+
+        const deviceConfig = this._platformBridge.options?.device
+        this.#useBuiltInOverlay = deviceConfig?.useBuiltInOrientationPopup ?? false
+        this.#supportedOrientations = deviceConfig?.supportedOrientations ?? [
+            DEVICE_ORIENTATION.PORTRAIT,
+            DEVICE_ORIENTATION.LANDSCAPE,
+        ]
+
+        this.#currentOrientation = this.#detectOrientation()
+
+        if (window.screen.orientation) {
+            window.screen.orientation.addEventListener('change', () => this.#handleOrientationChange())
+        } else {
+            window.addEventListener('orientationchange', () => this.#handleOrientationChange())
+        }
+        window.addEventListener('resize', () => this.#handleOrientationChange())
+
+        this.#updateOverlay()
+    }
+
+    #detectOrientation() {
+        if (window.screen.orientation?.type) {
+            return window.screen.orientation.type.includes('portrait')
+                ? DEVICE_ORIENTATION.PORTRAIT
+                : DEVICE_ORIENTATION.LANDSCAPE
+        }
+
+        if (window.matchMedia) {
+            return window.matchMedia('(orientation: portrait)').matches
+                ? DEVICE_ORIENTATION.PORTRAIT
+                : DEVICE_ORIENTATION.LANDSCAPE
+        }
+
+        return window.innerHeight > window.innerWidth
+            ? DEVICE_ORIENTATION.PORTRAIT
+            : DEVICE_ORIENTATION.LANDSCAPE
+    }
+
+    #handleOrientationChange() {
+        const newOrientation = this.#detectOrientation()
+        if (newOrientation !== this.#currentOrientation) {
+            this.#currentOrientation = newOrientation
+            this.emit(EVENT_NAME.ORIENTATION_STATE_CHANGED, this.#currentOrientation)
+            this.#updateOverlay()
+        }
+    }
+
+    #updateOverlay() {
+        if (!this.#useBuiltInOverlay) {
+            return
+        }
+
+        if (this.#supportedOrientations.length !== 1) {
+            this.#hideOverlay()
+            return
+        }
+
+        const supportedOrientation = this.#supportedOrientations[0]
+        if (this.#currentOrientation !== supportedOrientation) {
+            this.#showOverlay()
+        } else {
+            this.#hideOverlay()
+        }
+    }
+
+    #showOverlay() {
+        if (this.#overlayElement) {
+            return
+        }
+        this.#overlayElement = createOrientationOverlay()
+        document.body.appendChild(this.#overlayElement)
+    }
+
+    #hideOverlay() {
+        if (this.#overlayElement) {
+            this.#overlayElement.remove()
+            this.#overlayElement = null
+        }
+    }
 }
 
+EventLite.mixin(DeviceModule.prototype)
 export default DeviceModule

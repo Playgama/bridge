@@ -40,9 +40,11 @@ export const PLATFORM_ID = {
     YOUTUBE: 'youtube',
     PORTAL: 'portal',
     REDDIT: 'reddit',
+    XIAOMI: 'xiaomi',
 }
 
 export const MODULE_NAME = {
+    CORE: 'core',
     PLATFORM: 'platform',
     PLAYER: 'player',
     GAME: 'game',
@@ -55,6 +57,7 @@ export const MODULE_NAME = {
     REMOTE_CONFIG: 'remote_config',
     CLIPBOARD: 'clipboard',
     ACHIEVEMENTS: 'achievements',
+    ANALYTICS: 'analytics',
 }
 
 export const EVENT_NAME = {
@@ -64,6 +67,7 @@ export const EVENT_NAME = {
     VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
     AUDIO_STATE_CHANGED: 'audio_state_changed',
     PAUSE_STATE_CHANGED: 'pause_state_changed',
+    ORIENTATION_STATE_CHANGED: 'orientation_state_changed',
 }
 
 export const VISIBILITY_STATE = {
@@ -113,6 +117,13 @@ export const DEVICE_TYPE = {
     TABLET: 'tablet',
     TV: 'tv',
 }
+
+export const DEVICE_ORIENTATION = {
+    PORTRAIT: 'portrait',
+    LANDSCAPE: 'landscape',
+}
+
+export const ORIENTATION_OVERLAY_ID = 'bridge-orientation-overlay'
 
 export const PLATFORM_MESSAGE = {
     GAME_READY: 'game_ready',
@@ -164,13 +175,6 @@ export const ERROR = {
     SDK_NOT_INITIALIZED: { message: 'Before using the SDK you must initialize it' },
     STORAGE_NOT_SUPPORTED: { message: 'Storage not supported' },
     STORAGE_NOT_AVAILABLE: { message: 'Storage not available' },
-    GAME_DISTRIBUTION_GAME_ID_IS_UNDEFINED: { message: 'GameDistribution Game ID is undefined' },
-    Y8_GAME_PARAMS_NOT_FOUND: { message: 'Y8 Game params are not found' },
-    OK_GAME_PARAMS_NOT_FOUND: { message: 'OK Game params are not found' },
-    LAGGED_GAME_PARAMS_NOT_FOUND: { message: 'Lagged Game params are not found' },
-    HUAWEI_GAME_PARAMS_NOT_FOUND: { message: 'Huawei Game params are not found' },
-    GAMEPUSH_GAME_PARAMS_NOT_FOUND: { message: 'GamePush Game params are not found' },
-    FACEBOOK_PLACEMENT_ID_IS_UNDEFINED: { message: 'Facebook Placement ID is undefined' },
+    GAME_PARAMS_NOT_FOUND: { message: 'Game params are not found' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
-    DISCORD_GAME_PARAMS_NOT_FOUND: { message: 'Discord Game params are not found' },
 }

@@ -24,6 +24,7 @@ import {
     REWARDED_STATE,
     STORAGE_TYPE,
 } from '../constants'
+import { postToSystem } from '../common/utils'
 
 class HuaweiPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -71,7 +72,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
-                    ERROR.HUAWEI_GAME_PARAMS_NOT_FOUND,
+                    ERROR.GAME_PARAMS_NOT_FOUND,
                 )
             } else {
                 this._appId = this._options.appId
@@ -228,11 +229,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     #postMessage(action, data) {
-        if (!window.system) {
-            return
-        }
-
-        window.system.postMessage(JSON.stringify({ action, data }))
+        postToSystem(JSON.stringify({ action, data }))
     }
 
     #setupHandlers() {

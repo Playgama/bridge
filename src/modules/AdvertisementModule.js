@@ -19,8 +19,9 @@ import EventLite from 'event-lite'
 import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import ModuleBase from './ModuleBase'
 import {
-    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE,
+    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
 } from '../constants'
+import analyticsModule from './AnalyticsModule'
 
 const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
 
@@ -74,7 +75,13 @@ class AdvertisementModule extends ModuleBase {
 
     #bannerState = BANNER_STATE.HIDDEN
 
+    #bannerPosition = null
+
+    #bannerPlacement = null
+
     #interstitialState = INTERSTITIAL_STATE.CLOSED
+
+    #interstitialPlacement = null
 
     #interstitialTimer
 
@@ -132,17 +139,20 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this.#setBannerState(BANNER_STATE.LOADING)
-        if (!this.isBannerSupported) {
-            this.#setBannerState(BANNER_STATE.FAILED)
-            return
-        }
+        this.#bannerPosition = position
 
         let modifiedPlacement = placement
         if (!modifiedPlacement) {
             if (this._platformBridge.options?.advertisement?.banner?.placementFallback) {
                 modifiedPlacement = this._platformBridge.options.advertisement.banner.placementFallback
             }
+        }
+        this.#bannerPlacement = modifiedPlacement
+
+        this.#setBannerState(BANNER_STATE.LOADING)
+        if (!this.isBannerSupported) {
+            this.#setBannerState(BANNER_STATE.FAILED)
+            return
         }
 
         const placements = this._platformBridge.options?.advertisement?.banner?.placements
@@ -166,6 +176,7 @@ class AdvertisementModule extends ModuleBase {
         if (!this.isInterstitialSupported) {
             return
         }
+
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
@@ -183,6 +194,14 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
+        let modifiedPlacement = placement
+        if (!modifiedPlacement) {
+            if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
+                modifiedPlacement = this._platformBridge.options.advertisement.interstitial.placementFallback
+            }
+        }
+        this.#interstitialPlacement = modifiedPlacement
+
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
 
         if (!this.isInterstitialSupported) {
@@ -197,13 +216,6 @@ class AdvertisementModule extends ModuleBase {
             }
         }
 
-        let modifiedPlacement = placement
-        if (!modifiedPlacement) {
-            if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
-                modifiedPlacement = this._platformBridge.options.advertisement.interstitial.placementFallback
-            }
-        }
-
         const placements = this._platformBridge.options?.advertisement?.interstitial?.placements
         const platformPlacement = this.#getPlatformPlacement(modifiedPlacement, placements)
         this._platformBridge.showInterstitial(platformPlacement)
@@ -213,6 +225,7 @@ class AdvertisementModule extends ModuleBase {
         if (!this.isRewardedSupported) {
             return
         }
+
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.rewarded?.placementFallback) {
@@ -327,6 +340,8 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#bannerState = state
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_banner_${state}`, MODULE_NAME.ADVERTISEMENT, { position: this.#bannerPosition, placement: this.#bannerPlacement })
+
         this.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
     }
 
@@ -336,6 +351,8 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#interstitialState = state
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`, MODULE_NAME.ADVERTISEMENT, { placement: this.#interstitialPlacement })
+
         this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
     }
 
@@ -345,6 +362,8 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#rewardedState = state
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, MODULE_NAME.ADVERTISEMENT, { placement: this.#rewardedPlacement })
+
         this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
     }
 

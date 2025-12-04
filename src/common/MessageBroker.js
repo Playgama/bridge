@@ -15,11 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { postToParent } from './utils'
+
 export default class MessageBroker {
     send(message, target = '*') {
-        if (window.parent) {
-            window.parent.postMessage(message, target)
-        }
+        postToParent(message, target)
     }
 
     addListener(callback) {

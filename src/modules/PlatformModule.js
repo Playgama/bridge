@@ -17,8 +17,8 @@
 
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
-import { EVENT_NAME, PLATFORM_ID, PLATFORM_MESSAGE } from '../constants'
-import { version } from '../../package.json'
+import { EVENT_NAME, MODULE_NAME, PLATFORM_MESSAGE } from '../constants'
+import analyticsModule from './AnalyticsModule'
 
 class PlatformModule extends ModuleBase {
     get id() {
@@ -59,6 +59,8 @@ class PlatformModule extends ModuleBase {
 
     #isGameReadyMessageSent = false
 
+    #startTime = performance.now()
+
     constructor(platformBridge) {
         super(platformBridge)
 
@@ -74,19 +76,26 @@ class PlatformModule extends ModuleBase {
     }
 
     sendMessage(message) {
+        let data = {}
+
         if (message === PLATFORM_MESSAGE.GAME_READY) {
             if (this.#isGameReadyMessageSent) {
                 return Promise.reject()
             }
 
             this.#isGameReadyMessageSent = true
-            this.#trySendAnalyticsEvent()
+
+            const endTime = performance.now()
+            const timeInSeconds = ((endTime - this.#startTime) / 1000).toFixed(2)
+            data = { time_s: timeInSeconds }
+
             const overlay = document.getElementById('loading-overlay')
             if (overlay) {
                 overlay.remove()
             }
         }
 
+        analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, MODULE_NAME.PLATFORM, data)
         return this._platformBridge.sendMessage(message)
     }
 
@@ -107,134 +116,6 @@ class PlatformModule extends ModuleBase {
         }
 
         return this._platformBridge.getGameById(options)
-    }
-
-    #trySendAnalyticsEvent() {
-        const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
-        const { href } = window.location
-        if (href.startsWith('file://') || href.includes('localhost') || href.includes('127.0.0.1')) {
-            return
-        }
-
-        if (sendAnalyticsEvents !== false) {
-            let url = 'https://playgama.com/api/v1/events'
-            if (this._platformBridge.platformId === 'discord') {
-                url = '/playgama/api/v1/events'
-            }
-            const { options } = this._platformBridge
-            let gameName = null
-
-            switch (this._platformBridge.platformId) {
-                case PLATFORM_ID.GAME_DISTRIBUTION:
-                    gameName = options.gameId
-                    break
-                case PLATFORM_ID.Y8:
-                    gameName = options.gameId
-                    break
-                case PLATFORM_ID.HUAWEI:
-                    gameName = options.appId
-                    break
-                case PLATFORM_ID.MSN:
-                    gameName = options.gameId
-                    break
-                case PLATFORM_ID.DISCORD:
-                    gameName = options.appId
-                    break
-                case PLATFORM_ID.GAMEPUSH:
-                    gameName = options.projectId
-                    break
-                default:
-                    gameName = null
-                    break
-            }
-
-            if (!gameName) {
-                gameName = this.#getGameName(window.location.href)
-            }
-
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    eventName: 'game_ready',
-                    pageName: `${this._platformBridge.platformId}:${this._platformBridge.engine}`,
-                    userId: `bridge:${version}`,
-                    clid: gameName,
-                }),
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`Network response was not ok: ${response.status}`)
-                    }
-                })
-                .catch((error) => {
-                    console.error('Error sending event:', error)
-                })
-        }
-    }
-
-    #getGameName(url) {
-        try {
-            const parsedUrl = new URL(url)
-            const parts = parsedUrl.pathname.split('/').filter(Boolean)
-
-            switch (this._platformBridge.platformId) {
-                case PLATFORM_ID.YANDEX: {
-                    const i = parts.indexOf('app')
-                    const id = i !== -1 ? parts[i + 1] : null
-                    if (id) {
-                        return `Yandex ${id}`
-                    }
-                    break
-                }
-
-                case PLATFORM_ID.LAGGED: {
-                    const i = parts.indexOf('g')
-                    const slug = i !== -1 ? parts[i + 1] : null
-                    if (slug) {
-                        return this.#formatGameName(slug)
-                    }
-                    break
-                }
-
-                case PLATFORM_ID.CRAZY_GAMES: {
-                    const i = parts.indexOf('game')
-                    const slug = i !== -1 ? parts[i + 1] : null
-                    if (slug) {
-                        return this.#formatGameName(slug)
-                    }
-                    break
-                }
-
-                case PLATFORM_ID.PLAYGAMA: {
-                    const i = parts.indexOf('game')
-                    const slug = i !== -1 ? parts[i + 1] : null
-                    if (slug) {
-                        return this.#formatGameName(slug)
-                    }
-                    const id = parts[0]
-                    const isInternalId = typeof id === 'string' && /^[a-z0-9]{10,}$/i.test(id)
-                    if (isInternalId) {
-                        return `Playgama ${id}`
-                    }
-                    break
-                }
-                default:
-                    break
-            }
-        } catch (err) {
-            return null
-        }
-        return null
-    }
-
-    #formatGameName(name) {
-        if (typeof name !== 'string' || name.length === 0) {
-            return ''
-        }
-        return name
-            .replace(/-/g, ' ')
-            .replace(/\b\w/g, (c) => c.toUpperCase())
     }
 }
 

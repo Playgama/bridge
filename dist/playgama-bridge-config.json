@@ -1,5 +1,9 @@
 {
     "$schema": "https://bridge.playgama.com/v1.26.1/schema.json",
+    "device": {
+        "useBuiltInOrientationPopup": true,
+        "supportedOrientations": ["landscape", "portrait"]
+    },
     "platforms": {
         "game_distribution": {
             "gameId": ""
@@ -44,9 +48,15 @@
         },
         "youtube": {
             "sendAnalyticsEvents": false
+        },
+        "xiaomi": {
+            "adSenseId": "",
+            "hostId": ""
         }
     },
     "advertisement": {
+        "banner": {
+        },
         "interstitial": {
             "preloadOnStart": true
         },

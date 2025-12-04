@@ -30,4 +30,7 @@ module.exports = {
             PLUGIN_NAME: JSON.stringify(packageJson.name),
         }),
     ],
+    devServer: {
+        port: 3535,
+    },
 }

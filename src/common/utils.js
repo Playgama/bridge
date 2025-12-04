@@ -15,7 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BANNER_CONTAINER_ID, BANNER_POSITION } from '../constants'
+import { BANNER_CONTAINER_ID, BANNER_POSITION, ORIENTATION_OVERLAY_ID } from '../constants'
+
+const POST_METHOD = ['post', 'Message'].join('')
 
 export const addJavaScript = function addJavaScript(src, options = {}) {
     return new Promise((resolve, reject) => {
@@ -35,10 +37,18 @@ export const addJavaScript = function addJavaScript(src, options = {}) {
 }
 
 export const addAdsByGoogle = ({
-    hostId, adsenseId, channelId, adFrequencyHint = '180s',
-}) => new Promise((resolve) => {
+    adSenseId,
+    channelId,
+    hostId,
+    interstitialPlacementId,
+    rewardedPlacementId,
+    adFrequencyHint = '180s',
+    testMode = false,
+}, config = {}) => new Promise((resolve) => {
     const script = document.createElement('script')
-    script.setAttribute('data-ad-client', adsenseId)
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
+
+    script.setAttribute('data-ad-client', adSenseId)
 
     if (channelId) {
         script.setAttribute('data-ad-channel', channelId)
@@ -46,10 +56,32 @@ export const addAdsByGoogle = ({
         script.setAttribute('data-ad-host', hostId)
     }
 
-    script.setAttribute('data-ad-frequency-hint', adFrequencyHint)
-    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
+    if (interstitialPlacementId) {
+        script.setAttribute('data-admob-interstitial-slot', interstitialPlacementId)
+    }
 
-    script.addEventListener('load', resolve)
+    if (rewardedPlacementId) {
+        script.setAttribute('data-admob-rewarded-slot', rewardedPlacementId)
+    }
+
+    if (testMode) {
+        script.setAttribute('data-adbreak-test', 'on')
+    }
+
+    script.setAttribute('data-ad-frequency-hint', adFrequencyHint)
+    script.setAttribute('crossorigin', 'anonymous')
+
+    script.addEventListener('load', () => {
+        window.adsbygoogle = window.adsbygoogle || []
+        window.adsbygoogle.push({
+            preloadAdBreaks: 'on',
+            sound: 'on',
+            onReady: () => {},
+            ...config,
+        })
+
+        resolve((adOptions) => window.adsbygoogle.push(adOptions))
+    })
     document.head.appendChild(script)
 })
 
@@ -108,6 +140,70 @@ export function createAdContainer(containerId) {
     document.body.appendChild(container)
 
     return container
+}
+
+export function createOrientationOverlay() {
+    if (!document.getElementById('bridge-orientation-overlay-styles')) {
+        const style = document.createElement('style')
+        style.id = 'bridge-orientation-overlay-styles'
+        style.textContent = `
+            #${ORIENTATION_OVERLAY_ID} {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.95);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999999;
+            }
+
+            #bridge-orientation-icon {
+                width: 80px;
+                height: 80px;
+                animation: bridge-rotate-phone 1.5s ease-in-out infinite;
+            }
+
+            #bridge-orientation-message {
+                color: #fff;
+                font-size: 18px;
+                font-family: Arial, sans-serif;
+                margin-top: 20px;
+                text-align: center;
+            }
+
+            @keyframes bridge-rotate-phone {
+                0%, 100% { transform: rotate(0deg); }
+                50% { transform: rotate(90deg); }
+            }
+        `
+        document.head.appendChild(style)
+    }
+
+    const overlay = document.createElement('div')
+    overlay.id = ORIENTATION_OVERLAY_ID
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    icon.setAttribute('id', 'bridge-orientation-icon')
+    icon.setAttribute('viewBox', '0 0 24 24')
+    icon.setAttribute('fill', 'none')
+    icon.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+    icon.innerHTML = `
+        <rect x="5" y="2" width="14" height="20" rx="2" stroke="white" stroke-width="2"/>
+        <line x1="12" y1="18" x2="12" y2="18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    `
+
+    const message = document.createElement('div')
+    message.id = 'bridge-orientation-message'
+    message.innerText = 'Please rotate your device'
+
+    overlay.appendChild(icon)
+    overlay.appendChild(message)
+
+    return overlay
 }
 
 export function showInfoPopup(message) {
@@ -464,7 +560,15 @@ export function getKeysFromObject(keys, data, tryParseJson = false) {
         }, new Array(keys.length))
     }
 
-    return getKeyOrNull(data, keys)
+    let value = getKeyOrNull(data, keys)
+    if (tryParseJson && typeof value === 'string') {
+        try {
+            value = JSON.parse(value)
+        } catch (e) {
+            // keep value as is
+        }
+    }
+    return value
 }
 
 export function deepMerge(firstObject, secondObject) {
@@ -549,5 +653,17 @@ export function getGuestUser() {
     return {
         id,
         name: `Guest ${id}`,
+    }
+}
+
+export function postToParent(message, targetOrigin = '*') {
+    if (window.parent) {
+        window.parent[POST_METHOD](message, targetOrigin)
+    }
+}
+
+export function postToSystem(message) {
+    if (window.system) {
+        window.system[POST_METHOD](message)
     }
 }

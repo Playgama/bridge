@@ -65,7 +65,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
             if (!this._options || typeof this._options.gameId !== 'string') {
-                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.GAME_DISTRIBUTION_GAME_ID_IS_UNDEFINED)
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.GAME_PARAMS_NOT_FOUND)
             } else {
                 const self = this
                 window.GD_OPTIONS = {
