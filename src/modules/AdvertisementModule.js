@@ -176,6 +176,7 @@ class AdvertisementModule extends ModuleBase {
         if (!this.isInterstitialSupported) {
             return
         }
+
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.interstitial?.placementFallback) {
@@ -224,6 +225,7 @@ class AdvertisementModule extends ModuleBase {
         if (!this.isRewardedSupported) {
             return
         }
+
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
             if (this._platformBridge.options?.advertisement?.rewarded?.placementFallback) {
