@@ -21,6 +21,10 @@ class ModuleBase {
     constructor(platformBridge) {
         this._platformBridge = platformBridge
     }
+
+    shouldUseSaaS(saasFeature) {
+        return this._platformBridge.options?.saas?.[saasFeature]?.platforms?.includes(this._platformBridge.platformId)
+    }
 }
 
 export default ModuleBase
