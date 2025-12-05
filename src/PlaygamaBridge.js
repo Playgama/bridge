@@ -29,6 +29,9 @@ import {
     PLATFORM_MESSAGE,
     ERROR,
 } from './constants'
+
+import { SaaS } from './saas/saas'
+
 import PromiseDecorator from './common/PromiseDecorator'
 import PlatformModule from './modules/PlatformModule'
 import PlayerModule from './modules/PlayerModule'
@@ -74,6 +77,10 @@ import XiaomiPlatformBridge from './platform-bridges/XiaomiPlatformBridge'
 class PlaygamaBridge {
     get version() {
         return PLUGIN_VERSION
+    }
+
+    get saas() {
+        return this.#platformBridge.saas
     }
 
     get isInitialized() {
@@ -231,6 +238,7 @@ class PlaygamaBridge {
                 .finally(() => {
                     this.#createPlatformBridge(modifiedOptions)
 
+                    this.#platformBridge.saas = new SaaS(modifiedOptions)
                     this.#platformBridge.engine = this.engine
 
                     this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)

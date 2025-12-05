@@ -4,6 +4,13 @@
         "useBuiltInOrientationPopup": true,
         "supportedOrientations": ["landscape", "portrait"]
     },
+    "saas": {
+        "baseUrl": "https://playgama.com/api/bridge/v1",
+        "projectId": "",
+        "leaderboards": {
+            "platforms": ["playgama", "discord"]
+        }
+    },
     "platforms": {
         "game_distribution": {
             "gameId": ""
