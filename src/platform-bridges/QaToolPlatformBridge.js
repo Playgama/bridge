@@ -17,7 +17,6 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
-import { getKeysFromObject } from '../common/utils'
 import {
     PLATFORM_ID,
     MODULE_NAME,
@@ -30,6 +29,7 @@ import {
     LEADERBOARD_TYPE,
     ERROR,
 } from '../constants'
+import { getKeysFromObject } from '../common/utils'
 
 const ADVERTISEMENT_TYPE = {
     INTERSTITIAL: 'interstitial',
@@ -58,12 +58,12 @@ export const ACTION_NAME_QA = {
     SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
     GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
     GET_LANGUAGE: 'get_language',
+    GET_PLAYER: 'get_player',
 }
 
 const INTERSTITIAL_STATUS = {
     START: 'start',
     OPEN: 'open',
-    SHOW: 'show',
     CLOSE: 'close',
     FAILED: 'failed',
 }
@@ -236,14 +236,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-
             const messageHandler = ({ data }) => {
                 if (!data?.type || data?.source === MESSAGE_SOURCE) return
 
                 if (data.type === MODULE_NAME.PLATFORM) {
                     if (data.action === ACTION_NAME.INITIALIZE) {
-                        this.#handleInitializeResponse(data)
+                        this.#getPlayer().then(() => {
+                            this.#handleInitializeResponse(data)
+                        })
                     }
 
                     if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
@@ -251,6 +251,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         const requestedProps = data?.options?.resources || []
                         this.#getPerformanceResources(messageId, requestedProps)
                     }
+                } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
+                    this.#handleAdvertisement(data)
                 }
             }
 
@@ -275,18 +277,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
             this.#requestMessage(MODULE_NAME.PLAYER, ACTION_NAME.AUTHORIZE_PLAYER, {
                 options,
-            }).then(({ player, auth }) => {
+            }).then(({ auth }) => {
                 if (auth.status === 'success') {
-                    this._playerId = player.userId
-                    this._isPlayerAuthorized = player.isAuthorized
-                    this._playerName = player.name
-
-                    if (Array.isArray(player.photos)) {
-                        this._playerPhotos = [...player.photos]
-                    }
-
-                    this._playerExtra = player
-                    this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    this.#getPlayer().then(() => {
+                        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                    })
                 } else {
                     this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, auth.error)
                 }
@@ -389,12 +384,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         return this.#requestMessage(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, {
             options: { key, storageType, tryParseJson },
-        }).then(({ storage }) => {
-            if (Array.isArray(key)) {
-                return key.map((k) => storage[k])
-            }
-            return storage[key]
-        })
+        }).then(({ storage }) => getKeysFromObject(key, storage, tryParseJson))
     }
 
     setDataToStorage(key, value, storageType) {
@@ -444,33 +434,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!this.isInterstitialSupported) {
             return
         }
-
-        const showInterstitialHandler = ({ data }) => {
-            if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
-                return
-            }
-
-            switch (data.payload.status) {
-                case INTERSTITIAL_STATUS.START:
-                    this._setInterstitialState(INTERSTITIAL_STATE.LOADING)
-                    break
-                case INTERSTITIAL_STATUS.OPEN:
-                    this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-                    break
-                case INTERSTITIAL_STATUS.FAILED:
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-                    break
-                case INTERSTITIAL_STATUS.CLOSE:
-                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-                    this.#messageBroker.removeListener(showInterstitialHandler)
-                    break
-                default:
-                    break
-            }
-        }
-
-        this.#messageBroker.addListener(showInterstitialHandler)
-
         this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.INTERSTITIAL,
@@ -482,36 +445,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!this.isRewardedSupported) {
             return
         }
-
-        const showRewardedHandler = ({ data }) => {
-            if (data?.type !== MODULE_NAME.ADVERTISEMENT) {
-                return
-            }
-
-            switch (data.payload.status) {
-                case REWARD_STATUS.START:
-                    this._setRewardedState(REWARDED_STATE.LOADING)
-                    break
-                case REWARD_STATUS.OPEN:
-                    this._setRewardedState(REWARDED_STATE.OPENED)
-                    break
-                case REWARD_STATUS.FAILED:
-                    this._setRewardedState(REWARDED_STATE.FAILED)
-                    break
-                case REWARD_STATUS.REWARDED:
-                    this._setRewardedState(REWARDED_STATE.REWARDED)
-                    break
-                case REWARD_STATUS.CLOSE:
-                    this._setRewardedState(REWARDED_STATE.CLOSED)
-                    this.#messageBroker.removeListener(showRewardedHandler)
-                    break
-                default:
-                    break
-            }
-        }
-
-        this.#messageBroker.addListener(showRewardedHandler)
-
         this.#sendMessage({
             type: MODULE_NAME.ADVERTISEMENT,
             action: ADVERTISEMENT_TYPE.REWARD,
@@ -1101,6 +1034,77 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 }, mergedOptions.timeout)
             }
         })
+    }
+
+    async #getPlayer() {
+        return this.#requestMessage(MODULE_NAME.PLAYER, ACTION_NAME_QA.GET_PLAYER).then(({ player }) => {
+            if (player?.isAuthorized) {
+                this._playerId = player.userId
+                this._isPlayerAuthorized = player.isAuthorized
+                this._playerName = player.name
+                if (Array.isArray(player.photos)) {
+                    this._playerPhotos = [...player.photos]
+                }
+                this._playerExtra = player
+                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+            } else {
+                this._playerApplyGuestData()
+            }
+        }).catch(() => {
+            this._playerApplyGuestData()
+        })
+    }
+
+    #handleAdvertisement({ action, payload }) {
+        if (action === 'interstitial') {
+            if (!this.isInterstitialSupported) {
+                return
+            }
+            switch (payload.status) {
+                case INTERSTITIAL_STATUS.START:
+                    this._setInterstitialState(INTERSTITIAL_STATE.LOADING)
+                    break
+                case INTERSTITIAL_STATUS.OPEN:
+                    this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                    break
+                case INTERSTITIAL_STATUS.FAILED:
+                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    break
+                case INTERSTITIAL_STATUS.CLOSE:
+                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                    break
+                default:
+                    break
+            }
+        } else if (action === 'reward') {
+            if (!this.isRewardedSupported) {
+                return
+            }
+            switch (payload.status) {
+                case REWARD_STATUS.START:
+                    this._setRewardedState(REWARDED_STATE.LOADING)
+                    break
+                case REWARD_STATUS.OPEN: {
+                    this._setRewardedState(REWARDED_STATE.OPENED)
+                    break
+                }
+                case REWARD_STATUS.REWARDED: {
+                    this._setRewardedState(REWARDED_STATE.REWARDED)
+                    break
+                }
+                case REWARD_STATUS.CLOSE: {
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                    break
+                }
+                case REWARD_STATUS.FAILED: {
+                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    break
+                }
+                default: {
+                    break
+                }
+            }
+        }
     }
 }
 

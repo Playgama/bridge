@@ -5,7 +5,7 @@ export interface PlayerState {
     id: string
     name?: string
     photos?: string[]
-    extra?: Record<string, unknown>
+    jwt?: string
 }
 
 export type StorageStateType = typeof STORAGE_TYPE.LOCAL_STORAGE | typeof STORAGE_TYPE.PLATFORM_INTERNAL

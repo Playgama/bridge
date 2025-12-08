@@ -69,7 +69,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             ) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
-                    ERROR.XIAOMI_GAME_PARAMS_NOT_FOUND,
+                    ERROR.GAME_PARAMS_NOT_FOUND,
                 )
             } else {
                 addAdsByGoogle({

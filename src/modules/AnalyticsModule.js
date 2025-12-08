@@ -19,14 +19,17 @@ import { MODULE_NAME, PLATFORM_ID } from '../constants'
 import { version } from '../../package.json'
 import ModuleBase from './ModuleBase'
 
-const API_URL = 'https://playgama.com/api/v1/events'
-const DISCORD_API_URL = '/playgama/api/v1/events'
+const API_URL = 'https://playgama.com/api/events/v2/bridge/analytics'
+const DISCORD_API_URL = '/playgama/api/events/v2/bridge/analytics'
 const BATCH_TIMEOUT = 3000
+const PING_INTERVAL = 15000
 
 class AnalyticsModule extends ModuleBase {
     #eventQueue = []
 
     #batchTimer = null
+
+    #pingTimer = null
 
     #gameId = null
 
@@ -46,6 +49,7 @@ class AnalyticsModule extends ModuleBase {
             data: {},
         }
         this.#eventQueue.push(event)
+        this.#startPing()
 
         return this
     }
@@ -208,6 +212,14 @@ class AnalyticsModule extends ModuleBase {
         return name
             .replace(/-/g, ' ')
             .replace(/\b\w/g, (c) => c.toUpperCase())
+    }
+
+    #startPing() {
+        if (this.#pingTimer) {
+            return
+        }
+
+        this.#pingTimer = setInterval(() => { this.send(`${MODULE_NAME.CORE}_ping`, MODULE_NAME.CORE) }, PING_INTERVAL)
     }
 }
 

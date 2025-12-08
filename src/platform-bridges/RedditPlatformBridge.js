@@ -17,6 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { ACTION_NAME, PLATFORM_ID, STORAGE_TYPE } from '../constants'
+import { postToParent } from '../common/utils'
 
 class RedditPlatformBridge extends PlatformBridgeBase {
     get platformId() {
@@ -201,7 +202,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     }
 
     #postMessage(type, data = {}) {
-        window.parent.postMessage({ type, data }, '*')
+        postToParent({ type, data }, '*')
     }
 
     #handleInitialize(message) {

@@ -70,12 +70,22 @@ export interface QaToolMessageAuthorizePlayerResponse extends QaToolMessageDataB
     auth: {
         status: 'success' | 'failed'
     }
+}
+
+export interface QaToolMessageGetPlayer extends QaToolMessageDataBase {
+    type: typeof MODULE_NAME.PLAYER
+    action: typeof ACTION_NAME_QA.GET_PLAYER
+}
+
+export interface QaToolMessageGetPlayerResponse extends QaToolMessageDataBase {
+    type: typeof MODULE_NAME.PLAYER
+    action: typeof ACTION_NAME_QA.GET_PLAYER
     player: {
-        id: string
+        userId: string
         name: string
         isAuthorized: boolean
         photos: string[]
-        extra: Record<string, unknown>
+        jwt: string
     } | null
 }
 

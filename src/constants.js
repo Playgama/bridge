@@ -67,6 +67,7 @@ export const EVENT_NAME = {
     VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
     AUDIO_STATE_CHANGED: 'audio_state_changed',
     PAUSE_STATE_CHANGED: 'pause_state_changed',
+    ORIENTATION_STATE_CHANGED: 'orientation_state_changed',
 }
 
 export const VISIBILITY_STATE = {
@@ -116,6 +117,13 @@ export const DEVICE_TYPE = {
     TABLET: 'tablet',
     TV: 'tv',
 }
+
+export const DEVICE_ORIENTATION = {
+    PORTRAIT: 'portrait',
+    LANDSCAPE: 'landscape',
+}
+
+export const ORIENTATION_OVERLAY_ID = 'bridge-orientation-overlay'
 
 export const PLATFORM_MESSAGE = {
     GAME_READY: 'game_ready',

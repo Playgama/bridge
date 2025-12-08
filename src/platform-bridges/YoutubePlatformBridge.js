@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -26,8 +26,6 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
 } from '../constants'
-
-const SDK_URL = 'https://www.youtube.com/game_api/v1'
 
 class YoutubePlatformBridge extends PlatformBridgeBase {
     // platform
@@ -72,44 +70,40 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            addJavaScript(SDK_URL).then(() => {
-                waitFor('ytgame').then(() => {
-                    this._platformSdk = window.ytgame
-                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-                    this._audioStateAggregator.setState('platform', !this._platformSdk.system.isAudioEnabled())
-
-                    const getLanguagePromise = this._platformSdk.system.getLanguage()
-                        .then((language) => {
-                            this.#platformLanguage = language.length > 2 ? language.slice(0, 2) : language
-                        })
-
-                    this._platformStorageCachedData = {}
-                    const getDataPromise = this._platformSdk.game.loadData()
-                        .then((data) => {
-                            if (typeof data === 'string' && data !== '') {
-                                this._platformStorageCachedData = JSON.parse(data)
-                            }
-                        })
-
-                    this._platformSdk.system.onAudioEnabledChange((isEnabled) => {
-                        this._setAudioState(isEnabled)
+            waitFor('ytgame').then(() => {
+                this._platformSdk = window.ytgame
+                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                const getLanguagePromise = this._platformSdk.system.getLanguage()
+                    .then((language) => {
+                        this.#platformLanguage = language.length > 2 ? language.slice(0, 2) : language
                     })
 
-                    this._platformSdk.system.onPause(() => {
-                        this._setPauseState(true)
+                this._platformStorageCachedData = {}
+                const getDataPromise = this._platformSdk.game.loadData()
+                    .then((data) => {
+                        if (typeof data === 'string' && data !== '') {
+                            this._platformStorageCachedData = JSON.parse(data)
+                        }
                     })
 
-                    this._platformSdk.system.onResume(() => {
-                        this._setPauseState(false)
-                    })
-
-                    Promise.all([getLanguagePromise, getDataPromise])
-                        .finally(() => {
-                            this._isInitialized = true
-                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-                            this._platformSdk.game.firstFrameReady()
-                        })
+                this._platformSdk.system.onAudioEnabledChange((isEnabled) => {
+                    this._setAudioState(isEnabled)
                 })
+
+                this._platformSdk.system.onPause(() => {
+                    this._setPauseState(true)
+                })
+
+                this._platformSdk.system.onResume(() => {
+                    this._setPauseState(false)
+                })
+
+                Promise.all([getLanguagePromise, getDataPromise])
+                    .finally(() => {
+                        this._isInitialized = true
+                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                        this._platformSdk.game.firstFrameReady()
+                    })
             })
         }
 
