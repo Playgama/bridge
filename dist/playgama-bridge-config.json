@@ -46,8 +46,7 @@
             "sendAnalyticsEvents": false
         },
         "xiaomi": {
-            "adSenseId": "",
-            "hostId": ""
+            "adSenseId": ""
         }
     },
     "advertisement": {
