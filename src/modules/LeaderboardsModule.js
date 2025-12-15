@@ -15,7 +15,6 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { SAAS_FEATURES } from '../constants'
 import ModuleBase from './ModuleBase'
 
 class LeaderboardsModule extends ModuleBase {
@@ -27,19 +26,11 @@ class LeaderboardsModule extends ModuleBase {
         const modifiedId = this.#getPlatformLeaderboardId(id)
         const isMain = this.#getIsMain(id)
 
-        if (this.shouldUseSaaS(SAAS_FEATURES.LEADERBOARDS)) {
-            return this._platformBridge.saas.leaderboardService.setScore(id, score)
-        }
-
         return this._platformBridge.leaderboardsSetScore(modifiedId, score, isMain)
     }
 
     getEntries(id) {
         const modifiedId = this.#getPlatformLeaderboardId(id)
-
-        if (this.shouldUseSaaS(SAAS_FEATURES.LEADERBOARDS)) {
-            return this._platformBridge.saas.leaderboardService.getEntries(id)
-        }
 
         return this._platformBridge.leaderboardsGetEntries(modifiedId)
     }

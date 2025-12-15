@@ -17,10 +17,6 @@
 
 export const SAAS_URL = 'https://playgama.com/api/bridge/v1'
 
-export const SAAS_FEATURES = {
-    LEADERBOARDS: 'leaderboards',
-}
-
 export const PLATFORM_ID = {
     VK: 'vk',
     OK: 'ok',

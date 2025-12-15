@@ -22,8 +22,45 @@ class ModuleBase {
         this._platformBridge = platformBridge
     }
 
-    shouldUseSaaS(saasFeature) {
-        return this._platformBridge.options?.saas?.[saasFeature]?.platforms?.includes(this._platformBridge.platformId)
+    get baseUrl() {
+        return this._platformBridge.options.saas.baseUrl
+    }
+
+    get xHeaders() {
+        return {
+            'x-player-id': this._playerModule.playerId || '',
+            'x-platform-id': this._platformId,
+        }
+    }
+
+    get request() {
+        return {
+            get: this.#get.bind(this),
+            post: this.#post.bind(this),
+        }
+    }
+
+    async #get(url) {
+        return fetch(`${this.baseUrl}/${url}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+
+                ...this.xHeaders,
+            },
+        }).then((response) => response.json())
+    }
+
+    async #post(url, data) {
+        return fetch(`${this._saasUrl}/${url}`, {
+            method: 'POST',
+            data: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+
+                ...this.xHeaders,
+            },
+        }).then((response) => response.json())
     }
 }
 
