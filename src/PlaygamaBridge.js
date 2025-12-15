@@ -78,10 +78,6 @@ class PlaygamaBridge {
         return PLUGIN_VERSION
     }
 
-    get saas() {
-        return this.#platformBridge.saas
-    }
-
     get isInitialized() {
         return this.#isInitialized
     }
