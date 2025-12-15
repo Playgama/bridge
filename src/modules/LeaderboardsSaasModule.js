@@ -19,11 +19,15 @@ import LeaderboardsModule from './LeaderboardsModule'
 
 class LeaderboardsSaasModule extends LeaderboardsModule {
     async setScore(leaderboardId, score) {
-        return this.request.post('leaderboards', { leaderboardId, score })
+        const saasLeaderboardId = this._getPlatformLeaderboardId(leaderboardId)
+
+        return this.request.post('leaderboards', { leaderboardId: saasLeaderboardId, score })
     }
 
     async getEntries(leaderboardId) {
-        return this.request.get(`leaderboards?leaderboardId=${leaderboardId}`)
+        const saasLeaderboardId = this._getPlatformLeaderboardId(leaderboardId)
+
+        return this.request.get(`leaderboards?leaderboardId=${saasLeaderboardId}`)
     }
 }
 
