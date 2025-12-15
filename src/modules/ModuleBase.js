@@ -15,6 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { SAAS_URL } from '../constants'
+
 class ModuleBase {
     _platformBridge
 
@@ -23,7 +25,7 @@ class ModuleBase {
     }
 
     get baseUrl() {
-        return this._platformBridge.options.saas.baseUrl
+        return this._platformBridge.options.saas.baseUrl || SAAS_URL
     }
 
     get xHeaders() {
@@ -52,7 +54,7 @@ class ModuleBase {
     }
 
     async #post(url, data) {
-        return fetch(`${this._saasUrl}/${url}`, {
+        return fetch(`${this.baseUrl}/${url}`, {
             method: 'POST',
             data: JSON.stringify(data),
             headers: {
