@@ -1,11 +1,11 @@
 import { ServiceBase } from './ServiceBase'
 
 export class LeaderboardService extends ServiceBase {
-    async setScore(board, score) {
-        return this._request.post('leaderboards', { board, score })
+    async setScore(leaderboardId, score) {
+        return this._request.post('leaderboards', { leaderboardId, score })
     }
 
-    async getEntries(board) {
-        return this._request.get(`leaderboards?board=${board}`)
+    async getEntries(leaderboardId) {
+        return this._request.get(`leaderboards?leaderboardId=${leaderboardId}`)
     }
 }
