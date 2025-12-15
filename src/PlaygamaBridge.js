@@ -238,7 +238,6 @@ class PlaygamaBridge {
                 .finally(() => {
                     this.#createPlatformBridge(modifiedOptions)
 
-                    this.#platformBridge.saas = new SaaS(modifiedOptions)
                     this.#platformBridge.engine = this.engine
 
                     this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(this.#platformBridge)
@@ -254,6 +253,12 @@ class PlaygamaBridge {
                     this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.ANALYTICS] = analyticsModule.initialize(this.#platformBridge)
+
+                    this.#platformBridge.saas = new SaaS(
+                        this.#modules[MODULE_NAME.PLAYER],
+                        this.#platformBridge.platformId,
+                        modifiedOptions,
+                    )
 
                     this.#platformBridge
                         .initialize()

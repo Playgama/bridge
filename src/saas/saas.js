@@ -4,14 +4,20 @@ import { LeaderboardService } from './LeaderboardService'
 export class SaaS {
     _saasUrl
 
+    _playerModule
+
+    _platformId
+
     _leaderboardService
 
     get leaderboardService() {
         return this._leaderboardService
     }
 
-    constructor(options = {}) {
+    constructor(playerModule, platformId, options = {}) {
         this._saasUrl = options.saas?.baseUrl || SAAS_URL
+        this._playerModule = playerModule
+        this._platformId = platformId
 
         const request = this.createRequest()
         this._leaderboardService = new LeaderboardService(request)
@@ -24,6 +30,8 @@ export class SaaS {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
+                        'x-player-id': this._playerModule.playerId || '',
+                        'x-platform-id': this._platformId,
                         ...options,
                     },
                 }).then((response) => response.json())
@@ -35,6 +43,8 @@ export class SaaS {
                     data: JSON.stringify(data),
                     headers: {
                         'Content-Type': 'application/json',
+                        'x-player-id': this._playerModule.playerId || '',
+                        'x-platform-id': this._platformId,
                         ...options,
                     },
                 }).then((response) => response.json())
