@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { SAAS_URL } from '../constants'
+import { MODULE_NAME, SAAS_URL } from '../constants'
 
 class ModuleBase {
     _platformBridge
@@ -30,8 +30,8 @@ class ModuleBase {
 
     get xHeaders() {
         return {
-            'x-player-id': this._playerModule.playerId || '',
-            'x-platform-id': this._platformId,
+            'x-player-id': this._platformBridge[MODULE_NAME.PLAYER].id || '',
+            'x-platform-id': this._platformBridge[MODULE_NAME.PLATFORM].id,
         }
     }
 
