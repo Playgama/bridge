@@ -47,6 +47,7 @@ class ModuleBase {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
+                include: 'credentials',
 
                 ...this.xHeaders,
             },
@@ -59,6 +60,7 @@ class ModuleBase {
             data: JSON.stringify(data),
             headers: {
                 'Content-Type': 'application/json',
+                include: 'credentials',
 
                 ...this.xHeaders,
             },
