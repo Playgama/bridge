@@ -160,7 +160,7 @@ class AnalyticsModule extends ModuleBase {
                     const i = parts.indexOf('app')
                     const id = i !== -1 ? parts[i + 1] : null
                     if (id) {
-                        return `Yandex ${id}`
+                        return id
                     }
                     break
                 }
@@ -192,7 +192,7 @@ class AnalyticsModule extends ModuleBase {
                     const id = parts[0]
                     const isInternalId = typeof id === 'string' && /^[a-z0-9]{10,}$/i.test(id)
                     if (isInternalId) {
-                        return `Playgama ${id}`
+                        return id
                     }
                     break
                 }

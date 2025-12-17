@@ -855,10 +855,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     leaderboardsGetEntries(id) {
-        if (
-            this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE
-            || this.leaderboardsType === LEADERBOARD_TYPE.NATIVE
-        ) {
+        if (this.leaderboardsType !== LEADERBOARD_TYPE.IN_GAME) {
             return Promise.reject(new Error('Leaderboards are not available'))
         }
 
@@ -876,6 +873,20 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    leaderboardsShowNativePopup(id) {
+        if (this.leaderboardsType !== LEADERBOARD_TYPE.NATIVE_POPUP) {
+            return Promise.reject(new Error('Leaderboards are not available'))
+        }
+
+        this.#sendMessage({
+            type: MODULE_NAME.LEADERBOARDS,
+            action: ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP,
+            options: { id },
+        })
+
+        return Promise.resolve(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
     }
 
     // achievements
