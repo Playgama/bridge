@@ -15,9 +15,14 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { LEADERBOARD_TYPE } from '../constants'
 import LeaderboardsModule from './LeaderboardsModule'
 
 class LeaderboardsSaasModule extends LeaderboardsModule {
+    get type() {
+        return LEADERBOARD_TYPE.IN_GAME
+    }
+
     async setScore(leaderboardId, score) {
         const saasLeaderboardId = this._getSaasPlatformLeaderboardId(leaderboardId)
 
