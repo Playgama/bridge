@@ -75,8 +75,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 waitFor('PLAYGAMA_SDK').then(() => {
                     this._platformSdk = window.PLAYGAMA_SDK
 
-                    console.info('[PlaygamaBridge][Player] Initialization started (Playgama SDK ready)', { t_s: (performance.now() / 1000).toFixed(3) })
-
                     this._platformSdk.advService.subscribeToAdStateChanges((adType, state) => {
                         if (adType === 'interstitial') {
                             switch (state) {
@@ -129,24 +127,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    // Proactively try to authorize at startup; ignore rejection/denial
-                    const preAuthPromise = (this._platformSdk?.userService?.authorizeUser
-                        ? this._platformSdk.userService.authorizeUser().catch((error) => {
-                            console.info('[PlaygamaBridge][Player] Startup authorizeUser() failed or skipped', { error })
-                        })
-                        : Promise.resolve())
-
-                    preAuthPromise.finally(() => {
-                        this.#getPlayer().then(() => {
-                            console.info('[PlaygamaBridge][Player] Initialization finished', {
-                                authorized: this._isPlayerAuthorized,
-                                id: this._playerId,
-                                name: this._playerName,
-                                t_s: (performance.now() / 1000).toFixed(3),
-                            })
-                            this._isInitialized = true
-                            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-                        })
+                    this.#getPlayer().then(() => {
+                        this._isInitialized = true
+                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
                 })
             })
@@ -296,40 +279,20 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
 
-            console.info('[PlaygamaBridge][Player] authorizePlayer() called', {
-                alreadyAuthorized: this._isPlayerAuthorized,
-                t_s: (performance.now() / 1000).toFixed(3),
-            })
-
             if (this._isPlayerAuthorized) {
                 this.#getPlayer(options)
                     .then(() => {
-                        console.info('[PlaygamaBridge][Player] authorizePlayer() refresh complete', {
-                            authorized: this._isPlayerAuthorized,
-                            id: this._playerId,
-                            name: this._playerName,
-                            t_s: (performance.now() / 1000).toFixed(3),
-                        })
                         this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                     })
             } else {
-                console.info('[PlaygamaBridge][Player] Calling userService.authorizeUser()')
                 this._platformSdk.userService.authorizeUser()
                     .then(() => {
-                        console.info('[PlaygamaBridge][Player] authorizeUser() resolved')
                         this.#getPlayer(options)
                             .then(() => {
-                                console.info('[PlaygamaBridge][Player] Player data loaded after authorizeUser()', {
-                                    authorized: this._isPlayerAuthorized,
-                                    id: this._playerId,
-                                    name: this._playerName,
-                                    t_s: (performance.now() / 1000).toFixed(3),
-                                })
                                 this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                             })
                     })
                     .catch((error) => {
-                        console.info('[PlaygamaBridge][Player] authorizeUser() failed', { error })
                         this._rejectPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER, error)
                     })
             }
@@ -394,42 +357,25 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     #getPlayer() {
         return new Promise((resolve) => {
-            console.info('[PlaygamaBridge][Player] getUser() called', { t_s: (performance.now() / 1000).toFixed(3) })
             this._platformSdk.userService.getUser()
                 .then((player) => {
                     if (player.isAuthorized) {
-                        console.info('[PlaygamaBridge][Player] getUser() returned authorized user')
                         this._isPlayerAuthorized = true
                         this._playerId = player.id
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player
                         this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-                        console.info('[PlaygamaBridge][Player] Info', {
-                            id: this._playerId,
-                            name: this._playerName,
-                            photos: this._playerPhotos,
-                            extra: this._playerExtra,
-                            t_s: (performance.now() / 1000).toFixed(3),
-                        })
                         return this.#getDataFromPlatformStorage([])
                     }
 
-                    console.info('[PlaygamaBridge][Player] getUser() returned guest user')
                     this._playerApplyGuestData()
                     return Promise.resolve()
                 })
-                .catch((error) => {
-                    console.info('[PlaygamaBridge][Player] getUser() failed', { error })
+                .catch(() => {
                     this._playerApplyGuestData()
                 })
                 .finally(() => {
-                    console.info('[PlaygamaBridge][Player] getUser() finished', {
-                        authorized: this._isPlayerAuthorized,
-                        id: this._playerId,
-                        name: this._playerName,
-                        t_s: (performance.now() / 1000).toFixed(3),
-                    })
                     resolve()
                 })
         })
