@@ -57,7 +57,7 @@ class ModuleBase {
     async #post(url, data) {
         return fetch(`${this.baseUrl}/${url}`, {
             method: 'POST',
-            data: JSON.stringify(data),
+            body: JSON.stringify(data),
             headers: {
                 'Content-Type': 'application/json',
                 include: 'credentials',
