@@ -214,6 +214,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
             if (message.playerPhoto) {
                 this._playerPhotos.push(message.playerPhoto)
             }
+            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
         }
 
         this._isInitialized = true
