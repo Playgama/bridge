@@ -45,9 +45,9 @@ class ModuleBase {
     async #get(url) {
         return fetch(`${this.baseUrl}/${url}`, {
             method: 'GET',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                include: 'credentials',
 
                 ...this.xHeaders,
             },
@@ -58,9 +58,9 @@ class ModuleBase {
         return fetch(`${this.baseUrl}/${url}`, {
             method: 'POST',
             body: JSON.stringify(data),
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                include: 'credentials',
 
                 ...this.xHeaders,
             },
