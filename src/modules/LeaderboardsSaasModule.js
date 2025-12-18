@@ -17,8 +17,9 @@
 
 import { LEADERBOARD_TYPE } from '../constants'
 import LeaderboardsModule from './LeaderboardsModule'
+import SaasRequestMixin from './mixins/SaasRequestMixin'
 
-class LeaderboardsSaasModule extends LeaderboardsModule {
+class LeaderboardsSaasModule extends SaasRequestMixin(LeaderboardsModule) {
     get type() {
         return LEADERBOARD_TYPE.IN_GAME
     }

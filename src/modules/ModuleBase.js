@@ -15,56 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { SAAS_URL } from '../constants'
-
 class ModuleBase {
     _platformBridge
 
     constructor(platformBridge) {
         this._platformBridge = platformBridge
-    }
-
-    get baseUrl() {
-        return this._platformBridge.options.saas.baseUrl || SAAS_URL
-    }
-
-    get xHeaders() {
-        return {
-            'x-player-id': this._platformBridge.playerId || '',
-            'x-platform-id': this._platformBridge.platformId,
-        }
-    }
-
-    get request() {
-        return {
-            get: this.#get.bind(this),
-            post: this.#post.bind(this),
-        }
-    }
-
-    async #get(url) {
-        return fetch(`${this.baseUrl}/${url}`, {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-
-                ...this.xHeaders,
-            },
-        }).then((response) => response.json())
-    }
-
-    async #post(url, data) {
-        return fetch(`${this.baseUrl}/${url}`, {
-            method: 'POST',
-            body: JSON.stringify(data),
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-
-                ...this.xHeaders,
-            },
-        }).then((response) => response.json())
     }
 }
 
