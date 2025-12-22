@@ -41,6 +41,9 @@ async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeRe
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
                 supportedFeatures: mergedOptions.supportedFeatures,
+                config: {
+                    internalStoragePolicy: mergedOptions.internalStoragePolicy,
+                },
             }, '*')
         }
     })
