@@ -87,7 +87,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
+            return this._isPlayerAuthorized
         }
 
         return super.isStorageAvailable(storageType)
