@@ -257,7 +257,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             const messageHandler = ({ data }) => {
                 if (!data?.type || data?.source === MESSAGE_SOURCE) return
 
-                if (data.type === MODULE_NAME.PLATFORM) {                    
+                if (data.type === MODULE_NAME.PLATFORM) {
                     if (data.action === ACTION_NAME.INITIALIZE) {
                         this.#getPlayer().then(() => {
                             this.#handleInitializeResponse(data)
