@@ -43,6 +43,12 @@ const MODULE_NAME_QA = {
     LIVENESS: 'liveness',
 }
 
+export const INTERNAL_STORAGE_POLICY = {
+    AUTHORIZED_ONLY: 'authorized_only',
+    ALWAYS: 'always',
+    NEVER: 'never',
+}
+
 export const ACTION_NAME_QA = {
     IS_STORAGE_AVAILABLE: 'is_storage_available',
     IS_STORAGE_SUPPORTED: 'is_storage_supported',
@@ -362,7 +368,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_INTERNAL)
-            && this._isPlayerAuthorized
+            && this.#isPlatformInternalStorageAvailable()
         ) {
             return super.isStorageAvailable(STORAGE_TYPE.LOCAL_STORAGE)
         }
@@ -376,7 +382,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         return false
     }
-
+    
     getDataFromStorage(key, storageType, tryParseJson) {
         if (!this.isStorageSupported(storageType)) {
             return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
@@ -963,11 +969,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this._platformTld = config.platformTld ?? super.platformTld
         this._platformPayload = config.platformPayload ?? super.platformPayload
         this._leaderboardsType = config.leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
+        this._internalStoragePolicy = config.internalStoragePolicy ?? INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY
 
         this._paymentsPurchases = data.purchases || []
 
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+
+        this.#updateDefaultStorageType()
 
         this.#sendMessage({
             type: MODULE_NAME_QA.LIVENESS,
@@ -1057,7 +1066,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._playerPhotos = [...player.photos]
                 }
                 this._playerExtra = player
-                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                this.#updateDefaultStorageType()
             } else {
                 this._playerApplyGuestData()
             }
@@ -1115,6 +1124,18 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     break
                 }
             }
+        }
+    }
+
+    #isPlatformInternalStorageAvailable() {
+        return (this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY && this._isPlayerAuthorized) || this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.ALWAYS
+    }
+    
+    #updateDefaultStorageType() {
+        if (this.#isPlatformInternalStorageAvailable()) {
+            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+        } else {
+            this._defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
         }
     }
 }
