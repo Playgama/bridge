@@ -189,6 +189,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                         })
 
                                     Promise.all([
+                                        this.#playerPromise,
                                         reportPluginEnginePromise,
                                         checkAddToHomeScreenSupportedRacePromise,
                                         getPaymentsPromise,
