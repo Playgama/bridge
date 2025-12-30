@@ -29,6 +29,7 @@ import {
     PLATFORM_MESSAGE,
     ERROR,
 } from './constants'
+
 import PromiseDecorator from './common/PromiseDecorator'
 import PlatformModule from './modules/PlatformModule'
 import PlayerModule from './modules/PlayerModule'
@@ -38,6 +39,7 @@ import AdvertisementModule from './modules/AdvertisementModule'
 import SocialModule from './modules/SocialModule'
 import DeviceModule from './modules/DeviceModule'
 import LeaderboardsModule from './modules/LeaderboardsModule'
+import LeaderboardsSaasModule from './modules/LeaderboardsSaasModule'
 import PaymentsModule from './modules/PaymentsModule'
 import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
@@ -240,7 +242,9 @@ class PlaygamaBridge {
                     this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(this.#platformBridge)
-                    this.#modules[MODULE_NAME.LEADERBOARDS] = new LeaderboardsModule(this.#platformBridge)
+                    this.#modules[MODULE_NAME.LEADERBOARDS] = this.#isSaas(MODULE_NAME.LEADERBOARDS)
+                        ? new LeaderboardsSaasModule(this.#platformBridge)
+                        : new LeaderboardsModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
                     this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
@@ -470,6 +474,16 @@ class PlaygamaBridge {
         }
 
         return this.#modules[id]
+    }
+
+    #isSaas(feature) {
+        const { options, platformId } = this.#platformBridge
+
+        return (
+            options.saas?.[feature]
+            && Array.isArray(options.saas[feature].platforms)
+            && options.saas[feature].platforms.includes(platformId)
+        )
     }
 }
 
