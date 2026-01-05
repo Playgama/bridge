@@ -21,6 +21,7 @@ import {
     PLATFORM_ID,
     MODULE_NAME,
     ACTION_NAME,
+    EVENT_NAME,
     PLATFORM_MESSAGE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
@@ -65,6 +66,8 @@ export const ACTION_NAME_QA = {
     GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
     GET_LANGUAGE: 'get_language',
     GET_PLAYER: 'get_player',
+    AUDIO_STATE: 'audio_state',
+    PAUSE_STATE: 'pause_state',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -242,6 +245,21 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
+            this.on(EVENT_NAME.AUDIO_STATE_CHANGED, (isEnabled) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.PLATFORM,
+                    action: ACTION_NAME_QA.AUDIO_STATE,
+                    options: { isEnabled },
+                })
+            })
+            this.on(EVENT_NAME.PAUSE_STATE_CHANGED, (isPaused) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.PLATFORM,
+                    action: ACTION_NAME_QA.PAUSE_STATE,
+                    options: { isPaused },
+                })
+            })
+
             const messageHandler = ({ data }) => {
                 if (!data?.type || data?.source === MESSAGE_SOURCE) return
 
@@ -250,9 +268,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         this.#getPlayer().then(() => {
                             this.#handleInitializeResponse(data)
                         })
-                    }
-
-                    if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
+                    } else if (data.action === ACTION_NAME_QA.AUDIO_STATE) {
+                        this.#handleAudioState(data)
+                    } else if (data.action === ACTION_NAME_QA.PAUSE_STATE) {
+                        this.#handlePauseState(data)
+                    } else if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
                         const messageId = this.#messageBroker.generateMessageId()
                         const requestedProps = data?.options?.resources || []
                         this.#getPerformanceResources(messageId, requestedProps)
@@ -983,6 +1003,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             action: ACTION_NAME_QA.LIVENESS_PING,
             options: { version: PLUGIN_VERSION },
         })
+    }
+
+    #handleAudioState(data) {
+        this._setAudioState(data.options.isEnabled)
+    }
+
+    #handlePauseState(data) {
+        this._setPauseState(data.options.isPaused)
     }
 
     #getPerformanceResources(messageId, requestedProps = []) {
