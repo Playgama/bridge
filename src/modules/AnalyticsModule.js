@@ -17,6 +17,7 @@
 
 import { MODULE_NAME, PLATFORM_ID } from '../constants'
 import { version } from '../../package.json'
+import { generateRandomId, getGuestUser } from '../common/utils'
 import ModuleBase from './ModuleBase'
 
 const API_URL = 'https://playgama.com/api/events/v2/bridge/analytics'
@@ -33,28 +34,28 @@ class AnalyticsModule extends ModuleBase {
 
     #gameId = null
 
-    #createTimestamp = new Date().toISOString()
+    #playerGuestId = null
+
+    #sessionId = null
+
+    constructor() {
+        super()
+        this.#sessionId = this.#generateSessionId()
+    }
 
     initialize(platformBridge) {
         this._platformBridge = platformBridge
         this.#gameId = this.#extractGameId()
+        this.#playerGuestId = getGuestUser().id
 
-        const event = {
-            event_name: `${MODULE_NAME.CORE}_initialization_started`,
-            module: MODULE_NAME.CORE,
-            bridge_version: version,
-            platform_id: this._platformBridge.platformId,
-            game_id: this.#gameId,
-            timestamp: this.#createTimestamp,
-            data: {},
-        }
+        const event = this.#createEvent(`${MODULE_NAME.CORE}_initialization_started`, MODULE_NAME.CORE)
         this.#eventQueue.push(event)
         this.#startPing()
 
         return this
     }
 
-    send(eventType, module, eventData = {}) {
+    send(eventType, module, data = {}) {
         const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
         if (sendAnalyticsEvents === false) {
             return
@@ -65,16 +66,7 @@ class AnalyticsModule extends ModuleBase {
             return
         }
 
-        const event = {
-            event_name: eventType,
-            module,
-            bridge_version: version,
-            platform_id: this._platformBridge.platformId,
-            game_id: this.#gameId,
-            timestamp: new Date().toISOString(),
-            data: eventData,
-        }
-
+        const event = this.#createEvent(eventType, module, data)
         this.#eventQueue.push(event)
 
         if (this.#batchTimer) {
@@ -84,6 +76,29 @@ class AnalyticsModule extends ModuleBase {
         this.#batchTimer = setTimeout(() => {
             this.#flush()
         }, BATCH_TIMEOUT)
+    }
+
+    #generateSessionId() {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID()
+        }
+
+        return generateRandomId()
+    }
+
+    #createEvent(eventType, module, data = {}) {
+        return {
+            event_name: eventType,
+            module,
+            bridge_version: version,
+            platform_id: this._platformBridge.platformId,
+            game_id: this.#gameId,
+            player_id: this._platformBridge.playerId,
+            player_guest_id: this.#playerGuestId,
+            session_id: this.#sessionId,
+            timestamp: new Date().toISOString(),
+            data,
+        }
     }
 
     #flush() {

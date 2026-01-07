@@ -402,7 +402,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
         return false
     }
-    
+
     getDataFromStorage(key, storageType, tryParseJson) {
         if (!this.isStorageSupported(storageType)) {
             return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
@@ -1156,9 +1156,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     #isPlatformInternalStorageAvailable() {
-        return (this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY && this._isPlayerAuthorized) || this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.ALWAYS
+        return (this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY && this._isPlayerAuthorized)
+            || this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.ALWAYS
     }
-    
+
     #updateDefaultStorageType() {
         if (this.#isPlatformInternalStorageAvailable()) {
             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
