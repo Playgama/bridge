@@ -1,12 +1,5 @@
 {
     "$schema": "https://bridge.playgama.com/v1/stable/schema.json",
-    "saas": {
-        "baseUrl": "https://playgama.com/api/bridge/v1",
-        "projectId": "",
-        "leaderboards": {
-            "platforms": ["playgama", "mock", "qa_tool"]
-        }
-    },
     "advertisement": {
         "interstitial": {
             "preloadOnStart": true
