@@ -24,6 +24,7 @@ const API_URL = 'https://playgama.com/api/events/v2/bridge/analytics'
 const DISCORD_API_URL = '/playgama/api/events/v2/bridge/analytics'
 const BATCH_TIMEOUT = 3000
 const PING_INTERVAL = 15000
+const SEND_ATTEMPTS = 2
 
 class AnalyticsModule extends ModuleBase {
     #eventQueue = []
@@ -38,6 +39,10 @@ class AnalyticsModule extends ModuleBase {
 
     #sessionId = null
 
+    #failedAttempts = 0
+
+    #isDisabled = false
+
     constructor() {
         super()
         this.#sessionId = this.#generateSessionId()
@@ -45,6 +50,15 @@ class AnalyticsModule extends ModuleBase {
 
     initialize(platformBridge) {
         this._platformBridge = platformBridge
+        if (this._platformBridge.options?.sendAnalyticsEvents === false) {
+            this.#isDisabled = true
+        }
+
+        const { href } = window.location
+        if (href.startsWith('file://') || href.includes('localhost') || href.includes('127.0.0.1')) {
+            this.#isDisabled = true
+        }
+
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
 
@@ -56,13 +70,7 @@ class AnalyticsModule extends ModuleBase {
     }
 
     send(eventType, module, data = {}) {
-        const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
-        if (sendAnalyticsEvents === false) {
-            return
-        }
-
-        const { href } = window.location
-        if (href.startsWith('file://') || href.includes('localhost') || href.includes('127.0.0.1')) {
+        if (this.#isDisabled) {
             return
         }
 
@@ -124,10 +132,27 @@ class AnalyticsModule extends ModuleBase {
                 if (!response.ok) {
                     throw new Error(`Network response was not ok: ${response.status}`)
                 }
+                this.#failedAttempts = 0
             })
-            .catch((error) => {
-                console.error('Error sending analytics events:', error)
+            .catch(() => {
+                this.#failedAttempts += 1
+                if (this.#failedAttempts >= SEND_ATTEMPTS) {
+                    this.#disable()
+                }
             })
+    }
+
+    #disable() {
+        this.#isDisabled = true
+        this.#eventQueue = []
+        if (this.#batchTimer) {
+            clearTimeout(this.#batchTimer)
+            this.#batchTimer = null
+        }
+        if (this.#pingTimer) {
+            clearInterval(this.#pingTimer)
+            this.#pingTimer = null
+        }
     }
 
     #extractGameId() {
