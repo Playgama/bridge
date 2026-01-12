@@ -31,7 +31,7 @@ import {
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
 const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/payments-bucket-prod/embed/1.5.0/widget.min.js'
-const XSOLLA_SDK_URL = 'https://store.xsolla.com/api/v2/project/'
+const XSOLLA_SDK_URL = 'https://store.xsolla.com/api/v2/project'
 
 class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -342,17 +342,35 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
             this.#ensurePaystationLoaded()
                 .then(() => this.#getXsollaToken())
-                .then((token) => {
+                .then(async (userToken) => {
+                    const orderResponse = await fetch(
+                        `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/payment/item/${sku}`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                Authorization: `Bearer ${userToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                        },
+                    )
+
+                    if (!orderResponse.ok) {
+                        throw new Error(`Xsolla create order HTTP ${orderResponse.status}`)
+                    }
+
+                    const orderData = await orderResponse.json()
+                    const paymentToken = orderData.token
+                    const orderId = orderData.order_id
+
                     const paystation = window.XPayStationWidget
                     if (!paystation) {
                         throw new Error('Xsolla Pay Station widget not loaded')
                     }
 
                     paystation.init({
-                        access_token: token,
+                        access_token: paymentToken,
                         sandbox: this.options.isSandbox || false,
                         childWindow: { target: '_blank' },
-                        settings: { external_id: sku },
                     })
 
                     let resolved = false
@@ -361,12 +379,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         try {
                             const info = (data && data.paymentInfo) || {}
                             if (info.status && /done|charged|success/i.test(String(info.status))) {
-                                const orderId = info.order_id || info.invoice
-                                if (!orderId) {
-                                    return
-                                }
-
-                                this.#getOrder(this.options.xsollaProjectId, orderId, token)
+                                this.#getOrder(this.options.xsollaProjectId, orderId, userToken)
                                     .then((order) => {
                                         this._platformSdk.analytics.trackOrder('xsolla', order)
 
