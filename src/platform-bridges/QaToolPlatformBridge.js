@@ -286,6 +286,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
+                payload: {
+                    bridgeConfig: this._options,
+                },
             })
         }
 
