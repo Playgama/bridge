@@ -1016,7 +1016,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #getPerformanceResources(messageId, requestedProps = []) {
         const props = Array.isArray(requestedProps) ? requestedProps : []
         const resources = performance.getEntriesByType('resource') || []
-        const defaultProps = ['name', 'initiatorType']
+        const defaultProps = ['name', 'initiatorType', 'decodedBodySize', 'encodedBodySize', 'duration', 'deliveryType']
         const propsToExtract = props.length > 0 ? props : defaultProps
 
         const serializableResources = resources.map((resource) => {
