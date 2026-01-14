@@ -31,6 +31,7 @@
         "babel-loader": "^8.2.3",
         "eslint": "^8.55.0",
         "eslint-config-airbnb": "^19.0.4",
+        "eslint-plugin-sort-class-members": "^1.21.0",
         "eslint-webpack-plugin": "^4.0.1",
         "jsdom": "^24.0.0",
         "typescript": "^5.9.3",

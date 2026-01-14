@@ -203,7 +203,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         return ins
     }
 
-    #showAd = () => {}
+    #showAd() {}
 }
 
 export default XiaomiPlatformBridge

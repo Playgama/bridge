@@ -32,76 +32,7 @@ const PARSE_STATUS = {
 }
 
 class ConfigFileModule extends ModuleBase {
-    #defaultConfigFilePath = './playgama-bridge-config.json'
-
-    #loadStatus = LOAD_STATUS.PENDING
-
-    #parseStatus = PARSE_STATUS.PENDING
-
-    #path = ''
-
-    #rawContent = ''
-
-    #parsedContent = {}
-
-    #loadError = ''
-
-    #parseError = ''
-
-    #options = {}
-
-    #fallbackOptions = {}
-
-    async load(configFilePath, fallbackOptions = {}) {
-        this.#path = configFilePath || this.#defaultConfigFilePath
-        this.#fallbackOptions = fallbackOptions
-
-        try {
-            this.#loadStatus = LOAD_STATUS.LOADING
-            const response = await fetch(this.#path)
-
-            if (!response.ok) {
-                throw new Error(`Failed to load bridge config: ${this.#path} ${response.status} (${response.statusText})`)
-            }
-
-            const text = await response.text()
-            this.#rawContent = text
-            this.#loadStatus = LOAD_STATUS.SUCCESS
-            this.#parseContent(text)
-        } catch (error) {
-            this.#setOptions(this.#fallbackOptions)
-            this.#loadStatus = LOAD_STATUS.FAILED
-            this.#loadError = error.message || String(error)
-            console.error(error)
-        }
-    }
-
-    #parseContent(text) {
-        try {
-            const data = JSON.parse(text)
-            this.#parsedContent = data
-            this.#parseStatus = PARSE_STATUS.SUCCESS
-            this.#setOptions(data)
-        } catch (parseError) {
-            this.#setOptions(this.#fallbackOptions)
-            this.#parseStatus = PARSE_STATUS.FAILED
-            this.#parseError = `Failed to parse bridge config: ${parseError.message || String(parseError)}`
-            console.error('Config parsing error.', parseError)
-        }
-    }
-
-    #setOptions(options) {
-        this.#options = { ...options }
-    }
-
-    getPlatformOptions(platformId) {
-        const currentPlatformOptions = this.options.platforms?.[platformId]
-        if (currentPlatformOptions) {
-            return deepMerge(this.options, currentPlatformOptions)
-        }
-        return this.options
-    }
-
+    // public getters
     get options() {
         return this.#options
     }
@@ -132,6 +63,79 @@ class ConfigFileModule extends ModuleBase {
 
     get parseError() {
         return this.#parseError
+    }
+
+    // private properties
+    #defaultConfigFilePath = './playgama-bridge-config.json'
+
+    #loadStatus = LOAD_STATUS.PENDING
+
+    #parseStatus = PARSE_STATUS.PENDING
+
+    #path = ''
+
+    #rawContent = ''
+
+    #parsedContent = {}
+
+    #loadError = ''
+
+    #parseError = ''
+
+    #options = {}
+
+    #fallbackOptions = {}
+
+    // public methods
+    async load(configFilePath, fallbackOptions = {}) {
+        this.#path = configFilePath || this.#defaultConfigFilePath
+        this.#fallbackOptions = fallbackOptions
+
+        try {
+            this.#loadStatus = LOAD_STATUS.LOADING
+            const response = await fetch(this.#path)
+
+            if (!response.ok) {
+                throw new Error(`Failed to load bridge config: ${this.#path} ${response.status} (${response.statusText})`)
+            }
+
+            const text = await response.text()
+            this.#rawContent = text
+            this.#loadStatus = LOAD_STATUS.SUCCESS
+            this.#parseContent(text)
+        } catch (error) {
+            this.#setOptions(this.#fallbackOptions)
+            this.#loadStatus = LOAD_STATUS.FAILED
+            this.#loadError = error.message || String(error)
+            console.error(error)
+        }
+    }
+
+    getPlatformOptions(platformId) {
+        const currentPlatformOptions = this.options.platforms?.[platformId]
+        if (currentPlatformOptions) {
+            return deepMerge(this.options, currentPlatformOptions)
+        }
+        return this.options
+    }
+
+    // private methods
+    #parseContent(text) {
+        try {
+            const data = JSON.parse(text)
+            this.#parsedContent = data
+            this.#parseStatus = PARSE_STATUS.SUCCESS
+            this.#setOptions(data)
+        } catch (parseError) {
+            this.#setOptions(this.#fallbackOptions)
+            this.#parseStatus = PARSE_STATUS.FAILED
+            this.#parseError = `Failed to parse bridge config: ${parseError.message || String(parseError)}`
+            console.error('Config parsing error.', parseError)
+        }
+    }
+
+    #setOptions(options) {
+        this.#options = { ...options }
     }
 }
 

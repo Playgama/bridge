@@ -64,13 +64,13 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    #language
-
-    #urlParams
-
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     _isPlayerAuthorized = true
+
+    #language
+
+    #urlParams
 
     initialize() {
         if (this._isInitialized) {
