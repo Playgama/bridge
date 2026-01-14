@@ -53,6 +53,10 @@ const LEADERBOARD_XML = `
 `
 
 class FacebookPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.FACEBOOK, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.FACEBOOK

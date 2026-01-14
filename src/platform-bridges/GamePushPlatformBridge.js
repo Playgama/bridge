@@ -27,6 +27,10 @@ import {
 } from '../constants'
 
 class GamePushPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.GAMEPUSH, configFile)
+    }
+
     get platformId() {
         return PLATFORM_ID.GAMEPUSH
     }

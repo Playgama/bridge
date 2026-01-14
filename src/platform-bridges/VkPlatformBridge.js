@@ -30,6 +30,10 @@ import {
 const SDK_URL = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js'
 
 class VkPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.VK, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.VK

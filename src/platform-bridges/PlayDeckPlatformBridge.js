@@ -27,6 +27,10 @@ import {
 import { postToParent } from '../common/utils'
 
 class PlayDeckPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.PLAYDECK, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.PLAYDECK

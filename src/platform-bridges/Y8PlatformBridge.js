@@ -33,6 +33,10 @@ const NOT_FOUND_ERROR = 'Key not found'
 const ADS_ID = '6129580795478709'
 
 class Y8PlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.Y8, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.Y8

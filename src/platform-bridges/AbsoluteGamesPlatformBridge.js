@@ -28,6 +28,10 @@ import {
 const SDK_URL = 'https://unpkg.com/@agru/sdk/dist/umd/index.min.js'
 
 class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.ABSOLUTE_GAMES, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.ABSOLUTE_GAMES

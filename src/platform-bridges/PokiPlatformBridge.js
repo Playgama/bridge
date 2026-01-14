@@ -28,6 +28,10 @@ import {
 const SDK_URL = 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js'
 
 class PokiPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.POKI, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.POKI

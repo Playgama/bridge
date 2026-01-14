@@ -30,6 +30,10 @@ import {
 const SDK_URL = 'https://lagged.com/api/rev-share/lagged.js'
 
 class LaggedPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.LAGGED, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.LAGGED

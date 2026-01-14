@@ -115,6 +115,13 @@ export const SUPPORTED_FEATURES = {
 }
 
 class QaToolPlatformBridge extends PlatformBridgeBase {
+    #configFile = null
+
+    constructor(configFile) {
+        super(PLATFORM_ID.QA_TOOL, configFile)
+        this.#configFile = configFile
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.QA_TOOL
@@ -287,7 +294,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
                 payload: {
-                    bridgeConfig: this._options,
+                    configFile: {
+                        loadingStatus: this.#configFile.loadStatus,
+                        parsingStatus: this.#configFile.parseStatus,
+                        loadError: this.#configFile.loadError,
+                        parseError: this.#configFile.parseError,
+                        options: this.#configFile.options,
+                        path: this.#configFile.path,
+                        rawContent: this.#configFile.rawContent,
+                    },
                 },
             })
         }

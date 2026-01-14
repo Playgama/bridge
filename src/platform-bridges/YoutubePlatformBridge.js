@@ -28,6 +28,10 @@ import {
 } from '../constants'
 
 class YoutubePlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.YOUTUBE, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.YOUTUBE

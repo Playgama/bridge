@@ -32,6 +32,10 @@ import {
 const SDK_URL = '/sdk.js'
 
 class YandexPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.YANDEX, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.YANDEX

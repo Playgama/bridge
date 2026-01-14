@@ -27,6 +27,10 @@ import {
 import { postToSystem } from '../common/utils'
 
 class HuaweiPlatformBridge extends PlatformBridgeBase {
+    constructor(configFile) {
+        super(PLATFORM_ID.HUAWEI, configFile)
+    }
+
     // platform
     get platformId() {
         return PLATFORM_ID.HUAWEI
