@@ -486,12 +486,36 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
-            try {
-                this._paymentsPurchases.splice(purchaseIndex, 1)
-                this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
-            } catch (error) {
-                this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
-            }
+
+            const purchase = this._paymentsPurchases[purchaseIndex]
+            const sku = purchase.sku || purchase.id
+
+            this.#getXsollaToken()
+                .then((token) => fetch(
+                    `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/user/inventory/item/consume`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            sku,
+                            quantity: 1,
+                        }),
+                    },
+                ))
+                .then((res) => {
+                    if (!res.ok) {
+                        throw new Error(`Xsolla consume HTTP ${res.status}`)
+                    }
+
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                })
         }
         return promiseDecorator.promise
     }
