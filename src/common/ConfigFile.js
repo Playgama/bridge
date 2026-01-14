@@ -63,7 +63,7 @@ class ConfigFile {
 
             if (!response.ok) {
                 console.error('Failed to load config', response)
-                throw new Error(`Failed to load config: ${response.status} ${response.statusText}`)
+                throw new Error(`Failed to load bridge config: ${this.#path} - ${response.status} ${response.statusText}`)
             }
 
             const text = await response.text()
@@ -87,7 +87,7 @@ class ConfigFile {
         } catch (parseError) {
             this.#setOptions(this.#fallbackOptions)
             this.#parseStatus = PARSE_STATUS.FAILED
-            this.#parseError = parseError.message || String(parseError)
+            this.#parseError = `Failed to parse bridge config: ${parseError.message || String(parseError)}`
             console.error('Config parsing error.', parseError)
         }
     }
