@@ -18,14 +18,14 @@
 import { deepMerge } from '../common/utils'
 import ModuleBase from './ModuleBase'
 
-const LOAD_STATUS = {
+export const LOAD_STATUS = {
     PENDING: 'pending',
     LOADING: 'loading',
     SUCCESS: 'success',
     FAILED: 'failed',
 }
 
-const PARSE_STATUS = {
+export const PARSE_STATUS = {
     PENDING: 'pending',
     SUCCESS: 'success',
     FAILED: 'failed',
@@ -139,4 +139,5 @@ class ConfigFileModule extends ModuleBase {
     }
 }
 
+export { ConfigFileModule }
 export default new ConfigFileModule()
