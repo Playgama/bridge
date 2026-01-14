@@ -51,8 +51,6 @@ class ConfigFile {
 
     #fallbackOptions = {}
 
-    #platformId = ''
-
     constructor(configFilePath, fallbackOptions = {}) {
         this.#path = configFilePath || this.#defaultConfigFilePath
         this.#fallbackOptions = fallbackOptions
