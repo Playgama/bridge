@@ -62,8 +62,7 @@ class ConfigFile {
             const response = await fetch(this.#path)
 
             if (!response.ok) {
-                console.error('Failed to load config', response)
-                throw new Error(`Failed to load bridge config: ${this.#path} - ${response.status} ${response.statusText}`)
+                throw new Error(`Failed to load bridge config: ${this.#path} ${response.status} (${response.statusText})`)
             }
 
             const text = await response.text()
@@ -74,7 +73,7 @@ class ConfigFile {
             this.#setOptions(this.#fallbackOptions)
             this.#loadStatus = LOAD_STATUS.FAILED
             this.#loadError = error.message || String(error)
-            console.error('Config loading error.', error)
+            console.error(error)
         }
     }
 
