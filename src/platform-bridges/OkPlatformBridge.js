@@ -34,10 +34,6 @@ const PERMISSION_TYPES = {
 }
 
 class OkPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.OK, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.OK

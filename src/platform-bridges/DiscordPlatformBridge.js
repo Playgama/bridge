@@ -24,10 +24,6 @@ const APPLICATION_SERVER_PROXY_URL = '/api'
 const DISCORD_BASE_URL = 'https://discord.com/api/v10'
 
 class DiscordPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.DISCORD, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.DISCORD

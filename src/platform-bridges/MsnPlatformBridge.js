@@ -32,10 +32,6 @@ const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sd
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 class MsnPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.MSN, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.MSN

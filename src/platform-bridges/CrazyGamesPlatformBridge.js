@@ -34,10 +34,6 @@ const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/payments-bucket-prod
 const XSOLLA_SDK_URL = 'https://store.xsolla.com/api/v2/project'
 
 class CrazyGamesPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.CRAZY_GAMES, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.CRAZY_GAMES

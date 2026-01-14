@@ -32,10 +32,6 @@ const STAGE_SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'
 const BANK_SDK_URL = 'https://app-global.memebeat.io/bqsdk.min.js'
 
 class BitquestPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.BITQUEST, configFile)
-    }
-
     get platformId() {
         return PLATFORM_ID.BITQUEST
     }

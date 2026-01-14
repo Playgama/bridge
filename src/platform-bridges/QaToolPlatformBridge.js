@@ -17,6 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
+import configFileModule from '../modules/ConfigFileModule'
 import {
     PLATFORM_ID,
     MODULE_NAME,
@@ -115,13 +116,6 @@ export const SUPPORTED_FEATURES = {
 }
 
 class QaToolPlatformBridge extends PlatformBridgeBase {
-    #configFile = null
-
-    constructor(configFile) {
-        super(PLATFORM_ID.QA_TOOL, configFile)
-        this.#configFile = configFile
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.QA_TOOL
@@ -295,13 +289,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 action: ACTION_NAME.INITIALIZE,
                 payload: {
                     configFile: {
-                        loadingStatus: this.#configFile.loadStatus,
-                        parsingStatus: this.#configFile.parseStatus,
-                        loadError: this.#configFile.loadError,
-                        parseError: this.#configFile.parseError,
-                        options: this.#configFile.options,
-                        path: this.#configFile.path,
-                        rawContent: this.#configFile.rawContent,
+                        loadingStatus: configFileModule.loadStatus,
+                        parsingStatus: configFileModule.parseStatus,
+                        loadError: configFileModule.loadError,
+                        parseError: configFileModule.parseError,
+                        options: configFileModule.options,
+                        path: configFileModule.path,
+                        rawContent: configFileModule.rawContent,
                     },
                 },
             })

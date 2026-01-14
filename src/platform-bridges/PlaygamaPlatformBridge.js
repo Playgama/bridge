@@ -30,10 +30,6 @@ import {
 const SDK_URL = 'https://developer.playgama.com/sdk/v1.js'
 
 class PlaygamaPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.PLAYGAMA, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.PLAYGAMA

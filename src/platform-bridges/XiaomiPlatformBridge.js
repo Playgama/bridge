@@ -29,10 +29,6 @@ import {
 import { addAdsByGoogle, createAdvertisementBannerContainer } from '../common/utils'
 
 class XiaomiPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.XIAOMI, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.XIAOMI

@@ -31,7 +31,7 @@ import {
 } from './constants'
 
 import PromiseDecorator from './common/PromiseDecorator'
-import ConfigFile from './common/ConfigFile'
+import configFileModule from './modules/ConfigFileModule'
 import PlatformModule from './modules/PlatformModule'
 import PlayerModule from './modules/PlayerModule'
 import GameModule from './modules/GameModule'
@@ -213,10 +213,9 @@ class PlaygamaBridge {
 
             const startTime = performance.now()
             const configFilePath = options?.configFilePath
-            const configFile = new ConfigFile(configFilePath, options)
-            await configFile.load()
+            await configFileModule.load(configFilePath, options)
 
-            this.#createPlatformBridge(configFile)
+            this.#createPlatformBridge()
 
             this.#platformBridge.engine = this.engine
 
@@ -280,13 +279,13 @@ class PlaygamaBridge {
         return this.#initializationPromiseDecorator.promise
     }
 
-    #createPlatformBridge(configFile) {
+    #createPlatformBridge() {
         let platformId = PLATFORM_ID.MOCK
 
         const url = new URL(window.location.href)
 
-        if (configFile.options.forciblySetPlatformId) {
-            platformId = this.#getPlatformId(configFile.options.forciblySetPlatformId.toLowerCase())
+        if (configFileModule.options.forciblySetPlatformId) {
+            platformId = this.#getPlatformId(configFileModule.options.forciblySetPlatformId.toLowerCase())
         } else {
             const yandexUrl = ['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')
             if (url.searchParams.has('platform_id')) {
@@ -332,103 +331,103 @@ class PlaygamaBridge {
 
         switch (platformId) {
             case PLATFORM_ID.VK: {
-                this.#platformBridge = new VkPlatformBridge(configFile)
+                this.#platformBridge = new VkPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.YANDEX: {
-                this.#platformBridge = new YandexPlatformBridge(configFile)
+                this.#platformBridge = new YandexPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.CRAZY_GAMES: {
-                this.#platformBridge = new CrazyGamesPlatformBridge(configFile)
+                this.#platformBridge = new CrazyGamesPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.ABSOLUTE_GAMES: {
-                this.#platformBridge = new AbsoluteGamesPlatformBridge(configFile)
+                this.#platformBridge = new AbsoluteGamesPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.GAME_DISTRIBUTION: {
-                this.#platformBridge = new GameDistributionPlatformBridge(configFile)
+                this.#platformBridge = new GameDistributionPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.OK: {
-                this.#platformBridge = new OkPlatformBridge(configFile)
+                this.#platformBridge = new OkPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.PLAYGAMA: {
-                this.#platformBridge = new PlaygamaPlatformBridge(configFile)
+                this.#platformBridge = new PlaygamaPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.PLAYDECK: {
-                this.#platformBridge = new PlayDeckPlatformBridge(configFile)
+                this.#platformBridge = new PlayDeckPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.TELEGRAM: {
-                this.#platformBridge = new TelegramPlatformBridge(configFile)
+                this.#platformBridge = new TelegramPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.Y8: {
-                this.#platformBridge = new Y8PlatformBridge(configFile)
+                this.#platformBridge = new Y8PlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.LAGGED: {
-                this.#platformBridge = new LaggedPlatformBridge(configFile)
+                this.#platformBridge = new LaggedPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.FACEBOOK: {
-                this.#platformBridge = new FacebookPlatformBridge(configFile)
+                this.#platformBridge = new FacebookPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.POKI: {
-                this.#platformBridge = new PokiPlatformBridge(configFile)
+                this.#platformBridge = new PokiPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.QA_TOOL: {
-                this.#platformBridge = new QaToolPlatformBridge(configFile)
+                this.#platformBridge = new QaToolPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.MSN: {
-                this.#platformBridge = new MsnPlatformBridge(configFile)
+                this.#platformBridge = new MsnPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.HUAWEI: {
-                this.#platformBridge = new HuaweiPlatformBridge(configFile)
+                this.#platformBridge = new HuaweiPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.BITQUEST: {
-                this.#platformBridge = new BitquestPlatformBridge(configFile)
+                this.#platformBridge = new BitquestPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.GAMEPUSH: {
-                this.#platformBridge = new GamePushPlatformBridge(configFile)
+                this.#platformBridge = new GamePushPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.DISCORD: {
-                this.#platformBridge = new DiscordPlatformBridge(configFile)
+                this.#platformBridge = new DiscordPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.YOUTUBE: {
-                this.#platformBridge = new YoutubePlatformBridge(configFile)
+                this.#platformBridge = new YoutubePlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.JIO_GAMES: {
-                this.#platformBridge = new JioGamesPlatformBridge(configFile)
+                this.#platformBridge = new JioGamesPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.PORTAL: {
-                this.#platformBridge = new PortalPlatformBridge(configFile)
+                this.#platformBridge = new PortalPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.REDDIT: {
-                this.#platformBridge = new RedditPlatformBridge(configFile)
+                this.#platformBridge = new RedditPlatformBridge(platformId)
                 break
             }
             case PLATFORM_ID.XIAOMI: {
-                this.#platformBridge = new XiaomiPlatformBridge(configFile)
+                this.#platformBridge = new XiaomiPlatformBridge(platformId)
                 break
             }
             default: {
-                this.#platformBridge = new PlatformBridgeBase(platformId, configFile)
+                this.#platformBridge = new PlatformBridgeBase(platformId)
                 break
             }
         }

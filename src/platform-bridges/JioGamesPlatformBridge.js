@@ -31,10 +31,6 @@ import {
 
 const SDK_URL = 'https://jiogames.akamaized.net/gameSDK/jiogames/stable/v2.0/jiogames_sdk.js'
 class JioGamesPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.JIO_GAMES, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.JIO_GAMES

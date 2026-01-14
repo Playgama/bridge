@@ -20,10 +20,6 @@ import { ACTION_NAME, PLATFORM_ID, STORAGE_TYPE } from '../constants'
 import { postToParent } from '../common/utils'
 
 class RedditPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.REDDIT, configFile)
-    }
-
     get platformId() {
         return PLATFORM_ID.REDDIT
     }

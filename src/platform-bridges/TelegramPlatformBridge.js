@@ -31,10 +31,6 @@ const SDK_URL = 'https://telegram.org/js/telegram-web-app.js'
 const ADS_SDK_URL = 'https://sad.adsgram.ai/js/sad.min.js'
 
 class TelegramPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.TELEGRAM, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.TELEGRAM

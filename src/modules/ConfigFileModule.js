@@ -15,7 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { deepMerge } from './utils'
+import { deepMerge } from '../common/utils'
+import ModuleBase from './ModuleBase'
 
 const LOAD_STATUS = {
     PENDING: 'pending',
@@ -30,7 +31,7 @@ const PARSE_STATUS = {
     FAILED: 'failed',
 }
 
-class ConfigFile {
+class ConfigFileModule extends ModuleBase {
     #defaultConfigFilePath = './playgama-bridge-config.json'
 
     #loadStatus = LOAD_STATUS.PENDING
@@ -51,12 +52,10 @@ class ConfigFile {
 
     #fallbackOptions = {}
 
-    constructor(configFilePath, fallbackOptions = {}) {
+    async load(configFilePath, fallbackOptions = {}) {
         this.#path = configFilePath || this.#defaultConfigFilePath
         this.#fallbackOptions = fallbackOptions
-    }
 
-    async load() {
         try {
             this.#loadStatus = LOAD_STATUS.LOADING
             const response = await fetch(this.#path)
@@ -136,4 +135,4 @@ class ConfigFile {
     }
 }
 
-export default ConfigFile
+export default new ConfigFileModule()

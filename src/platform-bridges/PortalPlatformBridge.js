@@ -29,10 +29,6 @@ import {
 const SDK_URL = 'https://storage.googleapis.com/social-networth/scripts/sdk.umd.js'
 
 class PortalPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.PORTAL, configFile)
-    }
-
     get platformId() {
         return PLATFORM_ID.PORTAL
     }

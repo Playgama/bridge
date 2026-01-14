@@ -30,10 +30,6 @@ import {
 const SDK_URL = 'https://html5.api.gamedistribution.com/main.min.js'
 
 class GameDistributionPlatformBridge extends PlatformBridgeBase {
-    constructor(configFile) {
-        super(PLATFORM_ID.GAME_DISTRIBUTION, configFile)
-    }
-
     // platform
     get platformId() {
         return PLATFORM_ID.GAME_DISTRIBUTION
