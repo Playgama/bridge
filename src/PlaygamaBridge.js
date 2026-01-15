@@ -62,6 +62,7 @@ import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
 import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
 import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
 import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
+import MicrosoftStorePlatformBridge from './platform-bridges/MicrosoftStorePlatformBridge'
 import HuaweiPlatformBridge from './platform-bridges/HuaweiPlatformBridge'
 import BitquestPlatformBridge from './platform-bridges/BitquestPlatformBridge'
 import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
@@ -412,6 +413,10 @@ class PlaygamaBridge {
             }
             case PLATFORM_ID.MSN: {
                 this.#platformBridge = new MsnPlatformBridge(modifiedOptions)
+                break
+            }
+            case PLATFORM_ID.MICROSOFT_STORE: {
+                this.#platformBridge = new MicrosoftStorePlatformBridge(modifiedOptions)
                 break
             }
             case PLATFORM_ID.HUAWEI: {
