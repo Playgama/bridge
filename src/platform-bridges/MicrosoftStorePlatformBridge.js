@@ -16,11 +16,225 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { PLATFORM_ID } from '../constants'
+import { ACTION_NAME, PLATFORM_ID } from '../constants'
+import { postToWebView } from '../common/utils'
 
 class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.MICROSOFT_STORE
+    }
+
+    get isPaymentsSupported() {
+        return true
+    }
+
+    initialize() {
+        if (this._isInitialized) {
+            return Promise.resolve()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            try {
+                this.#setupHandlers()
+                this.#postMessage(ACTION_NAME.INITIALIZE)
+            } catch (error) {
+                this._rejectPromiseDecorator(
+                    ACTION_NAME.INITIALIZE,
+                    error,
+                )
+            }
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+            this.#postMessage(ACTION_NAME.PURCHASE, id)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            this.#postMessage(ACTION_NAME.CONSUME_PURCHASE, this._paymentsPurchases[purchaseIndex].purchaseToken)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+            this.#postMessage(ACTION_NAME.GET_CATALOG, products.map(({ id }) => id))
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+            this.#postMessage(ACTION_NAME.GET_PURCHASES)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #postMessage(action, data) {
+        postToWebView(JSON.stringify({ action, data }))
+    }
+
+    #setupHandlers() {
+        window.chrome.webview.addEventListener('message', (event) => {
+            try {
+                let parsed = event.data
+
+                if (typeof parsed === 'string') {
+                    parsed = JSON.parse(parsed)
+                }
+
+                const { action, data } = parsed || {}
+
+                if (action === ACTION_NAME.INITIALIZE) {
+                    this.#initialize(data)
+                } else if (action === ACTION_NAME.GET_CATALOG) {
+                    this.#getCatalog(data)
+                } else if (action === ACTION_NAME.PURCHASE) {
+                    this.#purchase(data)
+                } else if (action === ACTION_NAME.CONSUME_PURCHASE) {
+                    this.#consumePurchase(data)
+                } else if (action === ACTION_NAME.GET_PURCHASES) {
+                    this.#getPurchases(data)
+                }
+            } catch (error) {
+                console.error('Error parsing Microsoft Store message:', error)
+            }
+        })
+    }
+
+    #initialize(data) {
+        if (data && data.success === false) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.INITIALIZE,
+                new Error(data),
+            )
+            return
+        }
+
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+    }
+
+    #getCatalog(data) {
+        if (!data || data.success === false) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_CATALOG,
+                new Error(data),
+            )
+            return
+        }
+
+        const products = this._paymentsGetProductsPlatformData()
+        const mergedProducts = products.map((product) => {
+            const msProduct = data.data?.find((p) => p.id === product.id || p.productId === product.id)
+
+            return {
+                id: product.id,
+                title: msProduct?.title || product.title,
+                description: msProduct?.description || product.description,
+                price: msProduct?.price || product.price,
+                priceCurrencyCode: msProduct?.priceCurrencyCode || product.priceCurrencyCode,
+                priceValue: msProduct?.priceValue || product.priceValue,
+            }
+        })
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+    }
+
+    #purchase(data) {
+        if (!data || data.success === false) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.PURCHASE,
+                new Error(data),
+            )
+            return
+        }
+
+        const mergedPurchase = {
+            id: data.id,
+            ...data.data,
+        }
+
+        this._paymentsPurchases.push(mergedPurchase)
+        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+    }
+
+    #consumePurchase(data) {
+        if (!data || data.success === false) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.CONSUME_PURCHASE,
+                new Error(data),
+            )
+            return
+        }
+
+        const purchaseIndex = this._paymentsPurchases.findIndex(
+            (p) => p.purchaseToken === data.purchaseToken || p.id === data.id,
+        )
+
+        if (purchaseIndex >= 0) {
+            this._paymentsPurchases.splice(purchaseIndex, 1)
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data)
+    }
+
+    #getPurchases(data) {
+        if (!data || data.success === false) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_PURCHASES,
+                new Error(data),
+            )
+            return
+        }
+
+        this._paymentsPurchases = (data.data || []).map((purchase) => {
+            const mergedPurchase = { ...purchase }
+
+            if (!mergedPurchase.id) {
+                mergedPurchase.id = purchase.productId || purchase.platformProductId || purchase.purchaseToken
+            }
+
+            return mergedPurchase
+        })
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
     }
 }
 
