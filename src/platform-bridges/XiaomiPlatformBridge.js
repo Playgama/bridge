@@ -47,6 +47,8 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    #showAd = () => {}
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -202,8 +204,6 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
         return ins
     }
-
-    #showAd() {}
 }
 
 export default XiaomiPlatformBridge
