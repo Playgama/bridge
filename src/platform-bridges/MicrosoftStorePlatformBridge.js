@@ -16,17 +16,37 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { ACTION_NAME, PLATFORM_ID } from '../constants'
-import { postToWebView } from '../common/utils'
+import {
+    ACTION_NAME,
+    INTERSTITIAL_STATE,
+    PLATFORM_ID,
+    REWARDED_STATE,
+} from '../constants'
+import { addJavaScript, postToWebView, waitFor } from '../common/utils'
+
+const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
+const PLAYGAMA_ADS_ID = 'pg-msn-bridge'
 
 class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.MICROSOFT_STORE
     }
 
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
+    // payments
     get isPaymentsSupported() {
         return true
     }
+
+    #playgamaAds = null
 
     initialize() {
         if (this._isInitialized) {
@@ -46,9 +66,98 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                     error,
                 )
             }
+
+            addJavaScript(PLAYGAMA_ADS_SDK_URL)
+                .then(() => waitFor('pgAds'))
+                .then(() => {
+                    window.pgAds.init(PLAYGAMA_ADS_ID)
+                        .then(() => {
+                            this.#playgamaAds = window.pgAds
+                            const { gameId } = this._options
+                            this.#playgamaAds.updateTargeting({ gameId })
+                        })
+                })
         }
 
         return promiseDecorator.promise
+    }
+
+    showInterstitial() {
+        if (!this.#playgamaAds) {
+            return this._advertisementShowErrorPopup(false)
+        }
+
+        return new Promise((resolve) => {
+            this.#playgamaAds.requestOutOfPageAd('interstitial')
+                .then((adInstance) => {
+                    switch (adInstance.state) {
+                        case 'empty':
+                            this._advertisementShowErrorPopup(false).then(() => resolve())
+                            return
+                        case 'ready':
+                            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                            adInstance.show()
+                            break
+                        default:
+                            break
+                    }
+
+                    adInstance.addEventListener('ready', () => {
+                        this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                        adInstance.show()
+                    })
+
+                    adInstance.addEventListener('empty', () => {
+                        this._advertisementShowErrorPopup(false).then(() => resolve())
+                    })
+
+                    adInstance.addEventListener('closed', () => {
+                        this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                        resolve()
+                    })
+                })
+        })
+    }
+
+    showaRewarded() {
+        if (!this.#playgamaAds) {
+            return this._advertisementShowErrorPopup(true)
+        }
+
+        return new Promise((resolve) => {
+            this.#playgamaAds.requestOutOfPageAd('rewarded')
+                .then((adInstance) => {
+                    switch (adInstance.state) {
+                        case 'empty':
+                            this._advertisementShowErrorPopup(true).then(() => resolve())
+                            return
+                        case 'ready':
+                            this._setRewardedState(REWARDED_STATE.OPENED)
+                            adInstance.show()
+                            break
+                        default:
+                            break
+                    }
+
+                    adInstance.addEventListener('ready', () => {
+                        this._setRewardedState(REWARDED_STATE.OPENED)
+                        adInstance.show()
+                    })
+
+                    adInstance.addEventListener('rewarded', () => {
+                        this._setRewardedState(REWARDED_STATE.REWARDED)
+                    })
+
+                    adInstance.addEventListener('empty', () => {
+                        this._advertisementShowErrorPopup(true).then(() => resolve())
+                    })
+
+                    adInstance.addEventListener('closed', () => {
+                        this._setRewardedState(REWARDED_STATE.CLOSED)
+                        resolve()
+                    })
+                })
+        })
     }
 
     paymentsPurchase(id) {
