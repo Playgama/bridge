@@ -34,6 +34,7 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    MICROSOFT_STORE: 'microsoft_store',
     HUAWEI: 'huawei',
     BITQUEST: 'bitquest',
     GAMEPUSH: 'gamepush',
