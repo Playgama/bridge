@@ -255,7 +255,7 @@ class PlatformBridgeBase {
 
     #promiseDecorators = { }
 
-    constructor(platformId) {
+    constructor() {
         try { this._localStorage = window.localStorage } catch (e) {
             // Nothing we can do with it
         }
@@ -285,7 +285,7 @@ class PlatformBridgeBase {
             this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
         })
 
-        this._options = configFileModule.getPlatformOptions(platformId)
+        this._options = configFileModule.getPlatformOptions(this.platformId)
     }
 
     initialize() {
