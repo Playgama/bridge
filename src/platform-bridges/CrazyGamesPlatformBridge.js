@@ -86,6 +86,31 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     #isUserAccountAvailable = false
 
+    #adCallbacks = {
+        adStarted: () => {
+            if (this.#currentAdvertisementIsRewarded) {
+                this._setRewardedState(REWARDED_STATE.OPENED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            }
+        },
+        adFinished: () => {
+            if (this.#currentAdvertisementIsRewarded) {
+                this._setRewardedState(REWARDED_STATE.REWARDED)
+                this._setRewardedState(REWARDED_STATE.CLOSED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+            }
+        },
+        adError: () => {
+            if (this.#currentAdvertisementIsRewarded) {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            }
+        },
+    }
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -563,31 +588,6 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    #adCallbacks = {
-        adStarted: () => {
-            if (this.#currentAdvertisementIsRewarded) {
-                this._setRewardedState(REWARDED_STATE.OPENED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-            }
-        },
-        adFinished: () => {
-            if (this.#currentAdvertisementIsRewarded) {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-                this._setRewardedState(REWARDED_STATE.CLOSED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-            }
-        },
-        adError: () => {
-            if (this.#currentAdvertisementIsRewarded) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            }
-        },
     }
 
     #getPlayer() {

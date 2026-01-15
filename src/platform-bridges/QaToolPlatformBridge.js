@@ -17,6 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
+import configFileModule from '../modules/ConfigFileModule'
 import {
     PLATFORM_ID,
     MODULE_NAME,
@@ -286,6 +287,17 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
+                payload: {
+                    configFile: {
+                        loadingStatus: configFileModule.loadStatus,
+                        parsingStatus: configFileModule.parseStatus,
+                        loadError: configFileModule.loadError,
+                        parseError: configFileModule.parseError,
+                        options: configFileModule.options,
+                        path: configFileModule.path,
+                        rawContent: configFileModule.rawContent,
+                    },
+                },
             })
         }
 

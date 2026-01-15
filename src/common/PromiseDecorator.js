@@ -16,15 +16,15 @@
  */
 
 class PromiseDecorator {
+    get promise() {
+        return this.#promise
+    }
+
     #promise
 
     #resolve
 
     #reject
-
-    get promise() {
-        return this.#promise
-    }
 
     constructor() {
         this.#promise = new Promise((resolve, reject) => {

@@ -21,14 +21,6 @@ import { EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE } from '../constants'
 import { createOrientationOverlay } from '../common/utils'
 
 class DeviceModule extends ModuleBase {
-    #currentOrientation = null
-
-    #overlayElement = null
-
-    #supportedOrientations = null
-
-    #useBuiltInOverlay = false
-
     get type() {
         return this._platformBridge.deviceType
     }
@@ -36,6 +28,14 @@ class DeviceModule extends ModuleBase {
     get orientation() {
         return this.#currentOrientation
     }
+
+    #currentOrientation = null
+
+    #overlayElement = null
+
+    #supportedOrientations = null
+
+    #useBuiltInOverlay = false
 
     constructor(platformBridge) {
         super(platformBridge)

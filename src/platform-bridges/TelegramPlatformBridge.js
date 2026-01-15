@@ -85,6 +85,19 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
 
     #adsController
 
+    #rewardedListeners = {
+        onStart: () => this._setRewardedState(REWARDED_STATE.OPENED),
+        onSkip: () => this._setRewardedState(REWARDED_STATE.CLOSED),
+        onReward: () => this._setRewardedState(REWARDED_STATE.REWARDED),
+        onError: () => this._setRewardedState(REWARDED_STATE.FAILED),
+    }
+
+    #interstitialListeners = {
+        onStart: () => this._setInterstitialState(INTERSTITIAL_STATE.OPENED),
+        onSkip: () => this._setInterstitialState(INTERSTITIAL_STATE.CLOSED),
+        onError: () => this._setInterstitialState(INTERSTITIAL_STATE.FAILED),
+    }
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -293,19 +306,6 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    #rewardedListeners = {
-        onStart: () => this._setRewardedState(REWARDED_STATE.OPENED),
-        onSkip: () => this._setRewardedState(REWARDED_STATE.CLOSED),
-        onReward: () => this._setRewardedState(REWARDED_STATE.REWARDED),
-        onError: () => this._setRewardedState(REWARDED_STATE.FAILED),
-    }
-
-    #interstitialListeners = {
-        onStart: () => this._setInterstitialState(INTERSTITIAL_STATE.OPENED),
-        onSkip: () => this._setInterstitialState(INTERSTITIAL_STATE.CLOSED),
-        onError: () => this._setInterstitialState(INTERSTITIAL_STATE.FAILED),
     }
 }
 

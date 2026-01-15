@@ -25,6 +25,10 @@ class GameModule extends ModuleBase {
         return this._platformBridge.visibilityState
     }
 
+    _currentLoadingProgress = null
+
+    _loadingProcessCompleted = false
+
     constructor(platformBridge) {
         super(platformBridge)
 
@@ -40,10 +44,6 @@ class GameModule extends ModuleBase {
             createProgressLogo(showFullLogo)
         }
     }
-
-    _currentLoadingProgress = null
-
-    _loadingProcessCompleted = false
 
     setLoadingProgress(percent, isFallback = false) {
         if (this._loadingProcessCompleted) {
