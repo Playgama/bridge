@@ -46,31 +46,7 @@ import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
 import AchievementsModule from './modules/AchievementsModule'
 import analyticsModule from './modules/AnalyticsModule'
-import PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
-import VkPlatformBridge from './platform-bridges/VkPlatformBridge'
-import YandexPlatformBridge from './platform-bridges/YandexPlatformBridge'
-import CrazyGamesPlatformBridge from './platform-bridges/CrazyGamesPlatformBridge'
-import AbsoluteGamesPlatformBridge from './platform-bridges/AbsoluteGamesPlatformBridge'
-import GameDistributionPlatformBridge from './platform-bridges/GameDistributionPlatformBridge'
-import OkPlatformBridge from './platform-bridges/OkPlatformBridge'
-import PlaygamaPlatformBridge from './platform-bridges/PlaygamaPlatformBridge'
-import PlayDeckPlatformBridge from './platform-bridges/PlayDeckPlatformBridge'
-import TelegramPlatformBridge from './platform-bridges/TelegramPlatformBridge'
-import Y8PlatformBridge from './platform-bridges/Y8PlatformBridge'
-import LaggedPlatformBridge from './platform-bridges/LaggedPlatformBridge'
-import FacebookPlatformBridge from './platform-bridges/FacebookPlatformBridge'
-import QaToolPlatformBridge from './platform-bridges/QaToolPlatformBridge'
-import PokiPlatformBridge from './platform-bridges/PokiPlatformBridge'
-import MsnPlatformBridge from './platform-bridges/MsnPlatformBridge'
-import HuaweiPlatformBridge from './platform-bridges/HuaweiPlatformBridge'
-import BitquestPlatformBridge from './platform-bridges/BitquestPlatformBridge'
-import GamePushPlatformBridge from './platform-bridges/GamePushPlatformBridge'
-import DiscordPlatformBridge from './platform-bridges/DiscordPlatformBridge'
-import YoutubePlatformBridge from './platform-bridges/YoutubePlatformBridge'
-import JioGamesPlatformBridge from './platform-bridges/JioGamesPlatformBridge'
-import PortalPlatformBridge from './platform-bridges/PortalPlatformBridge'
-import RedditPlatformBridge from './platform-bridges/RedditPlatformBridge'
-import XiaomiPlatformBridge from './platform-bridges/XiaomiPlatformBridge'
+import { fetchPlatformBridge } from './platformImports'
 
 class PlaygamaBridge {
     get version() {
@@ -215,7 +191,7 @@ class PlaygamaBridge {
             const configFilePath = options?.configFilePath
             await configFileModule.load(configFilePath, options)
 
-            this.#createPlatformBridge()
+            await this.#createPlatformBridge()
 
             this.#platformBridge.engine = this.engine
 
@@ -279,7 +255,7 @@ class PlaygamaBridge {
         return this.#initializationPromiseDecorator.promise
     }
 
-    #createPlatformBridge() {
+    async #createPlatformBridge() {
         let platformId = PLATFORM_ID.MOCK
 
         const url = new URL(window.location.href)
@@ -329,108 +305,8 @@ class PlaygamaBridge {
             }
         }
 
-        switch (platformId) {
-            case PLATFORM_ID.VK: {
-                this.#platformBridge = new VkPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.YANDEX: {
-                this.#platformBridge = new YandexPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.CRAZY_GAMES: {
-                this.#platformBridge = new CrazyGamesPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.ABSOLUTE_GAMES: {
-                this.#platformBridge = new AbsoluteGamesPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.GAME_DISTRIBUTION: {
-                this.#platformBridge = new GameDistributionPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.OK: {
-                this.#platformBridge = new OkPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.PLAYGAMA: {
-                this.#platformBridge = new PlaygamaPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.PLAYDECK: {
-                this.#platformBridge = new PlayDeckPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.TELEGRAM: {
-                this.#platformBridge = new TelegramPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.Y8: {
-                this.#platformBridge = new Y8PlatformBridge()
-                break
-            }
-            case PLATFORM_ID.LAGGED: {
-                this.#platformBridge = new LaggedPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.FACEBOOK: {
-                this.#platformBridge = new FacebookPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.POKI: {
-                this.#platformBridge = new PokiPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.QA_TOOL: {
-                this.#platformBridge = new QaToolPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.MSN: {
-                this.#platformBridge = new MsnPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.HUAWEI: {
-                this.#platformBridge = new HuaweiPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.BITQUEST: {
-                this.#platformBridge = new BitquestPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.GAMEPUSH: {
-                this.#platformBridge = new GamePushPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.DISCORD: {
-                this.#platformBridge = new DiscordPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.YOUTUBE: {
-                this.#platformBridge = new YoutubePlatformBridge()
-                break
-            }
-            case PLATFORM_ID.JIO_GAMES: {
-                this.#platformBridge = new JioGamesPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.PORTAL: {
-                this.#platformBridge = new PortalPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.REDDIT: {
-                this.#platformBridge = new RedditPlatformBridge()
-                break
-            }
-            case PLATFORM_ID.XIAOMI: {
-                this.#platformBridge = new XiaomiPlatformBridge()
-                break
-            }
-            default: {
-                this.#platformBridge = new PlatformBridgeBase()
-                break
-            }
-        }
+        const PlatformBridge = await fetchPlatformBridge(platformId)
+        this.#platformBridge = new PlatformBridge()
     }
 
     #getPlatformId(value) {
