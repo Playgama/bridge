@@ -25,7 +25,7 @@ import {
 import { addJavaScript, postToWebView, waitFor } from '../common/utils'
 
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
-const PLAYGAMA_ADS_ID = 'pg-msn-bridge'
+const PLAYGAMA_ADS_ID = 'msn-store'
 
 class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     get platformId() {
