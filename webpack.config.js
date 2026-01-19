@@ -4,7 +4,9 @@ const ESLintPlugin = require('eslint-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 const packageJson = require('./package.json')
 
-module.exports = {
+const dynamicConfig = {
+    name: 'dynamic',
+    mode: 'production',
     entry: './src/index.js',
     output: {
         filename: 'playgama-bridge.js',
@@ -52,6 +54,11 @@ module.exports = {
         minimizer: [
             new TerserPlugin({
                 extractComments: false,
+                terserOptions: {
+                    format: {
+                        comments: false,
+                    },
+                },
             }),
         ],
         splitChunks: {
@@ -73,3 +80,21 @@ module.exports = {
         port: 3535,
     },
 }
+
+// Bundled build - everything in one file
+const bundledConfig = {
+    ...dynamicConfig,
+    name: 'bundled',
+    output: {
+        ...dynamicConfig.output,
+        filename: 'playgama-bridge.bundled.js',
+    },
+    plugins: [
+        ...dynamicConfig.plugins,
+        new webpack.optimize.LimitChunkCountPlugin({
+            maxChunks: 1,
+        }),
+    ],
+}
+
+module.exports = [dynamicConfig, bundledConfig]
