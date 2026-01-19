@@ -374,8 +374,13 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     })
 
                     let resolved = false
+                    let handleVisibilityChange
 
-                    const handleVisibilityChange = () => {
+                    const cleanup = () => {
+                        document.removeEventListener('visibilitychange', handleVisibilityChange)
+                    }
+
+                    handleVisibilityChange = () => {
                         if (document.visibilityState === 'visible' && !resolved) {
                             setTimeout(() => {
                                 if (!resolved) {
@@ -388,11 +393,6 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                                 }
                             }, 1500)
                         }
-                    }
-
-                    // Cleanup function для удаления listener
-                    const cleanup = () => {
-                        document.removeEventListener('visibilitychange', handleVisibilityChange)
                     }
 
                     paystation.on(paystation.eventTypes.STATUS, (_evt, data) => {
