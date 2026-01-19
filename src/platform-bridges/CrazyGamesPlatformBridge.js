@@ -399,6 +399,26 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     })
 
                     let resolved = false
+                    let handleVisibilityChange
+
+                    const cleanup = () => {
+                        document.removeEventListener('visibilitychange', handleVisibilityChange)
+                    }
+
+                    handleVisibilityChange = () => {
+                        if (document.visibilityState === 'visible' && !resolved) {
+                            setTimeout(() => {
+                                if (!resolved) {
+                                    resolved = true
+                                    cleanup()
+                                    this._rejectPromiseDecorator(
+                                        ACTION_NAME.PURCHASE,
+                                        new Error('Purchase canceled/closed'),
+                                    )
+                                }
+                            }, 1500)
+                        }
+                    }
 
                     paystation.on(paystation.eventTypes.STATUS, (_evt, data) => {
                         try {
@@ -419,17 +439,22 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
                                         if (!resolved) {
                                             resolved = true
+                                            cleanup()
                                             this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                                         }
                                     })
                                     .catch((err) => {
                                         if (!resolved) {
+                                            resolved = true
+                                            cleanup()
                                             this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
                                         }
                                     })
                             }
                         } catch (err) {
                             if (!resolved) {
+                                resolved = true
+                                cleanup()
                                 this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
                             }
                         }
@@ -437,6 +462,8 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
                     paystation.on('close', () => {
                         if (!resolved) {
+                            resolved = true
+                            cleanup()
                             this._rejectPromiseDecorator(
                                 ACTION_NAME.PURCHASE,
                                 new Error('Purchase canceled/closed'),
@@ -445,6 +472,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     })
 
                     paystation.open()
+                    document.addEventListener('visibilitychange', handleVisibilityChange)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
