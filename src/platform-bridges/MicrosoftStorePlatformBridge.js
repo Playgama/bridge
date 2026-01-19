@@ -22,7 +22,12 @@ import {
     PLATFORM_ID,
     REWARDED_STATE,
 } from '../constants'
-import { addJavaScript, postToWebView, waitFor } from '../common/utils'
+import {
+    addJavaScript,
+    deformatPrice,
+    postToWebView,
+    waitFor,
+} from '../common/utils'
 
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 const PLAYGAMA_ADS_ID = 'msn-store'
@@ -273,13 +278,17 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         const mergedProducts = products.map((product) => {
             const msProduct = data.data?.find((p) => p.id === product.id || p.productId === product.id)
 
+            const priceValue = deformatPrice(msProduct?.price.formattedPrice)
+            const priceCurrencyCode = msProduct?.price.currencyCode || null
+            const price = `${priceValue} ${priceCurrencyCode}`
+
             return {
                 id: product.id,
-                title: msProduct?.title || product.title,
-                description: msProduct?.description || product.description,
-                price: msProduct?.price || product.price,
-                priceCurrencyCode: msProduct?.priceCurrencyCode || product.priceCurrencyCode,
-                priceValue: msProduct?.priceValue || product.priceValue,
+                title: msProduct?.title,
+                description: msProduct?.description,
+                price,
+                priceValue,
+                priceCurrencyCode,
             }
         })
 
