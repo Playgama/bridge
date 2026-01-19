@@ -182,14 +182,16 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
     paymentsConsumePurchase(id) {
         const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
-        if (purchaseIndex < 0) {
+        const product = this._paymentsGetProductPlatformData(id)
+
+        if (purchaseIndex < 0 || !product) {
             return Promise.reject()
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
-            this.#postMessage(ACTION_NAME.CONSUME_PURCHASE, this._paymentsPurchases[purchaseIndex].purchaseToken)
+            this.#postMessage(ACTION_NAME.CONSUME_PURCHASE, product.platformProductId)
         }
 
         return promiseDecorator.promise
