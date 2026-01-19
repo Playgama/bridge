@@ -69,9 +69,10 @@ export function createBridgeByPlatformId(platformId: string, options: BridgeOpti
     }
 
     const testGlobal = globalThis as unknown as TestGlobalThis
-    testGlobal.fetch = vi.fn().mockResolvedValue({ json: () => Promise.resolve({
-        forciblySetPlatformId: platformId,
-    })})
+    testGlobal.fetch = vi.fn().mockResolvedValue({ 
+        ok: true,
+        text: () => Promise.resolve(`{ "forciblySetPlatformId": "${platformId}" }`)
+    })
 
     return createBridge(options)
 }
@@ -82,7 +83,10 @@ export async function createBridgeByUrl(url: string, options: BridgeOptions = {}
     }
     
     const testGlobal = globalThis as unknown as TestGlobalThis
-    testGlobal.fetch = vi.fn().mockResolvedValue({ json: () => Promise.resolve({ }) })
+    testGlobal.fetch = vi.fn().mockResolvedValue({ 
+        ok: true,
+        text: () => Promise.resolve(`{}`),
+    })
     testGlobal.location = { href: url } as unknown as Location
 
     return createBridge(options)

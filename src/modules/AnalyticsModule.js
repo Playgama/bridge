@@ -16,7 +16,7 @@
  */
 
 import { MODULE_NAME, PLATFORM_ID } from '../constants'
-import { version } from '../../package.json'
+import packageJson from '../../package.json'
 import { generateRandomId, getGuestUser } from '../common/utils'
 import ModuleBase from './ModuleBase'
 
@@ -98,7 +98,7 @@ class AnalyticsModule extends ModuleBase {
         return {
             event_name: eventType,
             module,
-            bridge_version: version,
+            bridge_version: packageJson.version,
             platform_id: this._platformBridge.platformId,
             game_id: this.#gameId,
             player_id: this._platformBridge.playerId,
