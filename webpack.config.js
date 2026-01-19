@@ -34,7 +34,7 @@ const dynamicConfig = {
                     .replace(/([A-Z])/g, '-$1')
                     .replace(/-/g, '')
                     .toLowerCase()
-                return `${platformDirName}/${name}.platform.js`
+                return `${platformDirName}/${name}.js`
             }
             return `${platformDirName}/${chunkId}.js`
         },
