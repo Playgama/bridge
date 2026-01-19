@@ -276,7 +276,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
         const products = this._paymentsGetProductsPlatformData()
         const mergedProducts = products.map((product) => {
-            const msProduct = data.data?.find((p) => p.id === product.id || p.productId === product.id)
+            const msProduct = data.data?.find((p) => p.id === product.platformProductId)
 
             const priceValue = deformatPrice(msProduct?.price.formattedPrice)
             const priceCurrencyCode = msProduct?.price.currencyCode || null
