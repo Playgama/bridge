@@ -1,8 +1,22 @@
 const path = require('path')
+const fs = require('fs')
 const webpack = require('webpack')
 const ESLintPlugin = require('eslint-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 const packageJson = require('./package.json')
+
+const platformDirName = 'platform-bridges'
+
+class CleanPlatformsPlugin {
+    apply(compiler) {
+        compiler.hooks.beforeRun.tap('CleanPlatformsPlugin', () => {
+            const platformsDir = path.resolve(__dirname, `dist/${platformDirName}`)
+            if (fs.existsSync(platformsDir)) {
+                fs.rmSync(platformsDir, { recursive: true })
+            }
+        })
+    }
+}
 
 const dynamicConfig = {
     name: 'dynamic',
@@ -12,28 +26,20 @@ const dynamicConfig = {
         filename: 'playgama-bridge.js',
         chunkFilename: (pathData) => {
             const chunkId = String(pathData.chunk.id || pathData.chunk.name || '')
-            const match = chunkId.match(/platform-bridges_(\w+)_js/)
-
+            const platformDirNameRegex = new RegExp(`${platformDirName}_(\\w+)_js`)
+            const match = chunkId.match(platformDirNameRegex)
             if (match) {
                 const name = match[1]
                     .replace(/PlatformBridge/, '')
                     .replace(/([A-Z])/g, '-$1')
+                    .replace(/-/g, '')
                     .toLowerCase()
-                    .replace(/^-/, '')
-                return `platforms-bridges/${name}.platform-bridge.js`
+                return `${platformDirName}/${name}.platform.js`
             }
-            return `platforms-bridges/${chunkId}.js`
+            return `${platformDirName}/${chunkId}.js`
         },
         path: path.resolve(__dirname, 'dist'),
         publicPath: 'auto',
-        clean: {
-            keep: (asset) => {
-                if (asset.startsWith('platforms-bridges/')) {
-                    return false
-                }
-                return true
-            },
-        },
     },
     module: {
         rules: [
@@ -70,6 +76,7 @@ const dynamicConfig = {
         },
     },
     plugins: [
+        new CleanPlatformsPlugin(),
         new ESLintPlugin(),
         new webpack.DefinePlugin({
             PLUGIN_VERSION: JSON.stringify(packageJson.version),
@@ -85,10 +92,6 @@ const dynamicConfig = {
 const bundledConfig = {
     ...dynamicConfig,
     name: 'bundled',
-    output: {
-        ...dynamicConfig.output,
-        filename: 'playgama-bridge.bundled.js',
-    },
     plugins: [
         ...dynamicConfig.plugins,
         new webpack.optimize.LimitChunkCountPlugin({

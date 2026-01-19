@@ -4,7 +4,7 @@
     "description": "One SDK for cross-platform publishing HTML5 games",
     "main": "index.js",
     "scripts": {
-        "build": "webpack",
+        "build": "npm run build:bundled",
         "build:dynamic": "webpack --config-name dynamic",
         "build:bundled": "webpack --config-name bundled",
         "develop": "webpack --mode=development",
