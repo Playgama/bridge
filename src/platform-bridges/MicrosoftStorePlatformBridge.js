@@ -199,7 +199,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
-            this.#postMessage(ACTION_NAME.GET_CATALOG, products.map(({ id }) => id))
+            this.#postMessage(ACTION_NAME.GET_CATALOG, products.map(({ platformProductId }) => platformProductId))
         }
 
         return promiseDecorator.promise
