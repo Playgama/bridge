@@ -124,7 +124,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    showaRewarded() {
+    showRewarded() {
         if (!this.#playgamaAds) {
             return this._advertisementShowErrorPopup(true)
         }
