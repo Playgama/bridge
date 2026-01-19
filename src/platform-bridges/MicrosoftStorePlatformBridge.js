@@ -227,13 +227,13 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     #setupHandlers() {
         window.chrome.webview.addEventListener('message', (event) => {
             try {
-                let parsed = event.data
+                let data
 
-                if (typeof parsed === 'string') {
-                    parsed = JSON.parse(parsed)
+                if (typeof event.data === 'string') {
+                    data = JSON.parse(event.data)
                 }
 
-                const { action, data } = parsed || {}
+                const { action } = data || {}
 
                 if (action === ACTION_NAME.INITIALIZE) {
                     this.#initialize(data)
