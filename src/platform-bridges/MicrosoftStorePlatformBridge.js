@@ -237,6 +237,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.RATE)
             this.#postMessage(ACTION_NAME.RATE)
+            this._pauseStateAggregator.setState('rate', true)
         }
 
         return promiseDecorator.promise
@@ -388,6 +389,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
+        this._pauseStateAggregator.setState('rate', false)
         this._resolvePromiseDecorator(ACTION_NAME.RATE)
     }
 }
