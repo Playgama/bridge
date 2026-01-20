@@ -329,13 +329,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        const mergedPurchase = {
-            id: data.id,
-            ...data.data,
-        }
-
-        this._paymentsPurchases.push(mergedPurchase)
-        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+        this._paymentsPurchases.push(data.data)
+        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, data.data)
     }
 
     #consumePurchase(data) {
@@ -348,7 +343,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         }
 
         const purchaseIndex = this._paymentsPurchases.findIndex(
-            (p) => p.purchaseToken === data.purchaseToken || p.id === data.id,
+            (p) => p.id === data.id,
         )
 
         if (purchaseIndex >= 0) {
@@ -367,15 +362,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this._paymentsPurchases = (data.data || []).map((purchase) => {
-            const mergedPurchase = { ...purchase }
-
-            if (!mergedPurchase.id) {
-                mergedPurchase.id = purchase.productId || purchase.platformProductId || purchase.purchaseToken
-            }
-
-            return mergedPurchase
-        })
+        this._paymentsPurchases = (data.data || []).filter(({ isActive}) => isActive)
 
         this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
     }
