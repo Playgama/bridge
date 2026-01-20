@@ -52,6 +52,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
     #playgamaAds = null
 
+    #interstitialShownCount = 0
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -90,6 +92,12 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     showInterstitial() {
+        this.#interstitialShownCount += 1
+
+        if (this.#interstitialShownCount === 3) {
+            return this.rate()
+        }
+
         if (!this.#playgamaAds) {
             return this._advertisementShowErrorPopup(false)
         }
@@ -224,6 +232,16 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    rate() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.RATE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.RATE)
+            this.#postMessage(ACTION_NAME.RATE)
+        }
+
+        return promiseDecorator.promise
+    }
+
     #postMessage(action, data) {
         postToWebView(JSON.stringify({ action, data }))
     }
@@ -249,6 +267,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                     this.#consumePurchase(data)
                 } else if (action === ACTION_NAME.GET_PURCHASES) {
                     this.#getPurchases(data)
+                } else if (action === ACTION_NAME.RATE) {
+                    this.#rate(data)
                 }
             } catch (error) {
                 console.error('Error parsing Microsoft Store message:', error)
@@ -357,6 +377,18 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         })
 
         this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+    }
+
+    #rate(data) {
+        if (!data || data.success === false) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.RATE,
+                new Error(data),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.RATE)
     }
 }
 
