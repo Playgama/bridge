@@ -30,7 +30,6 @@ import {
 } from '../common/utils'
 
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
-const PLAYGAMA_ADS_ID = 'msn-store'
 
 class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     get platformId() {
@@ -72,16 +71,19 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                 )
             }
 
-            addJavaScript(PLAYGAMA_ADS_SDK_URL)
-                .then(() => waitFor('pgAds'))
-                .then(() => {
-                    window.pgAds.init(PLAYGAMA_ADS_ID)
-                        .then(() => {
-                            this.#playgamaAds = window.pgAds
-                            const { gameId } = this._options
-                            this.#playgamaAds.updateTargeting({ gameId })
-                        })
-                })
+            const advertisementBackfillId = this._options?.advertisement?.backfillId
+            if (advertisementBackfillId) {
+                addJavaScript(PLAYGAMA_ADS_SDK_URL)
+                    .then(() => waitFor('pgAds'))
+                    .then(() => {
+                        window.pgAds.init(advertisementBackfillId)
+                            .then(() => {
+                                this.#playgamaAds = window.pgAds
+                                const { gameId } = this._options
+                                this.#playgamaAds.updateTargeting({ gameId })
+                            })
+                    })
+            }
         }
 
         return promiseDecorator.promise
