@@ -102,7 +102,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     showInterstitial() {
         this.#interstitialShownCount += 1
 
-        if (this.#interstitialShownCount === 1) {
+        if (this.#interstitialShownCount === 3) {
             this._setInterstitialState(INTERSTITIAL_STATE.CLOSEDs)
             return this.rate()
         }
