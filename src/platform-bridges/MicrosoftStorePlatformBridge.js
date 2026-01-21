@@ -50,6 +50,11 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // social
+    get isRateSupported() {
+        return true
+    }
+
     #playgamaAds = null
 
     #interstitialShownCount = 0
@@ -250,7 +255,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     #setupHandlers() {
         window.chrome.webview.addEventListener('message', (event) => {
             try {
-                let data
+                let data = event.data
 
                 if (typeof event.data === 'string') {
                     data = JSON.parse(event.data)
@@ -303,8 +308,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         const mergedProducts = products.map((product) => {
             const msProduct = data.data?.find((p) => p.id === product.platformProductId)
 
-            const priceValue = deformatPrice(msProduct?.price.formattedPrice)
-            const priceCurrencyCode = msProduct?.price.currencyCode || null
+            const priceValue = deformatPrice(msProduct?.price?.formattedPrice)
+            const priceCurrencyCode = msProduct?.price?.currencyCode || null
             const price = `${priceValue} ${priceCurrencyCode}`
 
             return {
@@ -343,7 +348,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         }
 
         const purchaseIndex = this._paymentsPurchases.findIndex(
-            (p) => p.id === data.id,
+            (p) => p.id === data.data?.id,
         )
 
         if (purchaseIndex >= 0) {
@@ -362,12 +367,14 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this._paymentsPurchases = (data.data || []).filter(({ isActive}) => isActive)
+        this._paymentsPurchases = (data.data || []).filter(({ isActive }) => isActive)
 
         this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
     }
 
     #rate(data) {
+        this._pauseStateAggregator.setState('rate', false)
+
         if (!data || data.success === false) {
             this._rejectPromiseDecorator(
                 ACTION_NAME.RATE,
@@ -376,7 +383,6 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this._pauseStateAggregator.setState('rate', false)
         this._resolvePromiseDecorator(ACTION_NAME.RATE)
     }
 }
