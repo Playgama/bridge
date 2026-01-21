@@ -90,6 +90,9 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                                 this.#playgamaAds.updateTargeting({ gameId })
                             })
                     })
+                    .then(() => {
+                        this.showInterstitial()
+                    })
             }
         }
 
