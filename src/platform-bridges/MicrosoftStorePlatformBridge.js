@@ -18,9 +18,11 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import {
     ACTION_NAME,
+    ERROR,
     INTERSTITIAL_STATE,
     PLATFORM_ID,
     REWARDED_STATE,
+    STORAGE_TYPE,
 } from '../constants'
 import {
     addJavaScript,
@@ -55,6 +57,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
     #playgamaAds = null
 
     #interstitialShownCount = 0
@@ -67,6 +71,14 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            if (!this._options || !this._options.gameId) {
+                this._rejectPromiseDecorator(
+                    ACTION_NAME.INITIALIZE,
+                    ERROR.GAME_PARAMS_NOT_FOUND,
+                )
+                return promiseDecorator.promise
+            }
 
             try {
                 this.#setupHandlers()
@@ -184,6 +196,74 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         })
     }
 
+    // storage
+    isStorageSupported(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageSupported(storageType)
+    }
+
+    isStorageAvailable(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageAvailable(storageType)
+    }
+
+    setDataToStorage(key, value, type) {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.setDataToStorage(key, value, type)
+        }
+
+        const keyWithPrefix = this.#withStorageKeyPrefix(key)
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    getDataFromStorage(key, type) {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.getDataFromStorage(key, type)
+        }
+
+        const keyWithPrefix = this.#withStorageKeyPrefix(key)
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, keyWithPrefix)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    deleteDataFromStorage(key, type) {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.deleteDataFromStorage(key, type)
+        }
+
+        const keyWithPrefix = this.#withStorageKeyPrefix(key)
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, keyWithPrefix)
+        }
+
+        return promiseDecorator.promise
+    }
+
     paymentsPurchase(id) {
         const product = this._paymentsGetProductPlatformData(id)
         if (!product) {
@@ -252,6 +332,24 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    #getStorageKeyPrefix() {
+        const gameId = this._options?.gameId
+        return gameId ? `pg_${gameId}_` : null
+    }
+
+    #withStorageKeyPrefix(key) {
+        const prefix = this.#getStorageKeyPrefix()
+        if (!prefix) {
+            return key
+        }
+
+        if (Array.isArray(key)) {
+            return key.map((k) => `${prefix}${k}`)
+        }
+
+        return `${prefix}${key}`
+    }
+
     #postMessage(action, data) {
         postToWebView(JSON.stringify({ action, data }))
     }
@@ -279,6 +377,12 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                     this.#getPurchases(data)
                 } else if (action === ACTION_NAME.RATE) {
                     this.#rate(data)
+                } else if (action === ACTION_NAME.GET_STORAGE_DATA) {
+                    this.#getStorageData(data)
+                } else if (action === ACTION_NAME.SET_STORAGE_DATA) {
+                    this.#setStorageData(data)
+                } else if (action === ACTION_NAME.DELETE_STORAGE_DATA) {
+                    this.#deleteStorageData(data)
                 }
             } catch (error) {
                 console.error('Error parsing Microsoft Store message:', error)
@@ -388,6 +492,43 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         }
 
         this._resolvePromiseDecorator(ACTION_NAME.RATE)
+    }
+
+    // storage
+    #getStorageData(data) {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_STORAGE_DATA,
+                new Error(data),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, data.data)
+    }
+
+    #setStorageData(data) {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.SET_STORAGE_DATA,
+                new Error(data),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA, data.data)
+    }
+
+    #deleteStorageData(data) {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.DELETE_STORAGE_DATA,
+                new Error(data),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, data.data)
     }
 }
 
