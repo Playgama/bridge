@@ -89,9 +89,9 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                                 const { gameId } = this._options
                                 this.#playgamaAds.updateTargeting({ gameId })
                             })
-                    })
-                    .then(() => {
-                        this.showInterstitial()
+                            .then(() => {
+                                this.showInterstitial()
+                            })
                     })
             }
         }
