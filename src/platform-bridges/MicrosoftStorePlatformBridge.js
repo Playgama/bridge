@@ -442,8 +442,19 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this._paymentsPurchases.push(data.data)
-        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, data.data)
+        const products = this._paymentsGetProductsPlatformData()
+        const product = products.find(
+            (p) => p.platformProductId === data.data?.id,
+        )
+
+        const mergedPurchase = {
+            id: product?.id,
+            platformProductId: data.data?.id,
+            status: data.data?.status,
+        }
+
+        this._paymentsPurchases.push(mergedPurchase)
+        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
     }
 
     #consumePurchase(data) {
