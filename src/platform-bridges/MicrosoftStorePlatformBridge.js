@@ -391,7 +391,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     #initialize(data) {
-        if (data && data.success === false) {
+        if (!data?.success) {
             this._rejectPromiseDecorator(
                 ACTION_NAME.INITIALIZE,
                 new Error(data),
@@ -404,7 +404,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     #getCatalog(data) {
-        if (!data || data.success === false) {
+        if (!data?.success) {
             this._rejectPromiseDecorator(
                 ACTION_NAME.GET_CATALOG,
                 new Error(data),
@@ -434,7 +434,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     #purchase(data) {
-        if (!data || data.success === false) {
+        if (!data?.success) {
             this._rejectPromiseDecorator(
                 ACTION_NAME.PURCHASE,
                 new Error(data),
@@ -458,7 +458,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     #consumePurchase(data) {
-        if (!data || data.success === false) {
+        if (!data?.success) {
             this._rejectPromiseDecorator(
                 ACTION_NAME.CONSUME_PURCHASE,
                 new Error(data),
@@ -466,19 +466,31 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
+        const products = this._paymentsGetProductsPlatformData()
+
+        const product = products.find(
+            (p) => p.platformProductId === data.data?.id,
+        )
+
+        const mergedPurchase = {
+            ...data.data,
+            id: product?.id,
+            platformProductId: data.data?.id,
+        }
+
         const purchaseIndex = this._paymentsPurchases.findIndex(
-            (p) => p.id === data.data?.id,
+            (p) => p.id === product?.id,
         )
 
         if (purchaseIndex >= 0) {
             this._paymentsPurchases.splice(purchaseIndex, 1)
         }
 
-        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, data)
+        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, mergedPurchase)
     }
 
     #getPurchases(data) {
-        if (!data || data.success === false) {
+        if (!data?.success) {
             this._rejectPromiseDecorator(
                 ACTION_NAME.GET_PURCHASES,
                 new Error(data),
