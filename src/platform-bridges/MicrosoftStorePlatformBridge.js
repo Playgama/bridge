@@ -486,7 +486,21 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this._paymentsPurchases = (data.data || []).filter(({ isActive }) => isActive)
+        const products = this._paymentsGetProductsPlatformData()
+
+        this._paymentsPurchases = (data.data || [])
+            .filter(({ isActive }) => isActive)
+            .map((purchase) => {
+                const product = products.find(
+                    (p) => p.platformProductId === purchase.id,
+                )
+
+                return {
+                    id: product?.id,
+                    platformProductId: purchase.id,
+                    status: purchase.status,
+                }
+            })
 
         this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
     }
