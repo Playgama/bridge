@@ -501,16 +501,15 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         const products = this._paymentsGetProductsPlatformData()
 
         this._paymentsPurchases = (data.data || [])
-            .filter(({ isActive }) => isActive)
             .map((purchase) => {
                 const product = products.find(
                     (p) => p.platformProductId === purchase.id,
                 )
 
                 return {
+                    ...purchase,
                     id: product?.id,
                     platformProductId: purchase.id,
-                    status: purchase.status,
                 }
             })
 
