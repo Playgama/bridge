@@ -95,7 +95,16 @@ class PlatformModule extends ModuleBase {
             }
         }
 
-        analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, MODULE_NAME.PLATFORM, data)
+        switch (message) {
+            case PLATFORM_MESSAGE.GAME_READY:
+            case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
+            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
+                analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
+                break
+            default:
+                break
+        }
+
         return this._platformBridge.sendMessage(message)
     }
 

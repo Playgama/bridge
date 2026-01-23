@@ -340,7 +340,7 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#bannerState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_banner_${state}`, MODULE_NAME.ADVERTISEMENT, { position: this.#bannerPosition, placement: this.#bannerPlacement })
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_banner_${state}`, { position: this.#bannerPosition, placement: this.#bannerPlacement })
 
         this.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
     }
@@ -351,7 +351,7 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#interstitialState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`, MODULE_NAME.ADVERTISEMENT, { placement: this.#interstitialPlacement })
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`, { placement: this.#interstitialPlacement })
 
         this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
     }
@@ -362,7 +362,7 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#rewardedState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, MODULE_NAME.ADVERTISEMENT, { placement: this.#rewardedPlacement })
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, { placement: this.#rewardedPlacement })
 
         this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
     }
