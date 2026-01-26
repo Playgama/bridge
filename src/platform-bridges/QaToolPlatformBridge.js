@@ -69,6 +69,7 @@ export const ACTION_NAME_QA = {
     GET_PLAYER: 'get_player',
     AUDIO_STATE: 'audio_state',
     PAUSE_STATE: 'pause_state',
+    CLEAN_CACHE: 'clean_cache',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -277,6 +278,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         const messageId = this.#messageBroker.generateMessageId()
                         const requestedProps = data?.options?.resources || []
                         this.#getPerformanceResources(messageId, requestedProps)
+                    } else if (data.action === ACTION_NAME_QA.CLEAN_CACHE) {
+                        this.#cleanCache()
                     }
                 } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
                     this.#handleAdvertisement(data)
@@ -1177,6 +1180,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
         } else {
             this._defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
+        }
+    }
+
+    #cleanCache() {
+        if (this.engine === 'unity') {
+            indexedDB.deleteDatabase('UnityCache')
         }
     }
 }
