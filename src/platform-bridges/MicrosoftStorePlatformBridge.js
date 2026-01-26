@@ -32,7 +32,7 @@ import {
 } from '../common/utils'
 
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
-
+const PLAYGAMA_ADS_PROMISE = 'playgama_ads_promise'
 class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.MICROSOFT_STORE
@@ -61,6 +61,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
     #playgamaAds = null
 
+    #playgamaAdsPromise = this._createPromiseDecorator(PLAYGAMA_ADS_PROMISE).promise
+
     #interstitialShownCount = 0
 
     initialize() {
@@ -72,7 +74,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            if (!this._options || !this._options.gameId) {
+            if (!this._options || !this._options.gameId || !this._options.playgamaAdsId) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
                     ERROR.GAME_PARAMS_NOT_FOUND,
@@ -90,22 +92,23 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                 )
             }
 
-            const advertisementBackfillId = this._options?.advertisement?.backfillId
-            if (advertisementBackfillId) {
-                addJavaScript(PLAYGAMA_ADS_SDK_URL)
-                    .then(() => waitFor('pgAds'))
-                    .then(() => {
-                        window.pgAds.init(advertisementBackfillId)
-                            .then(() => {
-                                this.#playgamaAds = window.pgAds
-                                const { gameId } = this._options
-                                this.#playgamaAds.updateTargeting({ gameId })
-                            })
-                            .then(() => {
-                                this.showInterstitial()
-                            })
-                    })
-            }
+            const playgamaAdsId = this._options
+            addJavaScript(PLAYGAMA_ADS_SDK_URL)
+                .then(() => waitFor('pgAds'))
+                .then(() => window.pgAds.init(playgamaAdsId))
+                .then(() => {
+                    this.#playgamaAds = window.pgAds
+                    const { gameId } = this._options
+                    this.#playgamaAds.updateTargeting({ gameId })
+
+                    this._resolvePromiseDecorator(PLAYGAMA_ADS_PROMISE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(
+                        PLAYGAMA_ADS_PROMISE,
+                        error,
+                    )
+                })
         }
 
         return promiseDecorator.promise
@@ -399,8 +402,12 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this._isInitialized = true
-        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+        this.#playgamaAdsPromise.then(() => {
+            this.showInterstitial()
+        }).finally(() => {
+            this._isInitialized = true
+            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+        })
     }
 
     #getCatalog(data) {
