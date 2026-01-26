@@ -92,7 +92,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                 )
             }
 
-            const playgamaAdsId = this._options
+            const { playgamaAdsId } = this._options
             addJavaScript(PLAYGAMA_ADS_SDK_URL)
                 .then(() => waitFor('pgAds'))
                 .then(() => window.pgAds.init(playgamaAdsId))
