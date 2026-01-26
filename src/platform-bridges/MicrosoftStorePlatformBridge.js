@@ -21,7 +21,6 @@ import {
     ERROR,
     INTERSTITIAL_STATE,
     PLATFORM_ID,
-    PLATFORM_MESSAGE,
     REWARDED_STATE,
     STORAGE_TYPE,
 } from '../constants'
@@ -33,7 +32,7 @@ import {
 } from '../common/utils'
 
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
-const PLAYGAMA_ADS_PROMISE = 'playgama_ads_promise'
+
 class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.MICROSOFT_STORE
@@ -62,8 +61,6 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
     #playgamaAds = null
 
-    #playgamaAdsPromise = this._createPromiseDecorator(PLAYGAMA_ADS_PROMISE).promise
-
     #interstitialShownCount = 0
 
     initialize() {
@@ -75,7 +72,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            if (!this._options || !this._options.gameId || !this._options.advertisement?.backfillId) {
+            if (!this._options || !this._options.gameId) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
                     ERROR.GAME_PARAMS_NOT_FOUND,
@@ -85,6 +82,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
             try {
                 this.#setupHandlers()
+                this.#postMessage(ACTION_NAME.INITIALIZE)
             } catch (error) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
@@ -92,38 +90,25 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                 )
             }
 
-            const { backfillId } = this._options.advertisement
-            addJavaScript(PLAYGAMA_ADS_SDK_URL)
-                .then(() => waitFor('pgAds'))
-                .then(() => {
-                    window.pgAds.init(backfillId)
-                        .then(() => {
-                            this.#playgamaAds = window.pgAds
-                            const { gameId } = this._options
-                            this.#playgamaAds.updateTargeting({ gameId })
-                            this._resolvePromiseDecorator(PLAYGAMA_ADS_PROMISE)
-                        })
-                })
+            const advertisementBackfillId = this._options?.advertisement?.backfillId
+            if (advertisementBackfillId) {
+                addJavaScript(PLAYGAMA_ADS_SDK_URL)
+                    .then(() => waitFor('pgAds'))
+                    .then(() => {
+                        window.pgAds.init(advertisementBackfillId)
+                            .then(() => {
+                                this.#playgamaAds = window.pgAds
+                                const { gameId } = this._options
+                                this.#playgamaAds.updateTargeting({ gameId })
+                            })
+                            .then(() => {
+                                this.showInterstitial()
+                            })
+                    })
+            }
         }
 
         return promiseDecorator.promise
-    }
-
-    sendMessage(message) {
-        switch (message) {
-            case PLATFORM_MESSAGE.GAME_READY: {
-                return this.#playgamaAdsPromise
-                    .then(() => {
-                        this._isInitialized = true
-
-                        this.showInterstitial()
-                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-                    })
-            }
-            default: {
-                return super.sendMessage(message)
-            }
-        }
     }
 
     showInterstitial() {
@@ -380,7 +365,9 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
                 const { action } = data || {}
 
-                if (action === ACTION_NAME.GET_CATALOG) {
+                if (action === ACTION_NAME.INITIALIZE) {
+                    this.#initialize(data)
+                } else if (action === ACTION_NAME.GET_CATALOG) {
                     this.#getCatalog(data)
                 } else if (action === ACTION_NAME.PURCHASE) {
                     this.#purchase(data)
@@ -401,6 +388,19 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                 console.error('Error parsing Microsoft Store message:', error)
             }
         })
+    }
+
+    #initialize(data) {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.INITIALIZE,
+                new Error(data),
+            )
+            return
+        }
+
+        this._isInitialized = true
+        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
     }
 
     #getCatalog(data) {
