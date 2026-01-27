@@ -291,6 +291,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
                 payload: {
+                    engine: this.engine,
+                    version: PLUGIN_VERSION,
                     configFile: {
                         loadingStatus: configFileModule.loadStatus,
                         parsingStatus: configFileModule.parseStatus,
