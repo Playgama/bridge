@@ -79,6 +79,9 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                     testMode: !!this._options.testMode,
                 }).then((showAd) => {
                     this.#showAd = showAd
+
+                    this._playerApplyGuestData()
+
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 }).catch((error) => {
