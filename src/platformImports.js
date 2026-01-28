@@ -43,6 +43,7 @@ const platformImports = {
     [PLATFORM_ID.PORTAL]: () => import('./platform-bridges/PortalPlatformBridge'),
     [PLATFORM_ID.REDDIT]: () => import('./platform-bridges/RedditPlatformBridge'),
     [PLATFORM_ID.XIAOMI]: () => import('./platform-bridges/XiaomiPlatformBridge'),
+    [PLATFORM_ID.MICROSOFT_STORE]: () => import('./platform-bridges/MicrosoftStorePlatformBridge'),
 }
 
 export async function fetchPlatformBridge(platformId) {
