@@ -47,6 +47,11 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // player
+    get isPlayerAuthorizationSupported() {
+        return true
+    }
+
     // payments
     get isPaymentsSupported() {
         return true
@@ -109,6 +114,23 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                         error,
                     )
                 })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // player
+    authorizePlayer() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+
+            if (this._isPlayerAuthorized) {
+                this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                return promiseDecorator.promise
+            }
+
+            this.#postMessage(ACTION_NAME.AUTHORIZE_PLAYER)
         }
 
         return promiseDecorator.promise
@@ -370,6 +392,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
                 if (action === ACTION_NAME.INITIALIZE) {
                     this.#initialize(data)
+                } else if (action === ACTION_NAME.AUTHORIZE_PLAYER) {
+                    this.#authorizePlayer(data)
                 } else if (action === ACTION_NAME.GET_CATALOG) {
                     this.#getCatalog(data)
                 } else if (action === ACTION_NAME.PURCHASE) {
@@ -408,6 +432,25 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             this._isInitialized = true
             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
         })
+    }
+
+    #authorizePlayer(data) {
+        if (!data?.success) {
+            this._playerApplyGuestData()
+            this._rejectPromiseDecorator(
+                ACTION_NAME.AUTHORIZE_PLAYER,
+                new Error(data),
+            )
+            return
+        }
+
+        const payload = data.data || {}
+
+        // eslint-disable-next-line no-console
+        console.log('Authorized player data:', payload)
+
+        this._isPlayerAuthorized = true
+        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
     }
 
     #getCatalog(data) {
