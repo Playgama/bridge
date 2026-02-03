@@ -62,7 +62,11 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     get isPaymentsSupported() {
-        return this.#isUserAccountAvailable === true
+        if (this.options.xsollaProjectId) {
+            return true
+        }
+
+        return false
     }
 
     // device
