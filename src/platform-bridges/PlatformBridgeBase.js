@@ -262,7 +262,7 @@ class PlatformBridgeBase {
 
         this._visibilityState = document.visibilityState
 
-        const aggregationStates = ['interstitial', 'rewarded', 'visibility', 'platform']
+        const aggregationStates = ['interstitial', 'rewarded', 'visibility', 'platform', 'rate']
         this._pauseStateAggregator = new StateAggregator(
             aggregationStates,
             (isPaused) => this.emit(EVENT_NAME.PAUSE_STATE_CHANGED, isPaused),

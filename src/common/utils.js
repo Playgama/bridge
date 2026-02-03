@@ -671,3 +671,9 @@ export function postToSystem(message) {
         window.system[POST_METHOD](message)
     }
 }
+
+export function postToWebView(message) {
+    if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
+        window.chrome.webview[POST_METHOD](message)
+    }
+}
