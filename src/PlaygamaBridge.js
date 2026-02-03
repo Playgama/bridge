@@ -302,6 +302,8 @@ class PlaygamaBridge {
                 platformId = PLATFORM_ID.PORTAL
             } else if (url.hostname.includes('devvit.')) {
                 platformId = PLATFORM_ID.REDDIT
+            } else if (typeof window.TTMinis !== 'undefined') {
+                platformId = PLATFORM_ID.TIKTOK
             }
         }
 
