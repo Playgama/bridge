@@ -26,6 +26,7 @@ const SaasRequestMixin = (BaseClass) => class extends BaseClass {
         return {
             'x-player-id': this._platformBridge.playerId || '',
             'x-platform-id': this._platformBridge.platformId,
+            'x-public-token': this._platformBridge.options.saas?.publicToken || '',
         }
     }
 

@@ -25,33 +25,11 @@ class LeaderboardsSaasModule extends SaasRequestMixin(LeaderboardsModule) {
     }
 
     async setScore(leaderboardId, score) {
-        const saasLeaderboardId = this._getSaasPlatformLeaderboardId(leaderboardId)
-
-        return this.request.post(`leaderboards/${saasLeaderboardId}/entries`, { score })
+        return this.request.post(`leaderboards/${leaderboardId}/entries`, { score })
     }
 
     async getEntries(leaderboardId) {
-        const saasLeaderboardId = this._getSaasPlatformLeaderboardId(leaderboardId)
-
-        return this.request.get(`leaderboards/${saasLeaderboardId}/entries`)
-    }
-
-    _getSaasPlatformLeaderboardId(id) {
-        if (!id) {
-            return id
-        }
-
-        const leaderboards = this._platformBridge.options?.leaderboards
-        if (!leaderboards) {
-            return id
-        }
-
-        const leaderboard = leaderboards.find((p) => p.id === id)
-        if (!leaderboard) {
-            return id
-        }
-
-        return leaderboard.saas || id
+        return this.request.get(`leaderboards/${leaderboardId}/entries`)
     }
 }
 
