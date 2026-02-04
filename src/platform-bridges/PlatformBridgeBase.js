@@ -30,7 +30,7 @@ import {
 } from '../constants'
 import PromiseDecorator from '../common/PromiseDecorator'
 import StateAggregator from '../common/StateAggregator'
-import { getGuestUser, showInfoPopup } from '../common/utils'
+import { getGuestUser, showInfoPopup, showAdFailurePopup } from '../common/utils'
 import configFileModule from '../modules/ConfigFileModule'
 
 class PlatformBridgeBase {
@@ -255,6 +255,8 @@ class PlatformBridgeBase {
 
     #promiseDecorators = { }
 
+    #lastAdFailurePopupTime = 0
+
     constructor() {
         try { this._localStorage = window.localStorage } catch (e) {
             // Nothing we can do with it
@@ -438,13 +440,13 @@ class PlatformBridgeBase {
     preloadInterstitial() { }
 
     showInterstitial() {
-        this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+        this._showAdFailurePopup(false)
     }
 
     preloadRewarded() { }
 
     showRewarded() {
-        this._setRewardedState(REWARDED_STATE.FAILED)
+        this._showAdFailurePopup(true)
     }
 
     checkAdBlock() {
@@ -773,6 +775,47 @@ class PlatformBridgeBase {
         }
 
         return Promise.resolve()
+    }
+
+    _showAdFailurePopup(isRewarded) {
+        const showPopup = this._options?.advertisement?.showFailurePopup === true
+
+        if (!showPopup) {
+            if (isRewarded) {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            }
+
+            return Promise.resolve()
+        }
+
+        if (!isRewarded) {
+            const cooldown = this._options?.advertisement?.failurePopupCooldown ?? 180
+            const now = Date.now()
+            const elapsedSeconds = (now - this.#lastAdFailurePopupTime) / 1000
+
+            if (elapsedSeconds < cooldown) {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                return Promise.resolve()
+            }
+
+            this.#lastAdFailurePopupTime = now
+        }
+
+        if (isRewarded) {
+            this._setRewardedState(REWARDED_STATE.OPENED)
+        } else {
+            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+        }
+
+        return showAdFailurePopup().then(() => {
+            if (isRewarded) {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            }
+        })
     }
 
     _playerApplyGuestData() {

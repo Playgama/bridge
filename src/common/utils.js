@@ -302,6 +302,163 @@ export function showInfoPopup(message) {
     })
 }
 
+export function showAdFailurePopup() {
+    if (!document.getElementById('bridge-ad-failure-popup-styles')) {
+        const style = document.createElement('style')
+        style.id = 'bridge-ad-failure-popup-styles'
+        style.textContent = `
+            @font-face {
+                font-family: 'Cal Sans';
+                src: url('https://cal.com/cal-sans-semibold.woff2') format('woff2');
+                font-weight: 400;
+                font-style: normal;
+                font-display: swap;
+            }
+
+            #bridge-ad-failure-popup {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100%;
+                width: 100%;
+                box-sizing: border-box;
+                padding: 24px 16px;
+                background: #682eb2;
+                display: none;
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: 32px 1fr;
+                z-index: 9999999;
+                font-family: 'Cal Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+                color: #fff;
+                cursor: pointer;
+            }
+
+            #bridge-ad-failure-popup-logo {
+                height: 32px;
+            }
+
+            #bridge-ad-failure-popup-close {
+                all: unset;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                background: #fff;
+                border-radius: 50%;
+                justify-self: end;
+            }
+
+            #bridge-ad-failure-popup-text {
+                grid-column: span 2;
+                font-size: 21px;
+                font-style: normal;
+                font-weight: 400;
+                line-height: 110%;
+                align-self: end;
+                margin: 0;
+            }
+
+            @media (min-width: 320px) {
+                #bridge-ad-failure-popup {
+                    padding: 24px;
+                    grid-template-rows: 40px 1fr;
+                }
+
+                #bridge-ad-failure-popup-logo {
+                    height: 40px;
+                }
+
+                #bridge-ad-failure-popup-close {
+                    width: 40px;
+                    height: 40px;
+                }
+
+                #bridge-ad-failure-popup-text {
+                    font-size: 25px;
+                    align-self: center;
+                }
+            }
+
+            @media (orientation: landscape) {
+                #bridge-ad-failure-popup {
+                    gap: 40px;
+                }
+
+                #bridge-ad-failure-popup-text {
+                    width: 60%;
+                    align-self: start;
+                }
+            }
+
+            @media (orientation: landscape) and (min-width: 800px) {
+                #bridge-ad-failure-popup {
+                    gap: 80px;
+                }
+
+                #bridge-ad-failure-popup-text {
+                    width: 50%;
+                    font-size: 33px;
+                }
+            }
+        `
+        document.head.appendChild(style)
+    }
+
+    let popup = document.getElementById('bridge-ad-failure-popup')
+    if (!popup) {
+        popup = document.createElement('div')
+        popup.id = 'bridge-ad-failure-popup'
+
+        const logoLink = document.createElement('a')
+        logoLink.href = 'https://playgama.com'
+        logoLink.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 120 32" id="bridge-ad-failure-popup-logo">
+                <rect width="120" height="32" fill="#fff" rx="16"/>
+                <path fill="#682EB2" d="M12.378 23.772V9.844h5.356c2.957 0 5.356 2.39 5.356 5.339 0 2.948-2.398 5.34-5.356 5.34h-1.863v3.25zm5.007-10.678H15.87v4.178h1.514c1.257 0 2.096-.928 2.096-2.089 0-1.16-.839-2.09-2.096-2.09M28.267 20.522h-3.632V6.594h3.632zM40.518 20.522h-5.356c-2.958 0-5.357-2.39-5.357-5.339 0-2.948 2.4-5.34 5.357-5.34h5.356zm-5.007-3.25h1.514v-4.178H35.51c-1.258 0-2.096.928-2.096 2.089 0 1.16.838 2.09 2.096 2.09M47.465 26.094H42.62v-3.25h4.611c1.234 0 2.142-.906 2.142-2.136v-.186h-6.753V9.844h3.493v7.428h3.26V9.844h3.493V20.94c0 2.972-2.282 5.154-5.402 5.154M59.813 9.844h5.821V20.73c0 3.111-2.258 5.363-5.379 5.363h-4.634v-3.482h4.61c1.095 0 1.91-.813 1.91-1.904v-.186h-2.328c-2.958 0-5.357-2.39-5.357-5.339 0-2.948 2.399-5.34 5.356-5.34m-1.747 5.339c0 1.16.838 2.09 2.096 2.09h1.98v-4.18h-1.98c-1.258 0-2.096.93-2.096 2.09M77.834 20.522h-5.357c-2.957 0-5.356-2.39-5.356-5.339 0-2.948 2.399-5.34 5.356-5.34h5.356zm-5.007-3.25h1.513v-4.178h-1.513c-1.258 0-2.096.928-2.096 2.089 0 1.16.838 2.09 2.096 2.09M83.43 20.522h-3.493V9.844h10.829c2.631 0 4.773 2.136 4.773 4.759v5.92h-3.493V14.37a1.29 1.29 0 0 0-1.28-1.277h-1.281v7.428h-3.493v-7.428H83.43zM107.623 20.522h-5.356c-2.958 0-5.356-2.39-5.356-5.339 0-2.948 2.398-5.34 5.356-5.34h5.356zm-5.007-3.25h1.514v-4.178h-1.514c-1.257 0-2.096.928-2.096 2.089 0 1.16.839 2.09 2.096 2.09"/>
+            </svg>
+        `
+        popup.appendChild(logoLink)
+
+        const closeButton = document.createElement('button')
+        closeButton.id = 'bridge-ad-failure-popup-close'
+        closeButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                <path fill="#682EB2" d="M17.886 7.886a1.252 1.252 0 0 0-1.77-1.77l-4.113 4.117L7.886 6.12a1.252 1.252 0 0 0-1.77 1.77l4.117 4.113L6.12 16.12a1.252 1.252 0 0 0 1.77 1.77l4.113-4.117 4.117 4.113a1.252 1.252 0 0 0 1.77-1.77l-4.117-4.113z"/>
+            </svg>
+        `
+        popup.appendChild(closeButton)
+
+        const text = document.createElement('p')
+        text.id = 'bridge-ad-failure-popup-text'
+        popup.appendChild(text)
+
+        document.body.appendChild(popup)
+    }
+
+    const closeButton = document.getElementById('bridge-ad-failure-popup-close')
+
+    return new Promise((resolve) => {
+        const closePopup = () => {
+            popup.style.display = 'none'
+            resolve()
+        }
+
+        closeButton.onclick = closePopup
+        popup.onclick = closePopup
+
+        const messages = [
+            'If you see this message, no Ad was returned for the Ad request.<br><br>Please ask the developer to check the Ad setup.',
+            'This is placeholder for the Ad.<br><br>Playgama helps games reach players worldwide.',
+        ]
+        const textElement = document.getElementById('bridge-ad-failure-popup-text')
+        textElement.innerHTML = messages[Math.floor(Math.random() * messages.length)]
+
+        popup.style.display = 'grid'
+    })
+}
+
 export function createProgressLogo(showFullLoadingLogo) {
     const style = document.createElement('style')
     style.textContent = `

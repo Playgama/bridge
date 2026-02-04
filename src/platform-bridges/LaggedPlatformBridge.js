@@ -132,7 +132,7 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
             if (success) {
                 showAdFn()
             } else {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             }
         }
 
@@ -141,7 +141,7 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.REWARDED)
                 this._setRewardedState(REWARDED_STATE.CLOSED)
             } else {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             }
         }
 

@@ -277,7 +277,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         })
 
         interstitialAd.onError(() => {
-            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            this._showAdFailurePopup(false)
         })
 
         interstitialAd.show()
@@ -285,7 +285,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
             })
             .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                this._showAdFailurePopup(false)
             })
     }
 
@@ -302,7 +302,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         })
 
         rewardedAd.onError(() => {
-            this._setRewardedState(REWARDED_STATE.FAILED)
+            this._showAdFailurePopup(true)
         })
 
         rewardedAd.show()
@@ -310,7 +310,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.OPENED)
             })
             .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             })
     }
 

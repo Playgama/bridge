@@ -83,7 +83,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                                     break
                                 }
                                 case 'empty': {
-                                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                                    this._showAdFailurePopup(false)
                                     break
                                 }
                                 case 'close': {
@@ -91,7 +91,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                                     break
                                 }
                                 case 'error': {
-                                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                                    this._showAdFailurePopup(false)
                                     break
                                 }
                                 default: {
@@ -105,7 +105,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                                     break
                                 }
                                 case 'empty': {
-                                    this._setRewardedState(REWARDED_STATE.FAILED)
+                                    this._showAdFailurePopup(true)
                                     break
                                 }
                                 case 'rewarded': {
@@ -117,7 +117,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                                     break
                                 }
                                 case 'error': {
-                                    this._setRewardedState(REWARDED_STATE.FAILED)
+                                    this._showAdFailurePopup(true)
                                     break
                                 }
                                 default: {

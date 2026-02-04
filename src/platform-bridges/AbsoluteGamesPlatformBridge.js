@@ -78,7 +78,7 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
                                     this._setRewardedState(REWARDED_STATE.CLOSED)
                                 }
                             } else {
-                                this._setRewardedState(REWARDED_STATE.FAILED)
+                                this._showAdFailurePopup(true)
                             }
                             break
                         }
@@ -91,7 +91,7 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
                                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                                 }
                             } else {
-                                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                                this._showAdFailurePopup(false)
                             }
                             break
                         }

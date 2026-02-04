@@ -150,7 +150,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                     break
                 case 'errAd':
                 case 'notFoundAd':
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                     window.removeEventListener('message', showAdHandler)
                     break
                 default:
@@ -186,7 +186,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
                     break
                 case 'errAd':
                 case 'notFoundAd':
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                     window.removeEventListener('message', showAdHandler)
                     break
                 default:

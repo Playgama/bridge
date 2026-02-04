@@ -125,7 +125,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 },
                 onAdFailedToLoad: (error) => {
                     console.error(error)
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                 },
             })
             this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
@@ -149,7 +149,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 },
                 onAdFailedToLoad: (error) => {
                     console.error(error)
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 },
             })
             this._setRewardedState(REWARDED_STATE.OPENED)
