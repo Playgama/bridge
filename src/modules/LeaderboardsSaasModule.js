@@ -25,11 +25,11 @@ class LeaderboardsSaasModule extends SaasRequestMixin(LeaderboardsModule) {
     }
 
     async setScore(leaderboardId, score) {
-        return this.request.post(`leaderboards/${leaderboardId}/entries`, { score })
+        return this.request.post(`leaderboards/${leaderboardId}`, { score })
     }
 
     async getEntries(leaderboardId) {
-        return this.request.get(`leaderboards/${leaderboardId}/entries`)
+        return this.request.get(`leaderboards/${leaderboardId}`)
     }
 }
 
