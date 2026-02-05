@@ -460,7 +460,7 @@ export function showAdFailurePopup() {
 
         const messages = [
             'If you see this message, no Ad was returned for the Ad request.<br><br>Please ask the developer to check the Ad setup.',
-            'This is placeholder for the Ad.<br><br>Playgama helps games reach players worldwide.',
+            'This is placeholder for the Ad. Playgama helps games reach players worldwide.',
         ]
         const textElement = document.getElementById('bridge-ad-failure-popup-text')
         textElement.innerHTML = messages[Math.floor(Math.random() * messages.length)]
