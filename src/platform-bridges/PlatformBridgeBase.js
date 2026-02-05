@@ -27,7 +27,9 @@ import {
     VISIBILITY_STATE,
     DEVICE_TYPE,
     LEADERBOARD_TYPE,
+    MODULE_NAME,
 } from '../constants'
+import analyticsModule from '../modules/AnalyticsModule'
 import PromiseDecorator from '../common/PromiseDecorator'
 import StateAggregator from '../common/StateAggregator'
 import { getGuestUser, showInfoPopup, showAdFailurePopup } from '../common/utils'
@@ -805,14 +807,18 @@ class PlatformBridgeBase {
 
         if (isRewarded) {
             this._setRewardedState(REWARDED_STATE.OPENED)
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_fallback_opened`)
         } else {
             this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_fallback_opened`)
         }
 
         return showAdFailurePopup().then(() => {
             if (isRewarded) {
+                analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_fallback_closed`)
                 this._setRewardedState(REWARDED_STATE.FAILED)
             } else {
+                analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_fallback_closed`)
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
             }
         })
