@@ -18,7 +18,7 @@
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME, PLATFORM_ID } from '../constants'
-import { createProgressLogo } from '../common/utils'
+import { createProgressLogo, applySafeAreaStyles } from '../common/utils'
 
 class GameModule extends ModuleBase {
     get visibilityState() {
@@ -42,6 +42,10 @@ class GameModule extends ModuleBase {
                 ? false
                 : this._platformBridge.options.showFullLoadingLogo
             createProgressLogo(showFullLogo)
+        }
+
+        if (this._platformBridge.options?.game?.adaptToSafeArea) {
+            applySafeAreaStyles()
         }
     }
 

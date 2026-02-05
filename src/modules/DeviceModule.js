@@ -18,7 +18,7 @@
 import EventLite from 'event-lite'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE } from '../constants'
-import { createOrientationOverlay } from '../common/utils'
+import { createOrientationOverlay, getSafeArea } from '../common/utils'
 
 class DeviceModule extends ModuleBase {
     get type() {
@@ -27,6 +27,10 @@ class DeviceModule extends ModuleBase {
 
     get orientation() {
         return this.#currentOrientation
+    }
+
+    get safeArea() {
+        return getSafeArea()
     }
 
     #currentOrientation = null

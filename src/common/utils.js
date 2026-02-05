@@ -677,3 +677,34 @@ export function postToWebView(message) {
         window.chrome.webview[POST_METHOD](message)
     }
 }
+
+export function getSafeArea() {
+    const div = document.createElement('div')
+    div.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);left:env(safe-area-inset-left);right:env(safe-area-inset-right);pointer-events:none;visibility:hidden;'
+    document.body.appendChild(div)
+
+    const rect = div.getBoundingClientRect()
+    const result = {
+        top: rect.top,
+        bottom: window.innerHeight - rect.bottom,
+        left: rect.left,
+        right: window.innerWidth - rect.right,
+    }
+
+    div.remove()
+    return result
+}
+
+export function applySafeAreaStyles() {
+    const style = document.createElement('style')
+    style.id = 'bridge-safe-area-styles'
+    style.textContent = `
+        html, body {
+            height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            box-sizing: border-box;
+        }
+    `
+    document.head.appendChild(style)
+}
