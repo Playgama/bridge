@@ -261,7 +261,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             })
             .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                this._showAdFailurePopup(false)
             })
     }
 
@@ -273,7 +273,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.CLOSED)
             })
             .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             })
     }
 

@@ -107,11 +107,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             }
         },
         adError: () => {
-            if (this.#currentAdvertisementIsRewarded) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            }
+            this._showAdFailurePopup(this.#currentAdvertisementIsRewarded)
         },
     }
 

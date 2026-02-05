@@ -309,7 +309,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
         try {
             this._platformSdk.UI.showAd()
         } catch {
-            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            this._showAdFailurePopup(false)
         }
     }
 
@@ -317,7 +317,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
         try {
             this._platformSdk.UI.loadAd()
         } catch {
-            this._setRewardedState(REWARDED_STATE.FAILED)
+            this._showAdFailurePopup(true)
         }
     }
 
@@ -489,7 +489,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
 
     #onLoadedRewarded(result) {
         if (result === 'error') {
-            this._setRewardedState(REWARDED_STATE.FAILED)
+            this._showAdFailurePopup(true)
         } else {
             this._setRewardedState(REWARDED_STATE.OPENED)
             this._platformSdk.UI.showLoadedAd()
@@ -509,7 +509,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
             case 'mp4_not_supported':
             case 'app_in_fullscreen':
             default:
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
                 break
         }
     }
@@ -528,7 +528,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
             case 'in_use':
             case 'app_in_fullscreen':
             default:
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                this._showAdFailurePopup(false)
                 break
         }
     }

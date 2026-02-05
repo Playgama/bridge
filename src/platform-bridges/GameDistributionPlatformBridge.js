@@ -149,10 +149,10 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
             this._platformSdk
                 .showAd()
                 .catch(() => {
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                 })
         } else {
-            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            this._showAdFailurePopup(false)
         }
     }
 
@@ -167,10 +167,10 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
             this._platformSdk
                 .showAd('rewarded')
                 .catch(() => {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 })
         } else {
-            this._setRewardedState(REWARDED_STATE.FAILED)
+            this._showAdFailurePopup(true)
         }
     }
 }

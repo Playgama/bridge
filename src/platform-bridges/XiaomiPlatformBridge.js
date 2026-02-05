@@ -140,7 +140,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
     showInterstitial(placement) {
         if (!this.#showAd) {
-            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            this._showAdFailurePopup(false)
             return
         }
 
@@ -157,7 +157,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             },
             adBreakDone: (placementInfo) => {
                 if (placementInfo.breakStatus !== 'viewed') {
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                 }
             },
         })
@@ -165,7 +165,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
     showRewarded(placement) {
         if (!this.#showAd) {
-            this._setRewardedState(REWARDED_STATE.FAILED)
+            this._showAdFailurePopup(true)
             return
         }
 
@@ -185,7 +185,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             adViewed: () => { this._setRewardedState(REWARDED_STATE.REWARDED) },
             adBreakDone: (placementInfo) => {
                 if (placementInfo.breakStatus === 'frequencyCapped' || placementInfo.breakStatus === 'other') {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 }
             },
         })

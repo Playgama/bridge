@@ -236,7 +236,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     // advertisement
     showInterstitial() {
         if (!this._showAd) {
-            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            this._showAdFailurePopup(false)
             return
         }
 
@@ -253,7 +253,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             },
             adBreakDone: (placementInfo) => {
                 if (placementInfo.breakStatus !== 'viewed') {
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                 }
             },
         })
@@ -261,7 +261,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
 
     showRewarded() {
         if (!this._showAd) {
-            this._setRewardedState(REWARDED_STATE.FAILED)
+            this._showAdFailurePopup(true)
             return
         }
 
@@ -277,11 +277,11 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                 }
             },
             beforeReward: (showAdFn) => { showAdFn(0) },
-            adDismissed: () => { this._setRewardedState(REWARDED_STATE.FAILED) },
+            adDismissed: () => { this._showAdFailurePopup(true) },
             adViewed: () => { this._setRewardedState(REWARDED_STATE.REWARDED) },
             adBreakDone: (placementInfo) => {
                 if (placementInfo.breakStatus === 'frequencyCapped' || placementInfo.breakStatus === 'other') {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 }
             },
         })

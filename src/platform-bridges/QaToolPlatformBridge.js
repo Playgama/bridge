@@ -1133,7 +1133,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                     break
                 case INTERSTITIAL_STATUS.FAILED:
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                     break
                 case INTERSTITIAL_STATUS.CLOSE:
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
@@ -1162,7 +1162,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     break
                 }
                 case REWARD_STATUS.FAILED: {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                     break
                 }
                 default: {

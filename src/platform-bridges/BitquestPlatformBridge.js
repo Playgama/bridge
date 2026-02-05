@@ -433,17 +433,25 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                 return
             }
 
-            this._setRewardedState(mappedState)
+            if (mappedState === REWARDED_STATE.FAILED) {
+                this._showAdFailurePopup(true)
+            } else {
+                this._setRewardedState(mappedState)
 
-            if (mappedState === REWARDED_STATE.REWARDED) {
-                this._setRewardedState(REWARDED_STATE.CLOSED)
+                if (mappedState === REWARDED_STATE.REWARDED) {
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                }
             }
         })
 
         this._platformSdk.advertisement.on('INTERSTITIAL_STATE_CHANGED', (state) => {
             const mappedState = interstitialMap[state]
             if (mappedState) {
-                this._setInterstitialState(mappedState)
+                if (mappedState === INTERSTITIAL_STATE.FAILED) {
+                    this._showAdFailurePopup(false)
+                } else {
+                    this._setInterstitialState(mappedState)
+                }
             }
         })
 

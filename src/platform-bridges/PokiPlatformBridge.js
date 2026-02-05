@@ -107,11 +107,11 @@ class PokiPlatformBridge extends PlatformBridgeBase {
                 if (isInterstitialOpened) {
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                 } else {
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                 }
             })
-            .catch((error) => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED, error)
+            .catch(() => {
+                this._showAdFailurePopup(false)
             })
     }
 
@@ -129,11 +129,11 @@ class PokiPlatformBridge extends PlatformBridgeBase {
 
                     this._setRewardedState(REWARDED_STATE.CLOSED)
                 } else {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 }
             })
-            .catch((error) => {
-                this._setRewardedState(REWARDED_STATE.FAILED, error)
+            .catch(() => {
+                this._showAdFailurePopup(true)
             })
     }
 }
