@@ -778,7 +778,7 @@ class PlatformBridgeBase {
     }
 
     _showAdFailurePopup(isRewarded) {
-        const showPopup = this._options?.advertisement?.showFailurePopup === true
+        const showPopup = this._options?.advertisement?.useBuiltInErrorPopup === true
 
         if (!showPopup) {
             if (isRewarded) {
@@ -791,7 +791,7 @@ class PlatformBridgeBase {
         }
 
         if (!isRewarded) {
-            const cooldown = this._options?.advertisement?.failurePopupCooldown ?? 180
+            const cooldown = this._options?.advertisement?.builtInErrorPopupCooldown ?? 180
             const now = Date.now()
             const elapsedSeconds = (now - this.#lastAdFailurePopupTime) / 1000
 
