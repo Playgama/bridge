@@ -33,6 +33,7 @@ import {
 
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 const PLAYGAMA_ADS_PROMISE = 'playgama_ads_promise'
+const INTERSTITIAL_INITIAL_SHOW_DELAY_PROMISE = 'interstitial_initial_show_delay_promise'
 class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.MICROSOFT_STORE
@@ -68,6 +69,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
     #playgamaAdsPromise = this._createPromiseDecorator(PLAYGAMA_ADS_PROMISE).promise
 
+    #interstitialInitialShowDelayPromise = this._createPromiseDecorator(INTERSTITIAL_INITIAL_SHOW_DELAY_PROMISE).promise
+
     #interstitialShownCount = 0
 
     initialize() {
@@ -90,6 +93,9 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             try {
                 this.#setupHandlers()
                 this.#postMessage(ACTION_NAME.INITIALIZE)
+                setTimeout(() => {
+                    this._resolvePromiseDecorator(INTERSTITIAL_INITIAL_SHOW_DELAY_PROMISE)
+                }, this._options.prerollDelayMs || 500)
             } catch (error) {
                 this._rejectPromiseDecorator(
                     ACTION_NAME.INITIALIZE,
@@ -380,7 +386,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     #setupHandlers() {
-        window.chrome.webview.addEventListener('message', (event) => {
+        window.chrome.webview?.addEventListener('message', (event) => {
             try {
                 let { data } = event
 
@@ -426,7 +432,10 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this.#playgamaAdsPromise.then(() => {
+        Promise.all([
+            this.#playgamaAdsPromise,
+            this.#interstitialInitialShowDelayPromise,
+        ]).then(() => {
             this.showInterstitial()
         }).finally(() => {
             this._isInitialized = true
