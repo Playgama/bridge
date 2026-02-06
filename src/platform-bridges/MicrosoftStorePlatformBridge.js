@@ -434,12 +434,12 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
         Promise.all([
             this.#playgamaAdsPromise,
-            this.#interstitialInitialShowDelayPromise,
         ]).then(() => {
-            this.showInterstitial()
-        }).finally(() => {
             this._isInitialized = true
             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+            return this.#interstitialInitialShowDelayPromise
+        }).finally(() => {
+            this.showInterstitial()
         })
     }
 
