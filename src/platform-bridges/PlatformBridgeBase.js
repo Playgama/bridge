@@ -249,6 +249,8 @@ class PlatformBridgeBase {
 
     _isBannerSupported = false
 
+    _useBuiltInErrorPopup = false
+
     _paymentsPurchases = []
 
     _pauseStateAggregator = null
@@ -780,7 +782,7 @@ class PlatformBridgeBase {
     }
 
     _showAdFailurePopup(isRewarded) {
-        const showPopup = this._options?.advertisement?.useBuiltInErrorPopup === true
+        const showPopup = this._options?.advertisement?.useBuiltInErrorPopup ?? this._useBuiltInErrorPopup
 
         if (!showPopup) {
             if (isRewarded) {
