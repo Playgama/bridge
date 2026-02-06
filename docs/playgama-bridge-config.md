@@ -36,7 +36,8 @@ The `advertisement` object controls ad behavior across all platforms.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `advertisement.useBuiltInErrorPopup` | boolean | `false` | Show built-in error popup when ad fails to load |
+| `advertisement.useBuiltInErrorPopup` | boolean | `false` | Show built-in error popup when ad fails to load (Facebook, MSN, Microsoft Store) |
+| `advertisement.useAdvertisementErrorPopup` | boolean | `false` | Show ad failure popup when ad fails to load (all other platforms) |
 | `advertisement.backfillId` | string | `""` | Backfill ad provider ID (used by MSN platform) |
 
 ### Interstitial Ads

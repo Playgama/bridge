@@ -54,7 +54,7 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    _useBuiltInErrorPopup = true
+    _useAdvertisementErrorPopup = true
 
     initialize() {
         if (this._isInitialized) {
