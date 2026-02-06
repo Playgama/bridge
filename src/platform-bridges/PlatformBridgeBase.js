@@ -780,7 +780,9 @@ class PlatformBridgeBase {
     }
 
     _showAdFailurePopup(isRewarded) {
-        const showPopup = this._options?.advertisement?.useBuiltInErrorPopup === true
+        const enabledByDefaultPlatforms = [PLATFORM_ID.LAGGED, PLATFORM_ID.XIAOMI]
+        const defaultValue = enabledByDefaultPlatforms.includes(this.platformId)
+        const showPopup = this._options?.advertisement?.useBuiltInErrorPopup ?? defaultValue
 
         if (!showPopup) {
             if (isRewarded) {
