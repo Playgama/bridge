@@ -54,6 +54,8 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    _useBuiltInErrorPopup = true
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
