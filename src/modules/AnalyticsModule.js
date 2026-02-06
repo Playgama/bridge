@@ -16,210 +16,287 @@
  */
 
 import { MODULE_NAME, PLATFORM_ID } from '../constants'
-import { version } from '../../package.json'
+import packageJson from '../../package.json'
+import { generateRandomId, getGuestUser } from '../common/utils'
 import ModuleBase from './ModuleBase'
 
-const API_URL = 'https://playgama.com/api/events/v2/bridge/analytics'
-const DISCORD_API_URL = '/playgama/api/events/v2/bridge/analytics'
-const BATCH_TIMEOUT = 3000
-const PING_INTERVAL = 15000
+const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'
+const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
+const FLUSH_INTERVAL = 15000
+const SEND_ATTEMPTS = 2
 
 class AnalyticsModule extends ModuleBase {
     #eventQueue = []
 
-    #batchTimer = null
-
-    #pingTimer = null
+    #flushTimer = null
 
     #gameId = null
 
-    #createTimestamp = new Date().toISOString()
+    #playerGuestId = null
+
+    #sessionId = null
+
+    #failedAttempts = 0
+
+    #isDisabled = false
+
+    #visibilityHandler = null
+
+    #pagehideHandler = null
+
+    #isCompressionSupported = typeof CompressionStream !== 'undefined'
+
+    constructor() {
+        super()
+        this.#sessionId = this.#generateSessionId()
+    }
 
     initialize(platformBridge) {
         this._platformBridge = platformBridge
-        this.#gameId = this.#extractGameId()
-
-        const event = {
-            event_name: `${MODULE_NAME.CORE}_initialization_started`,
-            module: MODULE_NAME.CORE,
-            bridge_version: version,
-            platform_id: this._platformBridge.platformId,
-            game_id: this.#gameId,
-            timestamp: this.#createTimestamp,
-            data: {},
-        }
-        this.#eventQueue.push(event)
-        this.#startPing()
-
-        return this
-    }
-
-    send(eventType, module, eventData = {}) {
-        const sendAnalyticsEvents = this._platformBridge.options?.sendAnalyticsEvents
-        if (sendAnalyticsEvents === false) {
-            return
+        if (this._platformBridge.options?.sendAnalyticsEvents === false) {
+            this.#isDisabled = true
         }
 
         const { href } = window.location
         if (href.startsWith('file://') || href.includes('localhost') || href.includes('127.0.0.1')) {
+            this.#isDisabled = true
+        }
+
+        this.#gameId = this.#extractGameId()
+        this.#playerGuestId = getGuestUser().id
+
+        this.send(`${MODULE_NAME.CORE}_initialization_started`)
+        this.#startFlushInterval()
+        this.#setupPageUnloadHandler()
+
+        return this
+    }
+
+    send(eventType, data = {}) {
+        if (this.#isDisabled) {
             return
         }
 
-        const event = {
-            event_name: eventType,
-            module,
-            bridge_version: version,
-            platform_id: this._platformBridge.platformId,
-            game_id: this.#gameId,
-            timestamp: new Date().toISOString(),
-            data: eventData,
-        }
-
+        const event = this.#createEvent(eventType, data)
         this.#eventQueue.push(event)
-
-        if (this.#batchTimer) {
-            clearTimeout(this.#batchTimer)
-        }
-
-        this.#batchTimer = setTimeout(() => {
-            this.#flush()
-        }, BATCH_TIMEOUT)
     }
 
-    #flush() {
-        if (this.#eventQueue.length === 0) {
+    #generateSessionId() {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID()
+        }
+
+        return generateRandomId()
+    }
+
+    #createEvent(eventType, data = {}) {
+        return {
+            event_name: eventType,
+            timestamp: new Date().toISOString(),
+            data,
+        }
+    }
+
+    #createMeta() {
+        return {
+            bridge_version: packageJson.version,
+            platform_id: this._platformBridge.platformId,
+            game_id: this.#gameId,
+            session_id: this.#sessionId,
+            player_id: this._platformBridge.playerId,
+            player_guest_id: this.#playerGuestId,
+            device_type: this._platformBridge.deviceType,
+        }
+    }
+
+    async #compressData(data) {
+        const json = JSON.stringify(data)
+        const stream = new Blob([json]).stream()
+        const compressedStream = stream.pipeThrough(new CompressionStream('gzip'))
+        return new Response(compressedStream).blob()
+    }
+
+    #getApiUrl() {
+        if (this._platformBridge.platformId === PLATFORM_ID.DISCORD) {
+            return DISCORD_API_URL
+        }
+        return API_URL
+    }
+
+    #createPayload(events) {
+        return {
+            meta: this.#createMeta(),
+            events,
+        }
+    }
+
+    async #flush() {
+        if (this.#eventQueue.length === 0 || this.#isDisabled) {
             return
         }
 
         const events = [...this.#eventQueue]
         this.#eventQueue = []
-        this.#batchTimer = null
 
-        let url = API_URL
-        if (this._platformBridge.platformId === PLATFORM_ID.DISCORD) {
-            url = DISCORD_API_URL
+        const success = await this.#sendRequest(this.#createPayload(events))
+        if (!success && !this.#isDisabled) {
+            this.#eventQueue = [...events, ...this.#eventQueue]
+        }
+    }
+
+    async #sendRequest(payload) {
+        try {
+            const headers = { 'Content-Type': 'application/json' }
+            let body
+
+            if (this.#isCompressionSupported) {
+                try {
+                    headers['Content-Encoding'] = 'gzip'
+                    body = await this.#compressData(payload)
+                } catch {
+                    delete headers['Content-Encoding']
+                    body = JSON.stringify(payload)
+                }
+            } else {
+                body = JSON.stringify(payload)
+            }
+
+            const response = await fetch(this.#getApiUrl(), {
+                method: 'POST',
+                headers,
+                body,
+            })
+
+            if (!response.ok) {
+                throw new Error(`Network response was not ok: ${response.status}`)
+            }
+
+            this.#failedAttempts = 0
+            return true
+        } catch {
+            this.#failedAttempts += 1
+            if (this.#failedAttempts >= SEND_ATTEMPTS) {
+                this.#disable()
+            }
+            return false
+        }
+    }
+
+    #flushSync() {
+        if (this.#eventQueue.length === 0 || this.#isDisabled) {
+            return
         }
 
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ events }),
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`Network response was not ok: ${response.status}`)
-                }
-            })
-            .catch((error) => {
-                console.error('Error sending analytics events:', error)
-            })
+        const events = [...this.#eventQueue]
+        this.#eventQueue = []
+
+        const url = this.#getApiUrl()
+        const payload = this.#createPayload(events)
+        const body = JSON.stringify(payload)
+
+        if (navigator.sendBeacon) {
+            const blob = new Blob([body], { type: 'application/json' })
+            navigator.sendBeacon(url, blob)
+        }
+    }
+
+    #setupPageUnloadHandler() {
+        this.#pagehideHandler = () => {
+            this.#flushSync()
+        }
+
+        this.#visibilityHandler = () => {
+            if (document.visibilityState === 'hidden') {
+                this.#flushSync()
+            }
+        }
+
+        document.addEventListener('visibilitychange', this.#visibilityHandler)
+        window.addEventListener('pagehide', this.#pagehideHandler)
+    }
+
+    #disable() {
+        this.#isDisabled = true
+        this.#eventQueue = []
+
+        if (this.#flushTimer) {
+            clearInterval(this.#flushTimer)
+            this.#flushTimer = null
+        }
+
+        if (this.#visibilityHandler) {
+            document.removeEventListener('visibilitychange', this.#visibilityHandler)
+            this.#visibilityHandler = null
+        }
+
+        if (this.#pagehideHandler) {
+            window.removeEventListener('pagehide', this.#pagehideHandler)
+            this.#pagehideHandler = null
+        }
     }
 
     #extractGameId() {
-        const { options } = this._platformBridge
-        let gameId
+        const { options, platformId } = this._platformBridge
 
-        switch (this._platformBridge.platformId) {
-            case PLATFORM_ID.GAME_DISTRIBUTION:
-                gameId = options.gameId
-                break
-            case PLATFORM_ID.Y8:
-                gameId = options.gameId
-                break
-            case PLATFORM_ID.HUAWEI:
-                gameId = options.appId
-                break
-            case PLATFORM_ID.MSN:
-                gameId = options.gameId
-                break
-            case PLATFORM_ID.DISCORD:
-                gameId = options.appId
-                break
-            case PLATFORM_ID.GAMEPUSH:
-                gameId = options.projectId
-                break
-            default:
-                gameId = null
-                break
+        const optionKeyMap = {
+            [PLATFORM_ID.GAME_DISTRIBUTION]: 'gameId',
+            [PLATFORM_ID.Y8]: 'gameId',
+            [PLATFORM_ID.MSN]: 'gameId',
+            [PLATFORM_ID.HUAWEI]: 'appId',
+            [PLATFORM_ID.DISCORD]: 'appId',
+            [PLATFORM_ID.GAMEPUSH]: 'projectId',
+            [PLATFORM_ID.MICROSOFT_STORE]: 'gameId',
         }
 
-        if (!gameId) {
-            gameId = this.#getGameIdFromUrl(window.location.href)
-        }
+        const optionKey = optionKeyMap[platformId]
+        const gameId = optionKey ? options?.[optionKey] : null
 
-        return gameId
+        return gameId || this.#getGameIdFromUrl(window.location.href)
     }
 
     #getGameIdFromUrl(url) {
         try {
             const parsedUrl = new URL(url)
             const parts = parsedUrl.pathname.split('/').filter(Boolean)
+            const { platformId } = this._platformBridge
 
-            switch (this._platformBridge.platformId) {
-                case PLATFORM_ID.YANDEX: {
-                    const i = parts.indexOf('app')
-                    const id = i !== -1 ? parts[i + 1] : null
-                    if (id) {
-                        return id
-                    }
-                    break
-                }
-
-                case PLATFORM_ID.LAGGED: {
-                    const i = parts.indexOf('g')
-                    const slug = i !== -1 ? parts[i + 1] : null
-                    if (slug) {
-                        return this.#formatGameName(slug)
-                    }
-                    break
-                }
-
-                case PLATFORM_ID.CRAZY_GAMES: {
-                    const i = parts.indexOf('game')
-                    const slug = i !== -1 ? parts[i + 1] : null
-                    if (slug) {
-                        return this.#formatGameName(slug)
-                    }
-                    break
-                }
-
-                case PLATFORM_ID.PLAYGAMA: {
-                    const i = parts.indexOf('game')
-                    const slug = i !== -1 ? parts[i + 1] : null
-                    if (slug) {
-                        return this.#formatGameName(slug)
-                    }
-                    const id = parts[0]
-                    const isInternalId = typeof id === 'string' && /^[a-z0-9]{10,}$/i.test(id)
-                    if (isInternalId) {
-                        return id
-                    }
-                    break
-                }
-                default:
-                    break
+            const urlPatternMap = {
+                [PLATFORM_ID.YANDEX]: { pathKey: 'app' },
+                [PLATFORM_ID.LAGGED]: { pathKey: 'g' },
+                [PLATFORM_ID.CRAZY_GAMES]: { pathKey: 'game' },
             }
-        } catch (err) {
+
+            const pattern = urlPatternMap[platformId]
+            if (pattern) {
+                const index = parts.indexOf(pattern.pathKey)
+                const value = index !== -1 ? parts[index + 1] : null
+                if (value) {
+                    return value
+                }
+            }
+
+            if (platformId === PLATFORM_ID.PLAYGAMA) {
+                const match = parsedUrl.hostname.match(/^([a-z0-9-]+)\.games\.playgama\.net$/i)
+                if (match) {
+                    return match[1]
+                }
+            }
+        } catch {
             return null
         }
+
         return null
     }
 
-    #formatGameName(name) {
-        if (typeof name !== 'string' || name.length === 0) {
-            return ''
-        }
-        return name
-            .replace(/-/g, ' ')
-            .replace(/\b\w/g, (c) => c.toUpperCase())
-    }
-
-    #startPing() {
-        if (this.#pingTimer) {
+    #startFlushInterval() {
+        if (this.#flushTimer) {
             return
         }
 
-        this.#pingTimer = setInterval(() => { this.send(`${MODULE_NAME.CORE}_ping`, MODULE_NAME.CORE) }, PING_INTERVAL)
+        this.#flushTimer = setInterval(() => {
+            this.send(`${MODULE_NAME.CORE}_ping`)
+            this.#flush()
+        }, FLUSH_INTERVAL)
     }
 }
 

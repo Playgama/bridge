@@ -23,22 +23,24 @@ class LeaderboardsModule extends ModuleBase {
     }
 
     setScore(id, score) {
-        const modifiedId = this.#getPlatformLeaderboardId(id)
+        const modifiedId = this._getPlatformLeaderboardId(id)
         const isMain = this.#getIsMain(id)
+
         return this._platformBridge.leaderboardsSetScore(modifiedId, score, isMain)
     }
 
     getEntries(id) {
-        const modifiedId = this.#getPlatformLeaderboardId(id)
+        const modifiedId = this._getPlatformLeaderboardId(id)
+
         return this._platformBridge.leaderboardsGetEntries(modifiedId)
     }
 
     showNativePopup(id) {
-        const modifiedId = this.#getPlatformLeaderboardId(id)
+        const modifiedId = this._getPlatformLeaderboardId(id)
         return this._platformBridge.leaderboardsShowNativePopup(modifiedId)
     }
 
-    #getPlatformLeaderboardId(id) {
+    _getPlatformLeaderboardId(id) {
         if (!id) {
             return id
         }

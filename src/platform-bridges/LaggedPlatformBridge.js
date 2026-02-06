@@ -54,6 +54,8 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    _useBuiltInErrorPopup = true
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -132,7 +134,7 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
             if (success) {
                 showAdFn()
             } else {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             }
         }
 
@@ -141,7 +143,7 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.REWARDED)
                 this._setRewardedState(REWARDED_STATE.CLOSED)
             } else {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             }
         }
 

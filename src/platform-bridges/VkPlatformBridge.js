@@ -374,10 +374,14 @@ class VkPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk
                     .send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
                     .then((data) => {
-                        this._setInterstitialState(data.result ? INTERSTITIAL_STATE.CLOSED : INTERSTITIAL_STATE.FAILED)
+                        if (data.result) {
+                            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                        } else {
+                            this._showAdFailurePopup(false)
+                        }
                     })
                     .catch(() => {
-                        this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                        this._showAdFailurePopup(false)
                     })
             })
     }
@@ -398,11 +402,11 @@ class VkPlatformBridge extends PlatformBridgeBase {
                             this._setRewardedState(REWARDED_STATE.REWARDED)
                             this._setRewardedState(REWARDED_STATE.CLOSED)
                         } else {
-                            this._setRewardedState(REWARDED_STATE.FAILED)
+                            this._showAdFailurePopup(true)
                         }
                     })
                     .catch(() => {
-                        this._setRewardedState(REWARDED_STATE.FAILED)
+                        this._showAdFailurePopup(true)
                     })
             })
     }

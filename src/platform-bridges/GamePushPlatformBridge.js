@@ -101,7 +101,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
     showRewarded() {
         this._platformSdk.ads.showRewardedVideo()
             .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             })
     }
 
@@ -128,7 +128,7 @@ class GamePushPlatformBridge extends PlatformBridgeBase {
 
         this._platformSdk.ads.on('rewarded:close', (success) => {
             if (!success) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             }
         })
 

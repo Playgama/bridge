@@ -31,7 +31,7 @@ import {
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
 const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/payments-bucket-prod/embed/1.5.0/widget.min.js'
-const XSOLLA_SDK_URL = 'https://store.xsolla.com/api/v2/project/'
+const XSOLLA_SDK_URL = 'https://store.xsolla.com/api/v2/project'
 
 class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     // platform
@@ -62,7 +62,11 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     get isPaymentsSupported() {
-        return this.#isUserAccountAvailable === true
+        if (this.options.xsollaProjectId) {
+            return true
+        }
+
+        return false
     }
 
     // device
@@ -85,6 +89,27 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     #currentAdvertisementIsRewarded = false
 
     #isUserAccountAvailable = false
+
+    #adCallbacks = {
+        adStarted: () => {
+            if (this.#currentAdvertisementIsRewarded) {
+                this._setRewardedState(REWARDED_STATE.OPENED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            }
+        },
+        adFinished: () => {
+            if (this.#currentAdvertisementIsRewarded) {
+                this._setRewardedState(REWARDED_STATE.REWARDED)
+                this._setRewardedState(REWARDED_STATE.CLOSED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+            }
+        },
+        adError: () => {
+            this._showAdFailurePopup(this.#currentAdvertisementIsRewarded)
+        },
+    }
 
     initialize() {
         if (this._isInitialized) {
@@ -342,31 +367,64 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
             this.#ensurePaystationLoaded()
                 .then(() => this.#getXsollaToken())
-                .then((token) => {
+                .then(async (userToken) => {
+                    const orderResponse = await fetch(
+                        `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/payment/item/${sku}`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                Authorization: `Bearer ${userToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                        },
+                    )
+
+                    if (!orderResponse.ok) {
+                        throw new Error(`Xsolla create order HTTP ${orderResponse.status}`)
+                    }
+
+                    const orderData = await orderResponse.json()
+                    const paymentToken = orderData.token
+                    const orderId = orderData.order_id
+
                     const paystation = window.XPayStationWidget
                     if (!paystation) {
                         throw new Error('Xsolla Pay Station widget not loaded')
                     }
 
                     paystation.init({
-                        access_token: token,
+                        access_token: paymentToken,
                         sandbox: this.options.isSandbox || false,
                         childWindow: { target: '_blank' },
-                        settings: { external_id: sku },
                     })
 
                     let resolved = false
+                    let handleVisibilityChange
+
+                    const cleanup = () => {
+                        document.removeEventListener('visibilitychange', handleVisibilityChange)
+                    }
+
+                    handleVisibilityChange = () => {
+                        if (document.visibilityState === 'visible' && !resolved) {
+                            setTimeout(() => {
+                                if (!resolved) {
+                                    resolved = true
+                                    cleanup()
+                                    this._rejectPromiseDecorator(
+                                        ACTION_NAME.PURCHASE,
+                                        new Error('Purchase canceled/closed'),
+                                    )
+                                }
+                            }, 1500)
+                        }
+                    }
 
                     paystation.on(paystation.eventTypes.STATUS, (_evt, data) => {
                         try {
                             const info = (data && data.paymentInfo) || {}
                             if (info.status && /done|charged|success/i.test(String(info.status))) {
-                                const orderId = info.order_id || info.invoice
-                                if (!orderId) {
-                                    return
-                                }
-
-                                this.#getOrder(this.options.xsollaProjectId, orderId, token)
+                                this.#getOrder(this.options.xsollaProjectId, orderId, userToken)
                                     .then((order) => {
                                         this._platformSdk.analytics.trackOrder('xsolla', order)
 
@@ -381,17 +439,22 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
                                         if (!resolved) {
                                             resolved = true
+                                            cleanup()
                                             this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                                         }
                                     })
                                     .catch((err) => {
                                         if (!resolved) {
+                                            resolved = true
+                                            cleanup()
                                             this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
                                         }
                                     })
                             }
                         } catch (err) {
                             if (!resolved) {
+                                resolved = true
+                                cleanup()
                                 this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, err)
                             }
                         }
@@ -399,6 +462,8 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
                     paystation.on('close', () => {
                         if (!resolved) {
+                            resolved = true
+                            cleanup()
                             this._rejectPromiseDecorator(
                                 ACTION_NAME.PURCHASE,
                                 new Error('Purchase canceled/closed'),
@@ -407,6 +472,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     })
 
                     paystation.open()
+                    document.addEventListener('visibilitychange', handleVisibilityChange)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
@@ -473,12 +539,36 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
-            try {
-                this._paymentsPurchases.splice(purchaseIndex, 1)
-                this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
-            } catch (error) {
-                this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
-            }
+
+            const purchase = this._paymentsPurchases[purchaseIndex]
+            const sku = purchase.sku || purchase.id
+
+            this.#getXsollaToken()
+                .then((token) => fetch(
+                    `${XSOLLA_SDK_URL}/${this.options.xsollaProjectId}/user/inventory/item/consume`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            sku,
+                            quantity: 1,
+                        }),
+                    },
+                ))
+                .then((res) => {
+                    if (!res.ok) {
+                        throw new Error(`Xsolla consume HTTP ${res.status}`)
+                    }
+
+                    this._paymentsPurchases.splice(purchaseIndex, 1)
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                })
         }
         return promiseDecorator.promise
     }
@@ -526,31 +616,6 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    #adCallbacks = {
-        adStarted: () => {
-            if (this.#currentAdvertisementIsRewarded) {
-                this._setRewardedState(REWARDED_STATE.OPENED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
-            }
-        },
-        adFinished: () => {
-            if (this.#currentAdvertisementIsRewarded) {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-                this._setRewardedState(REWARDED_STATE.CLOSED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
-            }
-        },
-        adError: () => {
-            if (this.#currentAdvertisementIsRewarded) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            }
-        },
     }
 
     #getPlayer() {

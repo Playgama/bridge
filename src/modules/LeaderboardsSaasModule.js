@@ -15,31 +15,22 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-class PromiseDecorator {
-    get promise() {
-        return this.#promise
+import { LEADERBOARD_TYPE } from '../constants'
+import LeaderboardsModule from './LeaderboardsModule'
+import SaasRequestMixin from './mixins/SaasRequestMixin'
+
+class LeaderboardsSaasModule extends SaasRequestMixin(LeaderboardsModule) {
+    get type() {
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
-    #promise
-
-    #resolve
-
-    #reject
-
-    constructor() {
-        this.#promise = new Promise((resolve, reject) => {
-            this.#resolve = resolve
-            this.#reject = reject
-        })
+    async setScore(leaderboardId, score) {
+        return this.request.post(`leaderboards/${leaderboardId}`, { score })
     }
 
-    resolve(data) {
-        this.#resolve(data)
-    }
-
-    reject(error) {
-        this.#reject(error)
+    async getEntries(leaderboardId) {
+        return this.request.get(`leaderboards/${leaderboardId}`)
     }
 }
 
-export default PromiseDecorator
+export default LeaderboardsSaasModule

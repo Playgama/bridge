@@ -159,7 +159,7 @@ class PortalPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             })
             .catch(() => {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                this._showAdFailurePopup(false)
             })
     }
 
@@ -171,11 +171,11 @@ class PortalPlatformBridge extends PlatformBridgeBase {
                     this._setRewardedState(REWARDED_STATE.REWARDED)
                     this._setRewardedState(REWARDED_STATE.CLOSED)
                 } else {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 }
             })
             .catch(() => {
-                this._setRewardedState(REWARDED_STATE.FAILED)
+                this._showAdFailurePopup(true)
             })
     }
 

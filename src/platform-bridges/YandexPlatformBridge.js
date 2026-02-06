@@ -433,7 +433,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     if (wasShown) {
                         this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                     } else {
-                        this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                        this._showAdFailurePopup(false)
                     }
                 },
                 onError: (err) => {
@@ -456,7 +456,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     this._setRewardedState(REWARDED_STATE.CLOSED)
                 },
                 onError: () => {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 },
             },
         })

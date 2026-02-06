@@ -27,10 +27,13 @@ import {
     VISIBILITY_STATE,
     DEVICE_TYPE,
     LEADERBOARD_TYPE,
+    MODULE_NAME,
 } from '../constants'
+import analyticsModule from '../modules/AnalyticsModule'
 import PromiseDecorator from '../common/PromiseDecorator'
 import StateAggregator from '../common/StateAggregator'
-import { getGuestUser, showInfoPopup } from '../common/utils'
+import { getGuestUser, showInfoPopup, showAdFailurePopup } from '../common/utils'
+import configFileModule from '../modules/ConfigFileModule'
 
 class PlatformBridgeBase {
     get options() {
@@ -246,6 +249,8 @@ class PlatformBridgeBase {
 
     _isBannerSupported = false
 
+    _useBuiltInErrorPopup = false
+
     _paymentsPurchases = []
 
     _pauseStateAggregator = null
@@ -254,14 +259,16 @@ class PlatformBridgeBase {
 
     #promiseDecorators = { }
 
-    constructor(options) {
+    #lastAdFailurePopupTime = 0
+
+    constructor() {
         try { this._localStorage = window.localStorage } catch (e) {
             // Nothing we can do with it
         }
 
         this._visibilityState = document.visibilityState
 
-        const aggregationStates = ['interstitial', 'rewarded', 'visibility', 'platform']
+        const aggregationStates = ['interstitial', 'rewarded', 'visibility', 'platform', 'rate']
         this._pauseStateAggregator = new StateAggregator(
             aggregationStates,
             (isPaused) => this.emit(EVENT_NAME.PAUSE_STATE_CHANGED, isPaused),
@@ -284,9 +291,7 @@ class PlatformBridgeBase {
             this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
         })
 
-        if (options) {
-            this._options = { ...options }
-        }
+        this._options = configFileModule.getPlatformOptions(this.platformId)
     }
 
     initialize() {
@@ -439,13 +444,13 @@ class PlatformBridgeBase {
     preloadInterstitial() { }
 
     showInterstitial() {
-        this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+        this._showAdFailurePopup(false)
     }
 
     preloadRewarded() { }
 
     showRewarded() {
-        this._setRewardedState(REWARDED_STATE.FAILED)
+        this._showAdFailurePopup(true)
     }
 
     checkAdBlock() {
@@ -774,6 +779,51 @@ class PlatformBridgeBase {
         }
 
         return Promise.resolve()
+    }
+
+    _showAdFailurePopup(isRewarded) {
+        const showPopup = this._options?.advertisement?.useBuiltInErrorPopup ?? this._useBuiltInErrorPopup
+
+        if (!showPopup) {
+            if (isRewarded) {
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            } else {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            }
+
+            return Promise.resolve()
+        }
+
+        if (!isRewarded) {
+            const cooldown = this._options?.advertisement?.builtInErrorPopupCooldown ?? 180
+            const now = Date.now()
+            const elapsedSeconds = (now - this.#lastAdFailurePopupTime) / 1000
+
+            if (elapsedSeconds < cooldown) {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                return Promise.resolve()
+            }
+
+            this.#lastAdFailurePopupTime = now
+        }
+
+        if (isRewarded) {
+            this._setRewardedState(REWARDED_STATE.OPENED)
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_fallback_opened`)
+        } else {
+            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_fallback_opened`)
+        }
+
+        return showAdFailurePopup().then(() => {
+            if (isRewarded) {
+                analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_fallback_closed`)
+                this._setRewardedState(REWARDED_STATE.FAILED)
+            } else {
+                analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_fallback_closed`)
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            }
+        })
     }
 
     _playerApplyGuestData() {

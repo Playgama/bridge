@@ -87,7 +87,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
+            return this._isPlayerAuthorized
         }
 
         return super.isStorageAvailable(storageType)
@@ -214,6 +214,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
             if (message.playerPhoto) {
                 this._playerPhotos.push(message.playerPhoto)
             }
+            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
         }
 
         this._isInitialized = true

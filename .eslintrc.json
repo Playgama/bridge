@@ -1,7 +1,10 @@
 {
     "extends": [
-        "airbnb",
+        "airbnb-base",
         "plugin:import/typescript"
+    ],
+    "plugins": [
+        "sort-class-members"
     ],
     "globals": {
         "PLUGIN_VERSION": true,
@@ -17,6 +20,41 @@
         "ecmaVersion": 13
     },
     "rules": {
+        "sort-class-members/sort-class-members": [
+            "warn",
+            {
+                "order": [
+                    "[public-getters]",
+                    "[protected-properties]",
+                    "[private-properties]",
+                    "constructor",
+                    "[public-methods]",
+                    "[protected-methods]",
+                    "[private-methods]"
+                ],
+                "groups": {
+                    "public-getters": [
+                        { "kind": "get", "name": "/^(?!_|#).+/" }
+                    ],
+                    "protected-properties": [
+                        { "type": "property", "name": "/^_(?!_).+/" }
+                    ],
+                    "private-properties": [
+                        { "type": "property", "name": "/^#.+/" }
+                    ],
+                    "public-methods": [
+                        { "type": "method", "name": "/^(?!_|#).+/", "kind": "nonAccessor" }
+                    ],
+                    "protected-methods": [
+                        { "type": "method", "name": "/^_(?!_).+/" }
+                    ],
+                    "private-methods": [
+                        { "type": "method", "name": "/^#.+/" }
+                    ]
+                },
+                "accessorPairPositioning": "getThenSet"
+            }
+        ],
         "indent": [
             "warn",
             4,

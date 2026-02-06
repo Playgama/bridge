@@ -50,6 +50,10 @@ class PlayerModule extends ModuleBase {
             }
         }
 
+        if (!this.isAuthorizationSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.authorizePlayer(options)
     }
 }

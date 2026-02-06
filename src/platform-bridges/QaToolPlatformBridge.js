@@ -17,10 +17,12 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
+import configFileModule from '../modules/ConfigFileModule'
 import {
     PLATFORM_ID,
     MODULE_NAME,
     ACTION_NAME,
+    EVENT_NAME,
     PLATFORM_MESSAGE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
@@ -43,6 +45,12 @@ const MODULE_NAME_QA = {
     LIVENESS: 'liveness',
 }
 
+export const INTERNAL_STORAGE_POLICY = {
+    AUTHORIZED_ONLY: 'authorized_only',
+    ALWAYS: 'always',
+    NEVER: 'never',
+}
+
 export const ACTION_NAME_QA = {
     IS_STORAGE_AVAILABLE: 'is_storage_available',
     IS_STORAGE_SUPPORTED: 'is_storage_supported',
@@ -59,6 +67,9 @@ export const ACTION_NAME_QA = {
     GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
     GET_LANGUAGE: 'get_language',
     GET_PLAYER: 'get_player',
+    AUDIO_STATE: 'audio_state',
+    PAUSE_STATE: 'pause_state',
+    CLEAN_CACHE: 'clean_cache',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -236,6 +247,21 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
+            this.on(EVENT_NAME.AUDIO_STATE_CHANGED, (isEnabled) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.PLATFORM,
+                    action: ACTION_NAME_QA.AUDIO_STATE,
+                    options: { isEnabled },
+                })
+            })
+            this.on(EVENT_NAME.PAUSE_STATE_CHANGED, (isPaused) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.PLATFORM,
+                    action: ACTION_NAME_QA.PAUSE_STATE,
+                    options: { isPaused },
+                })
+            })
+
             const messageHandler = ({ data }) => {
                 if (!data?.type || data?.source === MESSAGE_SOURCE) return
 
@@ -244,12 +270,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         this.#getPlayer().then(() => {
                             this.#handleInitializeResponse(data)
                         })
-                    }
-
-                    if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
+                    } else if (data.action === ACTION_NAME_QA.AUDIO_STATE) {
+                        this.#handleAudioState(data)
+                    } else if (data.action === ACTION_NAME_QA.PAUSE_STATE) {
+                        this.#handlePauseState(data)
+                    } else if (data.action === ACTION_NAME_QA.GET_PERFORMANCE_RESOURCES) {
                         const messageId = this.#messageBroker.generateMessageId()
                         const requestedProps = data?.options?.resources || []
                         this.#getPerformanceResources(messageId, requestedProps)
+                    } else if (data.action === ACTION_NAME_QA.CLEAN_CACHE) {
+                        this.#cleanCache()
                     }
                 } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
                     this.#handleAdvertisement(data)
@@ -260,6 +290,19 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
+                payload: {
+                    engine: this.engine,
+                    version: PLUGIN_VERSION,
+                    configFile: {
+                        loadingStatus: configFileModule.loadStatus,
+                        parsingStatus: configFileModule.parseStatus,
+                        loadError: configFileModule.loadError,
+                        parseError: configFileModule.parseError,
+                        options: configFileModule.options,
+                        path: configFileModule.path,
+                        rawContent: configFileModule.rawContent,
+                    },
+                },
             })
         }
 
@@ -362,7 +405,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (
             storageType === STORAGE_TYPE.PLATFORM_INTERNAL
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_INTERNAL)
-            && this._isPlayerAuthorized
+            && this.#isPlatformInternalStorageAvailable()
         ) {
             return super.isStorageAvailable(STORAGE_TYPE.LOCAL_STORAGE)
         }
@@ -963,17 +1006,28 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this._platformTld = config.platformTld ?? super.platformTld
         this._platformPayload = config.platformPayload ?? super.platformPayload
         this._leaderboardsType = config.leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
+        this._internalStoragePolicy = config.internalStoragePolicy ?? INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY
 
         this._paymentsPurchases = data.purchases || []
 
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
 
+        this.#updateDefaultStorageType()
+
         this.#sendMessage({
             type: MODULE_NAME_QA.LIVENESS,
             action: ACTION_NAME_QA.LIVENESS_PING,
             options: { version: PLUGIN_VERSION },
         })
+    }
+
+    #handleAudioState(data) {
+        this._setAudioState(data.options.isEnabled)
+    }
+
+    #handlePauseState(data) {
+        this._setPauseState(data.options.isPaused)
     }
 
     #getPerformanceResources(messageId, requestedProps = []) {
@@ -1057,7 +1111,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._playerPhotos = [...player.photos]
                 }
                 this._playerExtra = player
-                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                this.#updateDefaultStorageType()
             } else {
                 this._playerApplyGuestData()
             }
@@ -1079,7 +1133,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                     break
                 case INTERSTITIAL_STATUS.FAILED:
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                     break
                 case INTERSTITIAL_STATUS.CLOSE:
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
@@ -1108,13 +1162,32 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     break
                 }
                 case REWARD_STATUS.FAILED: {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                     break
                 }
                 default: {
                     break
                 }
             }
+        }
+    }
+
+    #isPlatformInternalStorageAvailable() {
+        return (this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY && this._isPlayerAuthorized)
+            || this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.ALWAYS
+    }
+
+    #updateDefaultStorageType() {
+        if (this.#isPlatformInternalStorageAvailable()) {
+            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+        } else {
+            this._defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
+        }
+    }
+
+    #cleanCache() {
+        if (this.engine === 'unity') {
+            indexedDB.deleteDatabase('UnityCache')
         }
     }
 }

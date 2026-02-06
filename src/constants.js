@@ -15,6 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+export const SAAS_URL = 'https://playgama.com/api/bridge/v1'
+
 export const PLATFORM_ID = {
     VK: 'vk',
     OK: 'ok',
@@ -32,6 +34,7 @@ export const PLATFORM_ID = {
     MOCK: 'mock',
     QA_TOOL: 'qa_tool',
     MSN: 'msn',
+    MICROSOFT_STORE: 'microsoft_store',
     HUAWEI: 'huawei',
     BITQUEST: 'bitquest',
     GAMEPUSH: 'gamepush',
@@ -41,6 +44,7 @@ export const PLATFORM_ID = {
     PORTAL: 'portal',
     REDDIT: 'reddit',
     XIAOMI: 'xiaomi',
+    TIKTOK: 'tiktok',
 }
 
 export const MODULE_NAME = {

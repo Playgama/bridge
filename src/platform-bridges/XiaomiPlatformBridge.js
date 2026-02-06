@@ -47,6 +47,10 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    _useBuiltInErrorPopup = true
+
+    #showAd = () => {}
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -77,6 +81,9 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                     testMode: !!this._options.testMode,
                 }).then((showAd) => {
                     this.#showAd = showAd
+
+                    this._playerApplyGuestData()
+
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 }).catch((error) => {
@@ -135,7 +142,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
     showInterstitial(placement) {
         if (!this.#showAd) {
-            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            this._showAdFailurePopup(false)
             return
         }
 
@@ -152,7 +159,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             },
             adBreakDone: (placementInfo) => {
                 if (placementInfo.breakStatus !== 'viewed') {
-                    this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                    this._showAdFailurePopup(false)
                 }
             },
         })
@@ -160,7 +167,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
     showRewarded(placement) {
         if (!this.#showAd) {
-            this._setRewardedState(REWARDED_STATE.FAILED)
+            this._showAdFailurePopup(true)
             return
         }
 
@@ -180,7 +187,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
             adViewed: () => { this._setRewardedState(REWARDED_STATE.REWARDED) },
             adBreakDone: (placementInfo) => {
                 if (placementInfo.breakStatus === 'frequencyCapped' || placementInfo.breakStatus === 'other') {
-                    this._setRewardedState(REWARDED_STATE.FAILED)
+                    this._showAdFailurePopup(true)
                 }
             },
         })
@@ -202,8 +209,6 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
 
         return ins
     }
-
-    #showAd = () => {}
 }
 
 export default XiaomiPlatformBridge

@@ -305,19 +305,21 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     // advertisement
     #setInterstitialState(data) {
         if (Object.values(INTERSTITIAL_STATE).includes(data.state)) {
-            this._setInterstitialState(
-                data.state,
-                data.state === INTERSTITIAL_STATE.FAILED ? new Error(data) : undefined,
-            )
+            if (data.state === INTERSTITIAL_STATE.FAILED) {
+                this._showAdFailurePopup(false)
+            } else {
+                this._setInterstitialState(data.state)
+            }
         }
     }
 
     #setRewardedState(data) {
         if (Object.values(REWARDED_STATE).includes(data.state)) {
-            this._setRewardedState(
-                data.state,
-                data.state === REWARDED_STATE.FAILED ? new Error(data) : undefined,
-            )
+            if (data.state === REWARDED_STATE.FAILED) {
+                this._showAdFailurePopup(true)
+            } else {
+                this._setRewardedState(data.state)
+            }
         }
     }
 
