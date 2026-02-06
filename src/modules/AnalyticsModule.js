@@ -244,6 +244,7 @@ class AnalyticsModule extends ModuleBase {
             [PLATFORM_ID.HUAWEI]: 'appId',
             [PLATFORM_ID.DISCORD]: 'appId',
             [PLATFORM_ID.GAMEPUSH]: 'projectId',
+            [PLATFORM_ID.MICROSOFT_STORE]: 'gameId',
         }
 
         const optionKey = optionKeyMap[platformId]
