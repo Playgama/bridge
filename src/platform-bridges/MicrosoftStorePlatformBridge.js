@@ -444,7 +444,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        this.playerExtra = data.data
+        this._playerExtra = data.data
 
         this._isPlayerAuthorized = true
         this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
