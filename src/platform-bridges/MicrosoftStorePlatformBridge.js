@@ -444,10 +444,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        const payload = data.data || {}
-
-        // eslint-disable-next-line no-console
-        console.log('Authorized player data:', payload)
+        this.playerExtra = data.data
 
         this._isPlayerAuthorized = true
         this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
