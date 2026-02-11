@@ -38,6 +38,10 @@ class SocialModule extends ModuleBase {
         return this._platformBridge.isAddToHomeScreenSupported
     }
 
+    get isHomeScreenShortcutRewardSupported() {
+        return this._platformBridge.isHomeScreenShortcutRewardSupported
+    }
+
     get isAddToFavoritesSupported() {
         return this._platformBridge.isAddToFavoritesSupported
     }

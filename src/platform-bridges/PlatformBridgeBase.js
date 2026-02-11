@@ -164,6 +164,10 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isHomeScreenShortcutRewardSupported() {
+        return false
+    }
+
     get isAddToFavoritesSupported() {
         return false
     }

@@ -77,6 +77,14 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    get isHomeScreenShortcutRewardSupported() {
+        if (this._platformSdk && this._platformSdk.canIUse('getShortcutMissionReward')) {
+            return true
+        }
+
+        return false
+    }
+
     // device
     get deviceType() {
         if (this.#systemInfo) {
