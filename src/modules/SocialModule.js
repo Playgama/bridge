@@ -38,8 +38,8 @@ class SocialModule extends ModuleBase {
         return this._platformBridge.isAddToHomeScreenSupported
     }
 
-    get isHomeScreenShortcutRewardSupported() {
-        return this._platformBridge.isHomeScreenShortcutRewardSupported
+    get isAddToHomeScreenRewardSupported() {
+        return this._platformBridge.isAddToHomeScreenRewardSupported
     }
 
     get isAddToFavoritesSupported() {
@@ -102,8 +102,8 @@ class SocialModule extends ModuleBase {
         return this._platformBridge.addToHomeScreen()
     }
 
-    getHomeScreenShortcutMissionReward() {
-        return this._platformBridge.getHomeScreenShortcutMissionReward()
+    getAddToHomeScreenReward() {
+        return this._platformBridge.getAddToHomeScreenReward()
     }
 
     addToFavorites() {

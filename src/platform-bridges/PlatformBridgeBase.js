@@ -164,7 +164,7 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isHomeScreenShortcutRewardSupported() {
+    get isAddToHomeScreenRewardSupported() {
         return false
     }
 
@@ -513,7 +513,7 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    getHomeScreenShortcutMissionReward() {
+    getAddToHomeScreenReward() {
         return Promise.reject()
     }
 

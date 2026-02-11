@@ -77,7 +77,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    get isHomeScreenShortcutRewardSupported() {
+    get isAddToHomeScreenRewardSupported() {
         if (this._platformSdk && this._platformSdk.canIUse('getShortcutMissionReward')) {
             return true
         }
@@ -345,15 +345,19 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getHomeScreenShortcutMissionReward() {
+    getAddToHomeScreenReward() {
         if (!this._platformSdk || !this._platformSdk.canIUse('getShortcutMissionReward')) {
             return Promise.reject()
         }
 
         return new Promise((resolve, reject) => {
             this._platformSdk.getShortcutMissionReward({
-                success: (res) => {
-                    resolve(res?.canReceiveReward ?? false)
+                success: (result) => {
+                    if (result?.canReceiveReward) {
+                        resolve()
+                    } else {
+                        reject()
+                    }
                 },
                 fail: () => {
                     reject()
