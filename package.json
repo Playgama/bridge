@@ -1,12 +1,13 @@
 {
     "name": "playgama-bridge",
-    "version": "1.28.0",
+    "version": "1.29.0-preview.1",
     "description": "One SDK for cross-platform publishing HTML5 games",
     "main": "index.js",
     "scripts": {
         "build": "npm run build:bundled",
         "build:dynamic": "webpack --config-name dynamic",
         "build:bundled": "webpack --config-name bundled",
+        "build:platform": "node scripts/build-platform.js",
         "develop": "webpack --mode=development",
         "dev": "webpack serve --mode=development --config-name dynamic",
         "test": "vitest run",

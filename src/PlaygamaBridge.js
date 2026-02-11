@@ -258,52 +258,56 @@ class PlaygamaBridge {
     async #createPlatformBridge() {
         let platformId = PLATFORM_ID.MOCK
 
-        const url = new URL(window.location.href)
-
-        if (configFileModule.options.forciblySetPlatformId) {
-            platformId = this.#getPlatformId(configFileModule.options.forciblySetPlatformId.toLowerCase())
+        if (__TARGET_PLATFORM__) {
+            platformId = __TARGET_PLATFORM__
         } else {
-            const yandexUrl = ['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')
-            if (url.searchParams.has('platform_id')) {
-                platformId = this.#getPlatformId(url.searchParams.get('platform_id').toLowerCase())
-            } else if (url.hostname.includes(yandexUrl) || url.hash.includes('yandex')) {
-                platformId = PLATFORM_ID.YANDEX
-            } else if (url.hostname.includes('crazygames.') || url.hostname.includes('1001juegos.com')) {
-                platformId = PLATFORM_ID.CRAZY_GAMES
-            } else if (url.hostname.includes('gamedistribution.com')) {
-                platformId = PLATFORM_ID.GAME_DISTRIBUTION
-            } else if (url.hostname.includes('lagged.')) {
-                platformId = PLATFORM_ID.LAGGED
-            } else if ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key')) || url.searchParams.has('vk_app_id')) {
-                platformId = PLATFORM_ID.VK
-            } else if (url.searchParams.has('app_id') && url.searchParams.has('player_id') && url.searchParams.has('game_sid') && url.searchParams.has('auth_key')) {
-                platformId = PLATFORM_ID.ABSOLUTE_GAMES
-            } else if (url.searchParams.has('playdeck')) {
-                platformId = PLATFORM_ID.PLAYDECK
-            } else if (url.hash.includes('tgWebAppData')) {
-                platformId = PLATFORM_ID.TELEGRAM
-            } else if (url.hostname.includes('y8')) {
-                platformId = PLATFORM_ID.Y8
-            } else if (url.hostname.includes('fbsbx')) {
-                platformId = PLATFORM_ID.FACEBOOK
-            } else if (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content')) {
-                platformId = PLATFORM_ID.POKI
-            } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
-                platformId = PLATFORM_ID.MSN
-            } else if (url.hash.includes('customUrl_') || document.referrer.includes('bitquest')) {
-                platformId = PLATFORM_ID.BITQUEST
-            } else if (url.hostname.includes('eponesh.')) {
-                platformId = PLATFORM_ID.GAMEPUSH
-            } else if (url.hostname.includes('discordsays.com')) {
-                platformId = PLATFORM_ID.DISCORD
-            } else if (url.hostname.includes('usercontent.goog')) {
-                platformId = PLATFORM_ID.YOUTUBE
-            } else if (url.hostname.includes('portalapp.')) {
-                platformId = PLATFORM_ID.PORTAL
-            } else if (url.hostname.includes('devvit.')) {
-                platformId = PLATFORM_ID.REDDIT
-            } else if (typeof window.TTMinis !== 'undefined') {
-                platformId = PLATFORM_ID.TIKTOK
+            const url = new URL(window.location.href)
+
+            if (configFileModule.options.forciblySetPlatformId) {
+                platformId = this.#getPlatformId(configFileModule.options.forciblySetPlatformId.toLowerCase())
+            } else {
+                const yandexUrl = ['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')
+                if (url.searchParams.has('platform_id')) {
+                    platformId = this.#getPlatformId(url.searchParams.get('platform_id').toLowerCase())
+                } else if (url.hostname.includes(yandexUrl) || url.hash.includes('yandex')) {
+                    platformId = PLATFORM_ID.YANDEX
+                } else if (url.hostname.includes('crazygames.') || url.hostname.includes('1001juegos.com')) {
+                    platformId = PLATFORM_ID.CRAZY_GAMES
+                } else if (url.hostname.includes('gamedistribution.com')) {
+                    platformId = PLATFORM_ID.GAME_DISTRIBUTION
+                } else if (url.hostname.includes('lagged.')) {
+                    platformId = PLATFORM_ID.LAGGED
+                } else if ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key')) || url.searchParams.has('vk_app_id')) {
+                    platformId = PLATFORM_ID.VK
+                } else if (url.searchParams.has('app_id') && url.searchParams.has('player_id') && url.searchParams.has('game_sid') && url.searchParams.has('auth_key')) {
+                    platformId = PLATFORM_ID.ABSOLUTE_GAMES
+                } else if (url.searchParams.has('playdeck')) {
+                    platformId = PLATFORM_ID.PLAYDECK
+                } else if (url.hash.includes('tgWebAppData')) {
+                    platformId = PLATFORM_ID.TELEGRAM
+                } else if (url.hostname.includes('y8')) {
+                    platformId = PLATFORM_ID.Y8
+                } else if (url.hostname.includes('fbsbx')) {
+                    platformId = PLATFORM_ID.FACEBOOK
+                } else if (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content')) {
+                    platformId = PLATFORM_ID.POKI
+                } else if (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg')) {
+                    platformId = PLATFORM_ID.MSN
+                } else if (url.hash.includes('customUrl_') || document.referrer.includes('bitquest')) {
+                    platformId = PLATFORM_ID.BITQUEST
+                } else if (url.hostname.includes('eponesh.')) {
+                    platformId = PLATFORM_ID.GAMEPUSH
+                } else if (url.hostname.includes('discordsays.com')) {
+                    platformId = PLATFORM_ID.DISCORD
+                } else if (url.hostname.includes('usercontent.goog')) {
+                    platformId = PLATFORM_ID.YOUTUBE
+                } else if (url.hostname.includes('portalapp.')) {
+                    platformId = PLATFORM_ID.PORTAL
+                } else if (url.hostname.includes('devvit.')) {
+                    platformId = PLATFORM_ID.REDDIT
+                } else if (typeof window.TTMinis !== 'undefined') {
+                    platformId = PLATFORM_ID.TIKTOK
+                }
             }
         }
 

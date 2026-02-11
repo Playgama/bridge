@@ -18,8 +18,7 @@ class CleanPlatformsPlugin {
     }
 }
 
-const dynamicConfig = {
-    name: 'dynamic',
+const createConfig = (targetPlatform = '') => ({
     mode: 'production',
     entry: './src/index.js',
     output: {
@@ -81,23 +80,55 @@ const dynamicConfig = {
         new webpack.DefinePlugin({
             PLUGIN_VERSION: JSON.stringify(packageJson.version),
             PLUGIN_NAME: JSON.stringify(packageJson.name),
+            __TARGET_PLATFORM__: JSON.stringify(targetPlatform),
         }),
     ],
     devServer: {
         port: 3535,
     },
-}
+})
 
-// Bundled build - everything in one file
-const bundledConfig = {
-    ...dynamicConfig,
-    name: 'bundled',
-    plugins: [
-        ...dynamicConfig.plugins,
-        new webpack.optimize.LimitChunkCountPlugin({
-            maxChunks: 1,
-        }),
-    ],
-}
+module.exports = (env = {}) => {
+    const targetPlatform = env.platform || ''
 
-module.exports = [dynamicConfig, bundledConfig]
+    if (targetPlatform) {
+        return {
+            ...createConfig(targetPlatform),
+            name: 'platform',
+            output: {
+                filename: 'playgama-bridge.js',
+                path: path.resolve(__dirname, `dist`),
+                publicPath: 'auto',
+            },
+            plugins: [
+                ...createConfig(targetPlatform).plugins,
+                new webpack.optimize.LimitChunkCountPlugin({
+                    maxChunks: 1,
+                }),
+            ],
+        }
+    }
+
+    const baseConfig = createConfig('')
+
+    const dynamicConfig = {
+        ...baseConfig,
+        name: 'dynamic',
+        plugins: [
+            ...baseConfig.plugins,
+        ],
+    }
+
+    const bundledConfig = {
+        ...baseConfig,
+        name: 'bundled',
+        plugins: [
+            ...baseConfig.plugins,
+            new webpack.optimize.LimitChunkCountPlugin({
+                maxChunks: 1,
+            }),
+        ],
+    }
+
+    return [dynamicConfig, bundledConfig]
+}

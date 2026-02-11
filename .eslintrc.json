@@ -8,7 +8,8 @@
     ],
     "globals": {
         "PLUGIN_VERSION": true,
-        "PLUGIN_NAME": true
+        "PLUGIN_NAME": true,
+        "__TARGET_PLATFORM__": true
     },
     "env": {
         "browser": true
