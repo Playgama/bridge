@@ -514,7 +514,7 @@ class PlatformBridgeBase {
     }
 
     getHomeScreenShortcutMissionReward() {
-        return Promise.resolve(false)
+        return Promise.reject()
     }
 
     addToFavorites() {

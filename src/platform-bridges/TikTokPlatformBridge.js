@@ -347,16 +347,16 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
 
     getHomeScreenShortcutMissionReward() {
         if (!this._platformSdk || !this._platformSdk.canIUse('getShortcutMissionReward')) {
-            return Promise.resolve(false)
+            return Promise.reject()
         }
 
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             this._platformSdk.getShortcutMissionReward({
                 success: (res) => {
                     resolve(res?.canReceiveReward ?? false)
                 },
                 fail: () => {
-                    resolve(false)
+                    reject()
                 },
             })
         })
