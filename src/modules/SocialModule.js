@@ -98,6 +98,10 @@ class SocialModule extends ModuleBase {
         return this._platformBridge.addToHomeScreen()
     }
 
+    getHomeScreenShortcutMissionReward() {
+        return this._platformBridge.getHomeScreenShortcutMissionReward()
+    }
+
     addToFavorites() {
         return this._platformBridge.addToFavorites()
     }

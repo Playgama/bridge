@@ -509,6 +509,10 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
+    getHomeScreenShortcutMissionReward() {
+        return Promise.resolve(false)
+    }
+
     addToFavorites() {
         return Promise.reject()
     }

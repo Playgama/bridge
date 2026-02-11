@@ -337,6 +337,23 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    getHomeScreenShortcutMissionReward() {
+        if (!this._platformSdk || !this._platformSdk.canIUse('getShortcutMissionReward')) {
+            return Promise.resolve(false)
+        }
+
+        return new Promise((resolve) => {
+            this._platformSdk.getShortcutMissionReward({
+                success: (res) => {
+                    resolve(res?.canReceiveReward ?? false)
+                },
+                fail: () => {
+                    resolve(false)
+                },
+            })
+        })
+    }
+
     #getStorageItem(key, tryParseJson) {
         return new Promise((resolve, reject) => {
             this._platformSdk.getStorage({
