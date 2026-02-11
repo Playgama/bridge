@@ -47,8 +47,6 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    _useAdvertisementErrorPopup = true
-
     #showAd = () => {}
 
     initialize() {
