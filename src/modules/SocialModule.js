@@ -38,6 +38,10 @@ class SocialModule extends ModuleBase {
         return this._platformBridge.isAddToHomeScreenSupported
     }
 
+    get isAddToHomeScreenRewardSupported() {
+        return this._platformBridge.isAddToHomeScreenRewardSupported
+    }
+
     get isAddToFavoritesSupported() {
         return this._platformBridge.isAddToFavoritesSupported
     }
@@ -96,6 +100,14 @@ class SocialModule extends ModuleBase {
 
     addToHomeScreen() {
         return this._platformBridge.addToHomeScreen()
+    }
+
+    getAddToHomeScreenReward() {
+        if (!this._platformBridge.isAddToHomeScreenRewardSupported) {
+            return Promise.reject()
+        }
+
+        return this._platformBridge.getAddToHomeScreenReward()
     }
 
     addToFavorites() {

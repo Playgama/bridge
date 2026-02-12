@@ -164,6 +164,10 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isAddToHomeScreenRewardSupported() {
+        return false
+    }
+
     get isAddToFavoritesSupported() {
         return false
     }
@@ -506,6 +510,10 @@ class PlatformBridgeBase {
     }
 
     addToHomeScreen() {
+        return Promise.reject()
+    }
+
+    getAddToHomeScreenReward() {
         return Promise.reject()
     }
 

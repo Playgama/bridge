@@ -77,6 +77,14 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    get isAddToHomeScreenRewardSupported() {
+        if (this._platformSdk && this._platformSdk.canIUse('getShortcutMissionReward')) {
+            return true
+        }
+
+        return false
+    }
+
     // device
     get deviceType() {
         if (this.#systemInfo) {
@@ -335,6 +343,23 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    getAddToHomeScreenReward() {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.getShortcutMissionReward({
+                success: (result) => {
+                    if (result?.canReceiveReward) {
+                        resolve()
+                    } else {
+                        reject()
+                    }
+                },
+                fail: () => {
+                    reject()
+                },
+            })
+        })
     }
 
     #getStorageItem(key, tryParseJson) {
