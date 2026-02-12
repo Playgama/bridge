@@ -103,6 +103,10 @@ class SocialModule extends ModuleBase {
     }
 
     getAddToHomeScreenReward() {
+        if (!this._platformBridge.isAddToHomeScreenRewardSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.getAddToHomeScreenReward()
     }
 
