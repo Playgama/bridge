@@ -85,6 +85,22 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    get isAddToFavoritesSupported() {
+        if (this._platformSdk && this._platformSdk.canIUse('startEntranceMission')) {
+            return true
+        }
+
+        return false
+    }
+
+    get isAddToFavoritesRewardSupported() {
+        if (this._platformSdk && this._platformSdk.canIUse('getEntranceMissionReward')) {
+            return true
+        }
+
+        return false
+    }
+
     // device
     get deviceType() {
         if (this.#systemInfo) {
@@ -348,6 +364,45 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     getAddToHomeScreenReward() {
         return new Promise((resolve, reject) => {
             this._platformSdk.getShortcutMissionReward({
+                success: (result) => {
+                    if (result?.canReceiveReward) {
+                        resolve()
+                    } else {
+                        reject()
+                    }
+                },
+                fail: () => {
+                    reject()
+                },
+            })
+        })
+    }
+
+    addToFavorites() {
+        if (!this.isAddToFavoritesSupported) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
+
+            this._platformSdk.startEntranceMission({
+                success: () => {
+                    this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
+                },
+                fail: (error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES, error)
+                },
+            })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    getAddToFavoritesReward() {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.getEntranceMissionReward({
                 success: (result) => {
                     if (result?.canReceiveReward) {
                         resolve()

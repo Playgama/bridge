@@ -46,6 +46,10 @@ class SocialModule extends ModuleBase {
         return this._platformBridge.isAddToFavoritesSupported
     }
 
+    get isAddToFavoritesRewardSupported() {
+        return this._platformBridge.isAddToFavoritesRewardSupported
+    }
+
     get isRateSupported() {
         return this._platformBridge.isRateSupported
     }
@@ -112,6 +116,14 @@ class SocialModule extends ModuleBase {
 
     addToFavorites() {
         return this._platformBridge.addToFavorites()
+    }
+
+    getAddToFavoritesReward() {
+        if (!this._platformBridge.isAddToFavoritesRewardSupported) {
+            return Promise.reject()
+        }
+
+        return this._platformBridge.getAddToFavoritesReward()
     }
 
     rate() {
