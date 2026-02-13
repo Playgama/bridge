@@ -172,6 +172,10 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isAddToFavoritesRewardSupported() {
+        return false
+    }
+
     get isRateSupported() {
         return false
     }
@@ -518,6 +522,10 @@ class PlatformBridgeBase {
     }
 
     addToFavorites() {
+        return Promise.reject()
+    }
+
+    getAddToFavoritesReward() {
         return Promise.reject()
     }
 
