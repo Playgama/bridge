@@ -481,7 +481,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     #purchase(data) {
-        if (!data?.success) {
+        if (!data?.success || !data.data) {
             this._rejectPromiseDecorator(
                 ACTION_NAME.PURCHASE,
                 new Error(data),
@@ -491,13 +491,13 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
         const products = this._paymentsGetProductsPlatformData()
         const product = products.find(
-            (p) => p.platformProductId === data.data?.id,
+            (p) => p.platformProductId === data.data.id,
         )
 
         const mergedPurchase = {
+            ...data.data,
             id: product?.id,
-            platformProductId: data.data?.id,
-            status: data.data?.status,
+            platformProductId: data.data.id,
         }
 
         this._paymentsPurchases.push(mergedPurchase)
