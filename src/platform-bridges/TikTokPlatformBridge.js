@@ -102,6 +102,19 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     }
 
     // device
+    get safeArea() {
+        if (this.#menuButtonRect) {
+            return {
+                top: this.#menuButtonRect.bottom,
+                bottom: 0,
+                left: 0,
+                right: 0,
+            }
+        }
+
+        return null
+    }
+
     get deviceType() {
         if (this.#systemInfo) {
             const { platform } = this.#systemInfo
@@ -119,6 +132,8 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     }
 
     #systemInfo = null
+
+    #menuButtonRect = null
 
     initialize() {
         if (this._isInitialized) {
@@ -145,6 +160,10 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
 
                 if (this._platformSdk.canIUse('getSystemInfoSync')) {
                     this.#systemInfo = this._platformSdk.getSystemInfoSync()
+                }
+
+                if (this._platformSdk.canIUse('getMenuButtonBoundingClientRect')) {
+                    this.#menuButtonRect = this._platformSdk.getMenuButtonBoundingClientRect()
                 }
 
                 if (this._platformSdk.canIUse('onShow')) {

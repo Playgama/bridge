@@ -30,7 +30,7 @@ class DeviceModule extends ModuleBase {
     }
 
     get safeArea() {
-        return getSafeArea()
+        return this._platformBridge.safeArea ?? getSafeArea()
     }
 
     #currentOrientation = null
