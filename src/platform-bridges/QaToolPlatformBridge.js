@@ -678,7 +678,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // payments
-    paymentsPurchase(id) {
+    paymentsPurchase(id, options) {
         if (!this.isPaymentsSupported) {
             return Promise.reject()
         }
@@ -686,6 +686,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         const product = this._paymentsGetProductPlatformData(id)
         if (!product) {
             return Promise.reject()
+        }
+
+        if (options && options.externalId) {
+            product.externalId = options.externalId
+        }
+
+        if (!product.externalId) {
+            product.externalId = this._paymentsGenerateTransactionId(id)
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
