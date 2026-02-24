@@ -442,10 +442,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     productId: this._options.gameId,
                 })
 
-                if (response.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
-                    throw new Error(response.description)
-                }
-
                 const products = this._paymentsGetProductsPlatformData()
                 this._paymentsPurchases = response.receipts.map((purchase) => {
                     const product = products.find((p) => p.platformProductId === purchase.productId)
@@ -460,7 +456,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
                 this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
             } catch (error) {
-                this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                if (error.code === 'IAP_GET_ALL_PURCHASES_FAILURE') {
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, [])
+                } else {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                }
             }
         }
 
