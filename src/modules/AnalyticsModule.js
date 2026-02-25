@@ -276,6 +276,10 @@ class AnalyticsModule extends ModuleBase {
             }
 
             if (platformId === PLATFORM_ID.PLAYGAMA) {
+                if (parsedUrl.searchParams.get('game_id')) {
+                    return parsedUrl.searchParams.get('game_id')
+                }
+
                 const match = parsedUrl.hostname.match(/^([a-z0-9-]+)\.games\.playgama\.net$/i)
                 if (match) {
                     return match[1]
