@@ -39,6 +39,7 @@ class GameModule extends ModuleBase {
 
         if (!this._platformBridge.options.disableLoadingLogo) {
             const showFullLogo = this._platformBridge.platformId === PLATFORM_ID.YANDEX
+                || this._platformBridge.platformId === PLATFORM_ID.Y8
                 ? false
                 : this._platformBridge.options.showFullLoadingLogo
             createProgressLogo(showFullLogo)
