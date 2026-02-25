@@ -8,8 +8,7 @@
     ],
     "globals": {
         "PLUGIN_VERSION": true,
-        "PLUGIN_NAME": true,
-        "__TARGET_PLATFORM__": true
+        "PLUGIN_NAME": true
     },
     "env": {
         "browser": true
@@ -97,5 +96,13 @@
                 ]
             }
         ]
-    }
+    },
+    "overrides": [
+        {
+            "files": ["src/platformImports.js", "src/PlaygamaBridge.js"],
+            "rules": {
+                "no-undef": "off"
+            }
+        }
+    ]
 }

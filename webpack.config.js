@@ -4,6 +4,7 @@ const webpack = require('webpack')
 const ESLintPlugin = require('eslint-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 const packageJson = require('./package.json')
+const { ALL_PLATFORM_IDS } = require('./scripts/platforms')
 
 const platformDirName = 'platform-bridges'
 
@@ -18,7 +19,16 @@ class CleanPlatformsPlugin {
     }
 }
 
-const createConfig = (targetPlatform = '') => ({
+const createPlatformDefines = (targetPlatforms) => {
+    const includeAll = targetPlatforms.length === 0
+    const defines = {}
+    for (const id of ALL_PLATFORM_IDS) {
+        defines[`__INCLUDE_${id.toUpperCase()}__`] = includeAll || targetPlatforms.includes(id)
+    }
+    return defines
+}
+
+const createConfig = (targetPlatforms = [], { noLint = false } = {}) => ({
     mode: 'production',
     entry: './src/index.js',
     output: {
@@ -76,11 +86,11 @@ const createConfig = (targetPlatform = '') => ({
     },
     plugins: [
         new CleanPlatformsPlugin(),
-        new ESLintPlugin(),
+        ...noLint ? [] : [new ESLintPlugin()],
         new webpack.DefinePlugin({
             PLUGIN_VERSION: JSON.stringify(packageJson.version),
             PLUGIN_NAME: JSON.stringify(packageJson.name),
-            __TARGET_PLATFORM__: JSON.stringify(targetPlatform),
+            ...createPlatformDefines(targetPlatforms),
         }),
     ],
     devServer: {
@@ -90,10 +100,13 @@ const createConfig = (targetPlatform = '') => ({
 
 module.exports = (env = {}) => {
     const targetPlatform = env.platform || ''
+    const targetPlatforms = targetPlatform ? targetPlatform.split(',') : []
+    const noLint = Boolean(env.noLint)
 
-    if (targetPlatform) {
+    if (targetPlatforms.length > 0) {
+        const config = createConfig(targetPlatforms, { noLint })
         return {
-            ...createConfig(targetPlatform),
+            ...config,
             name: 'platform',
             output: {
                 filename: 'playgama-bridge.js',
@@ -101,7 +114,7 @@ module.exports = (env = {}) => {
                 publicPath: 'auto',
             },
             plugins: [
-                ...createConfig(targetPlatform).plugins,
+                ...config.plugins,
                 new webpack.optimize.LimitChunkCountPlugin({
                     maxChunks: 1,
                 }),
@@ -109,7 +122,7 @@ module.exports = (env = {}) => {
         }
     }
 
-    const baseConfig = createConfig('')
+    const baseConfig = createConfig([], { noLint })
 
     const dynamicConfig = {
         ...baseConfig,
