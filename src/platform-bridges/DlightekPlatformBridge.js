@@ -28,7 +28,7 @@ import {
 } from '../constants'
 import { addJavaScript, createAdvertisementBannerContainer } from '../common/utils'
 
-const DEFAULT_SDK_URL = 'https://www.hippoobox.com/static/sdk/adsdk_1.9.5.js'
+const SDK_URL = 'https://www.hippoobox.com/static/sdk/adsdk_1.9.5.js'
 const INIT_TIMEOUT = 5000
 
 class DlightekPlatformBridge extends PlatformBridgeBase {
@@ -67,9 +67,7 @@ class DlightekPlatformBridge extends PlatformBridgeBase {
                     ERROR.GAME_PARAMS_NOT_FOUND,
                 )
             } else {
-                const sdkUrl = this._options.sdkUrl || DEFAULT_SDK_URL
-
-                addJavaScript(sdkUrl)
+                addJavaScript(SDK_URL)
                     .then(() => {
                         if (!window.h5sdk) {
                             throw new Error('Dlightek SDK not found')
@@ -85,7 +83,7 @@ class DlightekPlatformBridge extends PlatformBridgeBase {
 
                         const adsenseOptions = {
                             client: this._options.adSenseId,
-                            'data-ad-frequency-hint': this._options.adFrequencyHint || '45s',
+                            'data-ad-frequency-hint': '45s',
                             callback: () => {
                                 this._platformSdk.adConfig({
                                     preloadAdBreaks: 'on',
