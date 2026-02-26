@@ -61,6 +61,16 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
             waitFor('GameSnacks').then(() => {
                 this._platformSdk = window.GameSnacks
                 this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+                this._platformSdk.game.onPause(() => {
+                    this._setPauseState(true)
+                })
+
+                this._platformSdk.game.onResume(() => {
+                    this._setPauseState(false)
+                })
+
+                this._platformSdk.game.firstFrameReady()
                 this._isInitialized = true
                 this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
             })
