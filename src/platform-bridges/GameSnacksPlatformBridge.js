@@ -21,6 +21,8 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     PLATFORM_MESSAGE,
+    INTERSTITIAL_STATE,
+    REWARDED_STATE,
 } from '../constants'
 
 class GameSnacksPlatformBridge extends PlatformBridgeBase {
@@ -28,6 +30,17 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
     get platformId() {
         return PLATFORM_ID.GAMESNACKS
     }
+
+    // advertisement
+    get isInterstitialSupported() {
+        return true
+    }
+
+    get isRewardedSupported() {
+        return true
+    }
+
+    _isBannerSupported = false
 
     initialize() {
         if (this._isInitialized) {
@@ -59,6 +72,56 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 return super.sendMessage(message)
             }
         }
+    }
+
+    // advertisement
+    showInterstitial(placement) {
+        this._platformSdk.ad.break({
+            type: 'next',
+            name: placement || 'interstitial',
+            beforeAd: () => {
+                this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            },
+            afterAd: () => {
+                if (this.interstitialState !== INTERSTITIAL_STATE.FAILED) {
+                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                }
+            },
+            adBreakDone: (placementInfo) => {
+                if (placementInfo?.breakStatus !== 'viewed') {
+                    this._showAdFailurePopup(false)
+                }
+            },
+        })
+    }
+
+    showRewarded(placement) {
+        this._platformSdk.ad.break({
+            type: 'reward',
+            name: placement || 'rewarded',
+            beforeAd: () => {
+                this._setRewardedState(REWARDED_STATE.OPENED)
+            },
+            afterAd: () => {
+                if (this.rewardedState !== REWARDED_STATE.FAILED) {
+                    this._setRewardedState(REWARDED_STATE.CLOSED)
+                }
+            },
+            beforeReward: (showAdFn) => {
+                showAdFn()
+            },
+            adDismissed: () => {
+                this._showAdFailurePopup(true)
+            },
+            adViewed: () => {
+                this._setRewardedState(REWARDED_STATE.REWARDED)
+            },
+            adBreakDone: (placementInfo) => {
+                if (placementInfo?.breakStatus === 'frequencyCapped' || placementInfo?.breakStatus === 'other') {
+                    this._showAdFailurePopup(true)
+                }
+            },
+        })
     }
 }
 
