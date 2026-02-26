@@ -70,14 +70,27 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
     }
 
     // platform
-    sendMessage(message) {
+    sendMessage(message, options = {}) {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
                 this._platformSdk.game.ready()
                 return Promise.resolve()
             }
+            case PLATFORM_MESSAGE.GAME_OVER: {
+                this._platformSdk.game.gameOver()
+                return Promise.resolve()
+            }
+            case PLATFORM_MESSAGE.LEVEL_COMPLETE: {
+                const level = Number(options.level)
+                if (!Number.isFinite(level)) {
+                    return Promise.reject(new Error('Level is required for level_complete message'))
+                }
+
+                this._platformSdk.game.levelComplete(level)
+                return Promise.resolve()
+            }
             default: {
-                return super.sendMessage(message)
+                return super.sendMessage(message, options)
             }
         }
     }

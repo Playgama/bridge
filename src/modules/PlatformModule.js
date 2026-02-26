@@ -75,7 +75,7 @@ class PlatformModule extends ModuleBase {
         )
     }
 
-    sendMessage(message) {
+    sendMessage(message, options = {}) {
         let data = {}
 
         if (message === PLATFORM_MESSAGE.GAME_READY) {
@@ -97,15 +97,20 @@ class PlatformModule extends ModuleBase {
 
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY:
+            case PLATFORM_MESSAGE.LEVEL_COMPLETE:
             case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
             case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
+            case PLATFORM_MESSAGE.GAME_OVER:
+                if (message === PLATFORM_MESSAGE.LEVEL_COMPLETE && options.level !== undefined) {
+                    data.level = options.level
+                }
                 analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
                 break
             default:
                 break
         }
 
-        return this._platformBridge.sendMessage(message)
+        return this._platformBridge.sendMessage(message, options)
     }
 
     getServerTime() {

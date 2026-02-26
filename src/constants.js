@@ -132,6 +132,7 @@ export const ORIENTATION_OVERLAY_ID = 'bridge-orientation-overlay'
 
 export const PLATFORM_MESSAGE = {
     GAME_READY: 'game_ready',
+    LEVEL_COMPLETE: 'level_complete',
     IN_GAME_LOADING_STARTED: 'in_game_loading_started',
     IN_GAME_LOADING_STOPPED: 'in_game_loading_stopped',
     GAMEPLAY_STARTED: 'gameplay_started',
