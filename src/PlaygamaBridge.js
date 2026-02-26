@@ -302,6 +302,8 @@ class PlaygamaBridge {
             platformId = PLATFORM_ID.REDDIT
         } else if (__INCLUDE_TIKTOK__ && typeof window.TTMinis !== 'undefined') {
             platformId = PLATFORM_ID.TIKTOK
+        } else if (__INCLUDE_GAMESNACKS__ && typeof window.GameSnacks !== 'undefined') {
+            platformId = PLATFORM_ID.GAMESNACKS
         }
 
         const PlatformBridge = await fetchPlatformBridge(platformId)
