@@ -334,9 +334,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    sendMessage(message) {
+    sendMessage(message, options = {}) {
         const actions = [
             PLATFORM_MESSAGE.GAME_READY,
+            PLATFORM_MESSAGE.LEVEL_COMPLETED,
             PLATFORM_MESSAGE.IN_GAME_LOADING_STARTED,
             PLATFORM_MESSAGE.IN_GAME_LOADING_STOPPED,
             PLATFORM_MESSAGE.GAMEPLAY_STARTED,
@@ -349,12 +350,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: message,
+                options,
             })
 
             return Promise.resolve()
         }
 
-        return super.sendMessage(message)
+        return super.sendMessage(message, options)
     }
 
     getServerTime() {
