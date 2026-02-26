@@ -133,6 +133,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     _isJoinCommunitySupported = false
 
+    _useAdvertisementErrorPopup = true
+
     #leaderboardClicked = false
 
     initialize() {
@@ -323,7 +325,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                 this.#preloadInterstitial(placement, true)
             })
-            .catch(() => this._advertisementShowErrorPopup(false))
+            .catch(() => this._showAdFailurePopup(false))
     }
 
     preloadRewarded(placement) {
@@ -341,7 +343,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 this._setRewardedState(REWARDED_STATE.CLOSED)
                 this.#preloadRewarded(placement, true)
             })
-            .catch(() => this._advertisementShowErrorPopup(true))
+            .catch(() => this._showAdFailurePopup(true))
     }
 
     // leaderboards
