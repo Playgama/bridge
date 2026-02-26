@@ -97,11 +97,11 @@ class PlatformModule extends ModuleBase {
 
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY:
-            case PLATFORM_MESSAGE.LEVEL_COMPLETE:
+            case PLATFORM_MESSAGE.LEVEL_COMPLETED:
             case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
             case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
             case PLATFORM_MESSAGE.GAME_OVER:
-                if (message === PLATFORM_MESSAGE.LEVEL_COMPLETE && options.level !== undefined) {
+                if (message === PLATFORM_MESSAGE.LEVEL_COMPLETED && options.level !== undefined) {
                     data.level = options.level
                 }
                 analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)

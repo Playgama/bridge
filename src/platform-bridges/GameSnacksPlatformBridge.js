@@ -90,10 +90,10 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk.game.gameOver()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.LEVEL_COMPLETE: {
+            case PLATFORM_MESSAGE.LEVEL_COMPLETED: {
                 const level = Number(options.level)
                 if (!Number.isFinite(level)) {
-                    return Promise.reject(new Error('Level is required for level_complete message'))
+                    return Promise.reject(new Error('Level is required for level_completed message'))
                 }
 
                 this._platformSdk.game.levelComplete(level)
