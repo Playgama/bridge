@@ -27,7 +27,7 @@ import {
     PLATFORM_MESSAGE,
 } from '../constants'
 
-const SDK_URL = 'https://developer.playgama.com/sdk/v1.js'
+const SDK_URL = 'https://playgama.com/platform-sdk/v1.js'
 
 class PlaygamaPlatformBridge extends PlatformBridgeBase {
     // platform
