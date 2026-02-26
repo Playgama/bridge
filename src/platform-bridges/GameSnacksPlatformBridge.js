@@ -23,6 +23,8 @@ import {
     PLATFORM_MESSAGE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    STORAGE_TYPE,
+    LEADERBOARD_TYPE,
 } from '../constants'
 
 class GameSnacksPlatformBridge extends PlatformBridgeBase {
@@ -40,6 +42,11 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // leaderboards
+    get leaderboardsType() {
+        return LEADERBOARD_TYPE.NATIVE
+    }
+
     _isBannerSupported = false
 
     initialize() {
@@ -53,6 +60,7 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
 
             waitFor('GameSnacks').then(() => {
                 this._platformSdk = window.GameSnacks
+                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
                 this._isInitialized = true
                 this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
             })
@@ -122,6 +130,101 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 }
             },
         })
+    }
+
+    // storage
+    isStorageSupported(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageSupported(storageType)
+    }
+
+    isStorageAvailable(storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return true
+        }
+
+        return super.isStorageAvailable(storageType)
+    }
+
+    getDataFromStorage(key, storageType, tryParseJson) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (Array.isArray(key)) {
+                const values = key.map((storageKey) => this.#parseStorageValue(
+                    this._platformSdk.storage.getItem(storageKey),
+                    tryParseJson,
+                ))
+                return Promise.resolve(values)
+            }
+
+            const value = this.#parseStorageValue(this._platformSdk.storage.getItem(key), tryParseJson)
+            return Promise.resolve(value)
+        }
+
+        return super.getDataFromStorage(key, storageType, tryParseJson)
+    }
+
+    setDataToStorage(key, value, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (Array.isArray(key)) {
+                for (let i = 0; i < key.length; i++) {
+                    this._platformSdk.storage.setItem(key[i], this.#toStorageString(value[i]))
+                }
+                return Promise.resolve()
+            }
+
+            this._platformSdk.storage.setItem(key, this.#toStorageString(value))
+            return Promise.resolve()
+        }
+
+        return super.setDataToStorage(key, value, storageType)
+    }
+
+    deleteDataFromStorage(key, storageType) {
+        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
+            if (Array.isArray(key)) {
+                for (let i = 0; i < key.length; i++) {
+                    this._platformSdk.storage.removeItem(key[i])
+                }
+                return Promise.resolve()
+            }
+
+            this._platformSdk.storage.removeItem(key)
+            return Promise.resolve()
+        }
+
+        return super.deleteDataFromStorage(key, storageType)
+    }
+
+    // leaderboards
+    leaderboardsSetScore(_, score) {
+        return this._platformSdk.score.update(score)
+    }
+
+    #toStorageString(value) {
+        if (typeof value === 'object' && value !== null) {
+            return JSON.stringify(value)
+        }
+
+        if (typeof value === 'string') {
+            return value
+        }
+
+        return String(value)
+    }
+
+    #parseStorageValue(value, tryParseJson) {
+        if (!tryParseJson || typeof value !== 'string') {
+            return value
+        }
+
+        try {
+            return JSON.parse(value)
+        } catch (e) {
+            return value
+        }
     }
 }
 
