@@ -46,6 +46,7 @@ export const PLATFORM_ID = {
     XIAOMI: 'xiaomi',
     TIKTOK: 'tiktok',
     DLIGHTEK: 'dlightek',
+    GAMESNACKS: 'gamesnacks',
 }
 
 export const MODULE_NAME = {
@@ -132,6 +133,7 @@ export const ORIENTATION_OVERLAY_ID = 'bridge-orientation-overlay'
 
 export const PLATFORM_MESSAGE = {
     GAME_READY: 'game_ready',
+    LEVEL_COMPLETED: 'level_completed',
     IN_GAME_LOADING_STARTED: 'in_game_loading_started',
     IN_GAME_LOADING_STOPPED: 'in_game_loading_stopped',
     GAMEPLAY_STARTED: 'gameplay_started',
