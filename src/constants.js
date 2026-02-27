@@ -45,6 +45,7 @@ export const PLATFORM_ID = {
     REDDIT: 'reddit',
     XIAOMI: 'xiaomi',
     TIKTOK: 'tiktok',
+    DLIGHTEK: 'dlightek',
     GAMESNACKS: 'gamesnacks',
 }
 

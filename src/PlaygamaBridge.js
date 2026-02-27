@@ -300,6 +300,8 @@ class PlaygamaBridge {
             platformId = PLATFORM_ID.PORTAL
         } else if (__INCLUDE_REDDIT__ && url.hostname.includes('devvit.')) {
             platformId = PLATFORM_ID.REDDIT
+        } else if (__INCLUDE_DLIGHTEK__ && (url.hostname.includes('hippoobox.com') || url.hostname.includes('ahagamecenter.com'))) {
+            platformId = PLATFORM_ID.DLIGHTEK
         } else if (__INCLUDE_TIKTOK__ && typeof window.TTMinis !== 'undefined') {
             platformId = PLATFORM_ID.TIKTOK
         } else if (__INCLUDE_GAMESNACKS__ && typeof window.GameSnacks !== 'undefined') {

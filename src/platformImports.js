@@ -98,6 +98,8 @@ if (__INCLUDE_XIAOMI__) {
 if (__INCLUDE_TIKTOK__) {
     platformImports[PLATFORM_ID.TIKTOK] = () => import('./platform-bridges/TikTokPlatformBridge')
 }
+if (__INCLUDE_DLIGHTEK__) {
+    platformImports[PLATFORM_ID.DLIGHTEK] = () => import('./platform-bridges/DlightekPlatformBridge')
 if (__INCLUDE_GAMESNACKS__) {
     platformImports[PLATFORM_ID.GAMESNACKS] = () => import('./platform-bridges/GameSnacksPlatformBridge')
 }
