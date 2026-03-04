@@ -106,6 +106,7 @@ class AnalyticsModule extends ModuleBase {
             player_id: this._platformBridge.playerId,
             player_guest_id: this.#playerGuestId,
             device_type: this._platformBridge.deviceType,
+            device_os: this._platformBridge.deviceOs,
         }
     }
 

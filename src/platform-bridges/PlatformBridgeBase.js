@@ -26,6 +26,7 @@ import {
     ERROR,
     VISIBILITY_STATE,
     DEVICE_TYPE,
+    DEVICE_OS,
     LEADERBOARD_TYPE,
     MODULE_NAME,
 } from '../constants'
@@ -198,6 +199,33 @@ class PlatformBridgeBase {
         }
 
         return DEVICE_TYPE.DESKTOP
+    }
+
+    get deviceOs() {
+        const ua = navigator?.userAgent ?? ''
+
+        if (/android/i.test(ua)) {
+            return DEVICE_OS.ANDROID
+        }
+
+        if (/iphone|ipod|ipad/i.test(ua)
+            || (navigator?.platform === 'MacIntel' && navigator?.maxTouchPoints > 1)) {
+            return DEVICE_OS.IOS
+        }
+
+        if (/windows/i.test(ua)) {
+            return DEVICE_OS.WINDOWS
+        }
+
+        if (/macintosh|mac os/i.test(ua)) {
+            return DEVICE_OS.MACOS
+        }
+
+        if (/linux/i.test(ua)) {
+            return DEVICE_OS.LINUX
+        }
+
+        return DEVICE_OS.OTHER
     }
 
     // payments

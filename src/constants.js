@@ -124,6 +124,15 @@ export const DEVICE_TYPE = {
     TV: 'tv',
 }
 
+export const DEVICE_OS = {
+    WINDOWS: 'windows',
+    MACOS: 'macos',
+    LINUX: 'linux',
+    ANDROID: 'android',
+    IOS: 'ios',
+    OTHER: 'other',
+}
+
 export const DEVICE_ORIENTATION = {
     PORTRAIT: 'portrait',
     LANDSCAPE: 'landscape',

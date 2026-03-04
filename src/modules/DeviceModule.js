@@ -25,6 +25,10 @@ class DeviceModule extends ModuleBase {
         return this._platformBridge.deviceType
     }
 
+    get os() {
+        return this._platformBridge.deviceOs
+    }
+
     get orientation() {
         return this.#currentOrientation
     }
