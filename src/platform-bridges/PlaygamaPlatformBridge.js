@@ -323,7 +323,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.inGamePaymentsApi.purchase(product)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        const mergedPurchase = { id, ...purchase }
+                        const mergedPurchase = { id, externalId: product.externalId, ...purchase }
                         this._paymentsPurchases.push(mergedPurchase)
                         if (this._platformSdk.inGamePaymentsApi.confirmDelivery) {
                             this._platformSdk.inGamePaymentsApi.confirmDelivery(mergedPurchase)
@@ -378,7 +378,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (this._platformSdk.inGamePaymentsApi.consumePurchase) {
             const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            this._platformSdk.inGamePaymentsApi.consumePurchase(purchase.purchaseToken)
+            this._platformSdk.inGamePaymentsApi.consumePurchase(purchase.id, purchase.externalId)
                 .then(() => {
                     const idx = this._paymentsPurchases.findIndex((p) => p.id === id)
                     if (idx >= 0) {
