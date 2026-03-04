@@ -16,6 +16,7 @@
  */
 
 export const SAAS_URL = 'https://playgama.com/api/bridge/v1'
+export const TIMESTAMP_URL = 'https://playgama.com/api/v1/timestamp/now'
 
 export const PLATFORM_ID = {
     VK: 'vk',

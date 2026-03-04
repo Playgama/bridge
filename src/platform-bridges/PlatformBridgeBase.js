@@ -29,6 +29,7 @@ import {
     DEVICE_OS,
     LEADERBOARD_TYPE,
     MODULE_NAME,
+    TIMESTAMP_URL,
 } from '../constants'
 import analyticsModule from '../modules/AnalyticsModule'
 import PromiseDecorator from '../common/PromiseDecorator'
@@ -341,7 +342,7 @@ class PlatformBridgeBase {
 
     getServerTime() {
         return new Promise((resolve, reject) => {
-            fetch('https://playgama.com/api/v1/timestamp/now')
+            fetch(TIMESTAMP_URL)
                 .then((response) => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok')
