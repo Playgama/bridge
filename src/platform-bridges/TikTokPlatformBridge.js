@@ -24,6 +24,7 @@ import {
     INTERSTITIAL_STATE,
     STORAGE_TYPE,
     DEVICE_TYPE,
+    DEVICE_OS,
     PLATFORM_MESSAGE,
     VISIBILITY_STATE, ERROR,
 } from '../constants'
@@ -124,6 +125,21 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         }
 
         return super.deviceType
+    }
+
+    get deviceOs() {
+        if (this.#systemInfo) {
+            const { platform } = this.#systemInfo
+
+            if (platform === 'android') {
+                return DEVICE_OS.ANDROID
+            }
+            if (platform === 'ios') {
+                return DEVICE_OS.IOS
+            }
+        }
+
+        return super.deviceOs
     }
 
     // clipboard

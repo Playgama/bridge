@@ -16,6 +16,7 @@
  */
 
 export const SAAS_URL = 'https://playgama.com/api/bridge/v1'
+export const TIMESTAMP_URL = 'https://playgama.com/api/v1/timestamp/now'
 
 export const PLATFORM_ID = {
     VK: 'vk',
@@ -122,6 +123,15 @@ export const DEVICE_TYPE = {
     MOBILE: 'mobile',
     TABLET: 'tablet',
     TV: 'tv',
+}
+
+export const DEVICE_OS = {
+    WINDOWS: 'windows',
+    MACOS: 'macos',
+    LINUX: 'linux',
+    ANDROID: 'android',
+    IOS: 'ios',
+    OTHER: 'other',
 }
 
 export const DEVICE_ORIENTATION = {

@@ -24,6 +24,7 @@ import {
     INTERSTITIAL_STATE,
     STORAGE_TYPE,
     DEVICE_TYPE,
+    DEVICE_OS,
     PLATFORM_MESSAGE,
 } from '../constants'
 
@@ -68,6 +69,24 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
             }
             default: {
                 return super.deviceType
+            }
+        }
+    }
+
+    get deviceOs() {
+        switch (this.#platform) {
+            case 'android':
+            case 'android_x': {
+                return DEVICE_OS.ANDROID
+            }
+            case 'ios': {
+                return DEVICE_OS.IOS
+            }
+            case 'macos': {
+                return DEVICE_OS.MACOS
+            }
+            default: {
+                return super.deviceOs
             }
         }
     }

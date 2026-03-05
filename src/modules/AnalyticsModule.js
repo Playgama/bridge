@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MODULE_NAME, PLATFORM_ID } from '../constants'
+import { MODULE_NAME, PLATFORM_ID, TIMESTAMP_URL } from '../constants'
 import packageJson from '../../package.json'
 import { generateRandomId, getGuestUser } from '../common/utils'
 import ModuleBase from './ModuleBase'
@@ -44,6 +44,8 @@ class AnalyticsModule extends ModuleBase {
 
     #pagehideHandler = null
 
+    #timeDiff = 0
+
     #isCompressionSupported = typeof CompressionStream !== 'undefined'
 
     constructor() {
@@ -64,6 +66,7 @@ class AnalyticsModule extends ModuleBase {
 
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
+        this.#fetchTimeDiff()
 
         this.send(`${MODULE_NAME.CORE}_initialization_started`)
         this.#startFlushInterval()
@@ -89,10 +92,30 @@ class AnalyticsModule extends ModuleBase {
         return generateRandomId()
     }
 
+    async #fetchTimeDiff() {
+        try {
+            const response = await fetch(TIMESTAMP_URL)
+            if (!response.ok) {
+                return
+            }
+
+            const data = await response.json()
+            this.#timeDiff = data.timestamp * 1000 - Date.now()
+
+            for (let i = 0; i < this.#eventQueue.length; i++) {
+                const event = this.#eventQueue[i]
+                const localTime = new Date(event.timestamp).getTime()
+                event.timestamp = new Date(localTime + this.#timeDiff).toISOString()
+            }
+        } catch {
+            // Keep timeDiff = 0, use local time as fallback
+        }
+    }
+
     #createEvent(eventType, data = {}) {
         return {
             event_name: eventType,
-            timestamp: new Date().toISOString(),
+            timestamp: new Date(Date.now() + this.#timeDiff).toISOString(),
             data,
         }
     }
@@ -106,6 +129,7 @@ class AnalyticsModule extends ModuleBase {
             player_id: this._platformBridge.playerId,
             player_guest_id: this.#playerGuestId,
             device_type: this._platformBridge.deviceType,
+            device_os: this._platformBridge.deviceOs,
         }
     }
 

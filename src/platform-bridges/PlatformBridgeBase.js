@@ -26,8 +26,10 @@ import {
     ERROR,
     VISIBILITY_STATE,
     DEVICE_TYPE,
+    DEVICE_OS,
     LEADERBOARD_TYPE,
     MODULE_NAME,
+    TIMESTAMP_URL,
 } from '../constants'
 import analyticsModule from '../modules/AnalyticsModule'
 import PromiseDecorator from '../common/PromiseDecorator'
@@ -200,6 +202,33 @@ class PlatformBridgeBase {
         return DEVICE_TYPE.DESKTOP
     }
 
+    get deviceOs() {
+        const ua = navigator?.userAgent ?? ''
+
+        if (/android/i.test(ua)) {
+            return DEVICE_OS.ANDROID
+        }
+
+        if (/iphone|ipod|ipad/i.test(ua)
+            || (navigator?.platform === 'MacIntel' && navigator?.maxTouchPoints > 1)) {
+            return DEVICE_OS.IOS
+        }
+
+        if (/windows/i.test(ua)) {
+            return DEVICE_OS.WINDOWS
+        }
+
+        if (/macintosh|mac os/i.test(ua)) {
+            return DEVICE_OS.MACOS
+        }
+
+        if (/linux/i.test(ua)) {
+            return DEVICE_OS.LINUX
+        }
+
+        return DEVICE_OS.OTHER
+    }
+
     // payments
     get isPaymentsSupported() {
         return false
@@ -313,7 +342,7 @@ class PlatformBridgeBase {
 
     getServerTime() {
         return new Promise((resolve, reject) => {
-            fetch('https://playgama.com/api/v1/timestamp/now')
+            fetch(TIMESTAMP_URL)
                 .then((response) => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok')
