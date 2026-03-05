@@ -108,7 +108,7 @@ class PlatformModule extends ModuleBase {
             case PLATFORM_MESSAGE.LEVEL_PAUSED:
             case PLATFORM_MESSAGE.LEVEL_RESUMED:
                 if (options.level !== undefined) {
-                    data.level = options.level
+                    data.level = String(options.level)
                 }
                 analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
                 break
