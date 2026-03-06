@@ -427,7 +427,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.payments.purchaseAsync({ productID: product.platformProductId })
+            this._platformSdk.payments.purchaseAsync({ productID: product.platformProductId.toLowerCase() })
                 .then((purchase) => {
                     const mergedPurchase = { id, ...purchase }
                     delete mergedPurchase.productID
