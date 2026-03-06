@@ -50,6 +50,7 @@ class AnalyticsModule extends ModuleBase {
 
     constructor() {
         super()
+        this.#fetchTimeDiff()
         this.#sessionId = this.#generateSessionId()
     }
 
@@ -66,7 +67,6 @@ class AnalyticsModule extends ModuleBase {
 
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
-        this.#fetchTimeDiff()
 
         this.send(`${MODULE_NAME.CORE}_initialization_started`)
         this.#startFlushInterval()
