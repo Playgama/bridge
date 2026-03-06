@@ -188,6 +188,16 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                             }
                                         })
 
+                                    this._platformSdk.on('game_api_pause', () => {
+                                        this._setPauseState(true)
+                                        this._setAudioState(false)
+                                    })
+
+                                    this._platformSdk.on('game_api_resume', () => {
+                                        this._setPauseState(false)
+                                        this._setAudioState(true)
+                                    })
+
                                     Promise.all([
                                         reportPluginEnginePromise,
                                         checkAddToHomeScreenSupportedRacePromise,
