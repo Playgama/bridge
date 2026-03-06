@@ -20,7 +20,7 @@ import packageJson from '../../package.json'
 import { generateRandomId, getGuestUser } from '../common/utils'
 import ModuleBase from './ModuleBase'
 
-const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'
+const API_URL = 'https://staging.playgama.com/api/events/v3/bridge/analytics'
 const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
 const FLUSH_INTERVAL = 15000
 const SEND_ATTEMPTS = 2
@@ -50,6 +50,7 @@ class AnalyticsModule extends ModuleBase {
 
     constructor() {
         super()
+        this.#fetchTimeDiff()
         this.#sessionId = this.#generateSessionId()
     }
 
@@ -66,7 +67,6 @@ class AnalyticsModule extends ModuleBase {
 
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
-        this.#fetchTimeDiff()
 
         this.send(`${MODULE_NAME.CORE}_initialization_started`)
         this.#startFlushInterval()
