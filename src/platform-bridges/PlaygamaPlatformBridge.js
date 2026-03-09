@@ -56,8 +56,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     // payments
     get isPaymentsSupported() {
-        return true
+        return this.#isPaymentsSupported
     }
+
+    #isPaymentsSupported = true
 
     get platformLanguage() {
         return this._platformSdk.platformService.getLanguage() || super.platformLanguage
@@ -127,7 +129,13 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    this.#getPlayer().then(() => {
+                    Promise.all([
+                        this.#getPlayer(),
+                        this._platformSdk.platformService?.isReady,
+                    ]).then(() => {
+                        if (this._platformSdk.platformService?.getIsPaymentsSupported) {
+                            this.#isPaymentsSupported = this._platformSdk.platformService.getIsPaymentsSupported()
+                        }
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
@@ -308,8 +316,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        product.bridgeId = id
-
         if (options && options.externalId) {
             product.externalId = options.externalId
         }
@@ -325,11 +331,13 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.inGamePaymentsApi.purchase(product)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        const mergedPurchase = { id, externalId: product.externalId, ...purchase }
+                        const mergedPurchase = { id, ...purchase }
                         this._paymentsPurchases.push(mergedPurchase)
                         if (this._platformSdk.inGamePaymentsApi.confirmDelivery) {
-                            this._platformSdk.inGamePaymentsApi.confirmDelivery(mergedPurchase)
-                                .catch(() => { /* purchase is resolved regardless */ })
+                            this._platformSdk.inGamePaymentsApi.confirmDelivery({
+                                orderId: purchase.orderId,
+                                externalId: mergedPurchase.externalId,
+                            }).catch(() => { /* purchase is resolved regardless */ })
                         }
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
