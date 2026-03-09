@@ -103,27 +103,20 @@ class PlatformModule extends ModuleBase {
                 analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
                 break
             case PLATFORM_MESSAGE.LEVEL_STARTED:
-            case PLATFORM_MESSAGE.LEVEL_COMPLETED:
-            case PLATFORM_MESSAGE.LEVEL_FAILED:
-            case PLATFORM_MESSAGE.LEVEL_PAUSED:
             case PLATFORM_MESSAGE.LEVEL_RESUMED:
                 if (options.level !== undefined) {
                     data.level = String(options.level)
                 }
                 analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
-                break
-            default:
-                break
-        }
-
-        switch (message) {
-            case PLATFORM_MESSAGE.LEVEL_STARTED:
-            case PLATFORM_MESSAGE.LEVEL_RESUMED:
                 this._platformBridge.sendMessage(PLATFORM_MESSAGE.GAMEPLAY_STARTED)
                 break
             case PLATFORM_MESSAGE.LEVEL_PAUSED:
             case PLATFORM_MESSAGE.LEVEL_COMPLETED:
             case PLATFORM_MESSAGE.LEVEL_FAILED:
+                if (options.level !== undefined) {
+                    data.level = String(options.level)
+                }
+                analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
                 this._platformBridge.sendMessage(PLATFORM_MESSAGE.GAMEPLAY_STOPPED)
                 break
             default:
