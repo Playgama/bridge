@@ -95,6 +95,10 @@ class PlatformModule extends ModuleBase {
             }
         }
 
+        if (options.world !== undefined) {
+            analyticsData.world = String(options.world)
+        }
+
         if (options.level !== undefined) {
             analyticsData.level = String(options.level)
         }
