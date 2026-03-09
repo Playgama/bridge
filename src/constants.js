@@ -153,7 +153,6 @@ export const PLATFORM_MESSAGE = {
     GAMEPLAY_STARTED: 'gameplay_started',
     GAMEPLAY_STOPPED: 'gameplay_stopped',
     PLAYER_GOT_ACHIEVEMENT: 'player_got_achievement',
-    GAME_OVER: 'game_over',
 }
 
 export const LEADERBOARD_TYPE = {

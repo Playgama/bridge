@@ -343,7 +343,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             PLATFORM_MESSAGE.GAMEPLAY_STARTED,
             PLATFORM_MESSAGE.GAMEPLAY_STOPPED,
             PLATFORM_MESSAGE.PLAYER_GOT_ACHIEVEMENT,
-            PLATFORM_MESSAGE.GAME_OVER,
         ]
 
         if (actions.includes(message)) {

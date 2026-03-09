@@ -76,7 +76,7 @@ class PlatformModule extends ModuleBase {
     }
 
     sendMessage(message, options = {}) {
-        let data = {}
+        const analyticsData = {}
 
         if (message === PLATFORM_MESSAGE.GAME_READY) {
             if (this.#isGameReadyMessageSent) {
@@ -87,7 +87,7 @@ class PlatformModule extends ModuleBase {
 
             const endTime = performance.now()
             const timeInSeconds = ((endTime - this.#startTime) / 1000).toFixed(2)
-            data = { time_s: timeInSeconds }
+            analyticsData.time_s = timeInSeconds
 
             const overlay = document.getElementById('loading-overlay')
             if (overlay) {
@@ -95,33 +95,11 @@ class PlatformModule extends ModuleBase {
             }
         }
 
-        switch (message) {
-            case PLATFORM_MESSAGE.GAME_READY:
-            case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
-            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
-            case PLATFORM_MESSAGE.GAME_OVER:
-                analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
-                break
-            case PLATFORM_MESSAGE.LEVEL_STARTED:
-            case PLATFORM_MESSAGE.LEVEL_RESUMED:
-                if (options.level !== undefined) {
-                    data.level = String(options.level)
-                }
-                analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
-                this._platformBridge.sendMessage(PLATFORM_MESSAGE.GAMEPLAY_STARTED)
-                break
-            case PLATFORM_MESSAGE.LEVEL_PAUSED:
-            case PLATFORM_MESSAGE.LEVEL_COMPLETED:
-            case PLATFORM_MESSAGE.LEVEL_FAILED:
-                if (options.level !== undefined) {
-                    data.level = String(options.level)
-                }
-                analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
-                this._platformBridge.sendMessage(PLATFORM_MESSAGE.GAMEPLAY_STOPPED)
-                break
-            default:
-                break
+        if (options.level !== undefined) {
+            analyticsData.level = String(options.level)
         }
+
+        analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, analyticsData)
 
         return this._platformBridge.sendMessage(message, options)
     }

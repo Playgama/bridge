@@ -223,11 +223,16 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk.features.LoadingAPI?.ready()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.GAMEPLAY_STARTED: {
+            case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
+            case PLATFORM_MESSAGE.LEVEL_STARTED:
+            case PLATFORM_MESSAGE.LEVEL_RESUMED: {
                 this._platformSdk.features.GameplayAPI?.start()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED: {
+            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
+            case PLATFORM_MESSAGE.LEVEL_PAUSED:
+            case PLATFORM_MESSAGE.LEVEL_COMPLETED:
+            case PLATFORM_MESSAGE.LEVEL_FAILED: {
                 this._platformSdk.features.GameplayAPI?.stop()
                 return Promise.resolve()
             }

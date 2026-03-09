@@ -86,7 +86,6 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk.game.ready()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.GAME_OVER:
             case PLATFORM_MESSAGE.LEVEL_FAILED: {
                 this._platformSdk.game.gameOver()
                 return Promise.resolve()
