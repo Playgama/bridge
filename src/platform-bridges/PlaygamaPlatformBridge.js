@@ -308,6 +308,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
+        product.bridgeId = id
+
         if (options && options.externalId) {
             product.externalId = options.externalId
         }
@@ -378,7 +380,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (this._platformSdk.inGamePaymentsApi.consumePurchase) {
             const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            this._platformSdk.inGamePaymentsApi.consumePurchase(purchase.id, purchase.externalId)
+            this._platformSdk.inGamePaymentsApi.consumePurchase(purchase.orderId, purchase.externalId)
                 .then(() => {
                     const idx = this._paymentsPurchases.findIndex((p) => p.id === id)
                     if (idx >= 0) {
