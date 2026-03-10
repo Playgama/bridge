@@ -337,13 +337,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     sendMessage(message, options = {}) {
         const actions = [
             PLATFORM_MESSAGE.GAME_READY,
+            PLATFORM_MESSAGE.LEVEL_STARTED,
             PLATFORM_MESSAGE.LEVEL_COMPLETED,
+            PLATFORM_MESSAGE.LEVEL_FAILED,
+            PLATFORM_MESSAGE.LEVEL_PAUSED,
+            PLATFORM_MESSAGE.LEVEL_RESUMED,
             PLATFORM_MESSAGE.IN_GAME_LOADING_STARTED,
             PLATFORM_MESSAGE.IN_GAME_LOADING_STOPPED,
             PLATFORM_MESSAGE.GAMEPLAY_STARTED,
             PLATFORM_MESSAGE.GAMEPLAY_STOPPED,
             PLATFORM_MESSAGE.PLAYER_GOT_ACHIEVEMENT,
-            PLATFORM_MESSAGE.GAME_OVER,
         ]
 
         if (actions.includes(message)) {

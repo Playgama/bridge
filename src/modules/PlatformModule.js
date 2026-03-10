@@ -76,7 +76,7 @@ class PlatformModule extends ModuleBase {
     }
 
     sendMessage(message, options = {}) {
-        let data = {}
+        const analyticsData = {}
 
         if (message === PLATFORM_MESSAGE.GAME_READY) {
             if (this.#isGameReadyMessageSent) {
@@ -87,7 +87,7 @@ class PlatformModule extends ModuleBase {
 
             const endTime = performance.now()
             const timeInSeconds = ((endTime - this.#startTime) / 1000).toFixed(2)
-            data = { time_s: timeInSeconds }
+            analyticsData.time_s = timeInSeconds
 
             const overlay = document.getElementById('loading-overlay')
             if (overlay) {
@@ -95,20 +95,15 @@ class PlatformModule extends ModuleBase {
             }
         }
 
-        switch (message) {
-            case PLATFORM_MESSAGE.GAME_READY:
-            case PLATFORM_MESSAGE.LEVEL_COMPLETED:
-            case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
-            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
-            case PLATFORM_MESSAGE.GAME_OVER:
-                if (message === PLATFORM_MESSAGE.LEVEL_COMPLETED && options.level !== undefined) {
-                    data.level = options.level
-                }
-                analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, data)
-                break
-            default:
-                break
+        if (options.world !== undefined) {
+            analyticsData.world = String(options.world)
         }
+
+        if (options.level !== undefined) {
+            analyticsData.level = String(options.level)
+        }
+
+        analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, analyticsData)
 
         return this._platformBridge.sendMessage(message, options)
     }

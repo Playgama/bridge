@@ -115,7 +115,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     // platform
     sendMessage(message) {
         switch (message) {
-            case PLATFORM_MESSAGE.GAME_OVER: {
+            case PLATFORM_MESSAGE.LEVEL_FAILED: {
                 postToParent({ playdeck: { method: 'gameEnd' } }, '*')
                 return Promise.resolve()
             }

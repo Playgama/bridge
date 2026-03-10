@@ -187,11 +187,16 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk.game.loadingStop()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.GAMEPLAY_STARTED: {
+            case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
+            case PLATFORM_MESSAGE.LEVEL_STARTED:
+            case PLATFORM_MESSAGE.LEVEL_RESUMED: {
                 this._platformSdk.game.gameplayStart()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED: {
+            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
+            case PLATFORM_MESSAGE.LEVEL_PAUSED:
+            case PLATFORM_MESSAGE.LEVEL_COMPLETED:
+            case PLATFORM_MESSAGE.LEVEL_FAILED: {
                 this._platformSdk.game.gameplayStop()
                 return Promise.resolve()
             }

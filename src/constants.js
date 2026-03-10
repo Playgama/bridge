@@ -143,13 +143,16 @@ export const ORIENTATION_OVERLAY_ID = 'bridge-orientation-overlay'
 
 export const PLATFORM_MESSAGE = {
     GAME_READY: 'game_ready',
+    LEVEL_STARTED: 'level_started',
     LEVEL_COMPLETED: 'level_completed',
+    LEVEL_FAILED: 'level_failed',
+    LEVEL_PAUSED: 'level_paused',
+    LEVEL_RESUMED: 'level_resumed',
     IN_GAME_LOADING_STARTED: 'in_game_loading_started',
     IN_GAME_LOADING_STOPPED: 'in_game_loading_stopped',
     GAMEPLAY_STARTED: 'gameplay_started',
     GAMEPLAY_STOPPED: 'gameplay_stopped',
     PLAYER_GOT_ACHIEVEMENT: 'player_got_achievement',
-    GAME_OVER: 'game_over',
 }
 
 export const LEADERBOARD_TYPE = {

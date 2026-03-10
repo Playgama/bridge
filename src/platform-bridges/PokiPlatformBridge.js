@@ -82,11 +82,16 @@ class PokiPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk.gameLoadingFinished()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.GAMEPLAY_STARTED: {
+            case PLATFORM_MESSAGE.GAMEPLAY_STARTED:
+            case PLATFORM_MESSAGE.LEVEL_STARTED:
+            case PLATFORM_MESSAGE.LEVEL_RESUMED: {
                 this._platformSdk.gameplayStart()
                 return Promise.resolve()
             }
-            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED: {
+            case PLATFORM_MESSAGE.GAMEPLAY_STOPPED:
+            case PLATFORM_MESSAGE.LEVEL_PAUSED:
+            case PLATFORM_MESSAGE.LEVEL_COMPLETED:
+            case PLATFORM_MESSAGE.LEVEL_FAILED: {
                 this._platformSdk.gameplayStop()
                 return Promise.resolve()
             }
