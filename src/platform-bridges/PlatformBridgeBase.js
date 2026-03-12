@@ -51,6 +51,10 @@ class PlatformBridgeBase {
         return this._platformSdk
     }
 
+    get additionalData() {
+        return this._additionalData ?? {}
+    }
+
     get platformLanguage() {
         const value = navigator.language
         if (typeof value === 'string') {
