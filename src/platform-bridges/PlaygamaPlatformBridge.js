@@ -56,8 +56,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     // payments
     get isPaymentsSupported() {
-        return true
+        return this.#isPaymentsSupported
     }
+
+    #isPaymentsSupported = true
 
     get platformLanguage() {
         return this._platformSdk.platformService.getLanguage() || super.platformLanguage
@@ -127,7 +129,13 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    this.#getPlayer().then(() => {
+                    Promise.all([
+                        this.#getPlayer(),
+                        this._platformSdk.platformService?.isReady,
+                    ]).then(() => {
+                        if (this._platformSdk.platformService?.getIsPaymentsSupported) {
+                            this.#isPaymentsSupported = this._platformSdk.platformService.getIsPaymentsSupported()
+                        }
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
@@ -325,6 +333,12 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     if (purchase.status === 'PAID') {
                         const mergedPurchase = { id, ...purchase }
                         this._paymentsPurchases.push(mergedPurchase)
+                        if (this._platformSdk.inGamePaymentsApi.confirmDelivery) {
+                            this._platformSdk.inGamePaymentsApi.confirmDelivery({
+                                orderId: purchase.orderId,
+                                externalId: mergedPurchase.externalId,
+                            }).catch(() => { /* purchase is resolved regardless */ })
+                        }
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
                     } else {
                         this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, purchase.error)
@@ -336,6 +350,60 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        if (!this.isPaymentsSupported) {
+            return Promise.reject()
+        }
+
+        if (this._platformSdk.inGamePaymentsApi.getPurchases) {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+
+            this._platformSdk.inGamePaymentsApi.getPurchases()
+                .then((purchases) => {
+                    this._paymentsPurchases = purchases
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases)
+                })
+                .catch(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                })
+
+            return promiseDecorator.promise
+        }
+
+        return Promise.resolve(this._paymentsPurchases)
+    }
+
+    paymentsConsumePurchase(id) {
+        if (!this.isPaymentsSupported) {
+            return Promise.reject()
+        }
+
+        const purchase = this._paymentsPurchases.find((p) => p.id === id)
+        if (!purchase) {
+            return Promise.reject()
+        }
+
+        if (this._platformSdk.inGamePaymentsApi.consumePurchase) {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+
+            this._platformSdk.inGamePaymentsApi.consumePurchase(purchase.orderId, purchase.externalId)
+                .then(() => {
+                    const idx = this._paymentsPurchases.findIndex((p) => p.id === id)
+                    if (idx >= 0) {
+                        this._paymentsPurchases.splice(idx, 1)
+                    }
+                    this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+                })
+
+            return promiseDecorator.promise
+        }
+
+        return super.paymentsConsumePurchase(id)
     }
 
     paymentsGetCatalog() {
