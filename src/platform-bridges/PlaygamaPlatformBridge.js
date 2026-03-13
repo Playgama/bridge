@@ -139,6 +139,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
+
+                    if (this._platformSdk.platformService.getAdditionalParams) {
+                        this._additionalData = this._platformSdk.platformService.getAdditionalParams() || {}
+                    }
                 })
             })
         }
