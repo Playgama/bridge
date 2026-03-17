@@ -153,6 +153,10 @@ class PlaygamaBridge {
         return BANNER_STATE
     }
 
+    get ADVANCED_BANNERS_STATE() {
+        return BANNER_STATE
+    }
+
     get STORAGE_TYPE() {
         return STORAGE_TYPE
     }

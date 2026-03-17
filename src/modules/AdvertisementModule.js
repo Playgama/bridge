@@ -19,7 +19,7 @@ import EventLite from 'event-lite'
 import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import ModuleBase from './ModuleBase'
 import {
-    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
+    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, PLATFORM_MESSAGE, REWARDED_STATE,
 } from '../constants'
 import analyticsModule from './AnalyticsModule'
 
@@ -73,6 +73,19 @@ class AdvertisementModule extends ModuleBase {
         return this.#minimumDelayBetweenInterstitial
     }
 
+    get isAdvancedBannerSupported() {
+        const enable = this._platformBridge.options?.advertisement?.advancedBanner?.enable
+        if (enable !== true) {
+            return false
+        }
+
+        return this._platformBridge.isAdvancedBannerSupported
+    }
+
+    get advancedBannersState() {
+        return this.#advancedBannersState
+    }
+
     #bannerState = BANNER_STATE.HIDDEN
 
     #bannerPosition = null
@@ -90,6 +103,10 @@ class AdvertisementModule extends ModuleBase {
     #rewardedState = REWARDED_STATE.CLOSED
 
     #rewardedPlacement = null
+
+    #advancedBannersState = BANNER_STATE.HIDDEN
+
+    #advancedBannersTracking = new Map()
 
     constructor(platformBridge) {
         super(platformBridge)
@@ -113,6 +130,16 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.on(
             EVENT_NAME.REWARDED_STATE_CHANGED,
             (state) => this.#setRewardedState(state),
+        )
+
+        this._platformBridge.on(
+            EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED,
+            ({ bannerId, state }) => this.#onAdvancedBannerStateChanged(bannerId, state),
+        )
+
+        this._platformBridge.on(
+            EVENT_NAME.PLATFORM_MESSAGE_SENT,
+            (message) => this.#onPlatformMessageSent(message),
         )
 
         this.#applyConfigMinimumDelayBetweenInterstitial()
@@ -365,6 +392,57 @@ class AdvertisementModule extends ModuleBase {
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, { placement: this.#rewardedPlacement })
 
         this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
+    }
+
+    #onPlatformMessageSent(message) {
+        if (!this.isAdvancedBannerSupported) {
+            return
+        }
+
+        switch (message) {
+            case PLATFORM_MESSAGE.LEVEL_PAUSED:
+                this._platformBridge.showAdvancedBanners()
+                break
+            case PLATFORM_MESSAGE.LEVEL_RESUMED:
+                this._platformBridge.hideAdvancedBanners()
+                break
+            default:
+                break
+        }
+    }
+
+    #onAdvancedBannerStateChanged(bannerId, state) {
+        if (state === BANNER_STATE.HIDDEN || state === BANNER_STATE.FAILED) {
+            this.#advancedBannersTracking.delete(bannerId)
+        } else {
+            this.#advancedBannersTracking.set(bannerId, state)
+        }
+
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { bannerId })
+        this.#updateAdvancedBannersState()
+    }
+
+    #updateAdvancedBannersState() {
+        let newState = BANNER_STATE.HIDDEN
+
+        if (this.#advancedBannersTracking.size > 0) {
+            const entries = Array.from(this.#advancedBannersTracking.values())
+            const hasLoading = entries.some((s) => s === BANNER_STATE.LOADING)
+            const hasShown = entries.some((s) => s === BANNER_STATE.SHOWN)
+
+            if (hasLoading) {
+                newState = BANNER_STATE.LOADING
+            } else if (hasShown) {
+                newState = BANNER_STATE.SHOWN
+            }
+        }
+
+        if (newState === this.#advancedBannersState) {
+            return
+        }
+
+        this.#advancedBannersState = newState
+        this.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
     }
 
     #getPlatformPlacement(id, placements) {

@@ -105,6 +105,8 @@ class PlatformModule extends ModuleBase {
 
         analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, analyticsData)
 
+        this._platformBridge.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, message)
+
         return this._platformBridge.sendMessage(message, options)
     }
 

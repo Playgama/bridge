@@ -15,7 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BANNER_CONTAINER_ID, BANNER_POSITION, ORIENTATION_OVERLAY_ID } from '../constants'
+import {
+    BANNER_CONTAINER_ID, ADVANCED_BANNER_CONTAINER_ID_PREFIX, BANNER_POSITION, ORIENTATION_OVERLAY_ID,
+} from '../constants'
 
 const POST_METHOD = ['post', 'Message'].join('')
 
@@ -106,6 +108,32 @@ export function createAdvertisementBannerContainer(position) {
     }
 
     return container
+}
+
+export function createAdvancedBannerContainer(bannerId, bannerConfig = {}) {
+    const container = document.createElement('div')
+    container.id = `${ADVANCED_BANNER_CONTAINER_ID_PREFIX}${bannerId}`
+    container.style.position = 'fixed'
+    container.style.zIndex = '9999'
+    container.style.overflow = 'hidden'
+
+    container.style.width = bannerConfig.width || '100%'
+    container.style.height = bannerConfig.height || '90px'
+
+    if (bannerConfig.top !== undefined) container.style.top = bannerConfig.top
+    if (bannerConfig.bottom !== undefined) container.style.bottom = bannerConfig.bottom
+    if (bannerConfig.left !== undefined) container.style.left = bannerConfig.left
+    if (bannerConfig.right !== undefined) container.style.right = bannerConfig.right
+
+    document.body.appendChild(container)
+    return container
+}
+
+export function removeAdvancedBannerContainer(bannerId) {
+    const container = document.getElementById(`${ADVANCED_BANNER_CONTAINER_ID_PREFIX}${bannerId}`)
+    if (container) {
+        container.remove()
+    }
 }
 
 export function createLoadingOverlay() {
