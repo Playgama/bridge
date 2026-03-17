@@ -25,9 +25,7 @@
         "url": "https://github.com/playgama/bridge/issues"
     },
     "homepage": "https://github.com/playgama/bridge",
-    "dependencies": {
-        "event-lite": "^0.1.2"
-    },
+    "dependencies": {},
     "devDependencies": {
         "@babel/core": "^7.17.8",
         "@babel/preset-env": "^7.16.11",

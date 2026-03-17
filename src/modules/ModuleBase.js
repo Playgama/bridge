@@ -15,11 +15,17 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import eventBus from '../common/EventBus'
+
 class ModuleBase {
     _platformBridge
 
     constructor(platformBridge) {
         this._platformBridge = platformBridge
+    }
+
+    _forwardEvent(eventName) {
+        this._platformBridge.on(eventName, (...args) => eventBus.emit(eventName, ...args))
     }
 }
 

@@ -15,8 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
 import Timer, { STATE as TIMER_STATE } from '../common/Timer'
+import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import {
     BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, PLATFORM_MESSAGE, REWARDED_STATE,
@@ -369,7 +369,7 @@ class AdvertisementModule extends ModuleBase {
         this.#bannerState = state
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_banner_${state}`, { position: this.#bannerPosition, placement: this.#bannerPlacement })
 
-        this.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
+        eventBus.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
     }
 
     #setInterstitialState(state) {
@@ -380,7 +380,7 @@ class AdvertisementModule extends ModuleBase {
         this.#interstitialState = state
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`, { placement: this.#interstitialPlacement })
 
-        this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
+        eventBus.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
     }
 
     #setRewardedState(state) {
@@ -391,7 +391,7 @@ class AdvertisementModule extends ModuleBase {
         this.#rewardedState = state
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, { placement: this.#rewardedPlacement })
 
-        this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
+        eventBus.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
     }
 
     #onPlatformMessageSent(message) {
@@ -467,5 +467,5 @@ class AdvertisementModule extends ModuleBase {
     }
 }
 
-EventLite.mixin(AdvertisementModule.prototype)
+applyEventBusMixin(AdvertisementModule.prototype)
 export default AdvertisementModule
