@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
+import { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME, PLATFORM_ID } from '../constants'
 import { createProgressLogo, applySafeAreaStyles } from '../common/utils'
@@ -32,10 +32,7 @@ class GameModule extends ModuleBase {
     constructor(platformBridge) {
         super(platformBridge)
 
-        this._platformBridge.on(
-            EVENT_NAME.VISIBILITY_STATE_CHANGED,
-            (state) => this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, state),
-        )
+        this._forwardEvent(EVENT_NAME.VISIBILITY_STATE_CHANGED)
 
         if (!this._platformBridge.options.disableLoadingLogo) {
             const showFullLogo = this._platformBridge.platformId === PLATFORM_ID.YANDEX
@@ -90,5 +87,5 @@ class GameModule extends ModuleBase {
     }
 }
 
-EventLite.mixin(GameModule.prototype)
+applyEventBusMixin(GameModule.prototype)
 export default GameModule

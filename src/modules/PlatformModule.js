@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
+import { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME, MODULE_NAME, PLATFORM_MESSAGE } from '../constants'
 import analyticsModule from './AnalyticsModule'
@@ -64,15 +64,8 @@ class PlatformModule extends ModuleBase {
     constructor(platformBridge) {
         super(platformBridge)
 
-        this._platformBridge.on(
-            EVENT_NAME.AUDIO_STATE_CHANGED,
-            (isEnabled) => this.emit(EVENT_NAME.AUDIO_STATE_CHANGED, isEnabled),
-        )
-
-        this._platformBridge.on(
-            EVENT_NAME.PAUSE_STATE_CHANGED,
-            (isPaused) => this.emit(EVENT_NAME.PAUSE_STATE_CHANGED, isPaused),
-        )
+        this._forwardEvent(EVENT_NAME.AUDIO_STATE_CHANGED)
+        this._forwardEvent(EVENT_NAME.PAUSE_STATE_CHANGED)
     }
 
     sendMessage(message, options = {}) {
@@ -128,5 +121,5 @@ class PlatformModule extends ModuleBase {
     }
 }
 
-EventLite.mixin(PlatformModule.prototype)
+applyEventBusMixin(PlatformModule.prototype)
 export default PlatformModule

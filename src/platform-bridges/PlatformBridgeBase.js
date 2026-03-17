@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
+import { applyLocalEventMixin } from '../common/EventBus'
 import {
     PLATFORM_ID,
     EVENT_NAME,
@@ -882,5 +882,5 @@ class PlatformBridgeBase {
     }
 }
 
-EventLite.mixin(PlatformBridgeBase.prototype)
+applyLocalEventMixin(PlatformBridgeBase.prototype)
 export default PlatformBridgeBase

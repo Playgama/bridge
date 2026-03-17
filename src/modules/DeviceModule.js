@@ -15,9 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
+import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
-import { EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE } from '../constants'
+import {
+    EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE,
+} from '../constants'
 import { createOrientationOverlay, getSafeArea } from '../common/utils'
 
 class DeviceModule extends ModuleBase {
@@ -99,7 +101,7 @@ class DeviceModule extends ModuleBase {
         const newOrientation = this.#detectOrientation()
         if (newOrientation !== this.#currentOrientation) {
             this.#currentOrientation = newOrientation
-            this.emit(EVENT_NAME.ORIENTATION_STATE_CHANGED, this.#currentOrientation)
+            eventBus.emit(EVENT_NAME.ORIENTATION_STATE_CHANGED, this.#currentOrientation)
             this.#updateOverlay()
         }
     }
@@ -138,5 +140,5 @@ class DeviceModule extends ModuleBase {
     }
 }
 
-EventLite.mixin(DeviceModule.prototype)
+applyEventBusMixin(DeviceModule.prototype)
 export default DeviceModule
