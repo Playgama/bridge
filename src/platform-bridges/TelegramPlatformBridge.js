@@ -300,11 +300,11 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
         this.#adsController.addEventListener('onError', this.#rewardedListeners.onError)
         this.#adsController.addEventListener('onBannerNotFound', this.#rewardedListeners.onError)
         this.#adsController.show().finally(() => {
-            this.#adsController.addEventListener('onStart', this.#rewardedListeners.onStart)
-            this.#adsController.addEventListener('onSkip', this.#rewardedListeners.onSkip)
-            this.#adsController.addEventListener('onReward', this.#rewardedListeners.onReward)
-            this.#adsController.addEventListener('onError', this.#rewardedListeners.onError)
-            this.#adsController.addEventListener('onBannerNotFound', this.#rewardedListeners.onError)
+            this.#adsController.removeEventListener('onStart', this.#rewardedListeners.onStart)
+            this.#adsController.removeEventListener('onSkip', this.#rewardedListeners.onSkip)
+            this.#adsController.removeEventListener('onReward', this.#rewardedListeners.onReward)
+            this.#adsController.removeEventListener('onError', this.#rewardedListeners.onError)
+            this.#adsController.removeEventListener('onBannerNotFound', this.#rewardedListeners.onError)
         })
     }
 

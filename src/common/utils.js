@@ -241,53 +241,62 @@ export function showInfoPopup(message) {
         style.textContent = `
             #bridge-info-popup-overlay {
                 position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                background-color: rgba(0, 0, 0, 0.5);
-                z-index: 9998;
+                inset: 0;
                 display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 18px;
+                background: rgba(0, 0, 0, 0.24);
+                z-index: 9999;
             }
 
             #bridge-info-popup {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background-color: #2E3C75;
-                color: #fff;
-                padding: 20px;
-                z-index: 9999;
-                display: none;
-                border-radius: 10px;
-                box-shadow: 0 0 10px #2E3C75;
-                font-size: 24px;
-                font-family: 'Roboto', sans-serif;
+                width: min(92vw, 320px);
+                padding: 24px 20px 20px;
+                border-radius: 26px;
+                background: #ffffff;
+                color: #24304d;
                 text-align: center;
-                min-width: 250px;
-                max-width: 30%;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
+                box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+                font-family: Inter, Arial, sans-serif;
+            }
+
+            #bridge-info-popup-emoji {
+                font-size: 42px;
+                margin-bottom: 10px;
+                line-height: 1;
+            }
+
+            #bridge-info-popup-title {
+                margin: 0 0 10px;
+                font-size: 24px;
+                line-height: 1.1;
+            }
+
+            #bridge-info-popup-message {
+                margin: 0 0 18px;
+                font-size: 15px;
+                line-height: 1.45;
+                color: #66708b;
             }
 
             #bridge-info-popup-button {
-                margin-top: 24px;
-                width: 150px;
-                background-color: rgba(255, 255, 255, 0.2);
-                color: #fff;
-                border: none;
-                font-size: 24px;
-                padding: 20px;
-                border-radius: 5px;
+                min-width: 140px;
+                height: 46px;
+                padding: 0 24px;
+                border: 0;
+                border-radius: 999px;
+                font-weight: 700;
+                font-size: 15px;
+                color: #ffffff;
+                background: linear-gradient(180deg, #5f8cff, #4c71e6);
+                box-shadow: 0 8px 20px rgba(76, 113, 230, 0.32);
                 cursor: pointer;
-                font-family: 'Roboto', sans-serif;
-                display: block;
+                font-family: Inter, Arial, sans-serif;
             }
 
-            #bridge-info-popup-button:hover {
-                background-color: rgba(255, 255, 255, 0.3);
+            #bridge-info-popup-button:active {
+                transform: translateY(1px);
             }`
 
         document.head.appendChild(style)
@@ -300,33 +309,37 @@ export function showInfoPopup(message) {
         document.body.appendChild(overlay)
     }
 
-    let bridgeInfoPopup = document.getElementById('bridge-info-popup')
-    if (!bridgeInfoPopup) {
-        bridgeInfoPopup = document.createElement('div')
-        bridgeInfoPopup.id = 'bridge-info-popup'
+    let popup = document.getElementById('bridge-info-popup')
+    if (!popup) {
+        popup = document.createElement('div')
+        popup.id = 'bridge-info-popup'
+        overlay.appendChild(popup)
     }
 
-    bridgeInfoPopup.innerText = message
+    popup.innerHTML = ''
 
-    let bridgeInfoPopupButton = document.getElementById('bridge-info-popup-button')
-    if (!bridgeInfoPopupButton) {
-        bridgeInfoPopupButton = document.createElement('button')
-        bridgeInfoPopupButton.id = 'bridge-info-popup-button'
-        bridgeInfoPopupButton.innerText = 'OK'
-        bridgeInfoPopup.appendChild(bridgeInfoPopupButton)
-    }
+    const emoji = document.createElement('div')
+    emoji.id = 'bridge-info-popup-emoji'
+    emoji.textContent = '\uD83C\uDFAC'
+    popup.appendChild(emoji)
 
-    document.body.appendChild(bridgeInfoPopup)
+    const title = document.createElement('h3')
+    title.id = 'bridge-info-popup-title'
+    title.textContent = message
+    popup.appendChild(title)
+
+    const button = document.createElement('button')
+    button.id = 'bridge-info-popup-button'
+    button.textContent = 'Continue'
+    popup.appendChild(button)
 
     return new Promise((resolve) => {
-        bridgeInfoPopupButton.onclick = () => {
-            bridgeInfoPopup.style.display = 'none'
+        button.onclick = () => {
             overlay.style.display = 'none'
             resolve()
         }
 
-        overlay.style.display = 'block'
-        bridgeInfoPopup.style.display = 'flex'
+        overlay.style.display = 'flex'
     })
 }
 

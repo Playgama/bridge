@@ -1,7 +1,6 @@
 {
     "extends": [
-        "airbnb-base",
-        "plugin:import/typescript"
+        "airbnb-base"
     ],
     "plugins": [
         "sort-class-members"

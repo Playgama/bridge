@@ -59,11 +59,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return this.#isPaymentsSupported
     }
 
-    #isPaymentsSupported = true
-
     get platformLanguage() {
         return this._platformSdk.platformService.getLanguage() || super.platformLanguage
     }
+
+    #isPaymentsSupported = true
 
     initialize() {
         if (this._isInitialized) {
