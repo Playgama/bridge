@@ -19,7 +19,8 @@ import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import {
-    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, PLATFORM_MESSAGE, REWARDED_STATE,
+    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, PLATFORM_MESSAGE,
+    REWARDED_STATE,
 } from '../constants'
 import analyticsModule from './AnalyticsModule'
 
@@ -106,8 +107,6 @@ class AdvertisementModule extends ModuleBase {
 
     #advancedBannersState = BANNER_STATE.HIDDEN
 
-    #advancedBannersTracking = new Map()
-
     constructor(platformBridge) {
         super(platformBridge)
 
@@ -134,8 +133,9 @@ class AdvertisementModule extends ModuleBase {
 
         this._platformBridge.on(
             EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED,
-            ({ bannerId, state }) => this.#onAdvancedBannerStateChanged(bannerId, state),
+            (state) => { this.#advancedBannersState = state },
         )
+        this._forwardEvent(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED)
 
         this._platformBridge.on(
             EVENT_NAME.PLATFORM_MESSAGE_SENT,
@@ -399,50 +399,18 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        switch (message) {
-            case PLATFORM_MESSAGE.LEVEL_PAUSED:
-                this._platformBridge.showAdvancedBanners()
-                break
-            case PLATFORM_MESSAGE.LEVEL_RESUMED:
-                this._platformBridge.hideAdvancedBanners()
-                break
-            default:
-                break
-        }
-    }
-
-    #onAdvancedBannerStateChanged(bannerId, state) {
-        if (state === BANNER_STATE.HIDDEN || state === BANNER_STATE.FAILED) {
-            this.#advancedBannersTracking.delete(bannerId)
-        } else {
-            this.#advancedBannersTracking.set(bannerId, state)
-        }
-
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { bannerId })
-        this.#updateAdvancedBannersState()
-    }
-
-    #updateAdvancedBannersState() {
-        let newState = BANNER_STATE.HIDDEN
-
-        if (this.#advancedBannersTracking.size > 0) {
-            const entries = Array.from(this.#advancedBannersTracking.values())
-            const hasLoading = entries.some((s) => s === BANNER_STATE.LOADING)
-            const hasShown = entries.some((s) => s === BANNER_STATE.SHOWN)
-
-            if (hasLoading) {
-                newState = BANNER_STATE.LOADING
-            } else if (hasShown) {
-                newState = BANNER_STATE.SHOWN
-            }
-        }
-
-        if (newState === this.#advancedBannersState) {
+        if (message === PLATFORM_MESSAGE.LEVEL_RESUMED) {
+            this._platformBridge.hideAdvancedBanners()
             return
         }
 
-        this.#advancedBannersState = newState
-        this.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
+        const advancedBannerConfig = this._platformBridge.options?.advertisement?.advancedBanner
+        const banners = advancedBannerConfig?.[message]
+        if (!Array.isArray(banners)) {
+            return
+        }
+
+        this._platformBridge.showAdvancedBanners(banners)
     }
 
     #getPlatformPlacement(id, placements) {

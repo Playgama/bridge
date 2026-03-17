@@ -296,8 +296,6 @@ class PlatformBridgeBase {
 
     _isAdvancedBannerSupported = false
 
-    _advancedBanners = new Map()
-
     _useAdvertisementErrorPopup = false
 
     _paymentsPurchases = []
@@ -491,44 +489,9 @@ class PlatformBridgeBase {
     }
 
     // eslint-disable-next-line no-unused-vars
-    showAdvancedBanner(bannerId, bannerConfig) {
-        this._setAdvancedBannerState(bannerId, BANNER_STATE.FAILED)
-    }
+    showAdvancedBanners(banners) { }
 
-    hideAdvancedBanner(bannerId) {
-        this._setAdvancedBannerState(bannerId, BANNER_STATE.HIDDEN)
-    }
-
-    showAdvancedBanners() {
-        const advancedBannerConfig = this._options?.advertisement?.advancedBanner
-        const banners = advancedBannerConfig?.banners
-        if (!banners || !Array.isArray(banners)) {
-            return
-        }
-
-        const placements = advancedBannerConfig?.placements
-        for (let i = 0; i < banners.length; i++) {
-            const bannerConfig = { ...banners[i] }
-            const entry = this._advancedBanners.get(i)
-            if (!entry || (entry.state !== BANNER_STATE.LOADING && entry.state !== BANNER_STATE.SHOWN)) {
-                bannerConfig.placement = this._getPlatformPlacement(bannerConfig.placement, placements)
-                this._advancedBanners.set(i, { state: BANNER_STATE.LOADING, refreshTimer: null })
-                this.showAdvancedBanner(i, bannerConfig)
-            }
-        }
-    }
-
-    hideAdvancedBanners() {
-        const bannerIds = Array.from(this._advancedBanners.keys())
-        for (let i = 0; i < bannerIds.length; i++) {
-            const bannerId = bannerIds[i]
-            const entry = this._advancedBanners.get(bannerId)
-            if (entry && entry.state !== BANNER_STATE.HIDDEN) {
-                this._stopAdvancedBannerRefreshTimer(bannerId)
-                this.hideAdvancedBanner(bannerId)
-            }
-        }
-    }
+    hideAdvancedBanners() { }
 
     preloadInterstitial() { }
 
@@ -747,19 +710,8 @@ class PlatformBridgeBase {
         this.emit(EVENT_NAME.BANNER_STATE_CHANGED, state)
     }
 
-    _setAdvancedBannerState(bannerId, state) {
-        const entry = this._advancedBanners.get(bannerId)
-        if (entry) {
-            entry.state = state
-            if (state === BANNER_STATE.SHOWN) {
-                this._startAdvancedBannerRefreshTimer(bannerId)
-            }
-            if (state === BANNER_STATE.HIDDEN || state === BANNER_STATE.FAILED) {
-                this._stopAdvancedBannerRefreshTimer(bannerId)
-                this._advancedBanners.delete(bannerId)
-            }
-        }
-        this.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, { bannerId, state })
+    _setAdvancedBannersState(state) {
+        this.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, state)
     }
 
     _setInterstitialState(state) {
@@ -802,63 +754,6 @@ class PlatformBridgeBase {
         } else {
             this.emit(EVENT_NAME.PAUSE_STATE_CHANGED, isPaused)
         }
-    }
-
-    _startAdvancedBannerRefreshTimer(bannerId) {
-        const refreshInterval = this._options?.advertisement?.advancedBanner?.refreshInterval || 0
-        if (refreshInterval <= 0) {
-            return
-        }
-
-        const entry = this._advancedBanners.get(bannerId)
-        if (!entry) {
-            return
-        }
-
-        entry.refreshTimer = setInterval(() => this._refreshAdvancedBanner(bannerId), refreshInterval * 1000)
-    }
-
-    _stopAdvancedBannerRefreshTimer(bannerId) {
-        const entry = this._advancedBanners.get(bannerId)
-        if (!entry || !entry.refreshTimer) {
-            return
-        }
-
-        clearInterval(entry.refreshTimer)
-        entry.refreshTimer = null
-    }
-
-    _refreshAdvancedBanner(bannerId) {
-        const advancedBannerConfig = this._options?.advertisement?.advancedBanner
-        const banners = advancedBannerConfig?.banners
-        if (!banners || !banners[bannerId]) {
-            return
-        }
-
-        const bannerConfig = { ...banners[bannerId] }
-        const placements = advancedBannerConfig?.placements
-        bannerConfig.placement = this._getPlatformPlacement(bannerConfig.placement, placements)
-
-        this.hideAdvancedBanner(bannerId)
-        this._advancedBanners.set(bannerId, { state: BANNER_STATE.LOADING, refreshTimer: null })
-        this.showAdvancedBanner(bannerId, bannerConfig)
-    }
-
-    _getPlatformPlacement(id, placements) {
-        if (!id || !placements) {
-            return id
-        }
-
-        const placement = placements.find((p) => p.id === id)
-        if (!placement) {
-            return id
-        }
-
-        if (placement[this.platformId]) {
-            return placement[this.platformId]
-        }
-
-        return id
     }
 
     _createPromiseDecorator(actionName) {

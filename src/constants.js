@@ -111,7 +111,6 @@ export const BANNER_POSITION = {
     BOTTOM: 'bottom',
 }
 export const BANNER_CONTAINER_ID = 'banner-container'
-export const ADVANCED_BANNER_CONTAINER_ID_PREFIX = 'advanced-banner-container-'
 export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'
 export const REWARDED_CONTAINER_ID = 'rewarded-container'
 
