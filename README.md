@@ -24,6 +24,8 @@ One SDK for cross-platform publishing HTML5 games.
 + [Reddit](https://www.reddit.com/r/GamesOnReddit/)
 + [Xiaomi](https://global.app.mi.com/details?lo=ES&la=en&id=com.xiaomi.glgm)
 + [Microsoft Store](https://apps.microsoft.com)
++ [GameSnacks](https://gamesnacks.com/)
++ [Dlightek/Aha Games](https://aha.game/)
 + Other [Work In Progress]
 
 ## Plugins for game engines
