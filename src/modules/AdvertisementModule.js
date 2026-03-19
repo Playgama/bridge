@@ -19,9 +19,10 @@ import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import {
-    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, PLATFORM_MESSAGE,
+    ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME,
     REWARDED_STATE,
 } from '../constants'
+import { detectOrientation } from '../common/utils'
 import analyticsModule from './AnalyticsModule'
 
 const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
@@ -75,7 +76,7 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isAdvancedBannerSupported() {
-        const enable = this._platformBridge.options?.advertisement?.advancedBanner?.enable
+        const enable = this._platformBridge.options?.advertisement?.advancedBanners?.enable
         if (enable !== true) {
             return false
         }
@@ -106,6 +107,8 @@ class AdvertisementModule extends ModuleBase {
     #rewardedPlacement = null
 
     #advancedBannersState = BANNER_STATE.HIDDEN
+
+    #lastAdvancedBannersMessage = null
 
     constructor(platformBridge) {
         super(platformBridge)
@@ -140,6 +143,11 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.on(
             EVENT_NAME.PLATFORM_MESSAGE_SENT,
             (message) => this.#onPlatformMessageSent(message),
+        )
+
+        eventBus.on(
+            EVENT_NAME.ORIENTATION_STATE_CHANGED,
+            () => this.#onOrientationChanged(),
         )
 
         this.#applyConfigMinimumDelayBetweenInterstitial()
@@ -399,18 +407,60 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        if (message === PLATFORM_MESSAGE.LEVEL_RESUMED) {
+        const advancedBannersConfig = this._platformBridge.options?.advertisement?.advancedBanners
+        const messageConfig = advancedBannersConfig?.[message]
+        if (!messageConfig) {
+            return
+        }
+
+        const action = messageConfig.action ?? ADVANCED_BANNERS_ACTION.SHOW
+
+        if (action === ADVANCED_BANNERS_ACTION.HIDE) {
+            this.#lastAdvancedBannersMessage = null
             this._platformBridge.hideAdvancedBanners()
             return
         }
 
-        const advancedBannerConfig = this._platformBridge.options?.advertisement?.advancedBanner
-        const banners = advancedBannerConfig?.[message]
-        if (!Array.isArray(banners)) {
+        const banners = this.#resolveAdvancedBanners(messageConfig)
+        if (!banners) {
+            return
+        }
+
+        this.#lastAdvancedBannersMessage = message
+        this._platformBridge.showAdvancedBanners(banners)
+    }
+
+    #onOrientationChanged() {
+        if (!this.#lastAdvancedBannersMessage) {
+            return
+        }
+
+        const advancedBannersConfig = this._platformBridge.options?.advertisement?.advancedBanners
+        const messageConfig = advancedBannersConfig?.[this.#lastAdvancedBannersMessage]
+        if (!messageConfig) {
+            return
+        }
+
+        this._platformBridge.hideAdvancedBanners()
+
+        const banners = this.#resolveAdvancedBanners(messageConfig)
+        if (!banners) {
+            this.#lastAdvancedBannersMessage = null
             return
         }
 
         this._platformBridge.showAdvancedBanners(banners)
+    }
+
+    #resolveAdvancedBanners(messageConfig) {
+        const { deviceType } = this._platformBridge
+        const orientation = detectOrientation()
+
+        return messageConfig[`${deviceType}:${orientation}`]
+            ?? messageConfig[deviceType]
+            ?? messageConfig[orientation]
+            ?? messageConfig.default
+            ?? null
     }
 
     #getPlatformPlacement(id, placements) {

@@ -20,7 +20,7 @@ import ModuleBase from './ModuleBase'
 import {
     EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE,
 } from '../constants'
-import { createOrientationOverlay, getSafeArea } from '../common/utils'
+import { createOrientationOverlay, detectOrientation, getSafeArea } from '../common/utils'
 
 class DeviceModule extends ModuleBase {
     get type() {
@@ -67,7 +67,7 @@ class DeviceModule extends ModuleBase {
             DEVICE_ORIENTATION.LANDSCAPE,
         ]
 
-        this.#currentOrientation = this.#detectOrientation()
+        this.#currentOrientation = detectOrientation()
 
         if (window.screen.orientation) {
             window.screen.orientation.addEventListener('change', () => this.#handleOrientationChange())
@@ -79,26 +79,8 @@ class DeviceModule extends ModuleBase {
         this.#updateOverlay()
     }
 
-    #detectOrientation() {
-        if (window.screen.orientation?.type) {
-            return window.screen.orientation.type.includes('portrait')
-                ? DEVICE_ORIENTATION.PORTRAIT
-                : DEVICE_ORIENTATION.LANDSCAPE
-        }
-
-        if (window.matchMedia) {
-            return window.matchMedia('(orientation: portrait)').matches
-                ? DEVICE_ORIENTATION.PORTRAIT
-                : DEVICE_ORIENTATION.LANDSCAPE
-        }
-
-        return window.innerHeight > window.innerWidth
-            ? DEVICE_ORIENTATION.PORTRAIT
-            : DEVICE_ORIENTATION.LANDSCAPE
-    }
-
     #handleOrientationChange() {
-        const newOrientation = this.#detectOrientation()
+        const newOrientation = detectOrientation()
         if (newOrientation !== this.#currentOrientation) {
             this.#currentOrientation = newOrientation
             eventBus.emit(EVENT_NAME.ORIENTATION_STATE_CHANGED, this.#currentOrientation)

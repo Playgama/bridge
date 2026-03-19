@@ -110,6 +110,10 @@ export const BANNER_POSITION = {
     TOP: 'top',
     BOTTOM: 'bottom',
 }
+export const ADVANCED_BANNERS_ACTION = {
+    SHOW: 'show',
+    HIDE: 'hide',
+}
 export const BANNER_CONTAINER_ID = 'banner-container'
 export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'
 export const REWARDED_CONTAINER_ID = 'rewarded-container'

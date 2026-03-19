@@ -16,7 +16,7 @@
  */
 
 import {
-    BANNER_CONTAINER_ID, BANNER_POSITION, ORIENTATION_OVERLAY_ID,
+    BANNER_CONTAINER_ID, BANNER_POSITION, DEVICE_ORIENTATION, ORIENTATION_OVERLAY_ID,
 } from '../constants'
 
 const POST_METHOD = ['post', 'Message'].join('')
@@ -858,6 +858,24 @@ export function postToWebView(message) {
     if (window.chrome && window.chrome.webview && typeof window.chrome.webview.postMessage === 'function') {
         window.chrome.webview[POST_METHOD](message)
     }
+}
+
+export function detectOrientation() {
+    if (window.screen.orientation?.type) {
+        return window.screen.orientation.type.includes('portrait')
+            ? DEVICE_ORIENTATION.PORTRAIT
+            : DEVICE_ORIENTATION.LANDSCAPE
+    }
+
+    if (window.matchMedia) {
+        return window.matchMedia('(orientation: portrait)').matches
+            ? DEVICE_ORIENTATION.PORTRAIT
+            : DEVICE_ORIENTATION.LANDSCAPE
+    }
+
+    return window.innerHeight > window.innerWidth
+        ? DEVICE_ORIENTATION.PORTRAIT
+        : DEVICE_ORIENTATION.LANDSCAPE
 }
 
 export function getSafeArea() {
