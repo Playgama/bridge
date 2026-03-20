@@ -60,6 +60,19 @@ class DeviceModule extends ModuleBase {
     }
 
     #initializeOrientationTracking() {
+        this.#currentOrientation = detectOrientation()
+
+        if (window.screen.orientation) {
+            window.screen.orientation.addEventListener('change', () => this.#handleOrientationChange())
+        } else {
+            window.addEventListener('orientationchange', () => this.#handleOrientationChange())
+        }
+        window.addEventListener('resize', () => this.#handleOrientationChange())
+
+        this.#initializeOrientationOverlay()
+    }
+
+    #initializeOrientationOverlay() {
         const { deviceType } = this._platformBridge
         const isMobileDevice = deviceType === DEVICE_TYPE.MOBILE || deviceType === DEVICE_TYPE.TABLET
 
@@ -73,15 +86,6 @@ class DeviceModule extends ModuleBase {
             DEVICE_ORIENTATION.PORTRAIT,
             DEVICE_ORIENTATION.LANDSCAPE,
         ]
-
-        this.#currentOrientation = detectOrientation()
-
-        if (window.screen.orientation) {
-            window.screen.orientation.addEventListener('change', () => this.#handleOrientationChange())
-        } else {
-            window.addEventListener('orientationchange', () => this.#handleOrientationChange())
-        }
-        window.addEventListener('resize', () => this.#handleOrientationChange())
 
         this.#updateOverlay()
     }
