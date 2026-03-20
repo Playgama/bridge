@@ -76,6 +76,7 @@ export const EVENT_NAME = {
     AUDIO_STATE_CHANGED: 'audio_state_changed',
     PAUSE_STATE_CHANGED: 'pause_state_changed',
     ORIENTATION_STATE_CHANGED: 'orientation_state_changed',
+    SCREEN_SIZE_CHANGED: 'screen_size_changed',
     PLATFORM_MESSAGE_SENT: 'platform_message_sent',
 }
 

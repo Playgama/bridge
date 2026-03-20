@@ -19,13 +19,15 @@ import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import {
-    ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME,
-    REWARDED_STATE,
+    ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE, DEVICE_ORIENTATION, DEVICE_TYPE,
+    EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
 } from '../constants'
 import { detectOrientation } from '../common/utils'
 import analyticsModule from './AnalyticsModule'
 
 const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
+const DEVICE_TYPES_SET = new Set(Object.values(DEVICE_TYPE))
+const ORIENTATIONS_SET = new Set(Object.values(DEVICE_ORIENTATION))
 
 class AdvertisementModule extends ModuleBase {
     get isBannerSupported() {
@@ -76,12 +78,21 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isAdvancedBannerSupported() {
-        const enable = this._platformBridge.options?.advertisement?.advancedBanners?.enable
-        if (enable !== true) {
+        const disable = this._platformBridge.options?.advertisement?.advancedBanners?.disable
+        if (disable === true) {
             return false
         }
 
-        return this._platformBridge.isAdvancedBannerSupported
+        if (!this._platformBridge.isAdvancedBannerSupported) {
+            return false
+        }
+
+        const advancedBannersConfig = this._platformBridge.options?.advertisement?.advancedBanners
+        if (!advancedBannersConfig) {
+            return false
+        }
+
+        return Object.keys(advancedBannersConfig).length > 0
     }
 
     get advancedBannersState() {
@@ -110,6 +121,10 @@ class AdvertisementModule extends ModuleBase {
 
     #lastAdvancedBannersMessage = null
 
+    #lastAdvancedBanners = null
+
+    #advancedBannersHiddenByAd = false
+
     constructor(platformBridge) {
         super(platformBridge)
 
@@ -121,6 +136,12 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.on(
             EVENT_NAME.INTERSTITIAL_STATE_CHANGED,
             (state) => {
+                if (state === INTERSTITIAL_STATE.OPENED) {
+                    this.#hideAdvancedBannersByAd()
+                } else if (state === INTERSTITIAL_STATE.CLOSED || state === INTERSTITIAL_STATE.FAILED) {
+                    this.#restoreAdvancedBannersAfterAd()
+                }
+
                 if (state === INTERSTITIAL_STATE.CLOSED) {
                     this.#startInterstitialTimer()
                 }
@@ -131,23 +152,35 @@ class AdvertisementModule extends ModuleBase {
 
         this._platformBridge.on(
             EVENT_NAME.REWARDED_STATE_CHANGED,
-            (state) => this.#setRewardedState(state),
+            (state) => {
+                if (state === REWARDED_STATE.OPENED) {
+                    this.#hideAdvancedBannersByAd()
+                } else if (state === REWARDED_STATE.CLOSED || state === REWARDED_STATE.FAILED) {
+                    this.#restoreAdvancedBannersAfterAd()
+                }
+
+                this.#setRewardedState(state)
+            },
         )
 
         this._platformBridge.on(
             EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED,
-            (state) => { this.#advancedBannersState = state },
+            (state) => this.#setAdvancedBannersState(state),
         )
-        this._forwardEvent(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED)
 
-        this._platformBridge.on(
+        eventBus.on(
             EVENT_NAME.PLATFORM_MESSAGE_SENT,
             (message) => this.#onPlatformMessageSent(message),
         )
 
         eventBus.on(
             EVENT_NAME.ORIENTATION_STATE_CHANGED,
-            () => this.#onOrientationChanged(),
+            () => this.#onAdvancedBannersConditionsChanged(),
+        )
+
+        eventBus.on(
+            EVENT_NAME.SCREEN_SIZE_CHANGED,
+            () => this.#onAdvancedBannersConditionsChanged(),
         )
 
         this.#applyConfigMinimumDelayBetweenInterstitial()
@@ -369,6 +402,21 @@ class AdvertisementModule extends ModuleBase {
         return isInterstitialInProgress || isRewardedInProgress
     }
 
+    #setAdvancedBannersState(state) {
+        if (this.#advancedBannersState === state) {
+            return
+        }
+
+        this.#advancedBannersState = state
+        if (state === BANNER_STATE.FAILED) {
+            this.#lastAdvancedBannersMessage = null
+            this.#lastAdvancedBanners = null
+            this.#advancedBannersHiddenByAd = false
+        }
+
+        eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
+    }
+
     #setBannerState(state) {
         if (this.#bannerState === state) {
             return
@@ -417,20 +465,35 @@ class AdvertisementModule extends ModuleBase {
 
         if (action === ADVANCED_BANNERS_ACTION.HIDE) {
             this.#lastAdvancedBannersMessage = null
+            this.#lastAdvancedBanners = null
+            this.#advancedBannersHiddenByAd = false
             this._platformBridge.hideAdvancedBanners()
             return
         }
 
         const banners = this.#resolveAdvancedBanners(messageConfig)
+
+        this.#lastAdvancedBannersMessage = message
+
+        if (this.#lastAdvancedBanners && !banners) {
+            this._platformBridge.hideAdvancedBanners()
+        }
+
+        this.#lastAdvancedBanners = banners
+
         if (!banners) {
             return
         }
 
-        this.#lastAdvancedBannersMessage = message
+        if (this.#isAdOpened()) {
+            this.#advancedBannersHiddenByAd = true
+            return
+        }
+
         this._platformBridge.showAdvancedBanners(banners)
     }
 
-    #onOrientationChanged() {
+    #onAdvancedBannersConditionsChanged() {
         if (!this.#lastAdvancedBannersMessage) {
             return
         }
@@ -441,26 +504,130 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this._platformBridge.hideAdvancedBanners()
-
         const banners = this.#resolveAdvancedBanners(messageConfig)
-        if (!banners) {
-            this.#lastAdvancedBannersMessage = null
+
+        if (banners === this.#lastAdvancedBanners) {
             return
         }
 
-        this._platformBridge.showAdvancedBanners(banners)
+        this.#lastAdvancedBanners = banners
+
+        if (this.#advancedBannersHiddenByAd) {
+            return
+        }
+
+        this._platformBridge.hideAdvancedBanners()
+
+        if (banners) {
+            this._platformBridge.showAdvancedBanners(banners)
+        }
+    }
+
+    #isAdOpened() {
+        return this.#interstitialState === INTERSTITIAL_STATE.OPENED
+            || this.#rewardedState === REWARDED_STATE.OPENED
+    }
+
+    #hideAdvancedBannersByAd() {
+        if (!this.#lastAdvancedBanners || this.#advancedBannersHiddenByAd) {
+            return
+        }
+
+        this.#advancedBannersHiddenByAd = true
+        this._platformBridge.hideAdvancedBanners()
+    }
+
+    #restoreAdvancedBannersAfterAd() {
+        if (!this.#advancedBannersHiddenByAd) {
+            return
+        }
+
+        if (this.#isAdOpened()) {
+            return
+        }
+
+        this.#advancedBannersHiddenByAd = false
+
+        if (this.#lastAdvancedBanners) {
+            this._platformBridge.showAdvancedBanners(this.#lastAdvancedBanners)
+        }
     }
 
     #resolveAdvancedBanners(messageConfig) {
         const { deviceType } = this._platformBridge
         const orientation = detectOrientation()
+        const screenWidth = window.innerWidth
+        const screenHeight = window.innerHeight
 
-        return messageConfig[`${deviceType}:${orientation}`]
-            ?? messageConfig[deviceType]
-            ?? messageConfig[orientation]
-            ?? messageConfig.default
-            ?? null
+        const context = {
+            deviceType, orientation, screenWidth, screenHeight,
+        }
+
+        let bestBanners = messageConfig.default ?? null
+        let bestScore = -1
+
+        Object.keys(messageConfig)
+            .filter((key) => key !== 'action' && key !== 'default')
+            .forEach((key) => {
+                const result = this.#matchAdvancedBannerKey(key, context)
+
+                if (result.matched && result.score > bestScore) {
+                    bestScore = result.score
+                    bestBanners = messageConfig[key]
+                }
+            })
+
+        return bestBanners
+    }
+
+    #matchAdvancedBannerKey(key, context) {
+        const {
+            deviceType, orientation, screenWidth, screenHeight,
+        } = context
+        const segments = key.split(':')
+        let score = 0
+
+        const matched = segments.every((segment) => {
+            if (DEVICE_TYPES_SET.has(segment)) {
+                if (segment !== deviceType) {
+                    return false
+                }
+                score += 4
+            } else if (ORIENTATIONS_SET.has(segment)) {
+                if (segment !== orientation) {
+                    return false
+                }
+                score += 2
+            } else {
+                const conditionMatch = /^([wh])([><]=?)(\d+)$/.exec(segment)
+                if (!conditionMatch) {
+                    return false
+                }
+
+                const dimension = conditionMatch[1] === 'w' ? screenWidth : screenHeight
+                const operator = conditionMatch[2]
+                const value = parseInt(conditionMatch[3], 10)
+
+                if (!this.#evaluateScreenCondition(dimension, operator, value)) {
+                    return false
+                }
+                score += 1
+            }
+
+            return true
+        })
+
+        return { matched, score }
+    }
+
+    #evaluateScreenCondition(dimension, operator, value) {
+        switch (operator) {
+            case '>': return dimension > value
+            case '<': return dimension < value
+            case '>=': return dimension >= value
+            case '<=': return dimension <= value
+            default: return false
+        }
     }
 
     #getPlatformPlacement(id, placements) {

@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { applyEventBusMixin } from '../common/EventBus'
+import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import { EVENT_NAME, MODULE_NAME, PLATFORM_MESSAGE } from '../constants'
 import analyticsModule from './AnalyticsModule'
@@ -98,7 +98,7 @@ class PlatformModule extends ModuleBase {
 
         analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, analyticsData)
 
-        this._platformBridge.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, message)
+        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, message)
 
         return this._platformBridge.sendMessage(message, options)
     }

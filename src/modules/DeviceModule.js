@@ -47,9 +47,16 @@ class DeviceModule extends ModuleBase {
 
     #useBuiltInOverlay = false
 
+    #lastScreenWidth = 0
+
+    #lastScreenHeight = 0
+
+    #resizeDebounceTimer = null
+
     constructor(platformBridge) {
         super(platformBridge)
         this.#initializeOrientationTracking()
+        this.#initializeScreenSizeTracking()
     }
 
     #initializeOrientationTracking() {
@@ -119,6 +126,29 @@ class DeviceModule extends ModuleBase {
             this.#overlayElement.remove()
             this.#overlayElement = null
         }
+    }
+
+    #initializeScreenSizeTracking() {
+        this.#lastScreenWidth = window.innerWidth
+        this.#lastScreenHeight = window.innerHeight
+        window.addEventListener('resize', () => this.#handleScreenSizeChange())
+    }
+
+    #handleScreenSizeChange() {
+        if (this.#resizeDebounceTimer) {
+            clearTimeout(this.#resizeDebounceTimer)
+        }
+
+        this.#resizeDebounceTimer = setTimeout(() => {
+            const newWidth = window.innerWidth
+            const newHeight = window.innerHeight
+
+            if (newWidth !== this.#lastScreenWidth || newHeight !== this.#lastScreenHeight) {
+                this.#lastScreenWidth = newWidth
+                this.#lastScreenHeight = newHeight
+                eventBus.emit(EVENT_NAME.SCREEN_SIZE_CHANGED, { width: newWidth, height: newHeight })
+            }
+        }, 200)
     }
 }
 
