@@ -38,6 +38,7 @@ The `advertisement` object controls ad behavior across all platforms.
 |-----------|------|---------|-------------|
 | `advertisement.useBuiltInErrorPopup` | boolean | `false` | Show built-in error popup when ad fails to load (Facebook, MSN, Microsoft Store) |
 | `advertisement.useAdvertisementErrorPopup` | boolean | `false` | Show ad failure popup when ad fails to load (all other platforms) |
+| `advertisement.builtInErrorPopupCooldown` | number | `180` | Cooldown in seconds before the built-in error popup can be shown again |
 | `advertisement.backfillId` | string | `""` | Backfill ad provider ID (used by MSN platform) |
 
 ### Interstitial Ads
@@ -66,6 +67,62 @@ The `advertisement` object controls ad behavior across all platforms.
 | `advertisement.banner.disable` | boolean | `false` | Disable banner ads even if platform supports them |
 | `advertisement.banner.placementFallback` | string | `undefined` | Fallback placement if none specified in method call |
 | `advertisement.banner.placements` | array | `[]` | Array of placement configuration objects |
+
+### Advanced Banners
+
+Advanced banners allow you to define banner layouts that automatically show/hide based on platform messages (e.g., `level_paused`, `level_resumed`) and adapt to device type, orientation, and screen size.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `advertisement.advancedBanners.disable` | boolean | `false` | Disable advanced banners entirely |
+| `advertisement.advancedBanners.{message}` | object | — | Banner configuration for a specific platform message |
+| `advertisement.advancedBanners.{message}.action` | string | `"show"` | Action to perform: `"show"` or `"hide"` |
+
+Each message object contains variant keys mapped to arrays of banner objects. Variant keys are colon-separated combinations of:
+
+- **Device type**: `desktop`, `mobile`, `tablet`, `tv`
+- **Orientation**: `portrait`, `landscape`
+- **Screen conditions**: `w>N`, `w<N`, `w>=N`, `w<=N`, `h>N`, `h<N`, `h>=N`, `h<=N` (pixels, based on `window.innerWidth`/`window.innerHeight`)
+- **`default`**: fallback when no other variant matches
+
+**Resolution priority** (highest score wins):
+- Device type match: +4
+- Orientation match: +2
+- Each screen condition match: +1
+
+**Banner object properties**: `width`, `height`, `top`, `bottom`, `left`, `right` (CSS values).
+
+**Example:**
+```json
+{
+    "advertisement": {
+        "advancedBanners": {
+            "level_paused": {
+                "action": "show",
+                "default": [
+                    { "width": "300px", "height": "250px", "top": "10%", "right": "10%" }
+                ],
+                "mobile:portrait": [
+                    { "width": "100%", "height": "80px", "bottom": "0", "left": "0" }
+                ],
+                "mobile:portrait:w>400": [
+                    { "width": "100%", "height": "100px", "bottom": "0", "left": "0" },
+                    { "width": "100%", "height": "80px", "top": "0", "left": "0" }
+                ],
+                "desktop:w>1200": [
+                    { "width": "160px", "height": "600px", "top": "10%", "left": "2%" },
+                    { "width": "160px", "height": "600px", "top": "10%", "right": "2%" }
+                ]
+            },
+            "level_resumed": {
+                "action": "hide"
+            }
+        }
+    }
+}
+```
+
+Banners automatically re-evaluate on orientation change and window resize.
 
 ### Placement Configuration
 
@@ -264,14 +321,12 @@ These parameters are specific to individual platforms and should be placed at ro
 #### Lagged
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `projectId` | string | Lagged project ID |
 | `devId` | string | Developer ID |
 | `publisherId` | string | Publisher ID |
 
 #### Xiaomi
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `gameId` | string | Xiaomi game ID |
 | `adSenseId` | string | Google AdSense ID for ads |
 | `testMode` | boolean | Enable test mode for ads |
 
@@ -285,6 +340,14 @@ These parameters are specific to individual platforms and should be placed at ro
 |-----------|------|-------------|
 | `gameId` | string | MSN game ID |
 | `playgamaAdsId` | string | Playgama Ads integration ID |
+
+#### Dlightek
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `appKey` | string | Dlightek application key |
+| `adSenseId` | string | Google AdSense ID for ads |
+| `adChannel` | string | AdSense ad channel ID |
+| `testMode` | boolean | Enable test mode for ads |
 
 #### JioGames
 | Parameter | Type | Description |
