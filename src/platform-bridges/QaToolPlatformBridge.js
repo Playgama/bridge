@@ -37,6 +37,7 @@ const ADVERTISEMENT_TYPE = {
     INTERSTITIAL: 'interstitial',
     REWARD: 'reward',
     BANNER: 'banner',
+    ADVANCED_BANNERS: 'advanced',
 }
 
 const MESSAGE_SOURCE = 'bridge'
@@ -70,6 +71,8 @@ export const ACTION_NAME_QA = {
     AUDIO_STATE: 'audio_state',
     PAUSE_STATE: 'pause_state',
     CLEAN_CACHE: 'clean_cache',
+    SHOW_ADVANCED_BANNERS: 'show_advanced_bahhers',
+    HIDE_ADVANCED_BANNERS: 'hide_advanced_bahhers',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -110,6 +113,8 @@ export const SUPPORTED_FEATURES = {
     REWARDED: 'isRewardedSupported',
 
     CLIPBOARD: 'isClipboardSupported',
+
+    ADVANCED_BANNERS: 'isAdvancedBannersSupported',
 
     ACHIEVEMENTS: 'isAchievementsSupported',
     ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
@@ -154,6 +159,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     // advertisement
     get isBannerSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+    }
+
+    get isAdvancedBannerSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ADVANCED_BANNERS)
     }
 
     get isInterstitialSupported() {
@@ -529,6 +538,35 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             type: MODULE_NAME.ADVERTISEMENT,
             action: BANNER_STATE.HIDDEN,
             options: { type: ADVERTISEMENT_TYPE.BANNER },
+        })
+    }
+
+    showAdvancedBanners(banners) {
+        if (!this.isAdvancedBannerSupported) {
+            return
+        }
+
+        this._setAdvancedBannersState(BANNER_STATE.LOADING)
+
+        this.#sendMessage({
+            type: MODULE_NAME.ADVERTISEMENT,
+            action: ACTION_NAME_QA.SHOW_ADVANCED_BANNERS,
+            options: {
+                banners,
+            },
+        })
+    }
+
+    hideAdvancedBanners() {
+        if (!this.isAdvancedBannerSupported) {
+            return
+        }
+
+        this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+
+        this.#sendMessage({
+            type: MODULE_NAME.ADVERTISEMENT,
+            action: ACTION_NAME_QA.HIDE_ADVANCED_BANNERS,
         })
     }
 
@@ -1010,6 +1048,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #handleInitializeResponse(data) {
         this._supportedFeatures = data.supportedFeatures || []
         this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+        this._isAdvancedBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.ADVANCED_BANNERS)
 
         const { config = {} } = data
         this._deviceType = config.deviceType ?? super.deviceType
@@ -1134,7 +1173,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     #handleAdvertisement({ action, payload }) {
-        if (action === 'interstitial') {
+        if (action === ADVERTISEMENT_TYPE.INTERSTITIAL) {
             if (!this.isInterstitialSupported) {
                 return
             }
@@ -1154,7 +1193,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 default:
                     break
             }
-        } else if (action === 'reward') {
+        } else if (action === ADVERTISEMENT_TYPE.REWARD) {
             if (!this.isRewardedSupported) {
                 return
             }
@@ -1181,6 +1220,23 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 default: {
                     break
                 }
+            }
+        } else if (action === ADVERTISEMENT_TYPE.ADVANCED_BANNERS) {
+            switch (payload.status) {
+                case BANNER_STATE.SHOWN:
+                    this._setAdvancedBannersState(BANNER_STATE.SHOWN)
+                    break
+                case BANNER_STATE.HIDDEN:
+                    this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+                    break
+                case BANNER_STATE.FAILED:
+                    this._setAdvancedBannersState(BANNER_STATE.FAILED)
+                    break
+                case BANNER_STATE.LOADING:
+                    this._setAdvancedBannersState(BANNER_STATE.LOADING)
+                    break
+                default:
+                    break
             }
         }
     }
