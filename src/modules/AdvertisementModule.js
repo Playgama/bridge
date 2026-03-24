@@ -408,13 +408,13 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#advancedBannersState = state
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#lastAdvancedBannersMessage })
+
         if (state === BANNER_STATE.FAILED) {
             this.#lastAdvancedBannersMessage = null
             this.#lastAdvancedBanners = null
             this.#advancedBannersHiddenByAd = false
         }
-
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`)
 
         eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
     }
