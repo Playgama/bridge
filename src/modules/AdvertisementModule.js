@@ -77,13 +77,13 @@ class AdvertisementModule extends ModuleBase {
         return this.#minimumDelayBetweenInterstitial
     }
 
-    get isAdvancedBannerSupported() {
+    get isAdvancedBannersSupported() {
         const disable = this._platformBridge.options?.advertisement?.advancedBanners?.disable
         if (disable === true) {
             return false
         }
 
-        if (!this._platformBridge.isAdvancedBannerSupported) {
+        if (!this._platformBridge.isAdvancedBannersSupported) {
             return false
         }
 
@@ -451,7 +451,7 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #onPlatformMessageSent(message) {
-        if (!this.isAdvancedBannerSupported) {
+        if (!this.isAdvancedBannersSupported) {
             return
         }
 

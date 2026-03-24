@@ -71,8 +71,8 @@ export const ACTION_NAME_QA = {
     AUDIO_STATE: 'audio_state',
     PAUSE_STATE: 'pause_state',
     CLEAN_CACHE: 'clean_cache',
-    SHOW_ADVANCED_BANNERS: 'show_advanced_bahhers',
-    HIDE_ADVANCED_BANNERS: 'hide_advanced_bahhers',
+    SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
+    HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -161,7 +161,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
     }
 
-    get isAdvancedBannerSupported() {
+    get isAdvancedBannersSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.ADVANCED_BANNERS)
     }
 
@@ -542,7 +542,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     showAdvancedBanners(banners) {
-        if (!this.isAdvancedBannerSupported) {
+        if (!this.isAdvancedBannersSupported) {
             return
         }
 
@@ -558,7 +558,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     hideAdvancedBanners() {
-        if (!this.isAdvancedBannerSupported) {
+        if (!this.isAdvancedBannersSupported) {
             return
         }
 
@@ -1048,7 +1048,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #handleInitializeResponse(data) {
         this._supportedFeatures = data.supportedFeatures || []
         this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
-        this._isAdvancedBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.ADVANCED_BANNERS)
+        this._isAdvancedBannersSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.ADVANCED_BANNERS)
 
         const { config = {} } = data
         this._deviceType = config.deviceType ?? super.deviceType
