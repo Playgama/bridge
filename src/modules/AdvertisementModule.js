@@ -22,7 +22,7 @@ import {
     ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE, DEVICE_ORIENTATION, DEVICE_TYPE,
     EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
 } from '../constants'
-import { detectOrientation } from '../common/utils'
+import { detectOrientation, findGameCanvas } from '../common/utils'
 import analyticsModule from './AnalyticsModule'
 
 const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
@@ -414,6 +414,8 @@ class AdvertisementModule extends ModuleBase {
             this.#advancedBannersHiddenByAd = false
         }
 
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`)
+
         eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
     }
 
@@ -556,11 +558,10 @@ class AdvertisementModule extends ModuleBase {
     #resolveAdvancedBanners(messageConfig) {
         const { deviceType } = this._platformBridge
         const orientation = detectOrientation()
-        const screenWidth = window.innerWidth
-        const screenHeight = window.innerHeight
+        const canvas = findGameCanvas()
 
         const context = {
-            deviceType, orientation, screenWidth, screenHeight,
+            deviceType, orientation, canvas,
         }
 
         let bestBanners = messageConfig.default ?? null
@@ -581,13 +582,24 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #matchAdvancedBannerKey(key, context) {
-        const {
-            deviceType, orientation, screenWidth, screenHeight,
-        } = context
+        const { deviceType, orientation, canvas } = context
         const segments = key.split(':')
+        const useCanvas = segments.includes('canvas')
         let score = 0
 
+        if (useCanvas && !canvas) {
+            return { matched: false, score }
+        }
+
+        if (useCanvas) {
+            score += 1
+        }
+
         const matched = segments.every((segment) => {
+            if (segment === 'canvas') {
+                return true
+            }
+
             if (DEVICE_TYPES_SET.has(segment)) {
                 if (segment !== deviceType) {
                     return false
@@ -604,6 +616,8 @@ class AdvertisementModule extends ModuleBase {
                     return false
                 }
 
+                const screenWidth = useCanvas ? canvas.width : window.innerWidth
+                const screenHeight = useCanvas ? canvas.height : window.innerHeight
                 const dimension = conditionMatch[1] === 'w' ? screenWidth : screenHeight
                 const operator = conditionMatch[2]
                 const value = parseInt(conditionMatch[3], 10)

@@ -82,13 +82,14 @@ Each message object contains variant keys mapped to arrays of banner objects. Va
 
 - **Device type**: `desktop`, `mobile`, `tablet`, `tv`
 - **Orientation**: `portrait`, `landscape`
-- **Screen conditions**: `w>N`, `w<N`, `w>=N`, `w<=N`, `h>N`, `h<N`, `h>=N`, `h<=N` (pixels, based on `window.innerWidth`/`window.innerHeight`)
+- **Canvas mode**: `canvas` — use game canvas internal dimensions (`canvas.width`/`canvas.height`) instead of `window.innerWidth`/`window.innerHeight` for screen conditions (`w`/`h`). If no `<canvas>` element is found on the page, the variant will not match.
+- **Screen conditions**: `w>N`, `w<N`, `w>=N`, `w<=N`, `h>N`, `h<N`, `h>=N`, `h<=N` (pixels, based on window size or canvas size if `canvas` segment is present)
 - **`default`**: fallback when no other variant matches
 
 **Resolution priority** (highest score wins):
 - Device type match: +4
 - Orientation match: +2
-- Each screen condition match: +1
+- Canvas mode / each screen condition match: +1
 
 **Banner object properties**: `width`, `height`, `top`, `bottom`, `left`, `right` (CSS values).
 

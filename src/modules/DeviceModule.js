@@ -20,7 +20,9 @@ import ModuleBase from './ModuleBase'
 import {
     EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE,
 } from '../constants'
-import { createOrientationOverlay, detectOrientation, getSafeArea } from '../common/utils'
+import {
+    createOrientationOverlay, detectOrientation, getSafeArea,
+} from '../common/utils'
 
 class DeviceModule extends ModuleBase {
     get type() {

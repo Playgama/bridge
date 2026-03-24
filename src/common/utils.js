@@ -861,18 +861,6 @@ export function postToWebView(message) {
 }
 
 export function detectOrientation() {
-    if (window.screen.orientation?.type) {
-        return window.screen.orientation.type.includes('portrait')
-            ? DEVICE_ORIENTATION.PORTRAIT
-            : DEVICE_ORIENTATION.LANDSCAPE
-    }
-
-    if (window.matchMedia) {
-        return window.matchMedia('(orientation: portrait)').matches
-            ? DEVICE_ORIENTATION.PORTRAIT
-            : DEVICE_ORIENTATION.LANDSCAPE
-    }
-
     return window.innerHeight > window.innerWidth
         ? DEVICE_ORIENTATION.PORTRAIT
         : DEVICE_ORIENTATION.LANDSCAPE
@@ -907,4 +895,8 @@ export function applySafeAreaStyles() {
         }
     `
     document.head.appendChild(style)
+}
+
+export function findGameCanvas() {
+    return document.querySelector('canvas')
 }
