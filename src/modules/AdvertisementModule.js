@@ -207,6 +207,10 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
+        if (!Object.values(BANNER_POSITION).includes(position)) {
+            position = BANNER_POSITION.BOTTOM
+        }
+
         this.#bannerPosition = position
 
         let modifiedPlacement = placement
