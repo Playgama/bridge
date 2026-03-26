@@ -207,11 +207,11 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        if (!Object.values(BANNER_POSITION).includes(position)) {
-            position = BANNER_POSITION.BOTTOM
-        }
+        const validPosition = Object.values(BANNER_POSITION).includes(position)
+            ? position
+            : BANNER_POSITION.BOTTOM
 
-        this.#bannerPosition = position
+        this.#bannerPosition = validPosition
 
         let modifiedPlacement = placement
         if (!modifiedPlacement) {
@@ -229,7 +229,7 @@ class AdvertisementModule extends ModuleBase {
 
         const placements = this._platformBridge.options?.advertisement?.banner?.placements
         const platformPlacement = this.#getPlatformPlacement(modifiedPlacement, placements)
-        this._platformBridge.showBanner(position, platformPlacement)
+        this._platformBridge.showBanner(validPosition, platformPlacement)
     }
 
     hideBanner() {
