@@ -136,7 +136,7 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.on(
             EVENT_NAME.INTERSTITIAL_STATE_CHANGED,
             (state) => {
-                if (state === INTERSTITIAL_STATE.OPENED) {
+                if (state === INTERSTITIAL_STATE.LOADING || state === INTERSTITIAL_STATE.OPENED) {
                     this.#hideAdvancedBannersByAd()
                 } else if (state === INTERSTITIAL_STATE.CLOSED || state === INTERSTITIAL_STATE.FAILED) {
                     this.#restoreAdvancedBannersAfterAd()
@@ -153,7 +153,7 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.on(
             EVENT_NAME.REWARDED_STATE_CHANGED,
             (state) => {
-                if (state === REWARDED_STATE.OPENED) {
+                if (state === REWARDED_STATE.LOADING || state === REWARDED_STATE.OPENED) {
                     this.#hideAdvancedBannersByAd()
                 } else if (state === REWARDED_STATE.CLOSED || state === REWARDED_STATE.FAILED) {
                     this.#restoreAdvancedBannersAfterAd()
@@ -275,6 +275,7 @@ class AdvertisementModule extends ModuleBase {
         this.#interstitialPlacement = modifiedPlacement
 
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
+        this.#hideAdvancedBannersByAd()
 
         if (!this.isInterstitialSupported) {
             this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
@@ -326,6 +327,7 @@ class AdvertisementModule extends ModuleBase {
         const platformPlacement = this.#getPlatformPlacement(this.#rewardedPlacement, placements)
 
         this.#setRewardedState(REWARDED_STATE.LOADING)
+        this.#hideAdvancedBannersByAd()
         if (!this.isRewardedSupported) {
             this.#setRewardedState(REWARDED_STATE.FAILED)
             return
@@ -491,7 +493,7 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        if (this.#isAdOpened()) {
+        if (this.#hasAdvertisementInProgress()) {
             this.#advancedBannersHiddenByAd = true
             return
         }
@@ -529,11 +531,6 @@ class AdvertisementModule extends ModuleBase {
         }
     }
 
-    #isAdOpened() {
-        return this.#interstitialState === INTERSTITIAL_STATE.OPENED
-            || this.#rewardedState === REWARDED_STATE.OPENED
-    }
-
     #hideAdvancedBannersByAd() {
         if (!this.#lastAdvancedBanners || this.#advancedBannersHiddenByAd) {
             return
@@ -548,7 +545,7 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        if (this.#isAdOpened()) {
+        if (this.#hasAdvertisementInProgress()) {
             return
         }
 
