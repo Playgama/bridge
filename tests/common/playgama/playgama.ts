@@ -42,10 +42,17 @@ export function createPlaygamaSdk(
     }
 
 
+    const platformService = {
+        isReady: Promise.resolve(),
+        getIsPaymentsSupported: vi.fn().mockReturnValue(false),
+        getAdditionalParams: vi.fn().mockReturnValue({}),
+    }
+
     testGlobalThis.PLAYGAMA_SDK = {
         userService,
         advService,
         cloudSaveApi,
+        platformService,
     }
 
     return Promise.resolve()
