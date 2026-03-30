@@ -350,6 +350,10 @@ class PlatformBridgeBase {
         return Promise.resolve()
     }
 
+    sendCustomMessage() {
+        return Promise.resolve()
+    }
+
     getServerTime() {
         return new Promise((resolve, reject) => {
             fetch(TIMESTAMP_URL)

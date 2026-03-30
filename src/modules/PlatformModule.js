@@ -103,6 +103,14 @@ class PlatformModule extends ModuleBase {
         return this._platformBridge.sendMessage(message, options)
     }
 
+    sendCustomMessage(id, options) {
+        analyticsModule.send(`${MODULE_NAME.PLATFORM}_custom_message_${id}`)
+
+        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, id)
+
+        return this._platformBridge.sendCustomMessage(id, options)
+    }
+
     getServerTime() {
         return this._platformBridge.getServerTime()
     }
