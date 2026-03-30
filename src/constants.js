@@ -65,6 +65,7 @@ export const MODULE_NAME = {
     CLIPBOARD: 'clipboard',
     ACHIEVEMENTS: 'achievements',
     ANALYTICS: 'analytics',
+    RECORDER: 'recorder',
 }
 
 export const EVENT_NAME = {
