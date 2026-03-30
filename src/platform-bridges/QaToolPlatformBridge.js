@@ -18,6 +18,8 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
 import configFileModule from '../modules/ConfigFileModule'
+import recorderModule from '../modules/RecorderModule'
+
 import {
     PLATFORM_ID,
     MODULE_NAME,
@@ -73,6 +75,18 @@ export const ACTION_NAME_QA = {
     CLEAN_CACHE: 'clean_cache',
     SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
     HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
+}
+
+const RECORDER_ACTION = {
+    START_CAPTURE: 'start_capture',
+    STOP_CAPTURE: 'stop_capture',
+    RTC_OFFER: 'rtc_offer',
+    RTC_ANSWER: 'rtc_answer',
+    RTC_ICE: 'rtc_ice',
+    CAPTURE_STARTED: 'capture_started',
+    CAPTURE_ERROR: 'capture_error',
+    TAKE_SCREENSHOT: 'take_screenshot',
+    SCREENSHOT_RESULT: 'screenshot_result',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -292,10 +306,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     }
                 } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
                     this.#handleAdvertisement(data)
+                } else if (data.type === MODULE_NAME.RECORDER) {
+                    this.#handleRecorder(data)
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
+
+            this.#initRecorderCallbacks()
+
             this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
@@ -1238,6 +1257,64 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 default:
                     break
             }
+        }
+    }
+
+    #handleRecorder(data) {
+        switch (data.action) {
+            case RECORDER_ACTION.START_CAPTURE:
+                recorderModule.startCapture(data.options || {})
+                break
+            case RECORDER_ACTION.STOP_CAPTURE:
+                recorderModule.stopCapture()
+                break
+            case RECORDER_ACTION.RTC_ANSWER:
+                recorderModule.handleAnswer(data.options)
+                break
+            case RECORDER_ACTION.RTC_ICE:
+                recorderModule.handleIce(data.options)
+                break
+            case RECORDER_ACTION.TAKE_SCREENSHOT: {
+                const result = recorderModule.takeScreenshot(data.options || {})
+                this.#sendMessage({
+                    type: MODULE_NAME.RECORDER,
+                    action: RECORDER_ACTION.SCREENSHOT_RESULT,
+                    payload: result,
+                })
+                break
+            }
+            default:
+                break
+        }
+    }
+
+    #initRecorderCallbacks() {
+        recorderModule.onOffer = (sdp) => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.RTC_OFFER,
+                payload: { sdp },
+            })
+        }
+        recorderModule.onIceCandidate = (candidate) => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.RTC_ICE,
+                payload: candidate,
+            })
+        }
+        recorderModule.onStarted = () => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.CAPTURE_STARTED,
+            })
+        }
+        recorderModule.onError = (message) => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.CAPTURE_ERROR,
+                payload: { message },
+            })
         }
     }
 
