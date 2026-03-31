@@ -7,6 +7,7 @@
         "build": "npm run build:bundled",
         "build:dynamic": "webpack --config-name dynamic",
         "build:bundled": "webpack --config-name bundled",
+        "build:nolint": "webpack --config-name bundled --env noLint",
         "build:platform": "node scripts/build-platform.js",
         "develop": "webpack --mode=development",
         "dev": "webpack serve --mode=development --config-name dynamic",
