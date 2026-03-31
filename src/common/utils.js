@@ -484,7 +484,7 @@ export function showAdFailurePopup() {
     })
 }
 
-export function createProgressLogo(showFullLoadingLogo) {
+export function createProgressLogo(showFullLoadingLogo, showLoadingText = false) {
     const style = document.createElement('style')
     style.textContent = `
         .fullscreen {
@@ -715,60 +715,72 @@ export function createProgressLogo(showFullLoadingLogo) {
 
     overlay.appendChild(svg)
 
-    const hints = [
-        'Loading GPU',
-        'Parsing AST',
-        'Linking libs',
-        'Baking mesh',
-        'Warming JIT',
-        'Tracing rays',
-        'Packing data',
-        'Flushing GPU',
-        'Loading WASM',
-        'Alloc memory',
-        'Init shaders',
-        'Optimize FPS',
-    ]
+    if (showLoadingText) {
+        const hints = [
+            'Loading GPU',
+            'Parsing AST',
+            'Linking libs',
+            'Baking mesh',
+            'Warming JIT',
+            'Tracing rays',
+            'Packing data',
+            'Flushing GPU',
+            'Loading WASM',
+            'Alloc memory',
+            'Init shaders',
+            'Optimize FPS',
+            'Sync textures',
+            'Build navmesh',
+            'Compile code',
+            'Load physics',
+            'Stream assets',
+            'Cache buffers',
+            'Map controls',
+            'Decode audio',
+            'Init network',
+            'Setup scene',
+        ]
 
-    const hint = document.createElement('div')
-    hint.id = 'loading-hint'
-    hint.style.opacity = '0'
+        const hint = document.createElement('div')
+        hint.id = 'loading-hint'
+        hint.style.opacity = '0'
 
-    let hintIndex = Math.floor(Math.random() * hints.length)
-    hint.textContent = hints[hintIndex]
-    overlay.appendChild(hint)
+        let hintIndex = Math.floor(Math.random() * hints.length)
+        hint.textContent = hints[hintIndex]
+        overlay.appendChild(hint)
 
-    const randomDelay = () => (3 + Math.random() * 2) * 1000
+        const randomDelay = () => (2 + Math.random()) * 1000
 
-    let hintTimeout = null
-    const scheduleNextHint = () => {
+        let hintTimeout = null
+        const scheduleNextHint = () => {
+            hintTimeout = setTimeout(() => {
+                hint.style.opacity = '0'
+                setTimeout(() => {
+                    hintIndex = (hintIndex + 1) % hints.length
+                    hint.textContent = hints[hintIndex]
+                    hint.style.opacity = '1'
+                    scheduleNextHint()
+                }, 400)
+            }, randomDelay())
+        }
+
         hintTimeout = setTimeout(() => {
-            hint.style.opacity = '0'
-            setTimeout(() => {
-                hintIndex = (hintIndex + 1) % hints.length
-                hint.textContent = hints[hintIndex]
-                hint.style.opacity = '1'
-                scheduleNextHint()
-            }, 400)
+            hint.style.opacity = '1'
+            scheduleNextHint()
         }, randomDelay())
-    }
 
-    hintTimeout = setTimeout(() => {
-        hint.style.opacity = '1'
-        scheduleNextHint()
-    }, randomDelay())
-
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            mutation.removedNodes.forEach((node) => {
-                if (node === overlay) {
-                    clearTimeout(hintTimeout)
-                    observer.disconnect()
-                }
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.removedNodes.forEach((node) => {
+                    if (node === overlay) {
+                        clearTimeout(hintTimeout)
+                        observer.disconnect()
+                    }
+                })
             })
         })
-    })
-    observer.observe(document.body, { childList: true })
+        observer.observe(document.body, { childList: true })
+    }
 }
 
 export const waitFor = function waitFor(...args) {

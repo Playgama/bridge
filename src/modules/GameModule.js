@@ -39,7 +39,9 @@ class GameModule extends ModuleBase {
                 || this._platformBridge.platformId === PLATFORM_ID.Y8
                 ? false
                 : this._platformBridge.options.showFullLoadingLogo
-            createProgressLogo(showFullLogo)
+            const showLoadingText = this._platformBridge.platformId === PLATFORM_ID.XIAOMI
+                || this._platformBridge.options.showLoadingText === true
+            createProgressLogo(showFullLogo, showLoadingText)
         }
 
         if (this._platformBridge.options?.game?.adaptToSafeArea) {
