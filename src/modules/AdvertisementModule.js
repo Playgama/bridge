@@ -92,7 +92,7 @@ class AdvertisementModule extends ModuleBase {
             return false
         }
 
-        return Object.keys(advancedBannersConfig).length > 0
+        return Object.keys(advancedBannersConfig).some((key) => key !== 'disable')
     }
 
     get advancedBannersState() {
@@ -123,6 +123,8 @@ class AdvertisementModule extends ModuleBase {
 
     #lastAdvancedBanners = null
 
+    #lastAdvancedBannersKey = null
+
     #advancedBannersHiddenByAd = false
 
     constructor(platformBridge) {
@@ -136,6 +138,8 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.on(
             EVENT_NAME.INTERSTITIAL_STATE_CHANGED,
             (state) => {
+                this.#setInterstitialState(state)
+
                 if (state === INTERSTITIAL_STATE.LOADING || state === INTERSTITIAL_STATE.OPENED) {
                     this.#hideAdvancedBannersByAd()
                 } else if (state === INTERSTITIAL_STATE.CLOSED || state === INTERSTITIAL_STATE.FAILED) {
@@ -145,21 +149,19 @@ class AdvertisementModule extends ModuleBase {
                 if (state === INTERSTITIAL_STATE.CLOSED) {
                     this.#startInterstitialTimer()
                 }
-
-                this.#setInterstitialState(state)
             },
         )
 
         this._platformBridge.on(
             EVENT_NAME.REWARDED_STATE_CHANGED,
             (state) => {
+                this.#setRewardedState(state)
+
                 if (state === REWARDED_STATE.LOADING || state === REWARDED_STATE.OPENED) {
                     this.#hideAdvancedBannersByAd()
                 } else if (state === REWARDED_STATE.CLOSED || state === REWARDED_STATE.FAILED) {
                     this.#restoreAdvancedBannersAfterAd()
                 }
-
-                this.#setRewardedState(state)
             },
         )
 
@@ -275,7 +277,6 @@ class AdvertisementModule extends ModuleBase {
         this.#interstitialPlacement = modifiedPlacement
 
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
-        this.#hideAdvancedBannersByAd()
 
         if (!this.isInterstitialSupported) {
             this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
@@ -327,7 +328,6 @@ class AdvertisementModule extends ModuleBase {
         const platformPlacement = this.#getPlatformPlacement(this.#rewardedPlacement, placements)
 
         this.#setRewardedState(REWARDED_STATE.LOADING)
-        this.#hideAdvancedBannersByAd()
         if (!this.isRewardedSupported) {
             this.#setRewardedState(REWARDED_STATE.FAILED)
             return
@@ -417,8 +417,8 @@ class AdvertisementModule extends ModuleBase {
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#lastAdvancedBannersMessage })
 
         if (state === BANNER_STATE.FAILED) {
-            this.#lastAdvancedBannersMessage = null
             this.#lastAdvancedBanners = null
+            this.#lastAdvancedBannersKey = null
             this.#advancedBannersHiddenByAd = false
         }
 
@@ -472,16 +472,21 @@ class AdvertisementModule extends ModuleBase {
         const action = messageConfig.action ?? ADVANCED_BANNERS_ACTION.SHOW
 
         if (action === ADVANCED_BANNERS_ACTION.HIDE) {
+            const needsHide = this.#lastAdvancedBanners && !this.#advancedBannersHiddenByAd
             this.#lastAdvancedBannersMessage = null
             this.#lastAdvancedBanners = null
+            this.#lastAdvancedBannersKey = null
             this.#advancedBannersHiddenByAd = false
-            this._platformBridge.hideAdvancedBanners()
+            if (needsHide) {
+                this._platformBridge.hideAdvancedBanners()
+            }
             return
         }
 
-        const banners = this.#resolveAdvancedBanners(messageConfig)
+        const { key, banners } = this.#resolveAdvancedBanners(messageConfig)
 
         this.#lastAdvancedBannersMessage = message
+        this.#lastAdvancedBannersKey = key
 
         if (this.#lastAdvancedBanners && !banners) {
             this._platformBridge.hideAdvancedBanners()
@@ -512,12 +517,13 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        const banners = this.#resolveAdvancedBanners(messageConfig)
+        const { key, banners } = this.#resolveAdvancedBanners(messageConfig)
 
-        if (banners === this.#lastAdvancedBanners) {
+        if (key === this.#lastAdvancedBannersKey) {
             return
         }
 
+        this.#lastAdvancedBannersKey = key
         this.#lastAdvancedBanners = banners
 
         if (this.#advancedBannersHiddenByAd) {
@@ -565,6 +571,7 @@ class AdvertisementModule extends ModuleBase {
             deviceType, orientation, canvas,
         }
 
+        let bestKey = 'default'
         let bestBanners = messageConfig.default ?? null
         let bestScore = -1
 
@@ -575,11 +582,12 @@ class AdvertisementModule extends ModuleBase {
 
                 if (result.matched && result.score > bestScore) {
                     bestScore = result.score
+                    bestKey = key
                     bestBanners = messageConfig[key]
                 }
             })
 
-        return bestBanners
+        return { key: bestKey, banners: bestBanners }
     }
 
     #matchAdvancedBannerKey(key, context) {

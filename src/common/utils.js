@@ -119,6 +119,7 @@ export function createAdvancedBannerContainers(banners) {
         const id = `${ADVANCED_BANNER_CONTAINER_ID_PREFIX}${index}`
         container.id = id
         container.style.position = 'absolute'
+        container.style.zIndex = '9999'
 
         if (banner.width) container.style.width = banner.width
         if (banner.height) container.style.height = banner.height
