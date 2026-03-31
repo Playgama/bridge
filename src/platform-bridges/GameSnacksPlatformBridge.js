@@ -160,6 +160,11 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
         })
     }
 
+    // advertisement - adblock detection
+    checkAdBlock() {
+        return Promise.resolve(false)
+    }
+
     // storage
     isStorageSupported(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {

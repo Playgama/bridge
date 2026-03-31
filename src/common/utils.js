@@ -16,7 +16,8 @@
  */
 
 import {
-    BANNER_CONTAINER_ID, BANNER_POSITION, ORIENTATION_OVERLAY_ID,
+    ADVANCED_BANNER_CONTAINER_ID_PREFIX, BANNER_CONTAINER_ID, BANNER_POSITION, DEVICE_ORIENTATION,
+    ORIENTATION_OVERLAY_ID,
 } from '../constants'
 
 const POST_METHOD = ['post', 'Message'].join('')
@@ -108,6 +109,34 @@ export function createAdvertisementBannerContainer(position) {
     }
 
     return container
+}
+
+export function createAdvancedBannerContainers(banners) {
+    const containerIds = []
+
+    banners.forEach((banner, index) => {
+        const container = document.createElement('div')
+        const id = `${ADVANCED_BANNER_CONTAINER_ID_PREFIX}${index}`
+        container.id = id
+        container.style.position = 'absolute'
+
+        if (banner.width) container.style.width = banner.width
+        if (banner.height) container.style.height = banner.height
+        if (banner.top) container.style.top = banner.top
+        if (banner.bottom) container.style.bottom = banner.bottom
+        if (banner.left) container.style.left = banner.left
+        if (banner.right) container.style.right = banner.right
+
+        document.body.appendChild(container)
+        containerIds.push(id)
+    })
+
+    return containerIds
+}
+
+export function removeAdvancedBannerContainers() {
+    const containers = document.querySelectorAll(`[id^="${ADVANCED_BANNER_CONTAINER_ID_PREFIX}"]`)
+    containers.forEach((container) => container.remove())
 }
 
 export function createLoadingOverlay() {
@@ -947,6 +976,12 @@ export function postToWebView(message) {
     }
 }
 
+export function detectOrientation() {
+    return window.innerHeight > window.innerWidth
+        ? DEVICE_ORIENTATION.PORTRAIT
+        : DEVICE_ORIENTATION.LANDSCAPE
+}
+
 export function getSafeArea() {
     const div = document.createElement('div')
     div.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);left:env(safe-area-inset-left);right:env(safe-area-inset-right);pointer-events:none;visibility:hidden;'
@@ -976,4 +1011,8 @@ export function applySafeAreaStyles() {
         }
     `
     document.head.appendChild(style)
+}
+
+export function findGameCanvas() {
+    return document.querySelector('canvas')
 }

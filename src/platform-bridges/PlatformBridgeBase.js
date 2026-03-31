@@ -137,8 +137,8 @@ class PlatformBridgeBase {
         return this._isBannerSupported
     }
 
-    get isAdvancedBannerSupported() {
-        return this._isAdvancedBannerSupported
+    get isAdvancedBannersSupported() {
+        return this._isAdvancedBannersSupported
     }
 
     get isInterstitialSupported() {
@@ -294,7 +294,7 @@ class PlatformBridgeBase {
 
     _isBannerSupported = false
 
-    _isAdvancedBannerSupported = false
+    _isAdvancedBannersSupported = false
 
     _useAdvertisementErrorPopup = false
 
@@ -347,6 +347,10 @@ class PlatformBridgeBase {
 
     // platform
     sendMessage() {
+        return Promise.resolve()
+    }
+
+    sendCustomMessage() {
         return Promise.resolve()
     }
 

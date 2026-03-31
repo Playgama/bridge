@@ -20,6 +20,7 @@ import { addJavaScript, waitFor, getKeysFromObject } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
+    BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
@@ -62,6 +63,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     get platformLanguage() {
         return this._platformSdk.platformService.getLanguage() || super.platformLanguage
     }
+
+    _isAdvancedBannersSupported = true
 
     #isPaymentsSupported = true
 
@@ -284,6 +287,23 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     showRewarded() {
         this._platformSdk.advService.showRewarded()
+    }
+
+    showAdvancedBanners(banners) {
+        this._setAdvancedBannersState(BANNER_STATE.LOADING)
+
+        this._platformSdk.advService.showAdvancedBanners(banners)
+            .then(() => {
+                this._setAdvancedBannersState(BANNER_STATE.SHOWN)
+            })
+            .catch(() => {
+                this._setAdvancedBannersState(BANNER_STATE.FAILED)
+            })
+    }
+
+    hideAdvancedBanners() {
+        this._platformSdk.advService.hideAdvancedBanners()
+        this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
     }
 
     authorizePlayer(options) {
