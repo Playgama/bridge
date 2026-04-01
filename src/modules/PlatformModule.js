@@ -104,7 +104,7 @@ class PlatformModule extends ModuleBase {
     }
 
     sendCustomMessage(id, options) {
-        analyticsModule.send(`${MODULE_NAME.PLATFORM}_custom_message_${id}`)
+        analyticsModule.send(`${MODULE_NAME.PLATFORM}_custom_message`, { message: id })
 
         eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, id)
 
