@@ -16,12 +16,19 @@ function createMockCanvas(options: { toDataURL?: string } = {}) {
 }
 
 function createMockRTCPeerConnection() {
+    const setParameters = vi.fn().mockResolvedValue(undefined)
+    const mockSender = {
+        track: { kind: 'video' },
+        getParameters: vi.fn().mockReturnValue({ encodings: [{}] }),
+        setParameters,
+    }
     const mockPc = {
         addTrack: vi.fn(),
         createOffer: vi.fn().mockResolvedValue({ sdp: 'mock-offer-sdp', type: 'offer' }),
         setLocalDescription: vi.fn().mockResolvedValue(undefined),
         setRemoteDescription: vi.fn().mockResolvedValue(undefined),
         addIceCandidate: vi.fn().mockResolvedValue(undefined),
+        getSenders: vi.fn().mockReturnValue([mockSender]),
         close: vi.fn(),
         onicecandidate: null as ((e: { candidate: unknown }) => void) | null,
     }
@@ -143,6 +150,63 @@ describe('RecorderModule', () => {
             await module.startCapture()
 
             expect(canvas.captureStream).toHaveBeenCalledWith(30)
+        })
+
+        test('should apply maxBitrate to video sender', async () => {
+            canvas = createMockCanvas()
+            const mockPc = createMockRTCPeerConnection()
+            const sender = mockPc.getSenders()[0]
+
+            const module = createRecorderModule()
+            await module.startCapture({ maxBitrate: 5000000 })
+
+            expect(sender.getParameters).toHaveBeenCalled()
+            expect(sender.setParameters).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    encodings: [{ maxBitrate: 5000000 }],
+                }),
+            )
+        })
+
+        test('should apply minBitrate to video sender', async () => {
+            canvas = createMockCanvas()
+            const mockPc = createMockRTCPeerConnection()
+            const sender = mockPc.getSenders()[0]
+
+            const module = createRecorderModule()
+            await module.startCapture({ minBitrate: 1000000 })
+
+            expect(sender.setParameters).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    encodings: [{ minBitrate: 1000000 }],
+                }),
+            )
+        })
+
+        test('should apply both maxBitrate and minBitrate', async () => {
+            canvas = createMockCanvas()
+            const mockPc = createMockRTCPeerConnection()
+            const sender = mockPc.getSenders()[0]
+
+            const module = createRecorderModule()
+            await module.startCapture({ maxBitrate: 5000000, minBitrate: 1000000 })
+
+            expect(sender.setParameters).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    encodings: [{ maxBitrate: 5000000, minBitrate: 1000000 }],
+                }),
+            )
+        })
+
+        test('should not apply bitrate constraints when not specified', async () => {
+            canvas = createMockCanvas()
+            const mockPc = createMockRTCPeerConnection()
+            const sender = mockPc.getSenders()[0]
+
+            const module = createRecorderModule()
+            await module.startCapture()
+
+            expect(sender.setParameters).not.toHaveBeenCalled()
         })
 
         test('should forward ice candidates', async () => {
