@@ -19,13 +19,20 @@ import Timer, { STATE as TIMER_STATE } from '../common/Timer'
 import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import {
-    ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE, DEVICE_ORIENTATION, DEVICE_TYPE,
-    EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
+    ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE,
+    DEVICE_ORIENTATION, DEVICE_TYPE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
 } from '../constants'
 import { detectOrientation, findGameCanvas } from '../common/utils'
 import analyticsModule from './AnalyticsModule'
 
 const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
+const ADVANCED_BANNERS_CONDITIONS_DEBOUNCE = 200
+const ADVANCED_BANNERS_SCORE = {
+    DEVICE_TYPE: 4,
+    ORIENTATION: 2,
+    DIMENSION: 1,
+    CANVAS: 1,
+}
 const DEVICE_TYPES_SET = new Set(Object.values(DEVICE_TYPE))
 const ORIENTATIONS_SET = new Set(Object.values(DEVICE_ORIENTATION))
 
@@ -78,21 +85,11 @@ class AdvertisementModule extends ModuleBase {
     }
 
     get isAdvancedBannersSupported() {
-        const disable = this._platformBridge.options?.advertisement?.advancedBanners?.disable
-        if (disable === true) {
+        if (this.#advancedBannersOptions?.disable === true) {
             return false
         }
 
-        if (!this._platformBridge.isAdvancedBannersSupported) {
-            return false
-        }
-
-        const advancedBannersConfig = this._platformBridge.options?.advertisement?.advancedBanners
-        if (!advancedBannersConfig) {
-            return false
-        }
-
-        return Object.keys(advancedBannersConfig).some((key) => key !== 'disable')
+        return this._platformBridge.isAdvancedBannersSupported
     }
 
     get advancedBannersState() {
@@ -119,13 +116,15 @@ class AdvertisementModule extends ModuleBase {
 
     #advancedBannersState = BANNER_STATE.HIDDEN
 
-    #lastAdvancedBannersMessage = null
+    #advancedBannersPlacement = null
 
-    #lastAdvancedBanners = null
+    #advancedBanners = null
 
-    #lastAdvancedBannersKey = null
+    #advancedBannersConfig = null
 
     #advancedBannersHiddenByAd = false
+
+    #advancedBannersConditionsTimer = null
 
     constructor(platformBridge) {
         super(platformBridge)
@@ -335,6 +334,20 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.showRewarded(platformPlacement)
     }
 
+    showAdvancedBanners(placement) {
+        this.#tryToShowAdvancedBanners(placement)
+    }
+
+    hideAdvancedBanners() {
+        if (!this.isAdvancedBannersSupported) {
+            return
+        }
+
+        this.#hideAdvancedBannersIfVisible()
+        this.#resetAdvancedBannersState()
+        this.#setAdvancedBannersState(BANNER_STATE.HIDDEN)
+    }
+
     checkAdBlock() {
         return this._platformBridge.checkAdBlock()
     }
@@ -414,12 +427,10 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#advancedBannersState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#lastAdvancedBannersMessage })
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#advancedBannersPlacement })
 
         if (state === BANNER_STATE.FAILED) {
-            this.#lastAdvancedBanners = null
-            this.#lastAdvancedBannersKey = null
-            this.#advancedBannersHiddenByAd = false
+            this.#resetAdvancedBannersState()
         }
 
         eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
@@ -459,42 +470,42 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #onPlatformMessageSent(message) {
+        this.#tryToShowAdvancedBanners(message)
+    }
+
+    #tryToShowAdvancedBanners(placement) {
         if (!this.isAdvancedBannersSupported) {
             return
         }
 
-        const advancedBannersConfig = this._platformBridge.options?.advertisement?.advancedBanners
-        const messageConfig = advancedBannersConfig?.[message]
-        if (!messageConfig) {
+        const placementConfig = this.#advancedBannersOptions?.[placement]
+        if (!placementConfig) {
             return
         }
 
-        const action = messageConfig.action ?? ADVANCED_BANNERS_ACTION.SHOW
+        const action = placementConfig.action ?? ADVANCED_BANNERS_ACTION.SHOW
 
         if (action === ADVANCED_BANNERS_ACTION.HIDE) {
-            const needsHide = this.#lastAdvancedBanners && !this.#advancedBannersHiddenByAd
-            this.#lastAdvancedBannersMessage = null
-            this.#lastAdvancedBanners = null
-            this.#lastAdvancedBannersKey = null
-            this.#advancedBannersHiddenByAd = false
-            if (needsHide) {
-                this._platformBridge.hideAdvancedBanners()
-            }
+            this.#hideAdvancedBannersIfVisible()
+            this.#resetAdvancedBannersState()
             return
         }
 
-        const { key, banners } = this.#resolveAdvancedBanners(messageConfig)
+        this.#setAdvancedBannersState(BANNER_STATE.LOADING)
 
-        this.#lastAdvancedBannersMessage = message
-        this.#lastAdvancedBannersKey = key
+        const { key, banners } = this.#resolveAdvancedBanners(placementConfig)
 
-        if (this.#lastAdvancedBanners && !banners) {
+        this.#advancedBannersPlacement = placement
+        this.#advancedBannersConfig = key
+
+        if (this.#advancedBanners && !banners) {
             this._platformBridge.hideAdvancedBanners()
         }
 
-        this.#lastAdvancedBanners = banners
+        this.#advancedBanners = banners
 
         if (!banners) {
+            this.#setAdvancedBannersState(BANNER_STATE.FAILED)
             return
         }
 
@@ -507,38 +518,68 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #onAdvancedBannersConditionsChanged() {
-        if (!this.#lastAdvancedBannersMessage) {
+        if (this.#advancedBannersConditionsTimer) {
+            clearTimeout(this.#advancedBannersConditionsTimer)
+        }
+
+        this.#advancedBannersConditionsTimer = setTimeout(() => {
+            this.#advancedBannersConditionsTimer = null
+            this.#handleAdvancedBannersConditionsChanged()
+        }, ADVANCED_BANNERS_CONDITIONS_DEBOUNCE)
+    }
+
+    #handleAdvancedBannersConditionsChanged() {
+        if (!this.#advancedBannersPlacement) {
             return
         }
 
-        const advancedBannersConfig = this._platformBridge.options?.advertisement?.advancedBanners
-        const messageConfig = advancedBannersConfig?.[this.#lastAdvancedBannersMessage]
+        const messageConfig = this.#advancedBannersOptions?.[this.#advancedBannersPlacement]
         if (!messageConfig) {
             return
         }
 
         const { key, banners } = this.#resolveAdvancedBanners(messageConfig)
 
-        if (key === this.#lastAdvancedBannersKey) {
+        if (key === this.#advancedBannersConfig) {
             return
         }
 
-        this.#lastAdvancedBannersKey = key
-        this.#lastAdvancedBanners = banners
+        const hadBanners = this.#advancedBanners
+        this.#advancedBannersConfig = key
+        this.#advancedBanners = banners
 
         if (this.#advancedBannersHiddenByAd) {
             return
         }
 
-        this._platformBridge.hideAdvancedBanners()
+        if (hadBanners) {
+            this._platformBridge.hideAdvancedBanners()
+        }
 
         if (banners) {
             this._platformBridge.showAdvancedBanners(banners)
         }
     }
 
+    get #advancedBannersOptions() {
+        return this._platformBridge.options?.advertisement?.advancedBanners
+    }
+
+    #resetAdvancedBannersState() {
+        this.#advancedBannersPlacement = null
+        this.#advancedBanners = null
+        this.#advancedBannersConfig = null
+        this.#advancedBannersHiddenByAd = false
+    }
+
+    #hideAdvancedBannersIfVisible() {
+        if (this.#advancedBanners && !this.#advancedBannersHiddenByAd) {
+            this._platformBridge.hideAdvancedBanners()
+        }
+    }
+
     #hideAdvancedBannersByAd() {
-        if (!this.#lastAdvancedBanners || this.#advancedBannersHiddenByAd) {
+        if (!this.#advancedBanners || this.#advancedBannersHiddenByAd) {
             return
         }
 
@@ -557,8 +598,8 @@ class AdvertisementModule extends ModuleBase {
 
         this.#advancedBannersHiddenByAd = false
 
-        if (this.#lastAdvancedBanners) {
-            this._platformBridge.showAdvancedBanners(this.#lastAdvancedBanners)
+        if (this.#advancedBanners) {
+            this._platformBridge.showAdvancedBanners(this.#advancedBanners)
         }
     }
 
@@ -580,7 +621,13 @@ class AdvertisementModule extends ModuleBase {
             .forEach((key) => {
                 const result = this.#matchAdvancedBannerKey(key, context)
 
-                if (result.matched && result.score > bestScore) {
+                if (!result.matched) {
+                    return
+                }
+
+                const isBetter = result.score > bestScore
+                    || (result.score === bestScore && key.split(':').length > bestKey.split(':').length)
+                if (isBetter) {
                     bestScore = result.score
                     bestKey = key
                     bestBanners = messageConfig[key]
@@ -601,7 +648,7 @@ class AdvertisementModule extends ModuleBase {
         }
 
         if (useCanvas) {
-            score += 1
+            score += ADVANCED_BANNERS_SCORE.CANVAS
         }
 
         const matched = segments.every((segment) => {
@@ -613,12 +660,12 @@ class AdvertisementModule extends ModuleBase {
                 if (segment !== deviceType) {
                     return false
                 }
-                score += 4
+                score += ADVANCED_BANNERS_SCORE.DEVICE_TYPE
             } else if (ORIENTATIONS_SET.has(segment)) {
                 if (segment !== orientation) {
                     return false
                 }
-                score += 2
+                score += ADVANCED_BANNERS_SCORE.ORIENTATION
             } else {
                 const conditionMatch = /^([wh])([><]=?)(\d+)$/.exec(segment)
                 if (!conditionMatch) {
@@ -634,7 +681,7 @@ class AdvertisementModule extends ModuleBase {
                 if (!this.#evaluateScreenCondition(dimension, operator, value)) {
                     return false
                 }
-                score += 1
+                score += ADVANCED_BANNERS_SCORE.DIMENSION
             }
 
             return true
