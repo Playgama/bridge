@@ -79,8 +79,7 @@ class PlatformModule extends ModuleBase {
             this.#isGameReadyMessageSent = true
 
             const endTime = performance.now()
-            const timeInSeconds = ((endTime - this.#startTime) / 1000).toFixed(2)
-            analyticsData.time_s = timeInSeconds
+            analyticsData.time_s = ((endTime - this.#startTime) / 1000).toFixed(2)
 
             const overlay = document.getElementById('loading-overlay')
             if (overlay) {
@@ -104,7 +103,7 @@ class PlatformModule extends ModuleBase {
     }
 
     sendCustomMessage(id, options) {
-        analyticsModule.send(`${MODULE_NAME.PLATFORM}_custom_message`, { message: id })
+        analyticsModule.send(`${MODULE_NAME.PLATFORM}_custom_message`, { id })
 
         eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, id)
 
