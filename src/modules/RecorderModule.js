@@ -68,6 +68,7 @@ class RecorderModule {
      * @param {'very-low'|'low'|'medium'|'high'} [options.priority] - Encoding priority
      * @param {'very-low'|'low'|'medium'|'high'} [options.networkPriority] - Network-level priority
      * @param {string} [options.scalabilityMode] - SVC scalability mode (e.g. "L1T3")
+     * @param {string} [options.contentHint='detail'] - Track content hint ('detail', 'motion', 'text')
      */
     async startCapture(options = {}) {
         const { available, reason } = this.checkAvailability()
@@ -79,6 +80,12 @@ class RecorderModule {
         const canvas = this.#getCanvas()
 
         this.#stream = canvas.captureStream(options.fps || 30)
+
+        if (options.contentHint) {
+            const track = this.#stream.getVideoTracks()[0]
+            if (track) track.contentHint = options.contentHint
+        }
+
         this.#pc = new RTCPeerConnection()
 
         this.#stream.getTracks().forEach((t) => this.#pc.addTrack(t, this.#stream))
@@ -92,18 +99,7 @@ class RecorderModule {
         const offer = await this.#pc.createOffer()
         await this.#pc.setLocalDescription(offer)
 
-        const hasEncodingParams = [
-            options.maxBitrate,
-            options.minBitrate,
-            options.maxFramerate,
-            options.scaleResolutionDownBy,
-            options.priority,
-            options.networkPriority,
-            options.scalabilityMode,
-        ].some((v) => v !== undefined)
-        if (hasEncodingParams) {
-            this.#applyEncodingParams(options)
-        }
+        this.#applyEncodingParams(options)
 
         this.#onOffer?.(offer.sdp)
         this.#onStarted?.()
