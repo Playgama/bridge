@@ -198,7 +198,7 @@ describe('RecorderModule', () => {
             )
         })
 
-        test('should not apply bitrate constraints when not specified', async () => {
+        test('should call setParameters without bitrate fields when not specified', async () => {
             canvas = createMockCanvas()
             const mockPc = createMockRTCPeerConnection()
             const sender = mockPc.getSenders()[0]
@@ -206,7 +206,9 @@ describe('RecorderModule', () => {
             const module = createRecorderModule()
             await module.startCapture()
 
-            expect(sender.setParameters).not.toHaveBeenCalled()
+            expect(sender.setParameters).toHaveBeenCalledWith(
+                expect.objectContaining({ encodings: [{}] }),
+            )
         })
 
         test('should forward ice candidates', async () => {
