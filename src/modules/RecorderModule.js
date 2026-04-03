@@ -167,13 +167,27 @@ class RecorderModule {
             if (!params.encodings?.length) {
                 params.encodings = [{}]
             }
-            if (maxBitrate !== undefined) params.encodings[0].maxBitrate = maxBitrate
-            if (minBitrate !== undefined) params.encodings[0].minBitrate = minBitrate
-            if (maxFramerate !== undefined) params.encodings[0].maxFramerate = maxFramerate
-            if (scaleResolutionDownBy !== undefined) params.encodings[0].scaleResolutionDownBy = scaleResolutionDownBy
-            if (priority !== undefined) params.encodings[0].priority = priority
-            if (networkPriority !== undefined) params.encodings[0].networkPriority = networkPriority
-            if (scalabilityMode !== undefined) params.encodings[0].scalabilityMode = scalabilityMode
+            if (maxBitrate !== undefined) {
+                params.encodings[0].maxBitrate = maxBitrate
+            }
+            if (minBitrate !== undefined) {
+                params.encodings[0].minBitrate = minBitrate
+            }
+            if (maxFramerate !== undefined) {
+                params.encodings[0].maxFramerate = maxFramerate
+            }
+            if (scaleResolutionDownBy !== undefined) {
+                params.encodings[0].scaleResolutionDownBy = scaleResolutionDownBy
+            }
+            if (priority !== undefined) {
+                params.encodings[0].priority = priority
+            }
+            if (networkPriority !== undefined) {
+                params.encodings[0].networkPriority = networkPriority
+            }
+            if (scalabilityMode !== undefined) {
+                params.encodings[0].scalabilityMode = scalabilityMode
+            }
             sender.setParameters(params)
         })
     }
