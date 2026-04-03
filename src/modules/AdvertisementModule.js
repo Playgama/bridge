@@ -118,8 +118,6 @@ class AdvertisementModule extends ModuleBase {
 
     #advancedBannersPlacement = null
 
-    #advancedBanners = null
-
     #advancedBannersConfig = null
 
     #advancedBannersHiddenByAd = false
@@ -435,10 +433,6 @@ class AdvertisementModule extends ModuleBase {
         this.#advancedBannersState = state
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#advancedBannersPlacement })
 
-        if (state === BANNER_STATE.FAILED) {
-            this.#resetAdvancedBannersState()
-        }
-
         eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
     }
 
@@ -499,18 +493,17 @@ class AdvertisementModule extends ModuleBase {
 
         this.#setAdvancedBannersState(BANNER_STATE.LOADING)
 
-        const { key, banners } = this.#resolveAdvancedBanners(placementConfig)
+        const config = this.#resolveAdvancedBanners(placementConfig)
 
         this.#advancedBannersPlacement = placement
-        this.#advancedBannersConfig = key
 
-        if (this.#advancedBanners && !banners) {
+        if (this.#advancedBannersConfig && !config) {
             this._platformBridge.hideAdvancedBanners()
         }
 
-        this.#advancedBanners = banners
+        this.#advancedBannersConfig = config
 
-        if (!banners) {
+        if (!config) {
             this.#setAdvancedBannersState(BANNER_STATE.FAILED)
             return
         }
@@ -520,7 +513,7 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this._platformBridge.showAdvancedBanners(banners)
+        this._platformBridge.showAdvancedBanners(config)
     }
 
     #onAdvancedBannersConditionsChanged() {
@@ -544,26 +537,27 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        const { key, banners } = this.#resolveAdvancedBanners(messageConfig)
+        const config = this.#resolveAdvancedBanners(messageConfig)
 
-        if (key === this.#advancedBannersConfig) {
+        if (config === this.#advancedBannersConfig) {
             return
         }
 
-        const hadBanners = this.#advancedBanners
-        this.#advancedBannersConfig = key
-        this.#advancedBanners = banners
+        const hadConfig = this.#advancedBannersConfig
+        this.#advancedBannersConfig = config
 
         if (this.#advancedBannersHiddenByAd) {
             return
         }
 
-        if (hadBanners) {
+        if (hadConfig) {
             this._platformBridge.hideAdvancedBanners()
         }
 
-        if (banners) {
-            this._platformBridge.showAdvancedBanners(banners)
+        if (config) {
+            this._platformBridge.showAdvancedBanners(config)
+        } else if (hadConfig) {
+            this.#setAdvancedBannersState(BANNER_STATE.HIDDEN)
         }
     }
 
@@ -573,19 +567,18 @@ class AdvertisementModule extends ModuleBase {
 
     #resetAdvancedBannersState() {
         this.#advancedBannersPlacement = null
-        this.#advancedBanners = null
         this.#advancedBannersConfig = null
         this.#advancedBannersHiddenByAd = false
     }
 
     #hideAdvancedBannersIfVisible() {
-        if (this.#advancedBanners && !this.#advancedBannersHiddenByAd) {
+        if (this.#advancedBannersConfig && !this.#advancedBannersHiddenByAd) {
             this._platformBridge.hideAdvancedBanners()
         }
     }
 
     #hideAdvancedBannersByAd() {
-        if (!this.#advancedBanners || this.#advancedBannersHiddenByAd) {
+        if (!this.#advancedBannersConfig || this.#advancedBannersHiddenByAd) {
             return
         }
 
@@ -604,8 +597,8 @@ class AdvertisementModule extends ModuleBase {
 
         this.#advancedBannersHiddenByAd = false
 
-        if (this.#advancedBanners) {
-            this._platformBridge.showAdvancedBanners(this.#advancedBanners)
+        if (this.#advancedBannersConfig) {
+            this._platformBridge.showAdvancedBanners(this.#advancedBannersConfig)
         }
     }
 
@@ -640,7 +633,7 @@ class AdvertisementModule extends ModuleBase {
                 }
             })
 
-        return { key: bestKey, banners: bestBanners }
+        return bestBanners
     }
 
     #matchAdvancedBannerKey(key, context) {
