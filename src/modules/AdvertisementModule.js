@@ -335,7 +335,13 @@ class AdvertisementModule extends ModuleBase {
     }
 
     showAdvancedBanners(placement) {
-        this.#tryToShowAdvancedBanners(placement)
+        let modifiedPlacement = placement
+        if (!modifiedPlacement) {
+            if (this.#advancedBannersOptions?.placementFallback) {
+                modifiedPlacement = this.#advancedBannersOptions.placementFallback
+            }
+        }
+        this.#tryToShowAdvancedBanners(modifiedPlacement)
     }
 
     hideAdvancedBanners() {
@@ -667,21 +673,36 @@ class AdvertisementModule extends ModuleBase {
                 }
                 score += ADVANCED_BANNERS_SCORE.ORIENTATION
             } else {
-                const conditionMatch = /^([wh])([><]=?)(\d+)$/.exec(segment)
-                if (!conditionMatch) {
+                const dimensionMatch = /^([wh])([><]=?)(\d+)$/.exec(segment)
+                const arMatch = /^ar([><]=?)(\d+(?:\.\d+)?)$/.exec(segment)
+
+                if (dimensionMatch) {
+                    const screenWidth = useCanvas ? canvas.width : window.innerWidth
+                    const screenHeight = useCanvas ? canvas.height : window.innerHeight
+                    const dimension = dimensionMatch[1] === 'w' ? screenWidth : screenHeight
+                    const operator = dimensionMatch[2]
+                    const value = parseInt(dimensionMatch[3], 10)
+
+                    if (!this.#evaluateScreenCondition(dimension, operator, value)) {
+                        return false
+                    }
+                    score += ADVANCED_BANNERS_SCORE.DIMENSION
+                        + this.#computeSpecificityBonus(dimension, value)
+                } else if (arMatch) {
+                    const screenWidth = useCanvas ? canvas.width : window.innerWidth
+                    const screenHeight = useCanvas ? canvas.height : window.innerHeight
+                    const aspectRatio = screenWidth / screenHeight
+                    const operator = arMatch[1]
+                    const value = parseFloat(arMatch[2])
+
+                    if (!this.#evaluateScreenCondition(aspectRatio, operator, value)) {
+                        return false
+                    }
+                    score += ADVANCED_BANNERS_SCORE.DIMENSION
+                        + this.#computeSpecificityBonus(aspectRatio, value, 1000)
+                } else {
                     return false
                 }
-
-                const screenWidth = useCanvas ? canvas.width : window.innerWidth
-                const screenHeight = useCanvas ? canvas.height : window.innerHeight
-                const dimension = conditionMatch[1] === 'w' ? screenWidth : screenHeight
-                const operator = conditionMatch[2]
-                const value = parseInt(conditionMatch[3], 10)
-
-                if (!this.#evaluateScreenCondition(dimension, operator, value)) {
-                    return false
-                }
-                score += ADVANCED_BANNERS_SCORE.DIMENSION
             }
 
             return true
@@ -698,6 +719,10 @@ class AdvertisementModule extends ModuleBase {
             case '<=': return dimension <= value
             default: return false
         }
+    }
+
+    #computeSpecificityBonus(actual, threshold, scale = 1) {
+        return 0.9 / (1 + Math.abs(actual - threshold) * scale)
     }
 
     #getPlatformPlacement(id, placements) {
