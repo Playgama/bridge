@@ -75,6 +75,7 @@ Advanced banners allow you to define banner layouts that automatically show/hide
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `advertisement.advancedBanners.disable` | boolean | `false` | Disable advanced banners entirely |
+| `advertisement.advancedBanners.placementFallback` | string | `undefined` | Fallback placement if none specified in `showAdvancedBanners()` call |
 | `advertisement.advancedBanners.{message}` | object | — | Banner configuration for a specific platform message |
 | `advertisement.advancedBanners.{message}.action` | string | `"show"` | Action to perform: `"show"` or `"hide"` |
 
@@ -84,12 +85,14 @@ Each message object contains variant keys mapped to arrays of banner objects. Va
 - **Orientation**: `portrait`, `landscape`
 - **Canvas mode**: `canvas` — use game canvas internal dimensions (`canvas.width`/`canvas.height`) instead of `window.innerWidth`/`window.innerHeight` for screen conditions (`w`/`h`). If no `<canvas>` element is found on the page, the variant will not match.
 - **Screen conditions**: `w>N`, `w<N`, `w>=N`, `w<=N`, `h>N`, `h<N`, `h>=N`, `h<=N` (pixels, based on window size or canvas size if `canvas` segment is present)
+- **Aspect ratio**: `ar>N`, `ar<N`, `ar>=N`, `ar<=N` (width/height ratio, supports decimals e.g. `ar>1.5`)
 - **`default`**: fallback when no other variant matches
 
 **Resolution priority** (highest score wins):
 - Device type match: +4
 - Orientation match: +2
 - Canvas mode / each screen condition match: +1
+- When multiple variants have the same base score, the one whose threshold is closest to the actual value wins (e.g. `w>1200` beats `w>500` when width is 1300)
 
 **Banner object properties**: `width`, `height`, `top`, `bottom`, `left`, `right` (CSS values).
 
@@ -113,6 +116,10 @@ Each message object contains variant keys mapped to arrays of banner objects. Va
                 "desktop:w>1200": [
                     { "width": "160px", "height": "600px", "top": "10%", "left": "2%" },
                     { "width": "160px", "height": "600px", "top": "10%", "right": "2%" }
+                ],
+                "desktop:landscape:ar>1.5": [
+                    { "width": "200px", "height": "600px", "top": "10%", "left": "1%" },
+                    { "width": "200px", "height": "600px", "top": "10%", "right": "1%" }
                 ]
             },
             "level_resumed": {
