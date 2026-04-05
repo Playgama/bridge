@@ -105,6 +105,10 @@ if (__INCLUDE_GAMESNACKS__) {
     platformImports[PLATFORM_ID.GAMESNACKS] = () => import('./platform-bridges/GameSnacksPlatformBridge')
 }
 
+if (__INCLUDE_THE_LOOP__) {
+    platformImports[PLATFORM_ID.THE_LOOP] = () => import('./platform-bridges/TheLoopPlatformBridge')
+}
+
 export async function fetchPlatformBridge(platformId) {
     const importPlatform = platformImports[platformId]
     if (importPlatform) {

@@ -48,6 +48,7 @@ export const PLATFORM_ID = {
     TIKTOK: 'tiktok',
     DLIGHTEK: 'dlightek',
     GAMESNACKS: 'gamesnacks',
+    THE_LOOP: 'the_loop',
 }
 
 export const MODULE_NAME = {
