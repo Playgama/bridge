@@ -12,7 +12,6 @@ This document describes all available configuration parameters for `playgama-bri
 - [Payments Configuration](#payments-configuration)
 - [SaaS Configuration](#saas-configuration)
 - [Platform-Specific Configuration](#platform-specific-configuration)
-- [Complete Example](#complete-example)
 
 ---
 
@@ -24,7 +23,7 @@ This document describes all available configuration parameters for `playgama-bri
 | `forciblySetPlatformId` | string | `undefined` | Forces a specific platform ID regardless of URL detection (e.g., `playgama`, `msn`, `crazy_games`) |
 | `sendAnalyticsEvents` | boolean | `true` | Enable/disable sending analytics events to Playgama servers |
 | `disableLoadingLogo` | boolean | `false` | Hide the loading progress logo during initialization |
-| `showFullLoadingLogo` | boolean | `false` | Show full Playgama Bridge branding in loading screen (hardcode `false` for Yandex) |
+| `showFullLoadingLogo` | boolean | `false` | Show full Playgama Bridge branding in loading screen (forced `false` for Yandex and Y8) |
 
 ---
 
@@ -38,7 +37,8 @@ The `advertisement` object controls ad behavior across all platforms.
 |-----------|------|---------|-------------|
 | `advertisement.useBuiltInErrorPopup` | boolean | `false` | Show built-in error popup when ad fails to load (Facebook, MSN, Microsoft Store) |
 | `advertisement.useAdvertisementErrorPopup` | boolean | `false` | Show ad failure popup when ad fails to load (all other platforms) |
-| `advertisement.builtInErrorPopupCooldown` | number | `180` | Cooldown in seconds before the built-in error popup can be shown again |
+| `advertisement.builtInErrorPopupCooldown` | number | `180` | Cooldown in seconds before showing interstitial ad-failure popup again |
+| `advertisement.minimumDelayBetweenInterstitial` | number | `60` | Minimum seconds between interstitial ads |
 | `advertisement.backfillId` | string | `""` | Backfill ad provider ID (used by MSN platform) |
 
 ### Interstitial Ads
@@ -48,7 +48,6 @@ The `advertisement` object controls ad behavior across all platforms.
 | `advertisement.interstitial.disable` | boolean | `false` | Disable interstitial ads even if platform supports them |
 | `advertisement.interstitial.preloadOnStart` | boolean/string | `false` | Preload interstitial on SDK initialization. Set to `true` or placement ID |
 | `advertisement.interstitial.placementFallback` | string | `undefined` | Fallback placement if none specified in method call |
-| `advertisement.interstitial.minimumDelayBetweenInterstitial` | number | `60` | Minimum seconds between interstitial ads |
 | `advertisement.interstitial.placements` | array | `[]` | Array of placement configuration objects |
 
 ### Rewarded Ads
@@ -149,7 +148,7 @@ Each placement object in the `placements` array has the following structure:
             "placements": [
                 {
                     "id": "level_end",
-                    "<PLATFROM_ID>": "<PLATFORM_PLACEMENT>",
+                    "<PLATFORM_ID>": "<PLATFORM_PLACEMENT>",
                 }
             ]
         }
@@ -257,9 +256,7 @@ Use the `platforms` object to provide platform-specific configuration overrides:
         "<PLATFORM_ID>": {
             "<PLATFORM_SPECIFIC_PROPERTY>": "<PLATFORM_SPECIFIC_VALUE>",
             "advertisement": {
-                "interstitial": {
-                    "minimumDelayBetweenInterstitial": "<PLATFORM_OVERRIDEN_VALUE>"
-                }
+                "minimumDelayBetweenInterstitial": "<PLATFORM_OVERRIDDEN_VALUE>"
             }
         }
     }
@@ -342,6 +339,12 @@ These parameters are specific to individual platforms and should be placed at ro
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `appId` | string | Huawei AppGallery app ID |
+
+#### Microsoft Store
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `gameId` | string | Microsoft Store game ID |
+| `playgamaAdsId` | string | Playgama Ads integration ID |
 
 #### MSN
 | Parameter | Type | Description |
