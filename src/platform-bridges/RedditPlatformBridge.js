@@ -36,6 +36,10 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    checkAdBlock() {
+        return Promise.resolve(false)
+    }
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
