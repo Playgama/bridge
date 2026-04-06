@@ -300,13 +300,6 @@ class AnalyticsModule extends ModuleBase {
                 }
             }
 
-            if (platformId === PLATFORM_ID.XIAOMI) {
-                const lastPart = parts[parts.length - 1]
-                if (lastPart === 'index.html' && parts.length >= 2) {
-                    return parts[parts.length - 2]
-                }
-            }
-
             if (platformId === PLATFORM_ID.PLAYGAMA) {
                 if (parsedUrl.searchParams.get('game_id')) {
                     return parsedUrl.searchParams.get('game_id')
