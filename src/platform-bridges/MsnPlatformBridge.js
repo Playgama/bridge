@@ -31,6 +31,17 @@ import {
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
+const MSN_SIZES_BY_POSITION = {
+    top: [[728, 90], [970, 250], [320, 50]],
+    bottom: [[320, 50]],
+    left: [[300, 250], [300, 600], [320, 50], [160, 600]],
+    right: [[300, 250], [300, 600], [320, 50], [160, 600]],
+    topleft: [[300, 250]],
+    topright: [[300, 250]],
+    bottomleft: [[300, 250]],
+    bottomright: [[300, 250]],
+}
+
 class MsnPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
@@ -70,6 +81,8 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     get isPaymentsSupported() {
         return this.#isPaymentsSupported
     }
+
+    _isAdvancedBannersSupported = true
 
     #playgamaAds = null
 
@@ -280,6 +293,34 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         this._platformSdk.hideDisplayAdsAsync()
             .then(() => {
                 this._setBannerState(BANNER_STATE.HIDDEN)
+            })
+    }
+
+    showAdvancedBanners(banners) {
+        this._setAdvancedBannersState(BANNER_STATE.LOADING)
+
+        const placements = banners
+            .map((banner) => this.#bannerToMsnPlacement(banner))
+            .filter(Boolean)
+
+        if (placements.length === 0) {
+            this._setAdvancedBannersState(BANNER_STATE.FAILED)
+            return
+        }
+
+        this._platformSdk.showDisplayAdsAsync(placements)
+            .then(() => {
+                this._setAdvancedBannersState(BANNER_STATE.SHOWN)
+            })
+            .catch(() => {
+                this._setAdvancedBannersState(BANNER_STATE.FAILED)
+            })
+    }
+
+    hideAdvancedBanners() {
+        this._platformSdk.hideDisplayAdsAsync()
+            .then(() => {
+                this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
             })
     }
 
@@ -543,6 +584,53 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     })
                 })
         })
+    }
+
+    #bannerToMsnPlacement(banner) {
+        const hasTop = banner.top !== undefined
+        const hasBottom = banner.bottom !== undefined
+        const hasLeft = banner.left !== undefined
+        const hasRight = banner.right !== undefined
+
+        let position
+        if (hasTop && hasLeft) position = 'topleft'
+        else if (hasTop && hasRight) position = 'topright'
+        else if (hasBottom && hasLeft) position = 'bottomleft'
+        else if (hasBottom && hasRight) position = 'bottomright'
+        else if (hasTop) position = 'top'
+        else if (hasBottom) position = 'bottom'
+        else if (hasLeft) position = 'left'
+        else if (hasRight) position = 'right'
+        else position = 'top'
+
+        const sizes = MSN_SIZES_BY_POSITION[position]
+        if (!sizes || sizes.length === 0) {
+            return null
+        }
+
+        const width = parseInt(banner.width, 10)
+        const height = parseInt(banner.height, 10)
+        if (Number.isNaN(width) || Number.isNaN(height)) {
+            return null
+        }
+
+        const smallerSizes = sizes.filter((size) => size[0] <= width && size[1] <= height)
+        if (smallerSizes.length === 0) {
+            return null
+        }
+
+        let bestSize = smallerSizes[0]
+        let bestArea = bestSize[0] * bestSize[1]
+
+        smallerSizes.forEach((size) => {
+            const area = size[0] * size[1]
+            if (area > bestArea) {
+                bestArea = area
+                bestSize = size
+            }
+        })
+
+        return `${position}:${bestSize[0]}x${bestSize[1]}`
     }
 
     #updatePlayerInfo(data) {
