@@ -110,6 +110,8 @@ class AdvertisementModule extends ModuleBase {
 
     #minimumDelayBetweenInterstitial = DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL
 
+    #initTime = Date.now()
+
     #rewardedState = REWARDED_STATE.CLOSED
 
     #rewardedPlacement = null
@@ -276,6 +278,12 @@ class AdvertisementModule extends ModuleBase {
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
 
         if (!this.isInterstitialSupported) {
+            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
+
+        const initialDelay = this._platformBridge.initialInterstitialDelay
+        if (initialDelay > 0 && (Date.now() - this.#initTime) / 1000 < initialDelay) {
             this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
             return
         }
