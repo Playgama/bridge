@@ -15,15 +15,26 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
 import Timer, { STATE as TIMER_STATE } from '../common/Timer'
+import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import {
-    BANNER_POSITION, BANNER_STATE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
+    ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE,
+    DEVICE_ORIENTATION, DEVICE_TYPE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
 } from '../constants'
+import { detectOrientation, findGameCanvas } from '../common/utils'
 import analyticsModule from './AnalyticsModule'
 
 const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
+const ADVANCED_BANNERS_CONDITIONS_DEBOUNCE = 200
+const ADVANCED_BANNERS_SCORE = {
+    DEVICE_TYPE: 4,
+    ORIENTATION: 2,
+    DIMENSION: 1,
+    CANVAS: 1,
+}
+const DEVICE_TYPES_SET = new Set(Object.values(DEVICE_TYPE))
+const ORIENTATIONS_SET = new Set(Object.values(DEVICE_ORIENTATION))
 
 class AdvertisementModule extends ModuleBase {
     get isBannerSupported() {
@@ -73,6 +84,18 @@ class AdvertisementModule extends ModuleBase {
         return this.#minimumDelayBetweenInterstitial
     }
 
+    get isAdvancedBannersSupported() {
+        if (this.#advancedBannersOptions?.disable === true) {
+            return false
+        }
+
+        return this._platformBridge.isAdvancedBannersSupported
+    }
+
+    get advancedBannersState() {
+        return this.#advancedBannersState
+    }
+
     #bannerState = BANNER_STATE.HIDDEN
 
     #bannerPosition = null
@@ -87,9 +110,21 @@ class AdvertisementModule extends ModuleBase {
 
     #minimumDelayBetweenInterstitial = DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL
 
+    #initTime = Date.now()
+
     #rewardedState = REWARDED_STATE.CLOSED
 
     #rewardedPlacement = null
+
+    #advancedBannersState = BANNER_STATE.HIDDEN
+
+    #advancedBannersPlacement = null
+
+    #advancedBannersConfig = null
+
+    #advancedBannersHiddenByAd = false
+
+    #advancedBannersConditionsTimer = null
 
     constructor(platformBridge) {
         super(platformBridge)
@@ -102,17 +137,51 @@ class AdvertisementModule extends ModuleBase {
         this._platformBridge.on(
             EVENT_NAME.INTERSTITIAL_STATE_CHANGED,
             (state) => {
+                this.#setInterstitialState(state)
+
+                if (state === INTERSTITIAL_STATE.LOADING || state === INTERSTITIAL_STATE.OPENED) {
+                    this.#hideAdvancedBannersByAd()
+                } else if (state === INTERSTITIAL_STATE.CLOSED || state === INTERSTITIAL_STATE.FAILED) {
+                    this.#restoreAdvancedBannersAfterAd()
+                }
+
                 if (state === INTERSTITIAL_STATE.CLOSED) {
                     this.#startInterstitialTimer()
                 }
-
-                this.#setInterstitialState(state)
             },
         )
 
         this._platformBridge.on(
             EVENT_NAME.REWARDED_STATE_CHANGED,
-            (state) => this.#setRewardedState(state),
+            (state) => {
+                this.#setRewardedState(state)
+
+                if (state === REWARDED_STATE.LOADING || state === REWARDED_STATE.OPENED) {
+                    this.#hideAdvancedBannersByAd()
+                } else if (state === REWARDED_STATE.CLOSED || state === REWARDED_STATE.FAILED) {
+                    this.#restoreAdvancedBannersAfterAd()
+                }
+            },
+        )
+
+        this._platformBridge.on(
+            EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED,
+            (state) => this.#setAdvancedBannersState(state),
+        )
+
+        eventBus.on(
+            EVENT_NAME.PLATFORM_MESSAGE_SENT,
+            (message) => this.#onPlatformMessageSent(message),
+        )
+
+        eventBus.on(
+            EVENT_NAME.ORIENTATION_STATE_CHANGED,
+            () => this.#onAdvancedBannersConditionsChanged(),
+        )
+
+        eventBus.on(
+            EVENT_NAME.SCREEN_SIZE_CHANGED,
+            () => this.#onAdvancedBannersConditionsChanged(),
         )
 
         this.#applyConfigMinimumDelayBetweenInterstitial()
@@ -139,7 +208,11 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        this.#bannerPosition = position
+        const validPosition = Object.values(BANNER_POSITION).includes(position)
+            ? position
+            : BANNER_POSITION.BOTTOM
+
+        this.#bannerPosition = validPosition
 
         let modifiedPlacement = placement
         if (!modifiedPlacement) {
@@ -157,7 +230,7 @@ class AdvertisementModule extends ModuleBase {
 
         const placements = this._platformBridge.options?.advertisement?.banner?.placements
         const platformPlacement = this.#getPlatformPlacement(modifiedPlacement, placements)
-        this._platformBridge.showBanner(position, platformPlacement)
+        this._platformBridge.showBanner(validPosition, platformPlacement)
     }
 
     hideBanner() {
@@ -205,6 +278,12 @@ class AdvertisementModule extends ModuleBase {
         this.#setInterstitialState(INTERSTITIAL_STATE.LOADING)
 
         if (!this.isInterstitialSupported) {
+            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
+
+        const initialDelay = this._platformBridge.initialInterstitialDelay
+        if (initialDelay > 0 && (Date.now() - this.#initTime) / 1000 < initialDelay) {
             this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
             return
         }
@@ -259,6 +338,26 @@ class AdvertisementModule extends ModuleBase {
             return
         }
         this._platformBridge.showRewarded(platformPlacement)
+    }
+
+    showAdvancedBanners(placement) {
+        let modifiedPlacement = placement
+        if (!modifiedPlacement) {
+            if (this.#advancedBannersOptions?.placementFallback) {
+                modifiedPlacement = this.#advancedBannersOptions.placementFallback
+            }
+        }
+        this.#tryToShowAdvancedBanners(modifiedPlacement)
+    }
+
+    hideAdvancedBanners() {
+        if (!this.isAdvancedBannersSupported) {
+            return
+        }
+
+        this.#hideAdvancedBannersIfVisible()
+        this.#resetAdvancedBannersState()
+        this.#setAdvancedBannersState(BANNER_STATE.HIDDEN)
     }
 
     checkAdBlock() {
@@ -334,6 +433,17 @@ class AdvertisementModule extends ModuleBase {
         return isInterstitialInProgress || isRewardedInProgress
     }
 
+    #setAdvancedBannersState(state) {
+        if (this.#advancedBannersState === state) {
+            return
+        }
+
+        this.#advancedBannersState = state
+        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#advancedBannersPlacement })
+
+        eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
+    }
+
     #setBannerState(state) {
         if (this.#bannerState === state) {
             return
@@ -342,7 +452,7 @@ class AdvertisementModule extends ModuleBase {
         this.#bannerState = state
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_banner_${state}`, { position: this.#bannerPosition, placement: this.#bannerPlacement })
 
-        this.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
+        eventBus.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
     }
 
     #setInterstitialState(state) {
@@ -353,7 +463,7 @@ class AdvertisementModule extends ModuleBase {
         this.#interstitialState = state
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`, { placement: this.#interstitialPlacement })
 
-        this.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
+        eventBus.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
     }
 
     #setRewardedState(state) {
@@ -364,7 +474,256 @@ class AdvertisementModule extends ModuleBase {
         this.#rewardedState = state
         analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, { placement: this.#rewardedPlacement })
 
-        this.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
+        eventBus.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
+    }
+
+    #onPlatformMessageSent(message) {
+        this.#tryToShowAdvancedBanners(message)
+    }
+
+    #tryToShowAdvancedBanners(placement) {
+        if (!this.isAdvancedBannersSupported) {
+            return
+        }
+
+        const placementConfig = this.#advancedBannersOptions?.[placement]
+        if (!placementConfig) {
+            return
+        }
+
+        const action = placementConfig.action ?? ADVANCED_BANNERS_ACTION.SHOW
+
+        if (action === ADVANCED_BANNERS_ACTION.HIDE) {
+            this.#hideAdvancedBannersIfVisible()
+            this.#resetAdvancedBannersState()
+            return
+        }
+
+        this.#setAdvancedBannersState(BANNER_STATE.LOADING)
+
+        const config = this.#resolveAdvancedBanners(placementConfig)
+
+        this.#advancedBannersPlacement = placement
+
+        if (this.#advancedBannersConfig && !config) {
+            this._platformBridge.hideAdvancedBanners()
+        }
+
+        this.#advancedBannersConfig = config
+
+        if (!config) {
+            this.#setAdvancedBannersState(BANNER_STATE.FAILED)
+            return
+        }
+
+        if (this.#hasAdvertisementInProgress()) {
+            this.#advancedBannersHiddenByAd = true
+            return
+        }
+
+        this._platformBridge.showAdvancedBanners(config)
+    }
+
+    #onAdvancedBannersConditionsChanged() {
+        if (this.#advancedBannersConditionsTimer) {
+            clearTimeout(this.#advancedBannersConditionsTimer)
+        }
+
+        this.#advancedBannersConditionsTimer = setTimeout(() => {
+            this.#advancedBannersConditionsTimer = null
+            this.#handleAdvancedBannersConditionsChanged()
+        }, ADVANCED_BANNERS_CONDITIONS_DEBOUNCE)
+    }
+
+    #handleAdvancedBannersConditionsChanged() {
+        if (!this.#advancedBannersPlacement) {
+            return
+        }
+
+        const messageConfig = this.#advancedBannersOptions?.[this.#advancedBannersPlacement]
+        if (!messageConfig) {
+            return
+        }
+
+        const config = this.#resolveAdvancedBanners(messageConfig)
+
+        if (config === this.#advancedBannersConfig) {
+            return
+        }
+
+        const hadConfig = this.#advancedBannersConfig
+        this.#advancedBannersConfig = config
+
+        if (this.#advancedBannersHiddenByAd) {
+            return
+        }
+
+        if (hadConfig) {
+            this._platformBridge.hideAdvancedBanners()
+        }
+
+        if (config) {
+            this._platformBridge.showAdvancedBanners(config)
+        } else if (hadConfig) {
+            this.#setAdvancedBannersState(BANNER_STATE.HIDDEN)
+        }
+    }
+
+    get #advancedBannersOptions() {
+        return this._platformBridge.options?.advertisement?.advancedBanners
+    }
+
+    #resetAdvancedBannersState() {
+        this.#advancedBannersPlacement = null
+        this.#advancedBannersConfig = null
+        this.#advancedBannersHiddenByAd = false
+    }
+
+    #hideAdvancedBannersIfVisible() {
+        if (this.#advancedBannersConfig && !this.#advancedBannersHiddenByAd) {
+            this._platformBridge.hideAdvancedBanners()
+        }
+    }
+
+    #hideAdvancedBannersByAd() {
+        if (!this.#advancedBannersConfig || this.#advancedBannersHiddenByAd) {
+            return
+        }
+
+        this.#advancedBannersHiddenByAd = true
+        this._platformBridge.hideAdvancedBanners()
+    }
+
+    #restoreAdvancedBannersAfterAd() {
+        if (!this.#advancedBannersHiddenByAd) {
+            return
+        }
+
+        if (this.#hasAdvertisementInProgress()) {
+            return
+        }
+
+        this.#advancedBannersHiddenByAd = false
+
+        if (this.#advancedBannersConfig) {
+            this._platformBridge.showAdvancedBanners(this.#advancedBannersConfig)
+        }
+    }
+
+    #resolveAdvancedBanners(messageConfig) {
+        const { deviceType } = this._platformBridge
+        const orientation = detectOrientation()
+        const canvas = findGameCanvas()
+
+        const context = {
+            deviceType, orientation, canvas,
+        }
+
+        let bestKey = 'default'
+        let bestBanners = messageConfig.default ?? null
+        let bestScore = -1
+
+        Object.keys(messageConfig)
+            .filter((key) => key !== 'action' && key !== 'default')
+            .forEach((key) => {
+                const result = this.#matchAdvancedBannerKey(key, context)
+
+                if (!result.matched) {
+                    return
+                }
+
+                const isBetter = result.score > bestScore
+                    || (result.score === bestScore && key.split(':').length > bestKey.split(':').length)
+                if (isBetter) {
+                    bestScore = result.score
+                    bestKey = key
+                    bestBanners = messageConfig[key]
+                }
+            })
+
+        return bestBanners
+    }
+
+    #matchAdvancedBannerKey(key, context) {
+        const { deviceType, orientation, canvas } = context
+        const segments = key.split(':')
+        const useCanvas = segments.includes('canvas')
+        let score = 0
+
+        if (useCanvas && !canvas) {
+            return { matched: false, score }
+        }
+
+        if (useCanvas) {
+            score += ADVANCED_BANNERS_SCORE.CANVAS
+        }
+
+        const matched = segments.every((segment) => {
+            if (segment === 'canvas') {
+                return true
+            }
+
+            if (DEVICE_TYPES_SET.has(segment)) {
+                if (segment !== deviceType) {
+                    return false
+                }
+                score += ADVANCED_BANNERS_SCORE.DEVICE_TYPE
+            } else if (ORIENTATIONS_SET.has(segment)) {
+                if (segment !== orientation) {
+                    return false
+                }
+                score += ADVANCED_BANNERS_SCORE.ORIENTATION
+            } else {
+                const dimensionMatch = /^([wh])([><]=?)(\d+)$/.exec(segment)
+                const arMatch = /^ar([><]=?)(\d+(?:\.\d+)?)$/.exec(segment)
+
+                if (dimensionMatch) {
+                    const screenWidth = useCanvas ? canvas.width : window.innerWidth
+                    const screenHeight = useCanvas ? canvas.height : window.innerHeight
+                    const dimension = dimensionMatch[1] === 'w' ? screenWidth : screenHeight
+                    const operator = dimensionMatch[2]
+                    const value = parseInt(dimensionMatch[3], 10)
+
+                    if (!this.#evaluateScreenCondition(dimension, operator, value)) {
+                        return false
+                    }
+                    score += ADVANCED_BANNERS_SCORE.DIMENSION
+                        + this.#computeSpecificityBonus(dimension, value)
+                } else if (arMatch) {
+                    const screenWidth = useCanvas ? canvas.width : window.innerWidth
+                    const screenHeight = useCanvas ? canvas.height : window.innerHeight
+                    const aspectRatio = screenWidth / screenHeight
+                    const operator = arMatch[1]
+                    const value = parseFloat(arMatch[2])
+
+                    if (!this.#evaluateScreenCondition(aspectRatio, operator, value)) {
+                        return false
+                    }
+                    score += ADVANCED_BANNERS_SCORE.DIMENSION
+                        + this.#computeSpecificityBonus(aspectRatio, value, 1000)
+                } else {
+                    return false
+                }
+            }
+
+            return true
+        })
+
+        return { matched, score }
+    }
+
+    #evaluateScreenCondition(dimension, operator, value) {
+        switch (operator) {
+            case '>': return dimension > value
+            case '<': return dimension < value
+            case '>=': return dimension >= value
+            case '<=': return dimension <= value
+            default: return false
+        }
+    }
+
+    #computeSpecificityBonus(actual, threshold, scale = 1) {
+        return 0.9 / (1 + Math.abs(actual - threshold) * scale)
     }
 
     #getPlatformPlacement(id, placements) {
@@ -389,5 +748,5 @@ class AdvertisementModule extends ModuleBase {
     }
 }
 
-EventLite.mixin(AdvertisementModule.prototype)
+applyEventBusMixin(AdvertisementModule.prototype)
 export default AdvertisementModule

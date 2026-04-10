@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
+import { applyLocalEventMixin } from './EventBus'
 
 export const EVENT_NAME = {
     STATE_CHANGED: 'state_changed',
@@ -83,5 +83,5 @@ class Timer {
     }
 }
 
-EventLite.mixin(Timer.prototype)
+applyLocalEventMixin(Timer.prototype)
 export default Timer

@@ -43,6 +43,10 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get initialInterstitialDelay() {
+        return 10
+    }
+
     get isRewardedSupported() {
         return true
     }

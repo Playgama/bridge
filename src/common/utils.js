@@ -15,7 +15,10 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BANNER_CONTAINER_ID, BANNER_POSITION, ORIENTATION_OVERLAY_ID } from '../constants'
+import {
+    ADVANCED_BANNER_CONTAINER_ID_PREFIX, BANNER_CONTAINER_ID, BANNER_POSITION, DEVICE_ORIENTATION,
+    ORIENTATION_OVERLAY_ID,
+} from '../constants'
 
 const POST_METHOD = ['post', 'Message'].join('')
 
@@ -106,6 +109,35 @@ export function createAdvertisementBannerContainer(position) {
     }
 
     return container
+}
+
+export function createAdvancedBannerContainers(banners) {
+    const containerIds = []
+
+    banners.forEach((banner, index) => {
+        const container = document.createElement('div')
+        const id = `${ADVANCED_BANNER_CONTAINER_ID_PREFIX}${index}`
+        container.id = id
+        container.style.position = 'absolute'
+        container.style.zIndex = '9999'
+
+        if (banner.width) container.style.width = banner.width
+        if (banner.height) container.style.height = banner.height
+        if (banner.top) container.style.top = banner.top
+        if (banner.bottom) container.style.bottom = banner.bottom
+        if (banner.left) container.style.left = banner.left
+        if (banner.right) container.style.right = banner.right
+
+        document.body.appendChild(container)
+        containerIds.push(id)
+    })
+
+    return containerIds
+}
+
+export function removeAdvancedBannerContainers() {
+    const containers = document.querySelectorAll(`[id^="${ADVANCED_BANNER_CONTAINER_ID_PREFIX}"]`)
+    containers.forEach((container) => container.remove())
 }
 
 export function createLoadingOverlay() {
@@ -482,7 +514,7 @@ export function showAdFailurePopup() {
     })
 }
 
-export function createProgressLogo(showFullLoadingLogo) {
+export function createProgressLogo(showFullLoadingLogo, showLoadingText = false) {
     const style = document.createElement('style')
     style.textContent = `
         .fullscreen {
@@ -508,6 +540,22 @@ export function createProgressLogo(showFullLoadingLogo) {
             max-width: 300px;
             min-width: 120px;
             overflow: visible;
+        }
+
+        #loading-hint {
+            width: 8%;
+            max-width: 240px;
+            min-width: 96px;
+            margin-top: clamp(17px, 1.7vw, 33px);
+            text-align: center;
+            color: #aa76ff;
+            font-size: clamp(11px, 1.3vw, 16px);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: opacity 0.4s ease;
         }
 
         .fill-rect {
@@ -571,27 +619,23 @@ export function createProgressLogo(showFullLoadingLogo) {
     }
 
     const fullBridgePreset = {
-        viewBox: '0 0 633 918',
+        viewBox: '0 0 633 986',
         paths: [
-            'M633 687V660H548V687H560V791H548V819H633V792H601L592 801H587L590 792V752H627V725H590V687H633Z',
-            'M533 718V675L518 660H450L435 675V802L450 819H518L533 804V734H482V761H503V788L499 792H476L467 801H462L465 792V691L469 687H499L503 691V718H533Z',
-            'M612 847H564V894H579V861H591V894H606V861H612C615 861 617 864 617 867V894H633V868C633 856 623 847 612 847Z',
-            'M533 846C519 846 508 857 508 870C508 884 519 895 533 895C546 895 557 884 557 870C557 857 546 846 533 846ZM533 880C528 880 524 875 524 870C524 865 528 861 533 861C538 861 542 865 542 870C542 875 538 880 533 880Z',
-            'M402 660H310V687H322V792H310V819H402L417 804V675L402 660ZM387 788L383 792H363L354 801H349L352 792V687H383L387 691V788Z',
-            'M484 861H502V847H482C469 847 459 858 459 871C459 884 469 894 482 894H502V880H484C478 880 474 876 474 871C474 865 478 861 484 861Z',
-            'M444 875C438 875 434 879 434 885C434 890 438 895 444 895C449 895 454 890 454 885C454 879 449 875 444 875Z',
-            'M402 847C389 847 378 857 378 870C378 883 389 894 402 894H425V847H402ZM410 880H403C398 880 394 876 394 870C394 865 398 861 403 861H410V880Z',
-            'M295 687V660H239V687H251V792H239V819H295V792H283V687H295Z',
-            'M350 847H303V894H318V861H329V894H345V861H350C353 861 356 864 356 867V894H371V868C371 856 362 847 350 847Z',
-            'M215 791L200 760H209L224 745V675L209 660H121V687H132V792H121V819H162V760H166L193 819H227V791H215ZM194 729L190 733H173L164 742H159L162 733V687H190L194 691V729Z',
-            'M269 847C256 847 247 857 247 870C247 883 256 894 269 894H293V847H269ZM277 880H271C265 880 261 876 261 870C261 865 265 861 271 861H277V880Z',
-            'M214 847C201 847 190 857 190 870C190 883 201 894 214 894H224V895C224 900 220 903 215 903H195V918H216C229 918 239 908 239 895V847H214ZM224 880H215C210 880 206 876 206 870C206 865 210 861 215 861H224V880Z',
-            'M106 724V675L91 660H0V687H12V792H0V819H91L106 804V749L89 744V728L106 724ZM73 788L69 792H53L44 801H39L42 792V752H73V788ZM73 725H53L44 734H39L42 725V687H69L73 691V725Z',
-            'M167 847V880H153V847H137V894H167V895C167 900 163 904 157 904H137V918H158C172 918 182 909 182 896V847H167Z',
-            'M104 847C91 847 80 857 80 870C80 883 91 894 104 894H127V847H104ZM112 880H105C100 880 96 876 96 870C96 865 100 861 105 861H112V880Z',
-            'M56 833V894H72V833H56Z',
-            'M25 847H2V908H17V894H25C38 894 49 883 49 870C49 857 38 847 25 847ZM24 880H17V861H24C29 861 33 865 33 870C33 876 29 880 24 880Z',
-            'M0 0V633H633V0H0ZM451 452L443 475H456L480 452H546V537H382L352 507V126L382 96H546V181H458L451 187V452ZM252 96L282 126V507L252 537H88V452H176L183 446V187L176 181H88V96H252Z',
+            'M224.044 880.996V933.01H247.059V880.996H269.036V954.011C269.036 972.997 256.033 986 234.056 986H202.067V967.991H231.064C242.053 967.991 247.059 960.97 247.059 952.973V949.981H202.067V880.996H224.044Z',
+            { d: 'M355.051 880.996V952.912C355.051 971.959 340.094 985.939 320.071 985.939H289.059V966.953H319.033C328.007 966.953 333.013 960.97 333.013 952.973V949.981H317.019C297.972 949.981 281.001 935.024 281.001 915C281.001 896.014 298.033 880.996 317.019 880.996H355.051ZM320.01 897.968C310.975 897.968 304.992 904.927 304.992 914.939C304.992 925.928 311.036 932.949 320.01 932.949H333.013V897.968H320.01Z', fillRule: 'evenodd' },
+            { d: 'M34.0643 880.996C53.05 880.996 71.0593 895.953 71.0593 915C71.0593 934.963 53.05 949.981 34.0643 949.981H22.0378V970.982H0.0608089V880.996H34.0643ZM22.0378 897.968V932.949H32.0498C41.0238 932.949 47.0672 925.989 47.0672 914.939C47.0672 904.989 41.0238 897.968 32.0498 897.968H22.0378Z', fillRule: 'evenodd' },
+            'M105.062 870.007V949.981H81.0707V870.007H105.062Z',
+            { d: 'M187.049 880.996V949.981H152.069C133.022 949.981 116.051 935.024 116.051 915C116.051 896.014 133.083 880.996 152.069 880.996H187.049ZM154.999 897.968C145.964 897.968 139.981 904.927 139.981 914.939C139.981 925.928 146.025 932.949 154.999 932.949H165.011V897.968H154.999Z', fillRule: 'evenodd' },
+            { d: 'M436 880.996V949.981H401.02C381.973 949.981 365.002 935.024 365.002 915C365.002 896.014 382.034 880.996 401.02 880.996H436ZM404.011 897.968C394.976 897.968 388.994 904.927 388.994 914.939C388.994 925.928 395.037 932.949 404.011 932.949H414.023V897.968H404.011Z', fillRule: 'evenodd' },
+            'M521.039 880.996C538.987 880.996 551.99 894 551.99 912.009V949.981H530.013V908.957C530.013 903.951 525.984 897.968 520.001 897.968H512.004V949.981H490.027V897.968H472.018V949.981H450.041V880.996H521.039Z',
+            { d: 'M633 880.996V949.981H598.019C579.034 949.981 563.039 935.024 563.039 915C563.039 896.014 579.034 880.996 598.019 880.996H633ZM603.025 897.968C593.014 897.968 587.031 904.927 587.031 914.939C587.031 925.928 593.014 932.949 603.025 932.949H611.023V897.968H603.025Z', fillRule: 'evenodd' },
+            'M522.993 663.967L538.01 678.986V732.037H504.068V695.041L500.038 691.012H482.029L478.001 695.041V829.044L475.009 838.018H480.015L488.989 829.044H499.978L504.007 825.015V775.015H491.004V748.032H538.01V841.009L522.993 856.027H459.015L443.997 838.994V678.986L459.015 663.967H522.993Z',
+            'M633 664.029V691.073H601.011V739.057H627.017V766.041H601.011V829.044L598.019 838.018H603.025L611.999 829.044H633V856.027H553.028V828.006H567.007V691.012H553.028V664.029H633Z',
+            { d: 'M89.0069 664.029L104.025 679.046V738.02L87.0533 741.927V757.922L104.025 762.928V840.948L89.0069 855.966H0V828.983H13.9801V691.012H0V664.029H89.0069ZM47.983 765.98V828.983L44.992 837.956H49.998L59.0329 828.983H65.9919L70.0214 824.953H69.96V765.98H47.983ZM47.983 691.012V738.997L44.992 747.971H49.998L59.0329 738.997H70.0214V695.041L65.9919 691.012H47.983Z', fillRule: 'evenodd' },
+            { d: 'M210.003 664.029L225.02 679.046V759.02L210.003 774.039L217.023 828.006V827.945H227.951V855.966H184.973L176.976 773.977H166.964V855.966H118.981V828.983H132.961V691.012H118.981V664.029H210.003ZM167.025 691.012V746.994L164.034 755.968H169.04L178.014 746.994H186.988L191.017 742.965H191.078V695.041L187.049 691.012H167.025Z', fillRule: 'evenodd' },
+            'M302.001 664.029V691.012H288.021V828.983H302.001V855.966H239.977V828.983H253.957V691.012H239.977V664.029H302.001Z',
+            { d: 'M411.032 663.967L426.05 678.924V840.887L411.032 855.905H317.019V828.921H330.999V690.951H317.019V663.967H411.032ZM365.002 691.012V828.983L362.011 837.956H367.017L376.052 828.983H388.078L392.046 824.953H391.985V695.041L388.017 691.012H365.002Z', fillRule: 'evenodd' },
+            { d: 'M633 0V635.946H0.0608089V0H633ZM88.0298 92.0008V177.042H176.06L183.02 183.024V446.023L176.06 452.006H88.0298V536.986H252.003L252.004 536.986H252.065L282.039 507.011V121.976L252.065 92.0008H88.0298ZM382.034 92.0008L351.999 122.037V507.011L382.034 536.986H546.007L546.008 452.006H480.015L456.024 475.021H443.021L451.018 452.006V183.024L458.038 177.042H546.008V92.0616L546.007 92.0008H382.034Z', fillRule: 'evenodd' },
         ],
         fillColor: '#aa76ff',
         strokeColor: '#aa76ff',
@@ -628,10 +672,13 @@ export function createProgressLogo(showFullLoadingLogo) {
     blackRect.setAttribute('fill', 'black')
     mask.appendChild(blackRect)
 
-    resolved.paths.forEach((d) => {
+    resolved.paths.forEach((item) => {
         const path = document.createElementNS(svg.namespaceURI, 'path')
-        path.setAttribute('d', d)
-        path.setAttribute('fill', 'white')
+        path.setAttribute('d', typeof item === 'string' ? item : item.d)
+        path.setAttribute('fill', (typeof item === 'object' && item.maskFill) ? item.maskFill : 'white')
+        if (typeof item === 'object' && item.fillRule) {
+            path.setAttribute('fill-rule', item.fillRule)
+        }
         mask.appendChild(path)
     })
 
@@ -639,10 +686,10 @@ export function createProgressLogo(showFullLoadingLogo) {
 
     const gradient = document.createElementNS(svg.namespaceURI, 'linearGradient')
     gradient.setAttribute('id', 'shineGradient')
-    gradient.setAttribute('x1', '1233')
+    gradient.setAttribute('x1', String(vbWidth * 2))
     gradient.setAttribute('y1', '0')
-    gradient.setAttribute('x2', '1866')
-    gradient.setAttribute('y2', '633')
+    gradient.setAttribute('x2', String(vbWidth * 3))
+    gradient.setAttribute('y2', String(vbHeight))
     gradient.setAttribute('gradientUnits', 'userSpaceOnUse')
 
     resolved.gradientStops.forEach(({ offset, color }) => {
@@ -683,15 +730,87 @@ export function createProgressLogo(showFullLoadingLogo) {
     fillGroup.appendChild(fillRect)
     svg.appendChild(fillGroup)
 
-    resolved.paths.forEach((d) => {
+    const strokeWidth = String(Math.round((3 * vbWidth) / 633))
+    resolved.paths.forEach((item) => {
+        if (typeof item === 'object' && item.maskFill === 'black') return
         const outline = document.createElementNS(svg.namespaceURI, 'path')
-        outline.setAttribute('d', d)
+        outline.setAttribute('d', typeof item === 'string' ? item : item.d)
         outline.setAttribute('stroke', resolved.strokeColor)
-        outline.setAttribute('stroke-width', '3')
+        outline.setAttribute('stroke-width', strokeWidth)
+        if (typeof item === 'object' && item.fillRule) {
+            outline.setAttribute('fill-rule', item.fillRule)
+        }
         svg.appendChild(outline)
     })
 
     overlay.appendChild(svg)
+
+    if (showLoadingText) {
+        const hints = [
+            'Loading GPU',
+            'Parsing AST',
+            'Linking libs',
+            'Baking mesh',
+            'Warming JIT',
+            'Tracing rays',
+            'Packing data',
+            'Flushing GPU',
+            'Loading WASM',
+            'Alloc memory',
+            'Init shaders',
+            'Optimize FPS',
+            'Sync textures',
+            'Build navmesh',
+            'Compile code',
+            'Load physics',
+            'Stream assets',
+            'Cache buffers',
+            'Map controls',
+            'Decode audio',
+            'Init network',
+            'Setup scene',
+        ]
+
+        const hint = document.createElement('div')
+        hint.id = 'loading-hint'
+        hint.style.opacity = '0'
+
+        let hintIndex = Math.floor(Math.random() * hints.length)
+        hint.textContent = hints[hintIndex]
+        overlay.appendChild(hint)
+
+        const randomDelay = () => (2 + Math.random()) * 1000
+
+        let hintTimeout = null
+        const scheduleNextHint = () => {
+            hintTimeout = setTimeout(() => {
+                hint.style.opacity = '0'
+                setTimeout(() => {
+                    hintIndex = (hintIndex + 1) % hints.length
+                    hint.textContent = hints[hintIndex]
+                    hint.style.opacity = '1'
+                    scheduleNextHint()
+                }, 400)
+            }, randomDelay())
+        }
+
+        hintTimeout = setTimeout(() => {
+            hint.style.opacity = '1'
+            scheduleNextHint()
+        }, randomDelay())
+
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.removedNodes.forEach((node) => {
+                    if (node === overlay) {
+                        clearTimeout(hintTimeout)
+                        observer.disconnect()
+                    }
+                })
+            })
+        })
+        observer.observe(document.body, { childList: true })
+    }
 }
 
 export const waitFor = function waitFor(...args) {
@@ -858,6 +977,12 @@ export function postToWebView(message) {
     }
 }
 
+export function detectOrientation() {
+    return window.innerHeight > window.innerWidth
+        ? DEVICE_ORIENTATION.PORTRAIT
+        : DEVICE_ORIENTATION.LANDSCAPE
+}
+
 export function getSafeArea() {
     const div = document.createElement('div')
     div.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);left:env(safe-area-inset-left);right:env(safe-area-inset-right);pointer-events:none;visibility:hidden;'
@@ -887,4 +1012,8 @@ export function applySafeAreaStyles() {
         }
     `
     document.head.appendChild(style)
+}
+
+export function findGameCanvas() {
+    return document.querySelector('canvas')
 }

@@ -65,16 +65,20 @@ export const MODULE_NAME = {
     CLIPBOARD: 'clipboard',
     ACHIEVEMENTS: 'achievements',
     ANALYTICS: 'analytics',
+    RECORDER: 'recorder',
 }
 
 export const EVENT_NAME = {
     INTERSTITIAL_STATE_CHANGED: 'interstitial_state_changed',
     REWARDED_STATE_CHANGED: 'rewarded_state_changed',
     BANNER_STATE_CHANGED: 'banner_state_changed',
+    ADVANCED_BANNERS_STATE_CHANGED: 'advanced_banners_state_changed',
     VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
     AUDIO_STATE_CHANGED: 'audio_state_changed',
     PAUSE_STATE_CHANGED: 'pause_state_changed',
     ORIENTATION_STATE_CHANGED: 'orientation_state_changed',
+    SCREEN_SIZE_CHANGED: 'screen_size_changed',
+    PLATFORM_MESSAGE_SENT: 'platform_message_sent',
 }
 
 export const VISIBILITY_STATE = {
@@ -108,8 +112,12 @@ export const BANNER_POSITION = {
     TOP: 'top',
     BOTTOM: 'bottom',
 }
-
+export const ADVANCED_BANNERS_ACTION = {
+    SHOW: 'show',
+    HIDE: 'hide',
+}
 export const BANNER_CONTAINER_ID = 'banner-container'
+export const ADVANCED_BANNER_CONTAINER_ID_PREFIX = 'advanced-banner-'
 export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'
 export const REWARDED_CONTAINER_ID = 'rewarded-container'
 

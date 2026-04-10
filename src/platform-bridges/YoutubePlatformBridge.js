@@ -265,11 +265,14 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
             })
     }
 
-    showRewarded() {
+    showRewarded(placement) {
         this._setRewardedState(REWARDED_STATE.OPENED)
-        this._platformSdk.ads.requestInterstitialAd()
-            .then(() => {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
+        this._platformSdk.ads.requestRewardedAd(placement)
+            .then((isRewardEarned) => {
+                if (isRewardEarned) {
+                    this._setRewardedState(REWARDED_STATE.REWARDED)
+                }
+
                 this._setRewardedState(REWARDED_STATE.CLOSED)
             })
             .catch(() => {

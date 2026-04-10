@@ -18,6 +18,8 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../common/MessageBroker'
 import configFileModule from '../modules/ConfigFileModule'
+import recorderModule from '../modules/RecorderModule'
+
 import {
     PLATFORM_ID,
     MODULE_NAME,
@@ -37,6 +39,7 @@ const ADVERTISEMENT_TYPE = {
     INTERSTITIAL: 'interstitial',
     REWARD: 'reward',
     BANNER: 'banner',
+    ADVANCED_BANNERS: 'advanced',
 }
 
 const MESSAGE_SOURCE = 'bridge'
@@ -70,6 +73,20 @@ export const ACTION_NAME_QA = {
     AUDIO_STATE: 'audio_state',
     PAUSE_STATE: 'pause_state',
     CLEAN_CACHE: 'clean_cache',
+    SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
+    HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
+}
+
+const RECORDER_ACTION = {
+    START_CAPTURE: 'start_capture',
+    STOP_CAPTURE: 'stop_capture',
+    RTC_OFFER: 'rtc_offer',
+    RTC_ANSWER: 'rtc_answer',
+    RTC_ICE: 'rtc_ice',
+    CAPTURE_STARTED: 'capture_started',
+    CAPTURE_ERROR: 'capture_error',
+    TAKE_SCREENSHOT: 'take_screenshot',
+    SCREENSHOT_RESULT: 'screenshot_result',
 }
 
 const INTERSTITIAL_STATUS = {
@@ -110,6 +127,8 @@ export const SUPPORTED_FEATURES = {
     REWARDED: 'isRewardedSupported',
 
     CLIPBOARD: 'isClipboardSupported',
+
+    ADVANCED_BANNERS: 'isAdvancedBannersSupported',
 
     ACHIEVEMENTS: 'isAchievementsSupported',
     ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
@@ -154,6 +173,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     // advertisement
     get isBannerSupported() {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+    }
+
+    get isAdvancedBannersSupported() {
+        return this._supportedFeatures.includes(SUPPORTED_FEATURES.ADVANCED_BANNERS)
     }
 
     get isInterstitialSupported() {
@@ -283,10 +306,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     }
                 } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
                     this.#handleAdvertisement(data)
+                } else if (data.type === MODULE_NAME.RECORDER) {
+                    this.#handleRecorder(data)
                 }
             }
 
             this.#messageBroker.addListener(messageHandler)
+
+            this.#initRecorderCallbacks()
+
             this.#sendMessage({
                 type: MODULE_NAME.PLATFORM,
                 action: ACTION_NAME.INITIALIZE,
@@ -529,6 +557,35 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             type: MODULE_NAME.ADVERTISEMENT,
             action: BANNER_STATE.HIDDEN,
             options: { type: ADVERTISEMENT_TYPE.BANNER },
+        })
+    }
+
+    showAdvancedBanners(banners) {
+        if (!this.isAdvancedBannersSupported) {
+            return
+        }
+
+        this._setAdvancedBannersState(BANNER_STATE.LOADING)
+
+        this.#sendMessage({
+            type: MODULE_NAME.ADVERTISEMENT,
+            action: ACTION_NAME_QA.SHOW_ADVANCED_BANNERS,
+            options: {
+                banners,
+            },
+        })
+    }
+
+    hideAdvancedBanners() {
+        if (!this.isAdvancedBannersSupported) {
+            return
+        }
+
+        this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+
+        this.#sendMessage({
+            type: MODULE_NAME.ADVERTISEMENT,
+            action: ACTION_NAME_QA.HIDE_ADVANCED_BANNERS,
         })
     }
 
@@ -1010,6 +1067,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #handleInitializeResponse(data) {
         this._supportedFeatures = data.supportedFeatures || []
         this._isBannerSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.BANNER)
+        this._isAdvancedBannersSupported = this._supportedFeatures.includes(SUPPORTED_FEATURES.ADVANCED_BANNERS)
 
         const { config = {} } = data
         this._deviceType = config.deviceType ?? super.deviceType
@@ -1134,7 +1192,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     #handleAdvertisement({ action, payload }) {
-        if (action === 'interstitial') {
+        if (action === ADVERTISEMENT_TYPE.INTERSTITIAL) {
             if (!this.isInterstitialSupported) {
                 return
             }
@@ -1154,7 +1212,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 default:
                     break
             }
-        } else if (action === 'reward') {
+        } else if (action === ADVERTISEMENT_TYPE.REWARD) {
             if (!this.isRewardedSupported) {
                 return
             }
@@ -1182,6 +1240,81 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     break
                 }
             }
+        } else if (action === ADVERTISEMENT_TYPE.ADVANCED_BANNERS) {
+            switch (payload.status) {
+                case BANNER_STATE.SHOWN:
+                    this._setAdvancedBannersState(BANNER_STATE.SHOWN)
+                    break
+                case BANNER_STATE.HIDDEN:
+                    this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+                    break
+                case BANNER_STATE.FAILED:
+                    this._setAdvancedBannersState(BANNER_STATE.FAILED)
+                    break
+                case BANNER_STATE.LOADING:
+                    this._setAdvancedBannersState(BANNER_STATE.LOADING)
+                    break
+                default:
+                    break
+            }
+        }
+    }
+
+    #handleRecorder(data) {
+        switch (data.action) {
+            case RECORDER_ACTION.START_CAPTURE:
+                recorderModule.startCapture(data.options || {})
+                break
+            case RECORDER_ACTION.STOP_CAPTURE:
+                recorderModule.stopCapture()
+                break
+            case RECORDER_ACTION.RTC_ANSWER:
+                recorderModule.handleAnswer(data.options)
+                break
+            case RECORDER_ACTION.RTC_ICE:
+                recorderModule.handleIce(data.options)
+                break
+            case RECORDER_ACTION.TAKE_SCREENSHOT: {
+                const result = recorderModule.takeScreenshot(data.options || {})
+                this.#sendMessage({
+                    type: MODULE_NAME.RECORDER,
+                    action: RECORDER_ACTION.SCREENSHOT_RESULT,
+                    payload: result,
+                })
+                break
+            }
+            default:
+                break
+        }
+    }
+
+    #initRecorderCallbacks() {
+        recorderModule.onOffer = (sdp) => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.RTC_OFFER,
+                payload: { sdp },
+            })
+        }
+        recorderModule.onIceCandidate = (candidate) => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.RTC_ICE,
+                payload: candidate,
+            })
+        }
+        recorderModule.onStarted = () => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.CAPTURE_STARTED,
+            })
+        }
+        recorderModule.onError = (message) => {
+            this.#sendMessage({
+                type: MODULE_NAME.RECORDER,
+                action: RECORDER_ACTION.CAPTURE_ERROR,
+                payload: { message },
+            })
         }
     }
 

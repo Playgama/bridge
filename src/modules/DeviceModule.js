@@ -15,10 +15,14 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import EventLite from 'event-lite'
+import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
-import { EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE } from '../constants'
-import { createOrientationOverlay, getSafeArea } from '../common/utils'
+import {
+    EVENT_NAME, DEVICE_ORIENTATION, DEVICE_TYPE,
+} from '../constants'
+import {
+    createOrientationOverlay, detectOrientation, getSafeArea,
+} from '../common/utils'
 
 class DeviceModule extends ModuleBase {
     get type() {
@@ -45,12 +49,32 @@ class DeviceModule extends ModuleBase {
 
     #useBuiltInOverlay = false
 
+    #lastScreenWidth = 0
+
+    #lastScreenHeight = 0
+
+    #resizeDebounceTimer = null
+
     constructor(platformBridge) {
         super(platformBridge)
         this.#initializeOrientationTracking()
+        this.#initializeScreenSizeTracking()
     }
 
     #initializeOrientationTracking() {
+        this.#currentOrientation = detectOrientation()
+
+        if (window.screen.orientation) {
+            window.screen.orientation.addEventListener('change', () => this.#handleOrientationChange())
+        } else {
+            window.addEventListener('orientationchange', () => this.#handleOrientationChange())
+        }
+        window.addEventListener('resize', () => this.#handleOrientationChange())
+
+        this.#initializeOrientationOverlay()
+    }
+
+    #initializeOrientationOverlay() {
         const { deviceType } = this._platformBridge
         const isMobileDevice = deviceType === DEVICE_TYPE.MOBILE || deviceType === DEVICE_TYPE.TABLET
 
@@ -65,41 +89,14 @@ class DeviceModule extends ModuleBase {
             DEVICE_ORIENTATION.LANDSCAPE,
         ]
 
-        this.#currentOrientation = this.#detectOrientation()
-
-        if (window.screen.orientation) {
-            window.screen.orientation.addEventListener('change', () => this.#handleOrientationChange())
-        } else {
-            window.addEventListener('orientationchange', () => this.#handleOrientationChange())
-        }
-        window.addEventListener('resize', () => this.#handleOrientationChange())
-
         this.#updateOverlay()
     }
 
-    #detectOrientation() {
-        if (window.screen.orientation?.type) {
-            return window.screen.orientation.type.includes('portrait')
-                ? DEVICE_ORIENTATION.PORTRAIT
-                : DEVICE_ORIENTATION.LANDSCAPE
-        }
-
-        if (window.matchMedia) {
-            return window.matchMedia('(orientation: portrait)').matches
-                ? DEVICE_ORIENTATION.PORTRAIT
-                : DEVICE_ORIENTATION.LANDSCAPE
-        }
-
-        return window.innerHeight > window.innerWidth
-            ? DEVICE_ORIENTATION.PORTRAIT
-            : DEVICE_ORIENTATION.LANDSCAPE
-    }
-
     #handleOrientationChange() {
-        const newOrientation = this.#detectOrientation()
+        const newOrientation = detectOrientation()
         if (newOrientation !== this.#currentOrientation) {
             this.#currentOrientation = newOrientation
-            this.emit(EVENT_NAME.ORIENTATION_STATE_CHANGED, this.#currentOrientation)
+            eventBus.emit(EVENT_NAME.ORIENTATION_STATE_CHANGED, this.#currentOrientation)
             this.#updateOverlay()
         }
     }
@@ -136,7 +133,30 @@ class DeviceModule extends ModuleBase {
             this.#overlayElement = null
         }
     }
+
+    #initializeScreenSizeTracking() {
+        this.#lastScreenWidth = window.innerWidth
+        this.#lastScreenHeight = window.innerHeight
+        window.addEventListener('resize', () => this.#handleScreenSizeChange())
+    }
+
+    #handleScreenSizeChange() {
+        if (this.#resizeDebounceTimer) {
+            clearTimeout(this.#resizeDebounceTimer)
+        }
+
+        this.#resizeDebounceTimer = setTimeout(() => {
+            const newWidth = window.innerWidth
+            const newHeight = window.innerHeight
+
+            if (newWidth !== this.#lastScreenWidth || newHeight !== this.#lastScreenHeight) {
+                this.#lastScreenWidth = newWidth
+                this.#lastScreenHeight = newHeight
+                eventBus.emit(EVENT_NAME.SCREEN_SIZE_CHANGED, { width: newWidth, height: newHeight })
+            }
+        }, 200)
+    }
 }
 
-EventLite.mixin(DeviceModule.prototype)
+applyEventBusMixin(DeviceModule.prototype)
 export default DeviceModule
