@@ -299,9 +299,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     showAdvancedBanners(banners) {
         this._setAdvancedBannersState(BANNER_STATE.LOADING)
 
-        const placements = banners
-            .map((banner) => this.#bannerToMsnPlacement(banner))
-            .filter(Boolean)
+        const placements = [...new Set(
+            banners
+                .map((banner) => this.#bannerToMsnPlacement(banner))
+                .filter(Boolean),
+        )].slice(0, 2)
 
         if (placements.length === 0) {
             this._setAdvancedBannersState(BANNER_STATE.FAILED)
@@ -587,21 +589,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     #bannerToMsnPlacement(banner) {
-        const hasTop = banner.top !== undefined
-        const hasBottom = banner.bottom !== undefined
-        const hasLeft = banner.left !== undefined
-        const hasRight = banner.right !== undefined
-
-        let position
-        if (hasTop && hasLeft) position = 'topleft'
-        else if (hasTop && hasRight) position = 'topright'
-        else if (hasBottom && hasLeft) position = 'bottomleft'
-        else if (hasBottom && hasRight) position = 'bottomright'
-        else if (hasTop) position = 'top'
-        else if (hasBottom) position = 'bottom'
-        else if (hasLeft) position = 'left'
-        else if (hasRight) position = 'right'
-        else position = 'top'
+        const position = this.#resolveMsnPosition(banner)
+        if (!position) {
+            return null
+        }
 
         const sizes = MSN_SIZES_BY_POSITION[position]
         if (!sizes || sizes.length === 0) {
@@ -631,6 +622,40 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         })
 
         return `${position}:${bestSize[0]}x${bestSize[1]}`
+    }
+
+    #resolveMsnPosition(banner) {
+        const hasTop = banner.top !== undefined
+        const hasBottom = banner.bottom !== undefined
+        const hasLeft = banner.left !== undefined
+        const hasRight = banner.right !== undefined
+
+        if (hasTop && hasLeft) {
+            return 'topleft'
+        }
+        if (hasTop && hasRight) {
+            return 'topright'
+        }
+        if (hasBottom && hasLeft) {
+            return 'bottomleft'
+        }
+        if (hasBottom && hasRight) {
+            return 'bottomright'
+        }
+        if (hasTop) {
+            return 'top'
+        }
+        if (hasBottom) {
+            return 'bottom'
+        }
+        if (hasLeft) {
+            return 'left'
+        }
+        if (hasRight) {
+            return 'right'
+        }
+
+        return null
     }
 
     #updatePlayerInfo(data) {
