@@ -603,9 +603,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             return null
         }
 
-        const width = parseInt(banner.width, 10)
-        const height = parseInt(banner.height, 10)
-        if (Number.isNaN(width) || Number.isNaN(height)) {
+        const width = this.#parseMsnDimension(banner.width, window.innerWidth)
+        const height = this.#parseMsnDimension(banner.height, window.innerHeight)
+        if (width === null || height === null) {
             return null
         }
 
@@ -626,6 +626,26 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         })
 
         return `${position}:${bestSize[0]}x${bestSize[1]}`
+    }
+
+    #parseMsnDimension(value, screenSize) {
+        if (typeof value !== 'string') {
+            return null
+        }
+
+        if (value.endsWith('%')) {
+            const percent = parseFloat(value)
+            if (Number.isNaN(percent)) {
+                return null
+            }
+            return Math.floor((screenSize * percent) / 100)
+        }
+
+        const px = parseInt(value, 10)
+        if (Number.isNaN(px)) {
+            return null
+        }
+        return px
     }
 
     #resolveMsnPosition(banner) {
