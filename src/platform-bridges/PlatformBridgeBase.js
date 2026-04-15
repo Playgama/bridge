@@ -799,7 +799,7 @@ class PlatformBridgeBase {
                     ...product[this.platformId],
                 }
 
-                mergedProduct.platformProductId = mergedProduct.id
+                mergedProduct.platformProductId = mergedProduct.id ?? product.id
                 mergedProduct.id = product.id
 
                 return mergedProduct
@@ -821,7 +821,7 @@ class PlatformBridgeBase {
             ...product[this.platformId],
         }
 
-        mergedProduct.platformProductId = mergedProduct.id
+        mergedProduct.platformProductId = mergedProduct.id ?? product.id
         mergedProduct.id = product.id
 
         return mergedProduct

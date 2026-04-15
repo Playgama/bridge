@@ -543,8 +543,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     const bySku = new Map((data.items || []).map((it) => [it.sku, it]))
 
                     const mergedProducts = products.map((product) => {
-                        const sku = product.platformProductId || product.id
-                        const x = bySku.get(sku)
+                        const x = bySku.get(product.platformProductId)
 
                         return {
                             id: product.id,
