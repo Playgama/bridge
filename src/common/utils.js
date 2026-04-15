@@ -47,7 +47,7 @@ export const addAdsByGoogle = ({
     rewardedPlacementId,
     adFrequencyHint = '180s',
     testMode = false,
-}, config = {}) => new Promise((resolve) => {
+}, config = {}) => new Promise((resolve, reject) => {
     const script = document.createElement('script')
     script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js'
 
@@ -84,6 +84,10 @@ export const addAdsByGoogle = ({
         })
 
         resolve((adOptions) => window.adsbygoogle.push(adOptions))
+    })
+
+    script.addEventListener('error', () => {
+        reject(new Error('adsbygoogle script failed to load'))
     })
     document.head.appendChild(script)
 })

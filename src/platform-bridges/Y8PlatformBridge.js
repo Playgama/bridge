@@ -74,6 +74,8 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    #showAd = null
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -98,7 +100,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                                 channelId: this._options.channelId,
                                 hostId: `ca-host-pub-${ADS_ID}`,
                             }).then((showAd) => {
-                                this._showAd = showAd
+                                this.#showAd = showAd
                             })
 
                             this._platformSdk.getLoginStatus((data) => {
@@ -239,12 +241,12 @@ class Y8PlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showInterstitial() {
-        if (!this._showAd) {
+        if (!this.#showAd) {
             this._showAdFailurePopup(false)
             return
         }
 
-        this._showAd({
+        this.#showAd({
             type: 'start',
             name: 'start-game',
             beforeAd: () => {
@@ -264,12 +266,12 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     }
 
     showRewarded() {
-        if (!this._showAd) {
+        if (!this.#showAd) {
             this._showAdFailurePopup(true)
             return
         }
 
-        this._showAd({
+        this.#showAd({
             type: 'reward',
             name: 'rewarded Ad',
             beforeAd: () => {
