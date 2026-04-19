@@ -70,12 +70,13 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                     this._setPauseState(false)
                 })
 
-                this._setAudioState(this._platformSdk.audio.isEnabled)
                 this._platformSdk.audio.subscribe((isEnabled) => {
                     this._setAudioState(isEnabled)
                 })
 
                 this._platformSdk.game.firstFrameReady()
+                this._setAudioState(this._platformSdk.audio.isEnabled)
+
                 this._isInitialized = true
                 this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
             })
