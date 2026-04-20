@@ -48,6 +48,7 @@ export const PLATFORM_ID = {
     TIKTOK: 'tiktok',
     DLIGHTEK: 'dlightek',
     GAMESNACKS: 'gamesnacks',
+    SAMSUNG: 'samsung',
 }
 
 export const MODULE_NAME = {
