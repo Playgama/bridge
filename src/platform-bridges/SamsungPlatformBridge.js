@@ -326,12 +326,17 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         }
 
         const adOptions = {}
-        if (this._options.samsungInterstitialAdPlacementId) {
-            adOptions.samsungInterstitialAdPlacementId = this._options.samsungInterstitialAdPlacementId
+
+        const interstitialPlacement = this.#resolveSamsungPlacement('interstitial')
+        if (interstitialPlacement) {
+            adOptions.samsungInterstitialAdPlacementId = interstitialPlacement
         }
-        if (this._options.samsungRewardedAdPlacementId) {
-            adOptions.samsungRewardedAdPlacementId = this._options.samsungRewardedAdPlacementId
+
+        const rewardedPlacement = this.#resolveSamsungPlacement('rewarded')
+        if (rewardedPlacement) {
+            adOptions.samsungRewardedAdPlacementId = rewardedPlacement
         }
+
         if (this._options.admobInterstitialAdUnitId) {
             adOptions.admobInterstitialAdUnitId = this._options.admobInterstitialAdUnitId
         }
@@ -434,6 +439,24 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
             this._showAdFailurePopup(this.#currentAdIsRewarded)
             this.#isAdShowing = false
         })
+    }
+
+    #resolveSamsungPlacement(adType) {
+        const placements = this._options.advertisement?.[adType]?.placements
+        if (!Array.isArray(placements) || placements.length === 0) {
+            return null
+        }
+
+        const fallbackId = this._options.advertisement?.[adType]?.placementFallback
+        if (fallbackId) {
+            const match = placements.find((p) => p.id === fallbackId)
+            if (match?.[PLATFORM_ID.SAMSUNG]) {
+                return match[PLATFORM_ID.SAMSUNG]
+            }
+        }
+
+        const firstWithSamsung = placements.find((p) => p[PLATFORM_ID.SAMSUNG])
+        return firstWithSamsung?.[PLATFORM_ID.SAMSUNG] ?? null
     }
 
     // eslint-disable-next-line class-methods-use-this
