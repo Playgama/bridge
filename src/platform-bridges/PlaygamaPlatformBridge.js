@@ -306,6 +306,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
     }
 
+    checkAdBlock() {
+        return this._platformSdk.advService.checkAdBlock()
+    }
+
     authorizePlayer(options) {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
