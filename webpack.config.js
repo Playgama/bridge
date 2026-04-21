@@ -7,6 +7,7 @@ const packageJson = require('./package.json')
 const { ALL_PLATFORM_IDS } = require('./scripts/platforms')
 
 const platformDirName = 'platform-bridges'
+const CDN_BASE_URL = `https://bridge.playgama.com/v${packageJson.version.split('.')[0]}/stable/`
 
 class CleanPlatformsPlugin {
     apply(compiler) {
@@ -98,10 +99,11 @@ const createConfig = (targetPlatforms = [], { noLint = false } = {}) => ({
     },
 })
 
-module.exports = (env = {}) => {
+module.exports = (env = {}, argv = {}) => {
     const targetPlatform = env.platform || ''
     const targetPlatforms = targetPlatform ? targetPlatform.split(',') : []
     const noLint = Boolean(env.noLint)
+    const isDevelopment = argv.mode === 'development'
 
     if (targetPlatforms.length > 0) {
         const config = createConfig(targetPlatforms, { noLint })
@@ -127,6 +129,10 @@ module.exports = (env = {}) => {
     const dynamicConfig = {
         ...baseConfig,
         name: 'dynamic',
+        output: {
+            ...baseConfig.output,
+            publicPath: isDevelopment ? 'auto' : CDN_BASE_URL,
+        },
         plugins: [
             ...baseConfig.plugins,
         ],
