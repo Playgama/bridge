@@ -20,7 +20,6 @@ import { addJavaScript, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
-    STORAGE_TYPE,
     ERROR,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
@@ -98,23 +97,6 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    // storage
-    isStorageSupported(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return false
-        }
-
-        return super.isStorageSupported(storageType)
-    }
-
-    isStorageAvailable(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return false
-        }
-
-        return super.isStorageAvailable(storageType)
     }
 
     // advertisement

@@ -140,22 +140,6 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    isStorageSupported(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
-        }
-
-        return super.isStorageSupported(storageType)
-    }
-
-    isStorageAvailable(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this._isPlayerAuthorized
-        }
-
-        return super.isStorageAvailable(storageType)
-    }
-
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return new Promise((resolve, reject) => {

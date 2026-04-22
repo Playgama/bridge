@@ -241,30 +241,6 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    isStorageSupported(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (this._platformSdk.canIUse('getStorage')) {
-                return true
-            }
-
-            return false
-        }
-
-        return super.isStorageSupported(storageType)
-    }
-
-    isStorageAvailable(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (this._platformSdk.canIUse('getStorage')) {
-                return true
-            }
-
-            return false
-        }
-
-        return super.isStorageAvailable(storageType)
-    }
-
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return new Promise((resolve, reject) => {

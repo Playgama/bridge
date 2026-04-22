@@ -22,71 +22,15 @@ class StorageModule extends ModuleBase {
         return this._platformBridge.defaultStorageType
     }
 
-    isSupported(options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.isSupported(platformDependedOptions)
-            }
-        }
-
-        return this._platformBridge.isStorageSupported(options)
-    }
-
-    isAvailable(options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.isSupported(platformDependedOptions)
-            }
-        }
-
-        return this._platformBridge.isStorageAvailable(options)
-    }
-
-    get(key, options, tryParseJson = true) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.get(key, platformDependedOptions, tryParseJson)
-            }
-        }
-
-        let storageType = options
-        if (!storageType) {
-            storageType = this.defaultType
-        }
-
-        if (!this._platformBridge.isStorageAvailable(storageType)) {
-            return Promise.reject()
-        }
-
-        // Validate array input
+    get(key, tryParseJson = true) {
         if (Array.isArray(key) && key.length === 0) {
             return Promise.resolve([])
         }
 
-        return this._platformBridge.getDataFromStorage(key, storageType, tryParseJson)
+        return this._platformBridge.getDataFromStorage(key, this.defaultType, tryParseJson)
     }
 
-    set(key, value, options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.set(key, value, platformDependedOptions)
-            }
-        }
-
-        let storageType = options
-        if (!storageType) {
-            storageType = this.defaultType
-        }
-
-        if (!this._platformBridge.isStorageAvailable(storageType)) {
-            return Promise.reject()
-        }
-
-        // Validate array inputs
+    set(key, value) {
         if (Array.isArray(key)) {
             if (!Array.isArray(value)) {
                 return Promise.reject(new Error('Value must be an array when key is an array'))
@@ -99,32 +43,15 @@ class StorageModule extends ModuleBase {
             }
         }
 
-        return this._platformBridge.setDataToStorage(key, value, storageType)
+        return this._platformBridge.setDataToStorage(key, value, this.defaultType)
     }
 
-    delete(key, options) {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.delete(key, platformDependedOptions)
-            }
-        }
-
-        let storageType = options
-        if (!storageType) {
-            storageType = this.defaultType
-        }
-
-        if (!this._platformBridge.isStorageAvailable(storageType)) {
-            return Promise.reject()
-        }
-
-        // Validate array input
+    delete(key) {
         if (Array.isArray(key) && key.length === 0) {
             return Promise.resolve()
         }
 
-        return this._platformBridge.deleteDataFromStorage(key, storageType)
+        return this._platformBridge.deleteDataFromStorage(key, this.defaultType)
     }
 }
 
