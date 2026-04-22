@@ -20,7 +20,8 @@ import eventBus, { applyEventBusMixin } from '../common/EventBus'
 import ModuleBase from './ModuleBase'
 import {
     ADVANCED_BANNERS_ACTION, BANNER_POSITION, BANNER_STATE,
-    DEVICE_ORIENTATION, DEVICE_TYPE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME, REWARDED_STATE,
+    DEVICE_ORIENTATION, DEVICE_TYPE, EVENT_NAME, INTERSTITIAL_STATE, MODULE_NAME,
+    PLATFORM_MESSAGE, REWARDED_STATE,
 } from '../constants'
 import { detectOrientation, findGameCanvas } from '../common/utils'
 import analyticsModule from './AnalyticsModule'
@@ -110,7 +111,7 @@ class AdvertisementModule extends ModuleBase {
 
     #minimumDelayBetweenInterstitial = DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL
 
-    #initTime = Date.now()
+    #initTime = null
 
     #rewardedState = REWARDED_STATE.CLOSED
 
@@ -188,14 +189,14 @@ class AdvertisementModule extends ModuleBase {
     }
 
     setMinimumDelayBetweenInterstitial(value) {
-        const configDelay = this.#normalizeMinimumDelayBetweenInterstitial(
+        const configDelay = this.#parseDelay(
             this.#getConfigMinimumDelayBetweenInterstitial(),
         )
         if (configDelay !== null) {
             return
         }
 
-        const delay = this.#normalizeMinimumDelayBetweenInterstitial(value)
+        const delay = this.#parseDelay(value)
         if (delay === null) {
             return
         }
@@ -282,10 +283,12 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        const initialDelay = this._platformBridge.initialInterstitialDelay
-        if (initialDelay > 0 && (Date.now() - this.#initTime) / 1000 < initialDelay) {
-            this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            return
+        const initialDelay = this.#getInitialInterstitialDelay()
+        if (initialDelay > 0) {
+            if (this.#initTime === null || (Date.now() - this.#initTime) / 1000 < initialDelay) {
+                this.#setInterstitialState(INTERSTITIAL_STATE.FAILED)
+                return
+            }
         }
 
         if (this._platformBridge.isMinimumDelayBetweenInterstitialEnabled) {
@@ -373,7 +376,7 @@ class AdvertisementModule extends ModuleBase {
         }
     }
 
-    #normalizeMinimumDelayBetweenInterstitial(value) {
+    #parseDelay(value) {
         if (typeof value === 'number') {
             return value
         }
@@ -396,7 +399,7 @@ class AdvertisementModule extends ModuleBase {
             return
         }
 
-        const delay = this.#normalizeMinimumDelayBetweenInterstitial(configDelay)
+        const delay = this.#parseDelay(configDelay)
         if (delay === null) {
             return
         }
@@ -406,6 +409,16 @@ class AdvertisementModule extends ModuleBase {
 
     #getConfigMinimumDelayBetweenInterstitial() {
         return this._platformBridge.options?.advertisement?.minimumDelayBetweenInterstitial
+    }
+
+    #getInitialInterstitialDelay() {
+        const configDelay = this._platformBridge.options?.advertisement?.initialInterstitialDelay
+        const delay = this.#parseDelay(configDelay)
+        if (delay !== null) {
+            return delay
+        }
+
+        return this._platformBridge.initialInterstitialDelay
     }
 
     #startInterstitialTimer() {
@@ -478,6 +491,10 @@ class AdvertisementModule extends ModuleBase {
     }
 
     #onPlatformMessageSent(message) {
+        if (message === PLATFORM_MESSAGE.GAME_READY) {
+            this.#initTime = Date.now()
+        }
+
         this.#tryToShowAdvancedBanners(message)
     }
 
