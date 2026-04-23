@@ -307,6 +307,8 @@ class PlaygamaBridge {
             platformId = PLATFORM_ID.TIKTOK
         } else if (__INCLUDE_GAMESNACKS__ && typeof window.GameSnacks !== 'undefined') {
             platformId = PLATFORM_ID.GAMESNACKS
+        } else if (__INCLUDE_SAMSUNG__ && typeof window.GSInstant !== 'undefined') {
+            platformId = PLATFORM_ID.SAMSUNG
         }
 
         const PlatformBridge = await fetchPlatformBridge(platformId)

@@ -104,6 +104,9 @@ if (__INCLUDE_DLIGHTEK__) {
 if (__INCLUDE_GAMESNACKS__) {
     platformImports[PLATFORM_ID.GAMESNACKS] = () => import('./platform-bridges/GameSnacksPlatformBridge')
 }
+if (__INCLUDE_SAMSUNG__) {
+    platformImports[PLATFORM_ID.SAMSUNG] = () => import('./platform-bridges/SamsungPlatformBridge')
+}
 
 export async function fetchPlatformBridge(platformId) {
     const importPlatform = platformImports[platformId]
