@@ -98,22 +98,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    isStorageSupported(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
-        }
-
-        return super.isStorageSupported(storageType)
-    }
-
-    isStorageAvailable(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
-        }
-
-        return super.isStorageAvailable(storageType)
-    }
-
     setDataToStorage(key, value, type) {
         if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
             return super.setDataToStorage(key, value, type)
@@ -129,9 +113,9 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getDataFromStorage(key, type) {
+    getDataFromStorage(key, type, tryParseJson) {
         if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.getDataFromStorage(key, type)
+            return super.getDataFromStorage(key, type, tryParseJson)
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)

@@ -171,22 +171,6 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    isStorageSupported(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
-        }
-
-        return super.isStorageSupported(storageType)
-    }
-
-    isStorageAvailable(storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return true
-        }
-
-        return super.isStorageAvailable(storageType)
-    }
-
     getDataFromStorage(key, storageType, tryParseJson) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             return new Promise((resolve, reject) => {
@@ -233,7 +217,7 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
             })
         }
 
-        return super.getDataFromStorage(key, storageType)
+        return super.getDataFromStorage(key, storageType, tryParseJson)
     }
 
     setDataToStorage(key, value, storageType) {

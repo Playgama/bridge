@@ -440,14 +440,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_INTERNAL)
             && this.#isPlatformInternalStorageAvailable()
         ) {
-            return super.isStorageAvailable(STORAGE_TYPE.LOCAL_STORAGE)
+            return this._localStorage !== null
         }
 
         if (
             storageType === STORAGE_TYPE.LOCAL_STORAGE
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_LOCAL)
         ) {
-            return super.isStorageAvailable(STORAGE_TYPE.LOCAL_STORAGE)
+            return this._localStorage !== null
         }
 
         return false
