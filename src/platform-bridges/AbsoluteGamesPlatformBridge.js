@@ -23,6 +23,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
 } from '../constants'
 
 const SDK_URL = 'https://unpkg.com/@agru/sdk/dist/umd/index.min.js'
@@ -50,6 +51,18 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
     // social
     get isExternalLinksAllowed() {
         return false
+    }
+
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady() {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
     }
 
     initialize() {
@@ -105,9 +118,11 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
                     .finally(() => {
                         this._isInitialized = true
 
-                        this._defaultStorageType = this._isPlayerAuthorized
-                            ? STORAGE_TYPE.PLATFORM_INTERNAL
-                            : STORAGE_TYPE.LOCAL_STORAGE
+                        this._setDefaultStorageType(
+                            this._isPlayerAuthorized
+                                ? STORAGE_TYPE.PLATFORM_INTERNAL
+                                : STORAGE_TYPE.LOCAL_STORAGE,
+                        )
 
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
@@ -140,125 +155,32 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (this._platformStorageCachedData) {
-                    if (Array.isArray(key)) {
-                        const values = []
-
-                        for (let i = 0; i < key.length; i++) {
-                            const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                                ? null
-                                : this._platformStorageCachedData[key[i]]
-
-                            values.push(value)
-                        }
-
-                        resolve(values)
-                        return
-                    }
-
-                    resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
-                    return
-                }
-
-                if (this._isPlayerAuthorized) {
-                    this._platformSdk.getSaveData((data, error) => {
-                        if (error === null) {
-                            this._platformStorageCachedData = data || {}
-
-                            if (Array.isArray(key)) {
-                                const values = []
-
-                                for (let i = 0; i < key.length; i++) {
-                                    const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                                        ? null
-                                        : this._platformStorageCachedData[key[i]]
-
-                                    values.push(value)
-                                }
-
-                                resolve(values)
-                                return
-                            }
-
-                            resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
-                        } else {
-                            reject(error)
-                        }
-                    })
+    loadCloudSnapshot() {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.getSaveData((data, error) => {
+                if (error === null) {
+                    resolve(data || {})
                 } else {
-                    reject()
+                    reject(error)
                 }
             })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        })
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (this._isPlayerAuthorized) {
-                    const data = this._platformStorageCachedData !== null
-                        ? { ...this._platformStorageCachedData }
-                        : { }
-
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            data[key[i]] = value[i]
-                        }
-                    } else {
-                        data[key] = value
-                    }
-
-                    this._platformSdk.setSaveData(data, (result, error) => {
-                        if (error === null) {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        }
-                        reject(error)
-                    })
+    saveCloudSnapshot(snapshot) {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.setSaveData(snapshot, (result, error) => {
+                if (error === null) {
+                    resolve()
                 } else {
-                    reject()
+                    reject(error)
                 }
             })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+        })
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (this._isPlayerAuthorized) {
-                    const data = this._platformStorageCachedData !== null
-                        ? { ...this._platformStorageCachedData }
-                        : { }
-
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            delete data[key[i]]
-                        }
-                    } else {
-                        delete data[key]
-                    }
-
-                    this._platformSdk.setSaveData(data, (result, error) => {
-                        if (error === null) {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        }
-                        reject(error)
-                    })
-                } else {
-                    reject()
-                }
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot) {
+        return this.saveCloudSnapshot(snapshot)
     }
 
     // advertisement

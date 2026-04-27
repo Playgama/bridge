@@ -21,6 +21,7 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
@@ -58,6 +59,15 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     get leaderboardsType() {
         return LEADERBOARD_TYPE.IN_GAME
+    }
+
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
     }
 
     initialize() {
@@ -100,7 +110,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._playerId = id
                             this._playerName = name
                             this._isPlayerAuthorized = true
-                            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                             this._playerExtra = player
 
                             this.#setupAdvertisementHandlers()
@@ -120,69 +130,18 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises = key.map((k) => this._platformSdk.storage.get(k, 'platform_internal').then((rawValue) => {
-                    let parsedValue = rawValue
-
-                    if (tryParseJson && typeof rawValue === 'string') {
-                        try {
-                            parsedValue = JSON.parse(rawValue)
-                        } catch (e) {
-                            // keep parsedValue as-is
-                        }
-                    }
-
-                    return parsedValue
-                }))
-
-                return Promise.all(promises)
-            }
-
-            return this._platformSdk.storage.get(key, 'platform_internal').then((rawValue) => {
-                let parsedValue = rawValue
-
-                if (tryParseJson && typeof rawValue === 'string') {
-                    try {
-                        parsedValue = JSON.parse(rawValue)
-                    } catch (e) {
-                        // keep parsedValue as-is
-                    }
-                }
-
-                return parsedValue
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key) {
+        return this._platformSdk.storage.get(key, 'platform_internal').then((value) => (
+            value === undefined ? null : value
+        ))
     }
 
-    async setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            await this._platformSdk.storage.set(key, value, 'platform_internal')
-            return
-        }
-        await super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key, value) {
+        return this._platformSdk.storage.set(key, value, 'platform_internal')
     }
 
-    async deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                /* eslint-disable no-await-in-loop */
-                for (let i = 0; i < key.length; i++) {
-                    await this._platformSdk.storage.delete(key[i], 'platform_internal')
-                }
-                /* eslint-enable no-await-in-loop */
-
-                return
-            }
-
-            await this._platformSdk.storage.delete(key, 'platform_internal')
-            return
-        }
-
-        await super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key) {
+        return this._platformSdk.storage.delete(key, 'platform_internal')
     }
 
     // advertisement

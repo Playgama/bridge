@@ -23,6 +23,7 @@ import {
     PLATFORM_ID,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
 } from '../constants'
 import {
     addJavaScript,
@@ -62,6 +63,18 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     #playgamaAds = null
@@ -69,6 +82,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     #playgamaAdsPromise = this._createPromiseDecorator(PLAYGAMA_ADS_PROMISE).promise
 
     #interstitialShownCount = 0
+
+    #storageOpQueue = Promise.resolve()
 
     initialize() {
         if (this._isInitialized) {
@@ -222,55 +237,31 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    setDataToStorage(key, value, type) {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.setDataToStorage(key, value, type)
-        }
-
+    loadCloudKey(key) {
         const keyWithPrefix = this.#withStorageKeyPrefix(key)
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-
-            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getDataFromStorage(key, type, tryParseJson) {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.getDataFromStorage(key, type, tryParseJson)
-        }
-
-        const keyWithPrefix = this.#withStorageKeyPrefix(key)
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, keyWithPrefix)
-        }
-
-        return promiseDecorator.promise
+            return promiseDecorator.promise
+        })
     }
 
-    deleteDataFromStorage(key, type) {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.deleteDataFromStorage(key, type)
-        }
-
+    saveCloudKey(key, value) {
         const keyWithPrefix = this.#withStorageKeyPrefix(key)
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value })
+            return promiseDecorator.promise
+        })
+    }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-
+    deleteCloudKey(key) {
+        const keyWithPrefix = this.#withStorageKeyPrefix(key)
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, keyWithPrefix)
-        }
-
-        return promiseDecorator.promise
+            return promiseDecorator.promise
+        })
     }
 
     paymentsPurchase(id) {
@@ -596,6 +587,14 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         }
 
         this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, data.data)
+    }
+
+    #enqueueStorageOp(operation) {
+        const next = this.#storageOpQueue
+            .catch(() => {})
+            .then(() => operation())
+        this.#storageOpQueue = next.catch(() => {})
+        return next
     }
 }
 

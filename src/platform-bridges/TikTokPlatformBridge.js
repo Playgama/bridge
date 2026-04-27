@@ -23,6 +23,7 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     DEVICE_OS,
     PLATFORM_MESSAGE,
@@ -147,6 +148,15 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
+    }
+
     #systemInfo = null
 
     #menuButtonRect = null
@@ -171,7 +181,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
                 }
 
                 if (this._platformSdk.canIUse('getStorage')) {
-                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                 }
 
                 if (this._platformSdk.canIUse('getSystemInfoSync')) {
@@ -241,64 +251,33 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (Array.isArray(key)) {
-                    const promises = key.map((k) => this.#getStorageItem(k, tryParseJson))
-                    Promise.all(promises)
-                        .then((values) => resolve(values))
-                        .catch((error) => reject(error))
-                    return
-                }
-
-                this.#getStorageItem(key, tryParseJson)
-                    .then((value) => resolve(value))
-                    .catch((error) => reject(error))
-            })
+    async loadCloudSnapshot() {
+        let keys = []
+        if (this._platformSdk.canIUse('getStorageInfoSync')) {
+            const info = this._platformSdk.getStorageInfoSync()
+            keys = info && info.keys ? info.keys : []
         }
 
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        if (keys.length === 0) {
+            return {}
+        }
+
+        const values = await Promise.all(keys.map((k) => this.#getStorageItemRaw(k)))
+        const snapshot = {}
+        keys.forEach((k, i) => {
+            if (values[i] !== undefined && values[i] !== null) {
+                snapshot[k] = values[i]
+            }
+        })
+        return snapshot
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (Array.isArray(key)) {
-                    const promises = key.map((k, i) => this.#setStorageItem(k, value[i]))
-                    Promise.all(promises)
-                        .then(() => resolve())
-                        .catch((error) => reject(error))
-                    return
-                }
-
-                this.#setStorageItem(key, value)
-                    .then(() => resolve())
-                    .catch((error) => reject(error))
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot, changedKeys) {
+        return Promise.all(changedKeys.map((k) => this.#setStorageItem(k, snapshot[k])))
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (Array.isArray(key)) {
-                    const promises = key.map((k) => this.#removeStorageItem(k))
-                    Promise.all(promises)
-                        .then(() => resolve())
-                        .catch((error) => reject(error))
-                    return
-                }
-
-                this.#removeStorageItem(key)
-                    .then(() => resolve())
-                    .catch((error) => reject(error))
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot, deletedKeys) {
+        return Promise.all(deletedKeys.map((k) => this.#removeStorageItem(k)))
     }
 
     // advertisement
@@ -428,24 +407,12 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    #getStorageItem(key, tryParseJson) {
+    #getStorageItemRaw(key) {
         return new Promise((resolve, reject) => {
             this._platformSdk.getStorage({
                 key,
-                success: (result) => {
-                    let { data } = result
-                    if (tryParseJson && typeof data === 'string') {
-                        try {
-                            data = JSON.parse(data)
-                        } catch (e) {
-                            // Nothing we can do with it
-                        }
-                    }
-                    resolve(data)
-                },
-                fail: (error) => {
-                    reject(error)
-                },
+                success: (result) => resolve(result.data),
+                fail: (error) => reject(error),
             })
         })
     }

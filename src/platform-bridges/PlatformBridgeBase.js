@@ -23,6 +23,7 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     ERROR,
     VISIBILITY_STATE,
     DEVICE_TYPE,
@@ -130,6 +131,14 @@ class PlatformBridgeBase {
     // storage
     get defaultStorageType() {
         return this._defaultStorageType
+    }
+
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.NONE
+    }
+
+    get cloudStorageReady() {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
     // advertisement
@@ -294,8 +303,6 @@ class PlatformBridgeBase {
 
     _defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
 
-    _platformStorageCachedData = null
-
     _isBannerSupported = false
 
     _isAdvancedBannersSupported = false
@@ -389,74 +396,35 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        switch (storageType) {
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                if (this._localStorage) {
-                    if (Array.isArray(key)) {
-                        const values = []
-
-                        for (let i = 0; i < key.length; i++) {
-                            values.push(this._getDataFromLocalStorage(key[i], tryParseJson))
-                        }
-
-                        return Promise.resolve(values)
-                    }
-
-                    const value = this._getDataFromLocalStorage(key, tryParseJson)
-                    return Promise.resolve(value)
-                }
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    // cloud storage — v2 contract
+    // eslint-disable-next-line no-unused-vars
+    loadCloudSnapshot() {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
-    setDataToStorage(key, value, storageType) {
-        switch (storageType) {
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                if (this._localStorage) {
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            this._setDataToLocalStorage(key[i], value[i])
-                        }
-                        return Promise.resolve()
-                    }
-
-                    this._setDataToLocalStorage(key, value)
-                    return Promise.resolve()
-                }
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    // eslint-disable-next-line no-unused-vars
+    saveCloudSnapshot(snapshot, changedKeys) {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
-    deleteDataFromStorage(key, storageType) {
-        switch (storageType) {
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                if (this._localStorage) {
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            this._deleteDataFromLocalStorage(key[i])
-                        }
-                        return Promise.resolve()
-                    }
+    // eslint-disable-next-line no-unused-vars
+    deleteCloudKeys(snapshot, deletedKeys) {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+    }
 
-                    this._deleteDataFromLocalStorage(key)
-                    return Promise.resolve()
-                }
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    // eslint-disable-next-line no-unused-vars
+    loadCloudKey(key) {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+    }
+
+    // eslint-disable-next-line no-unused-vars
+    saveCloudKey(key, value) {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+    }
+
+    // eslint-disable-next-line no-unused-vars
+    deleteCloudKey(key) {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
     // advertisement
@@ -646,28 +614,6 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    _getDataFromLocalStorage(key, tryParseJson) {
-        let value = this._localStorage.getItem(key)
-
-        if (tryParseJson && typeof value === 'string') {
-            try {
-                value = JSON.parse(value)
-            } catch (e) {
-                // Nothing we can do with it
-            }
-        }
-
-        return value
-    }
-
-    _setDataToLocalStorage(key, value) {
-        this._localStorage.setItem(key, typeof value === 'object' ? JSON.stringify(value) : value)
-    }
-
-    _deleteDataFromLocalStorage(key) {
-        this._localStorage.removeItem(key)
-    }
-
     _setVisibilityState(state) {
         if (this._visibilityState === state) {
             return
@@ -684,6 +630,15 @@ class PlatformBridgeBase {
         if (this._audioStateAggregator) {
             this._audioStateAggregator.setState('visibility', isHidden)
         }
+    }
+
+    _setDefaultStorageType(storageType) {
+        if (this._defaultStorageType === storageType) {
+            return
+        }
+
+        this._defaultStorageType = storageType
+        this.emit(EVENT_NAME.DEFAULT_STORAGE_TYPE_CHANGED, storageType)
     }
 
     _setBannerState(state) {

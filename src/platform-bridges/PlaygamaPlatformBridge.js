@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor, getKeysFromObject } from '../common/utils'
+import { addJavaScript, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -24,7 +24,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
-    ERROR,
+    CLOUD_STORAGE_MODE,
     PLATFORM_MESSAGE,
 } from '../constants'
 
@@ -62,6 +62,18 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     get platformLanguage() {
         return this._platformSdk.platformService.getLanguage() || super.platformLanguage
+    }
+
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady() {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
     }
 
     _isAdvancedBannersSupported = true
@@ -167,101 +179,16 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#getDataFromPlatformStorage(key, tryParseJson)
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudSnapshot() {
+        return this._platformSdk.cloudSaveApi.getState()
     }
 
-    setDataToStorage(key, value, storageType) {
-        switch (storageType) {
-            case STORAGE_TYPE.PLATFORM_INTERNAL: {
-                if (!this._isPlayerAuthorized) {
-                    return Promise.reject()
-                }
-
-                return new Promise((resolve, reject) => {
-                    const data = this._platformStorageCachedData !== null
-                        ? { ...this._platformStorageCachedData }
-                        : {}
-
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            data[key[i]] = value[i]
-                        }
-                    } else {
-                        data[key] = value
-                    }
-
-                    this.platformSdk.cloudSaveApi.setItems(data)
-                        .then(() => {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        })
-                        .catch((error) => {
-                            reject(error)
-                        })
-                })
-            }
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                const data = {}
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = (typeof value[i] !== 'string') ? JSON.stringify(value[i]) : value[i]
-                    }
-                } else {
-                    data[key] = (typeof value !== 'string') ? JSON.stringify(value) : value
-                }
-
-                this._platformSdk.storageApi.setItems(data)
-                return super.setDataToStorage(key, value, storageType)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    saveCloudSnapshot(snapshot) {
+        return this._platformSdk.cloudSaveApi.setItems(snapshot)
     }
 
-    deleteDataFromStorage(key, storageType) {
-        switch (storageType) {
-            case STORAGE_TYPE.PLATFORM_INTERNAL: {
-                return new Promise((resolve, reject) => {
-                    const data = this._platformStorageCachedData !== null
-                        ? { ...this._platformStorageCachedData }
-                        : {}
-
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            delete data[key[i]]
-                        }
-                    } else {
-                        delete data[key]
-                    }
-
-                    this.platformSdk.cloudSaveApi.setItems(data)
-                        .then(() => {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        })
-                        .catch((error) => {
-                            reject(error)
-                        })
-                })
-            }
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                this._platformSdk.storageApi.deleteItems(Array.isArray(key) ? key : [key])
-                return super.deleteDataFromStorage(key, storageType)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    deleteCloudKeys(snapshot) {
+        return this._platformSdk.cloudSaveApi.setItems(snapshot)
     }
 
     // advertisement
@@ -445,12 +372,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player
-                        this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-                        return this.#getDataFromPlatformStorage([])
+                        this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                    } else {
+                        this._playerApplyGuestData()
                     }
-
-                    this._playerApplyGuestData()
-                    return Promise.resolve()
                 })
                 .catch(() => {
                     this._playerApplyGuestData()
@@ -459,14 +384,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     resolve()
                 })
         })
-    }
-
-    async #getDataFromPlatformStorage(key, tryParseJson = true) {
-        if (!this._platformStorageCachedData) {
-            this._platformStorageCachedData = await this.platformSdk.cloudSaveApi.getState()
-        }
-
-        return getKeysFromObject(key, this._platformStorageCachedData, tryParseJson)
     }
 }
 

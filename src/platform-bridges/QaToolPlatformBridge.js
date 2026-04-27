@@ -30,10 +30,10 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     LEADERBOARD_TYPE,
     ERROR,
 } from '../constants'
-import { getKeysFromObject } from '../common/utils'
 
 const ADVERTISEMENT_TYPE = {
     INTERSTITIAL: 'interstitial',
@@ -255,6 +255,21 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
     }
 
+    // storage
+    get cloudStorageMode() {
+        if (this.isStorageSupported(STORAGE_TYPE.PLATFORM_INTERNAL)) {
+            return CLOUD_STORAGE_MODE.LAZY
+        }
+        return CLOUD_STORAGE_MODE.NONE
+    }
+
+    get cloudStorageReady() {
+        if (!this.isStorageAvailable(STORAGE_TYPE.PLATFORM_INTERNAL)) {
+            return Promise.reject(ERROR.STORAGE_NOT_AVAILABLE)
+        }
+        return Promise.resolve()
+    }
+
     _supportedFeatures = []
 
     _leaderboardsType = null
@@ -453,56 +468,31 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (!this.isStorageSupported(storageType)) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-        }
-
+    loadCloudKey(key) {
         return this.#requestMessage(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, {
-            options: { key, storageType, tryParseJson },
-        }).then(({ storage }) => getKeysFromObject(key, storage, tryParseJson))
+            options: { key, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
+        }).then(({ storage }) => {
+            const value = storage && storage[key]
+            return value === undefined ? null : value
+        })
     }
 
-    setDataToStorage(key, value, storageType) {
+    saveCloudKey(key, value) {
         this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.SET_DATA_TO_STORAGE,
-            options: { key, value, storageType },
+            options: { key, value, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
         })
-
-        if (!this.isStorageSupported(storageType)) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-        }
-
-        if (
-            storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE)
-        ) {
-            return Promise.resolve()
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+        return Promise.resolve()
     }
 
-    deleteDataFromStorage(key, storageType) {
+    deleteCloudKey(key) {
         this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.DELETE_DATA_FROM_STORAGE,
-            options: { key, storageType },
+            options: { key, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
         })
-
-        if (!this.isStorageSupported(storageType)) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-        }
-
-        if (
-            storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE)
-        ) {
-            return Promise.resolve()
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+        return Promise.resolve()
     }
 
     // advertisement
@@ -1324,11 +1314,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     #updateDefaultStorageType() {
-        if (this.#isPlatformInternalStorageAvailable()) {
-            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-        } else {
-            this._defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
-        }
+        this._setDefaultStorageType(
+            this.#isPlatformInternalStorageAvailable()
+                ? STORAGE_TYPE.PLATFORM_INTERNAL
+                : STORAGE_TYPE.LOCAL_STORAGE,
+        )
     }
 
     #cleanCache() {

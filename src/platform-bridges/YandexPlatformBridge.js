@@ -23,6 +23,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     BANNER_STATE,
     PLATFORM_MESSAGE,
@@ -122,6 +123,18 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     // config
     get isRemoteConfigSupported() {
         return true
+    }
+
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady() {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return this.#playerPromise
     }
 
     #isAddToHomeScreenSupported = false
@@ -303,99 +316,16 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#playerPromise.then(() => new Promise((resolve) => {
-                if (Array.isArray(key)) {
-                    const values = []
-
-                    for (let i = 0; i < key.length; i++) {
-                        const value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                            ? null
-                            : this._platformStorageCachedData[key[i]]
-
-                        values.push(value)
-                    }
-
-                    resolve(values)
-                    return
-                }
-
-                resolve(typeof this._platformStorageCachedData[key] === 'undefined' ? null : this._platformStorageCachedData[key])
-            }))
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudSnapshot() {
+        return this.#playerPromise.then(() => this.#yandexPlayer.getData())
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#playerPromise.then(() => new Promise((resolve, reject) => {
-                const data = this._platformStorageCachedData !== null
-                    ? { ...this._platformStorageCachedData }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = value[i]
-                    }
-                } else {
-                    data[key] = value
-                }
-
-                this.#yandexPlayer.setData(data)
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            }))
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot) {
+        return this.#yandexPlayer.setData(snapshot)
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#playerPromise.then(() => new Promise((resolve, reject) => {
-                const data = this._platformStorageCachedData !== null
-                    ? { ...this._platformStorageCachedData }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        delete data[key[i]]
-                    }
-                } else {
-                    delete data[key]
-                }
-
-                this.#yandexPlayer.setData(data)
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            }))
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot) {
+        return this.#yandexPlayer.setData(snapshot)
     }
 
     // advertisement
@@ -781,9 +711,11 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     this._playerId = player.getUniqueID()
                     this._isPlayerAuthorized = player.isAuthorized()
 
-                    this._defaultStorageType = this._isPlayerAuthorized
-                        ? STORAGE_TYPE.PLATFORM_INTERNAL
-                        : STORAGE_TYPE.LOCAL_STORAGE
+                    this._setDefaultStorageType(
+                        this._isPlayerAuthorized
+                            ? STORAGE_TYPE.PLATFORM_INTERNAL
+                            : STORAGE_TYPE.LOCAL_STORAGE,
+                    )
 
                     const name = player.getName()
                     if (name !== '') {
@@ -816,11 +748,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this.#yandexPlayer = player
-
-                    return player.getData()
-                })
-                .then((data) => {
-                    this._platformStorageCachedData = data
                 })
                 .finally(() => {
                     resolve()

@@ -23,6 +23,7 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     DEVICE_OS,
     PLATFORM_MESSAGE,
@@ -94,6 +95,15 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
     // player
     get isPlayerAuthorizationSupported() {
         return true
+    }
+
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
     }
 
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
@@ -171,88 +181,46 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (Array.isArray(key)) {
-                    this._platformSdk.CloudStorage.getItems(key, (error, values) => {
-                        if (error) {
-                            reject(error)
-                            return
-                        }
-
-                        const result = []
-
-                        key.forEach((k) => {
-                            let value = values[k]
-                            if (tryParseJson && typeof value === 'string') {
-                                try {
-                                    value = JSON.parse(value)
-                                } catch (e) {
-                                    // Nothing we can do with it
-                                }
-                            }
-                            result.push(value)
-                        })
-
-                        resolve(result)
-                    })
-
+    loadCloudSnapshot() {
+        return new Promise((resolve, reject) => {
+            this._platformSdk.CloudStorage.getKeys((keysError, keys) => {
+                if (keysError) {
+                    reject(keysError)
                     return
                 }
 
-                this._platformSdk.CloudStorage.getItem(key, (error, value) => {
-                    if (error) reject(error)
+                if (!keys || keys.length === 0) {
+                    resolve({})
+                    return
+                }
 
-                    let result = value
-                    if (tryParseJson && typeof result === 'string') {
-                        try {
-                            result = JSON.parse(result)
-                        } catch (e) {
-                            // Nothing we can do with it
-                        }
+                this._platformSdk.CloudStorage.getItems(keys, (itemsError, values) => {
+                    if (itemsError) {
+                        reject(itemsError)
+                        return
                     }
-                    resolve(result)
+                    resolve(values || {})
                 })
             })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        })
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const keys = Array.isArray(key) ? key : [key]
-                const values = Array.isArray(value) ? value : [value]
-                const valuesString = values.map((v) => {
-                    if (typeof v !== 'string') {
-                        return JSON.stringify(v)
-                    }
-                    return v
-                })
-
-                keys.forEach((k, i) => this._platformSdk.CloudStorage.setItem(k, valuesString[i]))
-
-                resolve()
+    saveCloudSnapshot(snapshot, changedKeys) {
+        return Promise.all(changedKeys.map((k) => new Promise((resolve, reject) => {
+            this._platformSdk.CloudStorage.setItem(k, snapshot[k], (error) => {
+                if (error) reject(error)
+                else resolve()
             })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+        })))
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const keys = Array.isArray(key) ? key : [key]
-
-                keys.forEach((k) => this._platformSdk.CloudStorage.removeItem(k))
-
-                resolve()
+    deleteCloudKeys(snapshot, deletedKeys) {
+        return Promise.all(deletedKeys.map((k) => new Promise((resolve, reject) => {
+            this._platformSdk.CloudStorage.removeItem(k, (error) => {
+                if (error) reject(error)
+                else resolve()
             })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+        })))
     }
 
     // advertisement

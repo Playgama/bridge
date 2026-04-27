@@ -23,6 +23,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
 } from '../constants'
 import { postToSystem } from '../common/utils'
 
@@ -55,7 +56,18 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
+    }
+
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+    #storageOpQueue = Promise.resolve()
 
     initialize() {
         if (this._isInitialized) {
@@ -98,49 +110,28 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    setDataToStorage(key, value, type) {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.setDataToStorage(key, value, type)
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-
-            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getDataFromStorage(key, type, tryParseJson) {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.getDataFromStorage(key, type, tryParseJson)
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-
+    loadCloudKey(key) {
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, key)
-        }
-
-        return promiseDecorator.promise
+            return promiseDecorator.promise
+        })
     }
 
-    deleteDataFromStorage(key, type) {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.deleteDataFromStorage(key, type)
-        }
+    saveCloudKey(key, value) {
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
+            return promiseDecorator.promise
+        })
+    }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-
+    deleteCloudKey(key) {
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, key)
-        }
-
-        return promiseDecorator.promise
+            return promiseDecorator.promise
+        })
     }
 
     // advertisement
@@ -440,6 +431,14 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         }
 
         this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, data.data)
+    }
+
+    #enqueueStorageOp(operation) {
+        const next = this.#storageOpQueue
+            .catch(() => {})
+            .then(() => operation())
+        this.#storageOpQueue = next.catch(() => {})
+        return next
     }
 }
 

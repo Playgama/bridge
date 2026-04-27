@@ -23,6 +23,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     BANNER_STATE,
 } from '../constants'
@@ -131,6 +132,15 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
+    }
+
     _isBannerSupported = true
 
     #platform
@@ -176,7 +186,7 @@ class VkPlatformBridge extends PlatformBridgeBase {
                                 })
                                 .finally(() => {
                                     this._isInitialized = true
-                                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                                 })
                         })
@@ -193,131 +203,43 @@ class VkPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const keys = Array.isArray(key) ? key : [key]
+    async loadCloudSnapshot() {
+        const keysResult = await this._platformSdk.send('VKWebAppStorageGetKeys', {
+            count: 1000,
+            offset: 0,
+        })
 
-                this._platformSdk
-                    .send('VKWebAppStorageGet', { keys })
-                    .then((data) => {
-                        if (Array.isArray(key)) {
-                            const values = []
-
-                            keys.forEach((item) => {
-                                const valueIndex = data.keys.findIndex((d) => d.key === item)
-                                if (valueIndex < 0) {
-                                    values.push(null)
-                                    return
-                                }
-
-                                if (data.keys[valueIndex].value === '') {
-                                    values.push(null)
-                                    return
-                                }
-
-                                let { value } = data.keys[valueIndex]
-                                if (tryParseJson) {
-                                    try {
-                                        value = JSON.parse(data.keys[valueIndex].value)
-                                    } catch (e) {
-                                        // keep value as it is
-                                    }
-                                }
-
-                                values.push(value)
-                            })
-
-                            resolve(values)
-                            return
-                        }
-
-                        if (data.keys[0].value === '') {
-                            resolve(null)
-                            return
-                        }
-
-                        let { value } = data.keys[0]
-                        if (tryParseJson) {
-                            try {
-                                value = JSON.parse(data.keys[0].value)
-                            } catch (e) {
-                                // keep value as it is
-                            }
-                        }
-
-                        resolve(value)
-                    })
-                    .catch((error) => {
-                        if (error && error.error_data && error.error_data.error_reason) {
-                            reject(error.error_data.error_reason)
-                        } else {
-                            reject()
-                        }
-                    })
-            })
+        const keys = keysResult.keys || []
+        if (keys.length === 0) {
+            return {}
         }
 
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        const valuesResult = await this._platformSdk.send('VKWebAppStorageGet', { keys })
+        const snapshot = {}
+        valuesResult.keys.forEach((entry) => {
+            if (entry.value !== '') {
+                snapshot[entry.key] = entry.value
+            }
+        })
+        return snapshot
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises = []
-
-                for (let i = 0; i < key.length; i++) {
-                    const data = { key: key[i], value: value[i] }
-
-                    if (typeof value[i] !== 'string') {
-                        data.value = JSON.stringify(value[i])
-                    }
-
-                    promises.push(this._platformSdk.send('VKWebAppStorageSet', data))
-                }
-
-                return Promise.all(promises)
-            }
-            const data = { key, value }
-
-            if (typeof value !== 'string') {
-                data.value = JSON.stringify(value)
-            }
-
-            return new Promise((resolve, reject) => {
-                this._platformSdk
-                    .send('VKWebAppStorageSet', data)
-                    .then(() => {
-                        resolve()
-                    })
-                    .catch((error) => {
-                        if (error && error.error_data && error.error_data.error_reason) {
-                            reject(error.error_data.error_reason)
-                        } else {
-                            reject()
-                        }
-                    })
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot, changedKeys) {
+        return Promise.all(
+            changedKeys.map((k) => this._platformSdk.send('VKWebAppStorageSet', {
+                key: k,
+                value: snapshot[k],
+            })),
+        )
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises = []
-
-                for (let i = 0; i < key.length; i++) {
-                    promises.push(this.setDataToStorage(key[i], '', storageType))
-                }
-
-                return Promise.all(promises)
-            }
-            return this.setDataToStorage(key, '', storageType)
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot, deletedKeys) {
+        return Promise.all(
+            deletedKeys.map((k) => this._platformSdk.send('VKWebAppStorageSet', {
+                key: k,
+                value: '',
+            })),
+        )
     }
 
     // advertisement

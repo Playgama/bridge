@@ -21,6 +21,7 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     PLATFORM_MESSAGE,
     LEADERBOARD_TYPE,
     REWARDED_STATE,
@@ -60,6 +61,15 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return LEADERBOARD_TYPE.NATIVE
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
+    }
+
     #platformLanguage
 
     initialize() {
@@ -72,18 +82,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
             waitFor('ytgame').then(() => {
                 this._platformSdk = window.ytgame
-                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                 const getLanguagePromise = this._platformSdk.system.getLanguage()
                     .then((language) => {
                         this.#platformLanguage = language.length > 2 ? language.slice(0, 2) : language
-                    })
-
-                this._platformStorageCachedData = {}
-                const getDataPromise = this._platformSdk.game.loadData()
-                    .then((data) => {
-                        if (typeof data === 'string' && data !== '') {
-                            this._platformStorageCachedData = JSON.parse(data)
-                        }
                     })
 
                 this._platformSdk.system.onAudioEnabledChange((isEnabled) => {
@@ -98,7 +100,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                     this._setPauseState(false)
                 })
 
-                Promise.all([getLanguagePromise, getDataPromise])
+                Promise.all([getLanguagePromise])
                     .finally(() => {
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -111,117 +113,25 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                this._platformSdk.game.loadData()
-                    .then((data) => {
-                        if (typeof data === 'string' && data !== '') {
-                            this._platformStorageCachedData = JSON.parse(data)
-                        }
-
-                        if (Array.isArray(key)) {
-                            const values = []
-
-                            for (let i = 0; i < key.length; i++) {
-                                let value = typeof this._platformStorageCachedData[key[i]] === 'undefined'
-                                    ? null
-                                    : this._platformStorageCachedData[key[i]]
-
-                                if (typeof value === 'string' && tryParseJson) {
-                                    try {
-                                        value = JSON.parse(value)
-                                    } catch (e) {
-                                        // keep value as-is
-                                    }
-                                }
-
-                                values.push(value)
-                            }
-
-                            resolve(values)
-                            return
-                        }
-
-                        let value = typeof this._platformStorageCachedData[key] === 'undefined'
-                            ? null
-                            : this._platformStorageCachedData[key]
-
-                        if (typeof value === 'string' && tryParseJson) {
-                            try {
-                                value = JSON.parse(value)
-                            } catch (e) {
-                                // keep value as-is
-                            }
-                        }
-
-                        resolve(value)
-                    })
-                    .catch(() => {
-                        reject()
-                    })
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudSnapshot() {
+        return this._platformSdk.game.loadData().then((data) => {
+            if (typeof data === 'string' && data !== '') {
+                try {
+                    return JSON.parse(data)
+                } catch (e) {
+                    return {}
+                }
+            }
+            return {}
+        })
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data = this._platformStorageCachedData !== null
-                    ? { ...this._platformStorageCachedData }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = value[i]
-                    }
-                } else {
-                    data[key] = value
-                }
-
-                this._platformSdk.game.saveData(JSON.stringify(data))
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot) {
+        return this._platformSdk.game.saveData(JSON.stringify(snapshot))
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data = this._platformStorageCachedData !== null
-                    ? { ...this._platformStorageCachedData }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        delete data[key[i]]
-                    }
-                } else {
-                    delete data[key]
-                }
-
-                this._platformSdk.game.saveData(JSON.stringify(data))
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot) {
+        return this._platformSdk.game.saveData(JSON.stringify(snapshot))
     }
 
     // platform
