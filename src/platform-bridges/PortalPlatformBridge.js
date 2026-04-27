@@ -24,6 +24,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
 } from '../constants'
 
 const SDK_URL = 'https://storage.googleapis.com/social-networth/scripts/sdk.umd.js'
@@ -49,6 +50,15 @@ class PortalPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
+    }
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -66,7 +76,7 @@ class PortalPlatformBridge extends PlatformBridgeBase {
                         .then(() => {
                             this._platformSdk.initializeOverlay()
 
-                            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -80,60 +90,17 @@ class PortalPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises = key.map((k) => Promise.resolve(this._platformSdk.getValue(k)).then((rawValue) => {
-                    let parsedValue = rawValue
-                    if (tryParseJson && typeof rawValue === 'string') {
-                        try {
-                            parsedValue = JSON.parse(rawValue)
-                        } catch (e) {
-                            // keep as-is
-                        }
-                    }
-                    return parsedValue
-                }))
-
-                return Promise.all(promises)
-            }
-
-            return Promise.resolve(this._platformSdk.getValue(key)).then((rawValue) => {
-                let parsedValue = rawValue
-                if (tryParseJson && typeof rawValue === 'string') {
-                    try {
-                        parsedValue = JSON.parse(rawValue)
-                    } catch (e) {
-                        // keep as-is
-                    }
-                }
-                return parsedValue
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key) {
+        const value = this._platformSdk.getValue(key)
+        return Promise.resolve(value === undefined ? null : value)
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises = key.map((k, i) => Promise.resolve(this._platformSdk.setValue(k, value[i])))
-                return Promise.all(promises)
-            }
-            return Promise.resolve(this._platformSdk.setValue(key, value))
-        }
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key, value) {
+        return Promise.resolve(this._platformSdk.setValue(key, value))
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises = key.map((k) => Promise.resolve(this._platformSdk.removeValue(k)))
-                return Promise.all(promises)
-            }
-            return Promise.resolve(this._platformSdk.removeValue(key))
-        }
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key) {
+        return Promise.resolve(this._platformSdk.removeValue(key))
     }
 
     showInterstitial() {

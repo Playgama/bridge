@@ -29,6 +29,7 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     PLATFORM_MESSAGE,
     LEADERBOARD_TYPE,
@@ -121,6 +122,18 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('shareAsync')
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     _contextId = null
 
     _supportedApis = []
@@ -209,67 +222,22 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const keys = Array.isArray(key) ? key : [key]
-
-                this._platformSdk.player.getDataAsync(keys)
-                    .then((userData) => {
-                        const data = keys.map((_key) => {
-                            const value = userData[_key]
-                            return !tryParseJson && typeof value === 'object' && value !== null ? JSON.stringify(value) : value ?? null
-                        })
-
-                        resolve(data)
-                    })
-                    .catch(reject)
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key) {
+        return this._platformSdk.player.getDataAsync([key]).then((data) => {
+            const value = data[key]
+            if (value === undefined || value === null) {
+                return null
+            }
+            return typeof value === 'string' ? value : JSON.stringify(value)
+        })
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data = {}
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = value[i]
-                    }
-                } else {
-                    data[key] = value
-                }
-
-                this._platformSdk.player.setDataAsync(data)
-                    .then(resolve)
-                    .catch(reject)
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key, value) {
+        return this._platformSdk.player.setDataAsync({ [key]: value })
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data = {}
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = null
-                    }
-                } else {
-                    data[key] = null
-                }
-
-                this._platformSdk.player.setDataAsync(data)
-                    .then(resolve)
-                    .catch(reject)
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key) {
+        return this._platformSdk.player.setDataAsync({ [key]: null })
     }
 
     // advertisement

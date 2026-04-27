@@ -23,6 +23,7 @@ import {
 import {
     PLATFORM_ID,
     ACTION_NAME, STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     ERROR, REWARDED_STATE, INTERSTITIAL_STATE, BANNER_STATE,
 } from '../constants'
 
@@ -81,6 +82,18 @@ class OkPlatformBridge extends PlatformBridgeBase {
     // clipboard
     get isClipboardSupported() {
         return false
+    }
+
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        if (!this._hasValuableAccessPermission) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
     }
 
     _hasValuableAccessPermission = false
@@ -155,137 +168,39 @@ class OkPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._hasValuableAccessPermission) {
-                return Promise.reject(ERROR.STORAGE_NOT_AVAILABLE)
-            }
-
-            return new Promise((resolve, reject) => {
-                const keys = Array.isArray(key) ? key : [key]
-                const params = { method: 'storage.get', keys, scope: 'CUSTOM' }
-                this._platformSdk.Client.call(params, (status, data, error) => {
-                    if (data) {
-                        const response = data.data || { }
-
-                        if (Array.isArray(key)) {
-                            const values = []
-
-                            keys.forEach((item) => {
-                                if (response[item] === '' || response[item] === undefined) {
-                                    values.push(null)
-                                    return
-                                }
-
-                                let value = response[item]
-                                if (tryParseJson) {
-                                    try {
-                                        value = JSON.parse(response[item])
-                                    } catch (e) {
-                                        // keep value as it is
-                                    }
-                                }
-
-                                values.push(value)
-                            })
-
-                            resolve(values)
-                            return
-                        }
-
-                        if (response[key] === '' || response[key] === undefined) {
-                            resolve(null)
-                            return
-                        }
-
-                        let value = response[key]
-                        if (tryParseJson) {
-                            try {
-                                value = JSON.parse(response[key])
-                            } catch (e) {
-                                // keep value as it is
-                            }
-                        }
-
-                        resolve(value)
-                    } else {
-                        reject(error)
-                    }
-                })
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
-    }
-
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._hasValuableAccessPermission) {
-                return Promise.reject(ERROR.STORAGE_NOT_AVAILABLE)
-            }
-
-            const keys = Array.isArray(key) ? key : [key]
-            const values = Array.isArray(key) ? value : [value]
-            const promises = []
-
-            for (let i = 0; i < keys.length; i++) {
-                const k = keys[i]
-                let v = values[i]
-
-                if (typeof v !== 'string') {
-                    v = JSON.stringify(v)
+    loadCloudKey(key) {
+        return new Promise((resolve, reject) => {
+            const params = { method: 'storage.get', keys: [key], scope: 'CUSTOM' }
+            this._platformSdk.Client.call(params, (status, data, error) => {
+                if (!data) {
+                    reject(error)
+                    return
                 }
-
-                const params = { method: 'storage.set', key: k, value: v }
-                const promise = new Promise((resolve, reject) => {
-                    this._platformSdk.Client.call(params, (status, data) => {
-                        if (data) {
-                            resolve()
-                        } else {
-                            reject()
-                        }
-                    })
-                })
-
-                promises.push(promise)
-            }
-
-            return Promise.all(promises)
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+                const response = data.data || {}
+                const value = response[key]
+                resolve(value === '' || value === undefined ? null : value)
+            })
+        })
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._hasValuableAccessPermission) {
-                return Promise.reject(ERROR.STORAGE_NOT_AVAILABLE)
-            }
+    saveCloudKey(key, value) {
+        return new Promise((resolve, reject) => {
+            const params = { method: 'storage.set', key, value }
+            this._platformSdk.Client.call(params, (status, data) => {
+                if (data) resolve()
+                else reject()
+            })
+        })
+    }
 
-            const keys = Array.isArray(key) ? key : [key]
-            const promises = []
-
-            for (let i = 0; i < keys.length; i++) {
-                const k = keys[i]
-
-                const params = { method: 'storage.set', key: k }
-                const promise = new Promise((resolve, reject) => {
-                    this._platformSdk.Client.call(params, (status, data) => {
-                        if (data) {
-                            resolve()
-                        } else {
-                            reject()
-                        }
-                    })
-                })
-
-                promises.push(promise)
-            }
-
-            return Promise.all(promises)
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key) {
+        return new Promise((resolve, reject) => {
+            const params = { method: 'storage.set', key }
+            this._platformSdk.Client.call(params, (status, data) => {
+                if (data) resolve()
+                else reject()
+            })
+        })
     }
 
     // advertisement
@@ -449,9 +364,11 @@ class OkPlatformBridge extends PlatformBridgeBase {
     #onHasAccessValuePermissionCompleted(result) {
         this._hasValuableAccessPermission = !!result
 
-        this._defaultStorageType = this._hasValuableAccessPermission
-            ? STORAGE_TYPE.PLATFORM_INTERNAL
-            : STORAGE_TYPE.LOCAL_STORAGE
+        this._setDefaultStorageType(
+            this._hasValuableAccessPermission
+                ? STORAGE_TYPE.PLATFORM_INTERNAL
+                : STORAGE_TYPE.LOCAL_STORAGE,
+        )
 
         if (!this._hasValuableAccessPermission && !this._hasValuableAccessPermissionShowed) {
             const permissions = Object.values(PERMISSION_TYPES)

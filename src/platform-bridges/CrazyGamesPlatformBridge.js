@@ -30,6 +30,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     PLATFORM_MESSAGE,
     BANNER_CONTAINER_ID,
@@ -92,6 +93,15 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         return super.deviceType
     }
 
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
+    }
+
     #currentAdvertisementIsRewarded = false
 
     #isUserAccountAvailable = false
@@ -130,7 +140,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                 waitFor('CrazyGames', 'SDK', 'init').then(() => {
                     this._platformSdk = window.CrazyGames.SDK
 
-                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                     this._isBannerSupported = true
                     this._isAdvancedBannersSupported = true
                     this._platformSdk.init().then(() => {
@@ -218,88 +228,19 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                if (Array.isArray(key)) {
-                    const values = []
-                    key.forEach((k) => {
-                        let value = this._platformSdk.data.getItem(k)
-
-                        if (tryParseJson) {
-                            try {
-                                value = JSON.parse(value)
-                            } catch (e) {
-                                // keep value string or null
-                            }
-                        }
-                        values.push(value)
-                    })
-
-                    resolve(values)
-                    return
-                }
-
-                let value = this._platformSdk.data.getItem(key)
-
-                if (tryParseJson) {
-                    try {
-                        value = JSON.parse(value)
-                    } catch (e) {
-                        // keep value string or null
-                    }
-                }
-                resolve(value)
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key) {
+        const value = this._platformSdk.data.getItem(key)
+        return Promise.resolve(value === undefined ? null : value)
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        let valueData = value[i]
-
-                        if (typeof value[i] !== 'string') {
-                            valueData = JSON.stringify(value[i])
-                        }
-
-                        this._platformSdk.data.setItem(key[i], valueData)
-                    }
-
-                    resolve()
-                    return
-                }
-
-                let valueData = value
-
-                if (typeof value !== 'string') {
-                    valueData = JSON.stringify(value)
-                }
-
-                this._platformSdk.data.setItem(key, valueData)
-                resolve()
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key, value) {
+        this._platformSdk.data.setItem(key, value)
+        return Promise.resolve()
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                key.forEach((k) => this._platformSdk.data.removeItem(k))
-                return Promise.resolve()
-            }
-
-            this._platformSdk.data.removeItem(key)
-            return Promise.resolve()
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key) {
+        this._platformSdk.data.removeItem(key)
+        return Promise.resolve()
     }
 
     // advertisement

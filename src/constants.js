@@ -79,6 +79,7 @@ export const EVENT_NAME = {
     ORIENTATION_STATE_CHANGED: 'orientation_state_changed',
     SCREEN_SIZE_CHANGED: 'screen_size_changed',
     PLATFORM_MESSAGE_SENT: 'platform_message_sent',
+    DEFAULT_STORAGE_TYPE_CHANGED: 'default_storage_type_changed',
 }
 
 export const VISIBILITY_STATE = {
@@ -203,6 +204,13 @@ export const ERROR = {
     SDK_NOT_INITIALIZED: { message: 'Before using the SDK you must initialize it' },
     STORAGE_NOT_SUPPORTED: { message: 'Storage not supported' },
     STORAGE_NOT_AVAILABLE: { message: 'Storage not available' },
+    STORAGE_QUOTA_EXCEEDED: { message: 'Storage quota exceeded' },
     GAME_PARAMS_NOT_FOUND: { message: 'Game params are not found' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
+}
+
+export const CLOUD_STORAGE_MODE = {
+    NONE: 'none',
+    EAGER: 'eager',
+    LAZY: 'lazy',
 }

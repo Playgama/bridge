@@ -23,6 +23,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
 } from '../constants'
 import { postToParent } from '../common/utils'
 
@@ -62,6 +63,15 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     // payments
     get isPaymentsSupported() {
         return true
+    }
+
+    // storage
+    get cloudStorageMode() {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady() {
+        return Promise.resolve()
     }
 
     _defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
@@ -204,72 +214,30 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key, storageType, tryParseJson) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const result = {}
-                const keys = Array.isArray(key) ? key : [key]
-
-                const getDataHandler = ({ data }) => {
-                    if (!data || !data.playdeck || data.playdeck.method !== 'getData' || !keys.includes(data.playdeck.key)) {
-                        return
-                    }
-
-                    const pdData = data.playdeck
-
-                    if (pdData.method === 'getData') {
-                        result[pdData.key] = pdData.value.data
-                    }
-
-                    if (Object.keys(result).length === keys.length) {
-                        window.removeEventListener('message', getDataHandler)
-                        const values = Array.isArray(key) ? key.map((k) => result[k]) : result[key]
-                        resolve(values)
-                    }
+    loadCloudKey(key) {
+        return new Promise((resolve) => {
+            const getDataHandler = ({ data }) => {
+                if (!data || !data.playdeck || data.playdeck.method !== 'getData' || data.playdeck.key !== key) {
+                    return
                 }
+                window.removeEventListener('message', getDataHandler)
+                const value = data.playdeck.value?.data
+                resolve(value === undefined ? null : value)
+            }
 
-                window.addEventListener('message', getDataHandler)
-
-                keys.forEach((k) => postToParent({ playdeck: { method: 'getData', key: k } }, '*'))
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+            window.addEventListener('message', getDataHandler)
+            postToParent({ playdeck: { method: 'getData', key } }, '*')
+        })
     }
 
-    setDataToStorage(key, value, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const keys = Array.isArray(key) ? key : [key]
-                const values = Array.isArray(value) ? value : [value]
-                const valuesString = values.map((v) => {
-                    if (typeof v !== 'string') {
-                        return JSON.stringify(v)
-                    }
-                    return v
-                })
-
-                keys.forEach((k, i) => postToParent({ playdeck: { method: 'setData', key: k, value: valuesString[i] } }, '*'))
-
-                resolve()
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key, value) {
+        postToParent({ playdeck: { method: 'setData', key, value } }, '*')
+        return Promise.resolve()
     }
 
-    deleteDataFromStorage(key, storageType) {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const keys = Array.isArray(key) ? key : [key]
-
-                keys.forEach((k) => postToParent({ playdeck: { method: 'setData', key: k, value: '' } }, '*'))
-
-                resolve()
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key) {
+        postToParent({ playdeck: { method: 'setData', key, value: '' } }, '*')
+        return Promise.resolve()
     }
 
     // social

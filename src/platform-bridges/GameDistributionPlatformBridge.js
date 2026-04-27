@@ -105,7 +105,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
                     },
                 }
 
-                this._defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
+                this._setDefaultStorageType(STORAGE_TYPE.LOCAL_STORAGE)
                 this._isBannerSupported = true
                 addJavaScript(SDK_URL)
             }
