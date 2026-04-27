@@ -352,6 +352,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             product.externalId = this._paymentsGenerateTransactionId(id)
         }
 
+        product.bridgeId = id
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -390,8 +392,13 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
             this._platformSdk.inGamePaymentsApi.getPurchases()
                 .then((purchases) => {
-                    this._paymentsPurchases = purchases
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, purchases)
+                    this._paymentsPurchases = purchases.map(
+                        ({ bridgeId, ...purchase }) => ({
+                            id: bridgeId,
+                            ...purchase,
+                        }),
+                    )
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
                 .catch(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
