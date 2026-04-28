@@ -1,0 +1,641 @@
+/*
+ * This file is part of Playgama Bridge.
+ *
+ * Playgama Bridge is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ *
+ * Playgama Bridge is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import PlatformBridgeBase from './PlatformBridgeBase'
+import {
+    ACTION_NAME,
+    ERROR,
+    INTERSTITIAL_STATE,
+    PLATFORM_ID,
+    REWARDED_STATE,
+    STORAGE_TYPE,
+    type PlatformId,
+    type StorageType,
+} from '../constants'
+import {
+    addJavaScript,
+    deformatPrice,
+    postToWebView,
+    waitFor,
+} from '../common/utils'
+import type { AnyRecord } from '../types/common'
+
+const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
+const PLAYGAMA_ADS_PROMISE = 'playgama_ads_promise'
+
+interface PgAdInstance {
+    state: string
+    show(): void
+    addEventListener(event: string, callback: () => void): void
+}
+
+interface PgAdsSdk {
+    init(id: string): Promise<unknown>
+    updateTargeting(targeting: Record<string, unknown>): void
+    requestOutOfPageAd(type: string): Promise<PgAdInstance>
+}
+
+interface ChromeWebView {
+    addEventListener(event: string, callback: (event: { data: unknown }) => void): void
+    postMessage(message: unknown): void
+}
+
+declare global {
+    interface Window {
+        pgAds?: PgAdsSdk
+        chrome?: { webview?: ChromeWebView }
+    }
+}
+
+class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
+    get platformId(): PlatformId {
+        return PLATFORM_ID.MICROSOFT_STORE
+    }
+
+    // advertisement
+    get isInterstitialSupported(): boolean {
+        return true
+    }
+
+    get isRewardedSupported(): boolean {
+        return true
+    }
+
+    // player
+    get isPlayerAuthorizationSupported(): boolean {
+        return true
+    }
+
+    // payments
+    get isPaymentsSupported(): boolean {
+        return true
+    }
+
+    // social
+    get isRateSupported(): boolean {
+        return true
+    }
+
+    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+
+    #playgamaAds: PgAdsSdk | null = null
+
+    #playgamaAdsPromise: Promise<unknown> = this._createPromiseDecorator(PLAYGAMA_ADS_PROMISE).promise
+
+    #interstitialShownCount = 0
+
+    initialize(): Promise<unknown> {
+        if (this._isInitialized) {
+            return Promise.resolve()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            if (!this._options || !this._options.gameId || !this._options.playgamaAdsId) {
+                this._rejectPromiseDecorator(
+                    ACTION_NAME.INITIALIZE,
+                    ERROR.GAME_PARAMS_NOT_FOUND,
+                )
+                return promiseDecorator.promise
+            }
+
+            try {
+                this.#setupHandlers()
+                this.#postMessage(ACTION_NAME.INITIALIZE)
+            } catch (error) {
+                this._rejectPromiseDecorator(
+                    ACTION_NAME.INITIALIZE,
+                    error,
+                )
+            }
+
+            const playgamaAdsId = this._options.playgamaAdsId as string
+            addJavaScript(PLAYGAMA_ADS_SDK_URL)
+                .then(() => waitFor('pgAds'))
+                .then(() => (window.pgAds as PgAdsSdk).init(playgamaAdsId))
+                .then(() => {
+                    this.#playgamaAds = window.pgAds as PgAdsSdk
+                    const gameId = this._options.gameId as string
+                    this.#playgamaAds.updateTargeting({ gameId })
+
+                    this._resolvePromiseDecorator(PLAYGAMA_ADS_PROMISE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(
+                        PLAYGAMA_ADS_PROMISE,
+                        error,
+                    )
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // player
+    authorizePlayer(): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+
+            if (this._isPlayerAuthorized) {
+                this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+                return promiseDecorator.promise
+            }
+
+            this.#postMessage(ACTION_NAME.AUTHORIZE_PLAYER)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    showInterstitial(): void {
+        this.#interstitialShownCount += 1
+
+        if (this.#interstitialShownCount === 3) {
+            this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+            this.rate()
+            return
+        }
+
+        if (!this.#playgamaAds) {
+            this._advertisementShowErrorPopup(false)
+            return
+        }
+
+        new Promise<void>((resolve) => {
+            this.#playgamaAds!.requestOutOfPageAd('interstitial')
+                .then((adInstance) => {
+                    switch (adInstance.state) {
+                        case 'empty':
+                            this._advertisementShowErrorPopup(false).then(() => resolve())
+                            return
+                        case 'ready':
+                            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                            adInstance.show()
+                            break
+                        default:
+                            break
+                    }
+
+                    adInstance.addEventListener('ready', () => {
+                        this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+                        adInstance.show()
+                    })
+
+                    adInstance.addEventListener('empty', () => {
+                        this._advertisementShowErrorPopup(false).then(() => resolve())
+                    })
+
+                    adInstance.addEventListener('closed', () => {
+                        this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                        resolve()
+                    })
+                })
+        })
+    }
+
+    showRewarded(): void {
+        if (!this.#playgamaAds) {
+            this._advertisementShowErrorPopup(true)
+            return
+        }
+
+        new Promise<void>((resolve) => {
+            this.#playgamaAds!.requestOutOfPageAd('rewarded')
+                .then((adInstance) => {
+                    switch (adInstance.state) {
+                        case 'empty':
+                            this._advertisementShowErrorPopup(true).then(() => resolve())
+                            return
+                        case 'ready':
+                            this._setRewardedState(REWARDED_STATE.OPENED)
+                            adInstance.show()
+                            break
+                        default:
+                            break
+                    }
+
+                    adInstance.addEventListener('ready', () => {
+                        this._setRewardedState(REWARDED_STATE.OPENED)
+                        adInstance.show()
+                    })
+
+                    adInstance.addEventListener('rewarded', () => {
+                        this._setRewardedState(REWARDED_STATE.REWARDED)
+                    })
+
+                    adInstance.addEventListener('empty', () => {
+                        this._advertisementShowErrorPopup(true).then(() => resolve())
+                    })
+
+                    adInstance.addEventListener('closed', () => {
+                        this._setRewardedState(REWARDED_STATE.CLOSED)
+                        resolve()
+                    })
+                })
+        })
+    }
+
+    // storage
+    setDataToStorage(key: string | string[], value: unknown | unknown[], type: StorageType): Promise<void> {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.setDataToStorage(key, value, type)
+        }
+
+        const keyWithPrefix = this.#withStorageKeyPrefix(key)
+
+        let promiseDecorator = this._getPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    getDataFromStorage(key: string | string[], type: StorageType, tryParseJson: boolean): Promise<unknown> {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.getDataFromStorage(key, type, tryParseJson)
+        }
+
+        const keyWithPrefix = this.#withStorageKeyPrefix(key)
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, keyWithPrefix)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    deleteDataFromStorage(key: string | string[], type: StorageType): Promise<void> {
+        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
+            return super.deleteDataFromStorage(key, type)
+        }
+
+        const keyWithPrefix = this.#withStorageKeyPrefix(key)
+
+        let promiseDecorator = this._getPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
+
+            this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, keyWithPrefix)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsPurchase(id: string): Promise<unknown> {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+            this.#postMessage(ACTION_NAME.PURCHASE, product.platformProductId)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsConsumePurchase(id: string): Promise<unknown> {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
+        const product = this._paymentsGetProductPlatformData(id)
+
+        if (purchaseIndex < 0 || !product) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+            this.#postMessage(ACTION_NAME.CONSUME_PURCHASE, product.platformProductId)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog(): Promise<unknown> {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+            this.#postMessage(
+                ACTION_NAME.GET_CATALOG,
+                products.map((p) => (p as AnyRecord).platformProductId),
+            )
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases(): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+            this.#postMessage(ACTION_NAME.GET_PURCHASES)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    rate(): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.RATE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.RATE)
+            this.#postMessage(ACTION_NAME.RATE)
+            this._pauseStateAggregator?.setState('rate', true)
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #getStorageKeyPrefix(): string | null {
+        const gameId = this._options?.gameId as string | undefined
+        return gameId ? `pg_${gameId}_` : null
+    }
+
+    #withStorageKeyPrefix(key: string | string[]): string | string[] {
+        const prefix = this.#getStorageKeyPrefix()
+        if (!prefix) {
+            return key
+        }
+
+        if (Array.isArray(key)) {
+            return key.map((k) => `${prefix}${k}`)
+        }
+
+        return `${prefix}${key}`
+    }
+
+    #postMessage(action: string, data?: unknown): void {
+        postToWebView(JSON.stringify({ action, data }))
+    }
+
+    #setupHandlers(): void {
+        window.chrome?.webview?.addEventListener('message', (event) => {
+            try {
+                let { data } = event as { data: unknown }
+
+                if (typeof data === 'string') {
+                    data = JSON.parse(data)
+                }
+
+                const parsed = (data ?? {}) as Record<string, unknown>
+                const { action } = parsed
+
+                if (action === ACTION_NAME.INITIALIZE) {
+                    this.#initialize(parsed)
+                } else if (action === ACTION_NAME.AUTHORIZE_PLAYER) {
+                    this.#authorizePlayer(parsed)
+                } else if (action === ACTION_NAME.GET_CATALOG) {
+                    this.#getCatalog(parsed)
+                } else if (action === ACTION_NAME.PURCHASE) {
+                    this.#purchase(parsed)
+                } else if (action === ACTION_NAME.CONSUME_PURCHASE) {
+                    this.#consumePurchase(parsed)
+                } else if (action === ACTION_NAME.GET_PURCHASES) {
+                    this.#getPurchases(parsed)
+                } else if (action === ACTION_NAME.RATE) {
+                    this.#rate(parsed)
+                } else if (action === ACTION_NAME.GET_STORAGE_DATA) {
+                    this.#getStorageData(parsed)
+                } else if (action === ACTION_NAME.SET_STORAGE_DATA) {
+                    this.#setStorageData(parsed)
+                } else if (action === ACTION_NAME.DELETE_STORAGE_DATA) {
+                    this.#deleteStorageData(parsed)
+                }
+            } catch (error) {
+                console.error('Error parsing Microsoft Store message:', error)
+            }
+        })
+    }
+
+    #initialize(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.INITIALIZE,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        this.#playgamaAdsPromise.then(() => {
+            this.showInterstitial()
+        }).finally(() => {
+            this._isInitialized = true
+            this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)
+        })
+    }
+
+    #authorizePlayer(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._playerApplyGuestData()
+            this._rejectPromiseDecorator(
+                ACTION_NAME.AUTHORIZE_PLAYER,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        this._playerExtra = data.data as Record<string, unknown>
+
+        this._isPlayerAuthorized = true
+        this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
+    }
+
+    #getCatalog(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_CATALOG,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        const products = this._paymentsGetProductsPlatformData()
+        const msProducts = (data.data as AnyRecord[] | undefined) ?? []
+        const mergedProducts = products.map((product) => {
+            const msProduct = msProducts.find((p) => p.id === product.platformProductId)
+            const msPrice = (msProduct?.price as AnyRecord | undefined) ?? {}
+
+            const priceValue = deformatPrice((msPrice.formattedPrice as string) ?? '')
+            const priceCurrencyCode = (msPrice.currencyCode as string | undefined) || null
+            const price = `${priceValue} ${priceCurrencyCode}`
+
+            return {
+                id: product.id,
+                title: msProduct?.title,
+                description: msProduct?.description,
+                price,
+                priceValue,
+                priceCurrencyCode,
+            }
+        })
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
+    }
+
+    #purchase(data: Record<string, unknown>): void {
+        if (!data?.success || !data.data) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.PURCHASE,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        const products = this._paymentsGetProductsPlatformData()
+        const purchaseData = data.data as AnyRecord
+        const product = products.find(
+            (p) => p.platformProductId === purchaseData.id,
+        )
+
+        const mergedPurchase = {
+            ...purchaseData,
+            id: product?.id as string,
+            platformProductId: purchaseData.id,
+        }
+
+        this._paymentsPurchases.push(mergedPurchase)
+        this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+    }
+
+    #consumePurchase(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.CONSUME_PURCHASE,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        const products = this._paymentsGetProductsPlatformData()
+        const purchaseData = (data.data as AnyRecord | undefined) ?? {}
+
+        const product = products.find(
+            (p) => p.platformProductId === purchaseData.id,
+        )
+
+        const mergedPurchase = {
+            ...purchaseData,
+            id: product?.id as string,
+            platformProductId: purchaseData.id,
+        }
+
+        const purchaseIndex = this._paymentsPurchases.findIndex(
+            (p) => p.id === product?.id,
+        )
+
+        if (purchaseIndex >= 0) {
+            this._paymentsPurchases.splice(purchaseIndex, 1)
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, mergedPurchase)
+    }
+
+    #getPurchases(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_PURCHASES,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        const products = this._paymentsGetProductsPlatformData()
+        const purchases = (data.data as AnyRecord[] | undefined) ?? []
+
+        this._paymentsPurchases = purchases.map((purchase) => {
+            const product = products.find(
+                (p) => p.platformProductId === purchase.id,
+            )
+
+            return {
+                ...purchase,
+                id: product?.id as string,
+                platformProductId: purchase.id,
+            }
+        })
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+    }
+
+    #rate(data: Record<string, unknown>): void {
+        this._pauseStateAggregator?.setState('rate', false)
+
+        if (!data || data.success === false) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.RATE,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.RATE)
+    }
+
+    // storage
+    #getStorageData(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.GET_STORAGE_DATA,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, data.data)
+    }
+
+    #setStorageData(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.SET_STORAGE_DATA,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA, data.data)
+    }
+
+    #deleteStorageData(data: Record<string, unknown>): void {
+        if (!data?.success) {
+            this._rejectPromiseDecorator(
+                ACTION_NAME.DELETE_STORAGE_DATA,
+                new Error(String(data)),
+            )
+            return
+        }
+
+        this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, data.data)
+    }
+}
+
+export default MicrosoftStorePlatformBridge

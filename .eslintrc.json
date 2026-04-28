@@ -18,6 +18,21 @@
     "parserOptions": {
         "ecmaVersion": 13
     },
+    "settings": {
+        "import/resolver": {
+            "typescript": {
+                "alwaysTryTypes": true,
+                "project": "./tsconfig.json"
+            },
+            "node": {
+                "extensions": [".js", ".mjs", ".ts", ".tsx", ".d.ts"]
+            }
+        },
+        "import/extensions": [".js", ".mjs", ".ts", ".tsx"],
+        "import/parsers": {
+            "@typescript-eslint/parser": [".ts", ".tsx", ".d.ts"]
+        }
+    },
     "rules": {
         "sort-class-members/sort-class-members": [
             "warn",
@@ -83,6 +98,16 @@
         ],
         "import/prefer-default-export": "off",
         "import/no-extraneous-dependencies": "off",
+        "import/extensions": [
+            "error",
+            "ignorePackages",
+            {
+                "js": "never",
+                "mjs": "never",
+                "ts": "never",
+                "tsx": "never"
+            }
+        ],
         "no-underscore-dangle": "off",
         "class-methods-use-this": "off",
         "no-console": [
@@ -98,9 +123,78 @@
     },
     "overrides": [
         {
-            "files": ["src/platformImports.js", "src/PlaygamaBridge.js"],
+            "files": ["src/platformImports.ts", "src/PlaygamaBridge.ts"],
             "rules": {
                 "no-undef": "off"
+            }
+        },
+        {
+            "files": ["*.ts", "*.tsx"],
+            "parser": "@typescript-eslint/parser",
+            "parserOptions": {
+                "ecmaVersion": 13,
+                "sourceType": "module",
+                "project": "./tsconfig.json"
+            },
+            "plugins": ["@typescript-eslint", "sort-class-members"],
+            "extends": [
+                "airbnb-base",
+                "plugin:@typescript-eslint/recommended"
+            ],
+            "rules": {
+                "no-unused-vars": "off",
+                "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+                "no-useless-constructor": "off",
+                "@typescript-eslint/no-useless-constructor": "warn",
+                "no-shadow": "off",
+                "@typescript-eslint/no-shadow": "error",
+                "no-redeclare": "off",
+                "@typescript-eslint/no-redeclare": "error",
+                "@typescript-eslint/no-explicit-any": "off",
+                "@typescript-eslint/explicit-module-boundary-types": "off",
+                "@typescript-eslint/ban-ts-comment": "warn",
+                "@typescript-eslint/no-unsafe-declaration-merging": "off",
+                "@typescript-eslint/no-this-alias": "off",
+                "consistent-return": "off",
+                "no-use-before-define": "off",
+                "@typescript-eslint/no-use-before-define": "off",
+                "no-new": "off",
+                "indent": [
+                    "warn",
+                    4,
+                    {
+                        "SwitchCase": 1
+                    }
+                ],
+                "semi": ["warn", "never"],
+                "@typescript-eslint/semi": ["warn", "never"],
+                "@typescript-eslint/indent": ["warn", 4, { "SwitchCase": 1 }],
+                "max-len": [
+                    "warn",
+                    {
+                        "ignoreStrings": true,
+                        "ignoreComments": true,
+                        "ignoreRegExpLiterals": true,
+                        "ignoreTemplateLiterals": true,
+                        "code": 120
+                    }
+                ],
+                "no-plusplus": [2, { "allowForLoopAfterthoughts": true }],
+                "no-underscore-dangle": "off",
+                "class-methods-use-this": "off",
+                "no-console": ["error", { "allow": ["warn", "error", "info"] }],
+                "import/prefer-default-export": "off",
+                "import/no-extraneous-dependencies": "off",
+                "import/extensions": [
+                    "error",
+                    "ignorePackages",
+                    {
+                        "js": "never",
+                        "mjs": "never",
+                        "ts": "never",
+                        "tsx": "never"
+                    }
+                ]
             }
         }
     ]
