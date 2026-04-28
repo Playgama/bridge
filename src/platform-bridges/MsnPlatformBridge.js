@@ -86,6 +86,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return this.#isPaymentsSupported
     }
 
+    // notifications
+    get isNotificationsSupported() {
+        return true
+    }
+
     _isAdvancedBannersSupported = true
 
     #playgamaAds = null
@@ -512,6 +517,41 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // notifications
+    scheduleNotification(options) {
+        // TEMP: debug logging for QA verification, remove before merge
+        console.info('[MSN][scheduleNotification] called with', options)
+
+        if (!options || typeof options !== 'object') {
+            return Promise.reject(new Error('Notification options are required'))
+        }
+
+        return this._platformSdk.scheduleNotificationAsync(options)
+            .then((response) => {
+                // TEMP: debug logging for QA verification, remove before merge
+                console.info('[MSN][scheduleNotification] resolved with', response)
+                return response
+            })
+            .catch((error) => {
+                // TEMP: debug logging for QA verification, remove before merge
+                console.warn('[MSN][scheduleNotification] rejected with', error)
+                throw error
+            })
+    }
+
+    getNotificationPayload() {
+        if (typeof this._platformSdk?.getNotificationPayload !== 'function') {
+            // TEMP: debug logging for QA verification, remove before merge
+            console.info('[MSN][getNotificationPayload] $msstart.getNotificationPayload not available')
+            return null
+        }
+
+        const payload = this._platformSdk.getNotificationPayload()
+        // TEMP: debug logging for QA verification, remove before merge
+        console.info('[MSN][getNotificationPayload] returned', payload)
+        return payload
     }
 
     #showPlaygamaInterstitial() {

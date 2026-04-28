@@ -46,6 +46,7 @@ import PaymentsModule from './modules/PaymentsModule'
 import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
 import AchievementsModule from './modules/AchievementsModule'
+import NotificationsModule from './modules/NotificationsModule'
 import analyticsModule from './modules/AnalyticsModule'
 import { fetchPlatformBridge } from './platformImports'
 
@@ -116,6 +117,10 @@ class PlaygamaBridge {
 
     get analytics() {
         return this.#getModule(MODULE_NAME.ANALYTICS)
+    }
+
+    get notifications() {
+        return this.#getModule(MODULE_NAME.NOTIFICATIONS)
     }
 
     get engine() {
@@ -210,7 +215,10 @@ class PlaygamaBridge {
             this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(this.#platformBridge)
             this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
             this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
+            this.#modules[MODULE_NAME.NOTIFICATIONS] = new NotificationsModule(this.#platformBridge)
             this.#modules[MODULE_NAME.ANALYTICS] = analyticsModule.initialize(this.#platformBridge)
+
+            this.#modules[MODULE_NAME.NOTIFICATIONS].enableAutoScheduling()
 
             this.#platformBridge
                 .initialize()

@@ -274,6 +274,11 @@ class PlatformBridgeBase {
         return false
     }
 
+    // notifications
+    get isNotificationsSupported() {
+        return false
+    }
+
     _isInitialized = false
 
     _platformSdk = null
@@ -672,6 +677,15 @@ class PlatformBridgeBase {
 
     showAchievementsNativePopup() {
         return Promise.reject()
+    }
+
+    // notifications
+    scheduleNotification() {
+        return Promise.reject()
+    }
+
+    getNotificationPayload() {
+        return null
     }
 
     _getDataFromLocalStorage(key, tryParseJson) {
