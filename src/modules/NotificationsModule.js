@@ -57,19 +57,31 @@ class NotificationsModule extends ModuleBase {
                 return
             }
 
-            // TEMP: minDelayInSeconds reduced to 300 (MSN minimum) for QA testing,
-            // restore to 6h / 24h before merge
             this.schedule({
-                title: 'Come back and play!',
-                description: 'Your game is waiting for you.',
+                title: 'Ready for another round?',
+                description: 'Jump back in right where you left off.',
                 type: 8,
-                minDelayInSeconds: 300,
+                minDelayInSeconds: 86400,
             }).catch(() => {})
 
             this.schedule({
-                title: 'Your daily bonus is ready!',
-                description: 'Open the game to claim it.',
+                title: 'Missing your moves',
+                description: "It's perfect time to come back",
                 type: 9,
+                minDelayInSeconds: 259200,
+            }).catch(() => {})
+
+            this.schedule({
+                title: 'We miss you',
+                description: 'Seriously. Come play.',
+                type: 10,
+                minDelayInSeconds: 604800,
+            }).catch(() => {})
+
+            this.schedule({
+                title: 'Got a quick minute?',
+                description: 'A round is waiting for you.',
+                type: 11,
                 minDelayInSeconds: 300,
             }).catch(() => {})
         })
