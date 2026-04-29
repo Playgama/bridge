@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { waitFor } from '../common/utils'
+import { waitFor, createYoutubeSubscribeNotification } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -62,6 +62,8 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
     #platformLanguage
 
+    #subscribeNotification = null
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -69,6 +71,14 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
+
+            this.#subscribeNotification = createYoutubeSubscribeNotification()
+            setTimeout(() => {
+                if (this.#subscribeNotification) {
+                    this.#subscribeNotification.remove()
+                    this.#subscribeNotification = null
+                }
+            }, 5000)
 
             waitFor('ytgame').then(() => {
                 this._platformSdk = window.ytgame

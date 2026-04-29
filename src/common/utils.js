@@ -1021,3 +1021,51 @@ export function applySafeAreaStyles() {
 export function findGameCanvas() {
     return document.querySelector('canvas')
 }
+
+export function createYoutubeSubscribeNotification() {
+    if (!document.getElementById('bridge-youtube-subscribe-styles')) {
+        const style = document.createElement('style')
+        style.id = 'bridge-youtube-subscribe-styles'
+        style.textContent = `
+            #bridge-youtube-subscribe {
+                position: fixed;
+                left: 16px;
+                bottom: 16px;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 14px 8px 10px;
+                background: #ff0000;
+                color: #ffffff;
+                border-radius: 999px;
+                font-family: Roboto, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+                font-size: 14px;
+                font-weight: 600;
+                letter-spacing: 0.2px;
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+                pointer-events: none;
+                z-index: 9999999;
+            }
+
+            #bridge-youtube-subscribe svg {
+                width: 22px;
+                height: 22px;
+                display: block;
+            }
+        `
+        document.head.appendChild(style)
+    }
+
+    const container = document.createElement('div')
+    container.id = 'bridge-youtube-subscribe'
+    container.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21.6 7.2a2.5 2.5 0 0 0-1.76-1.77C18.27 5 12 5 12 5s-6.27 0-7.84.43A2.5 2.5 0 0 0 2.4 7.2 26.2 26.2 0 0 0 2 12a26.2 26.2 0 0 0 .4 4.8 2.5 2.5 0 0 0 1.76 1.77C5.73 19 12 19 12 19s6.27 0 7.84-.43a2.5 2.5 0 0 0 1.76-1.77A26.2 26.2 0 0 0 22 12a26.2 26.2 0 0 0-.4-4.8z"/>
+            <path d="M10 15.5v-7l6 3.5-6 3.5z" fill="#ff0000"/>
+        </svg>
+        <span>Subscribe</span>
+    `
+
+    document.body.appendChild(container)
+    return container
+}
