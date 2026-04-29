@@ -121,7 +121,7 @@ class AnalyticsModule extends ModuleBase {
     }
 
     #createMeta() {
-        return {
+        const meta = {
             bridge_version: packageJson.version,
             platform_id: this._platformBridge.platformId,
             game_id: this.#gameId,
@@ -132,6 +132,13 @@ class AnalyticsModule extends ModuleBase {
             device_os: this._platformBridge.deviceOs,
             clid: this._platformBridge.additionalData?.clid ?? '',
         }
+
+        const publicToken = this._platformBridge.options?.saas?.publicToken
+        if (publicToken) {
+            meta.public_token = publicToken
+        }
+
+        return meta
     }
 
     async #compressData(data) {
