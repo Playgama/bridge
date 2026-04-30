@@ -23,8 +23,10 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type PlatformId,
     type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 import { postToParent } from '../common/utils'
 import type { AnyRecord } from '../types/common'
@@ -84,6 +86,15 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     // payments
     get isPaymentsSupported(): boolean {
         return true
+    }
+
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
     }
 
     protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
@@ -226,72 +237,30 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const result: Record<string, unknown> = {}
-                const keys = Array.isArray(key) ? key : [key]
-
-                const getDataHandler = ({ data }: MessageEvent<PlayDeckEventData>) => {
-                    if (!data || !data.playdeck || data.playdeck.method !== 'getData' || !data.playdeck.key || !keys.includes(data.playdeck.key)) {
-                        return
-                    }
-
-                    const pdData = data.playdeck
-
-                    if (pdData.method === 'getData' && pdData.key) {
-                        result[pdData.key] = pdData.value?.data
-                    }
-
-                    if (Object.keys(result).length === keys.length) {
-                        window.removeEventListener('message', getDataHandler as EventListener)
-                        const values = Array.isArray(key) ? key.map((k) => result[k]) : result[key]
-                        resolve(values)
-                    }
+    loadCloudKey(key: string): Promise<unknown> {
+        return new Promise((resolve) => {
+            const getDataHandler = ({ data }: MessageEvent<PlayDeckEventData>) => {
+                if (!data || !data.playdeck || data.playdeck.method !== 'getData' || data.playdeck.key !== key) {
+                    return
                 }
+                window.removeEventListener('message', getDataHandler as EventListener)
+                const value = data.playdeck.value?.data
+                resolve(value === undefined ? null : value)
+            }
 
-                window.addEventListener('message', getDataHandler as EventListener)
-
-                keys.forEach((k) => postToParent({ playdeck: { method: 'getData', key: k } }, '*'))
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+            window.addEventListener('message', getDataHandler as EventListener)
+            postToParent({ playdeck: { method: 'getData', key } }, '*')
+        })
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const keys = Array.isArray(key) ? key : [key]
-                const values = Array.isArray(value) ? value : [value]
-                const valuesString = values.map((v) => {
-                    if (typeof v !== 'string') {
-                        return JSON.stringify(v)
-                    }
-                    return v
-                })
-
-                keys.forEach((k, i) => postToParent({ playdeck: { method: 'setData', key: k, value: valuesString[i] } }, '*'))
-
-                resolve()
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        postToParent({ playdeck: { method: 'setData', key, value: value as string } }, '*')
+        return Promise.resolve()
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const keys = Array.isArray(key) ? key : [key]
-
-                keys.forEach((k) => postToParent({ playdeck: { method: 'setData', key: k, value: '' } }, '*'))
-
-                resolve()
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key: string): Promise<void> {
+        postToParent({ playdeck: { method: 'setData', key, value: '' } }, '*')
+        return Promise.resolve()
     }
 
     // social

@@ -30,15 +30,17 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     LEADERBOARD_TYPE,
     ERROR,
     type PlatformId,
     type StorageType,
+    type CloudStorageMode,
     type DeviceType,
     type LeaderboardType,
 } from '../constants'
-import { getKeysFromObject } from '../common/utils'
 import type { AnyRecord, SafeArea } from '../types/common'
+
 
 const ADVERTISEMENT_TYPE = {
     INTERSTITIAL: 'interstitial',
@@ -273,6 +275,21 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._leaderboardsType ?? LEADERBOARD_TYPE.NOT_AVAILABLE
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        if (this.isStorageSupported(STORAGE_TYPE.PLATFORM_INTERNAL)) {
+            return CLOUD_STORAGE_MODE.LAZY
+        }
+        return CLOUD_STORAGE_MODE.NONE
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this.isStorageAvailable(STORAGE_TYPE.PLATFORM_INTERNAL)) {
+            return Promise.reject(ERROR.STORAGE_NOT_AVAILABLE)
+        }
+        return Promise.resolve()
+    }
+
     get safeArea(): SafeArea | null {
         return null
     }
@@ -488,59 +505,32 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (!this.isStorageSupported(storageType)) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-        }
-
+    loadCloudKey(key: string): Promise<unknown> {
         return this.#requestMessage(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, {
-            options: { key, storageType, tryParseJson },
+            options: { key, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
         }).then((data) => {
             const { storage } = (data as { storage: AnyRecord })
-            return getKeysFromObject(key, storage, tryParseJson)
+            const value = storage && storage[key]
+            return value === undefined ? null : value
         })
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
+    saveCloudKey(key: string, value: unknown): Promise<void> {
         this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.SET_DATA_TO_STORAGE,
-            options: { key, value, storageType },
+            options: { key, value, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
         })
-
-        if (!this.isStorageSupported(storageType)) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-        }
-
-        if (
-            storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE)
-        ) {
-            return Promise.resolve()
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+        return Promise.resolve()
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
+    deleteCloudKey(key: string): Promise<void> {
         this.#sendMessage({
             type: MODULE_NAME.STORAGE,
             action: ACTION_NAME_QA.DELETE_DATA_FROM_STORAGE,
-            options: { key, storageType },
+            options: { key, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
         })
-
-        if (!this.isStorageSupported(storageType)) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-        }
-
-        if (
-            storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            || (storageType === STORAGE_TYPE.LOCAL_STORAGE)
-        ) {
-            return Promise.resolve()
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+        return Promise.resolve()
     }
 
     showInterstitial(placement?: unknown): void {
@@ -1372,11 +1362,11 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     #updateDefaultStorageType(): void {
-        if (this.#isPlatformInternalStorageAvailable()) {
-            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-        } else {
-            this._defaultStorageType = STORAGE_TYPE.LOCAL_STORAGE
-        }
+        this._setDefaultStorageType(
+            this.#isPlatformInternalStorageAvailable()
+                ? STORAGE_TYPE.PLATFORM_INTERNAL
+                : STORAGE_TYPE.LOCAL_STORAGE,
+        )
     }
 
     #cleanCache(): void {

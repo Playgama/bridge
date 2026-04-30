@@ -23,8 +23,10 @@ import {
     PLATFORM_ID,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type PlatformId,
     type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 import {
     addJavaScript,
@@ -90,6 +92,18 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     #playgamaAds: PgAdsSdk | null = null
@@ -97,6 +111,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     #playgamaAdsPromise: Promise<unknown> = this._createPromiseDecorator(PLAYGAMA_ADS_PROMISE).promise
 
     #interstitialShownCount = 0
+
+    #storageOpQueue: Promise<unknown> = Promise.resolve()
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -253,55 +269,39 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    setDataToStorage(key: string | string[], value: unknown | unknown[], type: StorageType): Promise<void> {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.setDataToStorage(key, value, type)
-        }
-
-        const keyWithPrefix = this.#withStorageKeyPrefix(key)
-
-        let promiseDecorator = this._getPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-
-            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getDataFromStorage(key: string | string[], type: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.getDataFromStorage(key, type, tryParseJson)
-        }
-
-        const keyWithPrefix = this.#withStorageKeyPrefix(key)
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-
+    loadCloudKey(key: string): Promise<unknown> {
+        const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, keyWithPrefix)
-        }
-
-        return promiseDecorator.promise
+            return promiseDecorator.promise
+        })
     }
 
-    deleteDataFromStorage(key: string | string[], type: StorageType): Promise<void> {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.deleteDataFromStorage(key, type)
-        }
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value })
+            return promiseDecorator.promise
+        })
+    }
 
-        const keyWithPrefix = this.#withStorageKeyPrefix(key)
-
-        let promiseDecorator = this._getPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
-
+    deleteCloudKey(key: string): Promise<void> {
+        const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, keyWithPrefix)
-        }
+            return promiseDecorator.promise
+        })
+    }
 
-        return promiseDecorator.promise
+    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
+        const next = this.#storageOpQueue
+            .catch(() => {})
+            .then(() => operation())
+        this.#storageOpQueue = next.catch(() => {})
+        return next
     }
 
     paymentsPurchase(id: string): Promise<unknown> {

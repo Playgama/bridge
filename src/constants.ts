@@ -81,6 +81,7 @@ export const EVENT_NAME = {
     ORIENTATION_STATE_CHANGED: 'orientation_state_changed',
     SCREEN_SIZE_CHANGED: 'screen_size_changed',
     PLATFORM_MESSAGE_SENT: 'platform_message_sent',
+    DEFAULT_STORAGE_TYPE_CHANGED: 'default_storage_type_changed',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]
 
@@ -137,6 +138,13 @@ export const STORAGE_TYPE = {
     PLATFORM_INTERNAL: 'platform_internal',
 } as const
 export type StorageType = typeof STORAGE_TYPE[keyof typeof STORAGE_TYPE]
+
+export const CLOUD_STORAGE_MODE = {
+    NONE: 'none',
+    EAGER: 'eager',
+    LAZY: 'lazy',
+} as const
+export type CloudStorageMode = typeof CLOUD_STORAGE_MODE[keyof typeof CLOUD_STORAGE_MODE]
 
 export const DEVICE_TYPE = {
     DESKTOP: 'desktop',
@@ -225,6 +233,7 @@ export const ERROR: Record<
 'SDK_NOT_INITIALIZED'
 | 'STORAGE_NOT_SUPPORTED'
 | 'STORAGE_NOT_AVAILABLE'
+| 'STORAGE_QUOTA_EXCEEDED'
 | 'GAME_PARAMS_NOT_FOUND'
 | 'INVITE_FRIENDS_MESSAGE_LENGTH_ERROR',
 BridgeError
@@ -232,6 +241,7 @@ BridgeError
     SDK_NOT_INITIALIZED: { message: 'Before using the SDK you must initialize it' },
     STORAGE_NOT_SUPPORTED: { message: 'Storage not supported' },
     STORAGE_NOT_AVAILABLE: { message: 'Storage not available' },
+    STORAGE_QUOTA_EXCEEDED: { message: 'Storage quota exceeded' },
     GAME_PARAMS_NOT_FOUND: { message: 'Game params are not found' },
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: { message: 'Message is too long' },
 }

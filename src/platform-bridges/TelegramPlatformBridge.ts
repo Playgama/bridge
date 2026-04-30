@@ -23,6 +23,7 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     DEVICE_OS,
     PLATFORM_MESSAGE,
@@ -30,6 +31,7 @@ import {
     type DeviceType,
     type DeviceOs,
     type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 
 const SDK_URL = 'https://telegram.org/js/telegram-web-app.js'
@@ -47,8 +49,9 @@ interface TelegramUser {
 interface TelegramCloudStorage {
     getItem(key: string, callback: (error: unknown, value: string | null) => void): void
     getItems(keys: string[], callback: (error: unknown, values: Record<string, string>) => void): void
-    setItem(key: string, value: string): void
-    removeItem(key: string): void
+    getKeys(callback: (error: unknown, keys: string[]) => void): void
+    setItem(key: string, value: string, callback?: (error: unknown) => void): void
+    removeItem(key: string, callback?: (error: unknown) => void): void
 }
 
 interface TelegramSdk {
@@ -141,6 +144,15 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     protected _isPlayerAuthorized = true
@@ -219,91 +231,49 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const sdk = this._platformSdk as TelegramSdk
-                if (Array.isArray(key)) {
-                    sdk.CloudStorage.getItems(key, (error, values) => {
-                        if (error) {
-                            reject(error)
-                            return
-                        }
-
-                        const result: unknown[] = []
-
-                        key.forEach((k) => {
-                            let value: unknown = values[k]
-                            if (tryParseJson && typeof value === 'string') {
-                                try {
-                                    value = JSON.parse(value)
-                                } catch (e) {
-                                    // Nothing we can do with it
-                                }
-                            }
-                            result.push(value)
-                        })
-
-                        resolve(result)
-                    })
-
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return new Promise((resolve, reject) => {
+            const sdk = this._platformSdk as TelegramSdk
+            sdk.CloudStorage.getKeys((keysError, keys) => {
+                if (keysError) {
+                    reject(keysError)
                     return
                 }
 
-                sdk.CloudStorage.getItem(key, (error, value) => {
-                    if (error) reject(error)
+                if (!keys || keys.length === 0) {
+                    resolve({})
+                    return
+                }
 
-                    let result: unknown = value
-                    if (tryParseJson && typeof result === 'string') {
-                        try {
-                            result = JSON.parse(result)
-                        } catch (e) {
-                            // Nothing we can do with it
-                        }
+                sdk.CloudStorage.getItems(keys, (itemsError, values) => {
+                    if (itemsError) {
+                        reject(itemsError)
+                        return
                     }
-                    resolve(result)
+                    resolve(values || {})
                 })
             })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        })
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const sdk = this._platformSdk as TelegramSdk
-                const keys = Array.isArray(key) ? key : [key]
-                const values = Array.isArray(value) ? value : [value]
-                const valuesString = values.map((v) => {
-                    if (typeof v !== 'string') {
-                        return JSON.stringify(v)
-                    }
-                    return v
-                })
-
-                keys.forEach((k, i) => sdk.CloudStorage.setItem(k, valuesString[i]))
-
-                resolve()
+    saveCloudSnapshot(snapshot: Record<string, unknown>, changedKeys: string[]): Promise<void> {
+        const sdk = this._platformSdk as TelegramSdk
+        return Promise.all(changedKeys.map((k) => new Promise<void>((resolve, reject) => {
+            sdk.CloudStorage.setItem(k, snapshot[k] as string, (error) => {
+                if (error) reject(error)
+                else resolve()
             })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+        }))).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const sdk = this._platformSdk as TelegramSdk
-                const keys = Array.isArray(key) ? key : [key]
-
-                keys.forEach((k) => sdk.CloudStorage.removeItem(k))
-
-                resolve()
+    deleteCloudKeys(_snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
+        const sdk = this._platformSdk as TelegramSdk
+        return Promise.all(deletedKeys.map((k) => new Promise<void>((resolve, reject) => {
+            sdk.CloudStorage.removeItem(k, (error) => {
+                if (error) reject(error)
+                else resolve()
             })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+        }))).then(() => undefined)
     }
 
     // advertisement

@@ -29,6 +29,7 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     PLATFORM_MESSAGE,
     LEADERBOARD_TYPE,
@@ -36,6 +37,7 @@ import {
     type DeviceType,
     type LeaderboardType,
     type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 import type { AnyRecord } from '../types/common'
 
@@ -220,6 +222,18 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('shareAsync')
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     protected _platformLanguage: string | null = null
 
     protected _contextId: string | null = null
@@ -315,67 +329,22 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const keys = Array.isArray(key) ? key : [key];
-                (this._platformSdk as FacebookSdk).player.getDataAsync(keys)
-                    .then((userData) => {
-                        const data = keys.map((_key) => {
-                            const value = userData[_key]
-                            return !tryParseJson && typeof value === 'object' && value !== null ? JSON.stringify(value) : value ?? null
-                        })
-
-                        resolve(data)
-                    })
-                    .catch(reject)
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key: string): Promise<unknown> {
+        return (this._platformSdk as FacebookSdk).player.getDataAsync([key]).then((data) => {
+            const value = data[key]
+            if (value === undefined || value === null) {
+                return null
+            }
+            return typeof value === 'string' ? value : JSON.stringify(value)
+        })
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data: Record<string, unknown> = {}
-                if (Array.isArray(key)) {
-                    const values = value as unknown[]
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = values[i]
-                    }
-                } else {
-                    data[key] = value
-                }
-
-                (this._platformSdk as FacebookSdk).player.setDataAsync(data)
-                    .then(() => resolve())
-                    .catch(reject)
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        return (this._platformSdk as FacebookSdk).player.setDataAsync({ [key]: value }).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data: Record<string, unknown> = {}
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = null
-                    }
-                } else {
-                    data[key] = null
-                }
-
-                (this._platformSdk as FacebookSdk).player.setDataAsync(data)
-                    .then(() => resolve())
-                    .catch(reject)
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key: string): Promise<void> {
+        return (this._platformSdk as FacebookSdk).player.setDataAsync({ [key]: null }).then(() => undefined)
     }
 
     // advertisement
