@@ -73,12 +73,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
             this.#subscribeNotification = createYoutubeSubscribeNotification()
-            setTimeout(() => {
-                if (this.#subscribeNotification) {
-                    this.#subscribeNotification.remove()
-                    this.#subscribeNotification = null
-                }
-            }, 5000)
 
             waitFor('ytgame').then(() => {
                 this._platformSdk = window.ytgame
@@ -255,6 +249,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
                 this._platformSdk.game.gameReady()
+                if (this.#subscribeNotification) {
+                    this.#subscribeNotification.remove()
+                    this.#subscribeNotification = null
+                }
                 return Promise.resolve()
             }
             default: {
