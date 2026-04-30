@@ -50,9 +50,6 @@ class NotificationsModule extends ModuleBase {
         this.#autoSchedulingEnabled = true
 
         eventBus.on(EVENT_NAME.PLATFORM_MESSAGE_SENT, (message) => {
-            // TEMP: debug logging for QA verification, remove before merge
-            console.info('[NotificationsModule] PLATFORM_MESSAGE_SENT:', message)
-
             if (message !== PLATFORM_MESSAGE.GAME_READY) {
                 return
             }
@@ -76,13 +73,6 @@ class NotificationsModule extends ModuleBase {
                 description: 'Seriously. Come play.',
                 type: 10,
                 minDelayInSeconds: 604800,
-            }).catch(() => {})
-
-            this.schedule({
-                title: 'Got a quick minute?',
-                description: 'A round is waiting for you.',
-                type: 11,
-                minDelayInSeconds: 300,
             }).catch(() => {})
         })
     }
