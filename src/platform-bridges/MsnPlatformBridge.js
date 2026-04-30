@@ -86,6 +86,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return this.#isPaymentsSupported
     }
 
+    // notifications
+    get isNotificationsSupported() {
+        return true
+    }
+
     _isAdvancedBannersSupported = true
 
     #playgamaAds = null
@@ -512,6 +517,23 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // notifications
+    scheduleNotification(options) {
+        if (!options || typeof options !== 'object') {
+            return Promise.reject(new Error('Notification options are required'))
+        }
+
+        return this._platformSdk.scheduleNotificationAsync(options)
+    }
+
+    getNotificationPayload() {
+        if (typeof this._platformSdk?.getNotificationPayload !== 'function') {
+            return null
+        }
+
+        return this._platformSdk.getNotificationPayload()
     }
 
     #showPlaygamaInterstitial() {
