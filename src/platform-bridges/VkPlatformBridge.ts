@@ -23,24 +23,23 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     BANNER_STATE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type DeviceType,
 } from '../constants'
 import type { AnyRecord } from '../types/common'
 
 const SDK_URL = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js'
 
-interface VkBridgeError {
-    error_data?: {
-        error_reason?: unknown
-    }
-}
-
 interface VkStorageGetResponse {
     keys: Array<{ key: string; value: string }>
+}
+
+interface VkStorageGetKeysResponse {
+    keys: string[]
 }
 
 interface VkBridge {
@@ -134,6 +133,15 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     // social
     get isInviteFriendsSupported(): boolean {
         return true
@@ -200,7 +208,7 @@ class VkPlatformBridge extends PlatformBridgeBase {
                                 })
                                 .finally(() => {
                                     this._isInitialized = true
-                                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                                 })
                         })
@@ -217,132 +225,43 @@ class VkPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const keys = Array.isArray(key) ? key : [key];
-                (this._platformSdk as VkBridge)
-                    .send('VKWebAppStorageGet', { keys })
-                    .then((data) => {
-                        const response = data as unknown as VkStorageGetResponse
-                        if (Array.isArray(key)) {
-                            const values: unknown[] = []
+    async loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        const sdk = this._platformSdk as VkBridge
+        const keysResult = await sdk.send('VKWebAppStorageGetKeys', { count: 1000, offset: 0 }) as unknown as VkStorageGetKeysResponse
 
-                            keys.forEach((item) => {
-                                const valueIndex = response.keys.findIndex((d) => d.key === item)
-                                if (valueIndex < 0) {
-                                    values.push(null)
-                                    return
-                                }
-
-                                if (response.keys[valueIndex].value === '') {
-                                    values.push(null)
-                                    return
-                                }
-
-                                let { value } = response.keys[valueIndex]
-                                if (tryParseJson) {
-                                    try {
-                                        value = JSON.parse(response.keys[valueIndex].value)
-                                    } catch (e) {
-                                        // keep value as it is
-                                    }
-                                }
-
-                                values.push(value)
-                            })
-
-                            resolve(values)
-                            return
-                        }
-
-                        if (response.keys[0].value === '') {
-                            resolve(null)
-                            return
-                        }
-
-                        let { value } = response.keys[0]
-                        if (tryParseJson) {
-                            try {
-                                value = JSON.parse(response.keys[0].value)
-                            } catch (e) {
-                                // keep value as it is
-                            }
-                        }
-
-                        resolve(value)
-                    })
-                    .catch((error: VkBridgeError) => {
-                        if (error && error.error_data && error.error_data.error_reason) {
-                            reject(error.error_data.error_reason)
-                        } else {
-                            reject()
-                        }
-                    })
-            })
+        const keys = keysResult.keys || []
+        if (keys.length === 0) {
+            return {}
         }
 
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        const valuesResult = await sdk.send('VKWebAppStorageGet', { keys }) as unknown as VkStorageGetResponse
+        const snapshot: Record<string, unknown> = {}
+        valuesResult.keys.forEach((entry) => {
+            if (entry.value !== '') {
+                snapshot[entry.key] = entry.value
+            }
+        })
+        return snapshot
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises: Array<Promise<unknown>> = []
-                const values = value as unknown[]
-
-                for (let i = 0; i < key.length; i++) {
-                    const data: { key: string; value: unknown } = { key: key[i], value: values[i] }
-
-                    if (typeof values[i] !== 'string') {
-                        data.value = JSON.stringify(values[i])
-                    }
-
-                    promises.push((this._platformSdk as VkBridge).send('VKWebAppStorageSet', data))
-                }
-
-                return Promise.all(promises).then(() => undefined)
-            }
-            const data: { key: string; value: unknown } = { key, value }
-
-            if (typeof value !== 'string') {
-                data.value = JSON.stringify(value)
-            }
-
-            return new Promise<void>((resolve, reject) => {
-                (this._platformSdk as VkBridge)
-                    .send('VKWebAppStorageSet', data)
-                    .then(() => {
-                        resolve()
-                    })
-                    .catch((error: VkBridgeError) => {
-                        if (error && error.error_data && error.error_data.error_reason) {
-                            reject(error.error_data.error_reason)
-                        } else {
-                            reject()
-                        }
-                    })
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot: Record<string, unknown>, changedKeys: string[]): Promise<void> {
+        const sdk = this._platformSdk as VkBridge
+        return Promise.all(
+            changedKeys.map((k) => sdk.send('VKWebAppStorageSet', {
+                key: k,
+                value: snapshot[k] as string,
+            })),
+        ).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (Array.isArray(key)) {
-                const promises: Array<Promise<unknown>> = []
-
-                for (let i = 0; i < key.length; i++) {
-                    promises.push(this.setDataToStorage(key[i], '', storageType))
-                }
-
-                return Promise.all(promises).then(() => undefined)
-            }
-            return this.setDataToStorage(key, '', storageType)
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(_snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
+        const sdk = this._platformSdk as VkBridge
+        return Promise.all(
+            deletedKeys.map((k) => sdk.send('VKWebAppStorageSet', {
+                key: k,
+                value: '',
+            })),
+        ).then(() => undefined)
     }
 
     // advertisement

@@ -20,8 +20,9 @@ import {
     ACTION_NAME,
     PLATFORM_ID,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 import { postToParent } from '../common/utils'
 
@@ -59,6 +60,18 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     get isCreatePostSupported(): boolean {
         return true
+    }
+
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
     }
 
     checkAdBlock(): Promise<boolean> {
@@ -106,51 +119,22 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-            if (!promiseDecorator) {
-                promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-
-                this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, { key })
-            }
-
-            return promiseDecorator.promise
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key: string): Promise<unknown> {
+        const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+        this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, { key })
+        return promiseDecorator.promise
     }
 
-    async setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-            if (!promiseDecorator) {
-                promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-
-                this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
-            }
-
-            await promiseDecorator.promise
-            return
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
+        this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
+        return promiseDecorator.promise
     }
 
-    async deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-            if (!promiseDecorator) {
-                promiseDecorator = this._createPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-
-                this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, { key })
-            }
-
-            await promiseDecorator.promise
-            return
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key: string): Promise<void> {
+        const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
+        this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, { key })
+        return promiseDecorator.promise
     }
 
     paymentsPurchase(id: string): Promise<unknown> {
@@ -227,7 +211,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
             if (message.playerPhoto) {
                 this._playerPhotos.push(message.playerPhoto)
             }
-            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
         }
 
         this._isInitialized = true

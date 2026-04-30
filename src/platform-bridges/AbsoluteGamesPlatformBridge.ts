@@ -23,8 +23,9 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 import type { AnyRecord } from '../types/common'
 
@@ -94,6 +95,18 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -149,9 +162,11 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
                     .finally(() => {
                         this._isInitialized = true
 
-                        this._defaultStorageType = this._isPlayerAuthorized
-                            ? STORAGE_TYPE.PLATFORM_INTERNAL
-                            : STORAGE_TYPE.LOCAL_STORAGE
+                        this._setDefaultStorageType(
+                            this._isPlayerAuthorized
+                                ? STORAGE_TYPE.PLATFORM_INTERNAL
+                                : STORAGE_TYPE.LOCAL_STORAGE,
+                        )
 
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
@@ -183,131 +198,32 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (this._platformStorageCachedData) {
-                    const cached = this._platformStorageCachedData as AnyRecord
-
-                    if (Array.isArray(key)) {
-                        const values: unknown[] = []
-
-                        for (let i = 0; i < key.length; i++) {
-                            const value = typeof cached[key[i]] === 'undefined'
-                                ? null
-                                : cached[key[i]]
-
-                            values.push(value)
-                        }
-
-                        resolve(values)
-                        return
-                    }
-
-                    resolve(typeof cached[key] === 'undefined' ? null : cached[key])
-                    return
-                }
-
-                if (this._isPlayerAuthorized) {
-                    (this._platformSdk as AgRuSdkInstance).getSaveData((data, error) => {
-                        if (error === null) {
-                            this._platformStorageCachedData = data || {}
-                            const cached = this._platformStorageCachedData as AnyRecord
-
-                            if (Array.isArray(key)) {
-                                const values: unknown[] = []
-
-                                for (let i = 0; i < key.length; i++) {
-                                    const value = typeof cached[key[i]] === 'undefined'
-                                        ? null
-                                        : cached[key[i]]
-
-                                    values.push(value)
-                                }
-
-                                resolve(values)
-                                return
-                            }
-
-                            resolve(typeof cached[key] === 'undefined' ? null : cached[key])
-                        } else {
-                            reject(error)
-                        }
-                    })
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return new Promise((resolve, reject) => {
+            (this._platformSdk as AgRuSdkInstance).getSaveData((data, error) => {
+                if (error === null) {
+                    resolve(data || {})
                 } else {
-                    reject()
+                    reject(error)
                 }
             })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        })
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (this._isPlayerAuthorized) {
-                    const cached = this._platformStorageCachedData as AnyRecord | null
-                    const data: AnyRecord = cached !== null
-                        ? { ...cached }
-                        : {}
-
-                    if (Array.isArray(key)) {
-                        const values = value as unknown[]
-                        for (let i = 0; i < key.length; i++) {
-                            data[key[i]] = values[i]
-                        }
-                    } else {
-                        data[key] = value
-                    }
-
-                    (this._platformSdk as AgRuSdkInstance).setSaveData(data, (_result, error) => {
-                        if (error === null) {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        }
-                        reject(error)
-                    })
+    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            (this._platformSdk as AgRuSdkInstance).setSaveData(snapshot, (_result, error) => {
+                if (error === null) {
+                    resolve()
                 } else {
-                    reject()
+                    reject(error)
                 }
             })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+        })
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (this._isPlayerAuthorized) {
-                    const cached = this._platformStorageCachedData as AnyRecord | null
-                    const data: AnyRecord = cached !== null
-                        ? { ...cached }
-                        : {}
-
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            delete data[key[i]]
-                        }
-                    } else {
-                        delete data[key]
-                    }
-
-                    (this._platformSdk as AgRuSdkInstance).setSaveData(data, (_result, error) => {
-                        if (error === null) {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        }
-                        reject(error)
-                    })
-                } else {
-                    reject()
-                }
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
+        return this.saveCloudSnapshot(snapshot)
     }
 
     // advertisement

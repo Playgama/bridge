@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, getKeysFromObject, waitFor } from '../common/utils'
+import { addJavaScript, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -26,8 +26,9 @@ import {
     BANNER_POSITION,
     LEADERBOARD_TYPE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type LeaderboardType,
 } from '../constants'
 import type { AdvancedBannerConfig, AnyRecord } from '../types/common'
@@ -149,6 +150,18 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return this.#isPaymentsSupported
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     protected _isAdvancedBannersSupported = true
 
     #playgamaAds: PgAdsSdk | null = null
@@ -176,9 +189,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this.#updatePlayerInfo(null)
                         })
                         .finally(() => {
-                            this._defaultStorageType = this._isPlayerAuthorized
-                                ? STORAGE_TYPE.PLATFORM_INTERNAL
-                                : STORAGE_TYPE.LOCAL_STORAGE
+                            this._setDefaultStorageType(
+                                this._isPlayerAuthorized
+                                    ? STORAGE_TYPE.PLATFORM_INTERNAL
+                                    : STORAGE_TYPE.LOCAL_STORAGE,
+                            )
 
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -227,87 +242,24 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#getDataFromPlatformStorage(key, tryParseJson)
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return (this._platformSdk as MsnSdk).cloudSave.getDataAsync({ gameId: this._options.gameId }) as Promise<Record<string, unknown>>
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return new Promise((resolve, reject) => {
-                const cached = this._platformStorageCachedData as AnyRecord | null
-                const data: AnyRecord = cached !== null
-                    ? { ...cached }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    const values = value as unknown[]
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = values[i]
-                    }
-                } else {
-                    data[key] = value
-                }
-
-                (this.platformSdk as MsnSdk).cloudSave.saveDataAsync({ data, gameId: this._options.gameId })
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return (this._platformSdk as MsnSdk).cloudSave.saveDataAsync({
+            data: snapshot,
+            gameId: this._options.gameId,
+        }).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-            return new Promise((resolve, reject) => {
-                const data: AnyRecord = {}
-                const cached = this._platformStorageCachedData as AnyRecord | null
-
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = null
-                        if (cached) {
-                            delete cached[key[i]]
-                        }
-                    }
-                } else {
-                    data[key] = null
-                    if (cached) {
-                        delete cached[key]
-                    }
-                }
-
-                (this.platformSdk as MsnSdk).cloudSave.saveDataAsync({ data, gameId: this._options.gameId })
-                    .then(() => {
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
+        const data: Record<string, unknown> = { ...snapshot }
+        deletedKeys.forEach((k) => { data[k] = null })
+        return (this._platformSdk as MsnSdk).cloudSave.saveDataAsync({
+            data,
+            gameId: this._options.gameId,
+        }).then(() => undefined)
     }
 
     // social
@@ -758,15 +710,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         }
     }
 
-    async #getDataFromPlatformStorage(key: string | string[], tryParseJson = false): Promise<unknown> {
-        if (!this._platformStorageCachedData) {
-            this._platformStorageCachedData = await (this.platformSdk as MsnSdk).cloudSave.getDataAsync({
-                gameId: this._options.gameId,
-            })
-        }
-
-        return getKeysFromObject(key, this._platformStorageCachedData as AnyRecord, tryParseJson)
-    }
 }
 
 export default MsnPlatformBridge

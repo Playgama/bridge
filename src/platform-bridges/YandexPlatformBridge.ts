@@ -23,12 +23,13 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     BANNER_STATE,
     PLATFORM_MESSAGE,
     LEADERBOARD_TYPE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type DeviceType,
     type LeaderboardType,
 } from '../constants'
@@ -200,6 +201,18 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
     get isExternalLinksAllowed(): boolean {
         return false
+    }
+
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return this.#playerPromise!.then(() => undefined)
     }
 
     // leaderboards
@@ -394,103 +407,16 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#playerPromise!.then(() => new Promise((resolve) => {
-                const cached = this._platformStorageCachedData as AnyRecord
-                if (Array.isArray(key)) {
-                    const values: unknown[] = []
-
-                    for (let i = 0; i < key.length; i++) {
-                        const value = typeof cached[key[i]] === 'undefined'
-                            ? null
-                            : cached[key[i]]
-
-                        values.push(value)
-                    }
-
-                    resolve(values)
-                    return
-                }
-
-                resolve(typeof cached[key] === 'undefined' ? null : cached[key])
-            }))
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return this.#playerPromise!.then(() => this.#yandexPlayer!.getData())
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#playerPromise!.then(() => new Promise<void>((resolve, reject) => {
-                const cached = this._platformStorageCachedData as AnyRecord | null
-                const data: AnyRecord = cached !== null
-                    ? { ...cached }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    const values = value as unknown[]
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = values[i]
-                    }
-                } else {
-                    data[key] = value
-                }
-
-                this.#yandexPlayer!.setData(data)
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            }))
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return this.#yandexPlayer!.setData(snapshot).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#playerPromise!.then(() => new Promise<void>((resolve, reject) => {
-                const cached = this._platformStorageCachedData as AnyRecord | null
-                const data: AnyRecord = cached !== null
-                    ? { ...cached }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        delete data[key[i]]
-                    }
-                } else {
-                    delete data[key]
-                }
-
-                this.#yandexPlayer!.setData(data)
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            }))
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
+        return this.#yandexPlayer!.setData(snapshot).then(() => undefined)
     }
 
     // advertisement
@@ -871,9 +797,11 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     this._playerId = player.getUniqueID()
                     this._isPlayerAuthorized = player.isAuthorized()
 
-                    this._defaultStorageType = this._isPlayerAuthorized
-                        ? STORAGE_TYPE.PLATFORM_INTERNAL
-                        : STORAGE_TYPE.LOCAL_STORAGE
+                    this._setDefaultStorageType(
+                        this._isPlayerAuthorized
+                            ? STORAGE_TYPE.PLATFORM_INTERNAL
+                            : STORAGE_TYPE.LOCAL_STORAGE,
+                    )
 
                     const name = player.getName()
                     if (name !== '') {
@@ -906,11 +834,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this.#yandexPlayer = player
-
-                    return player.getData()
-                })
-                .then((data) => {
-                    this._platformStorageCachedData = data
                 })
                 .finally(() => {
                     resolve()
