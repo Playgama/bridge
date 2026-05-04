@@ -22,7 +22,7 @@ import ModuleBase from './ModuleBase'
 
 const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'
 const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
-const FLUSH_INTERVAL = 15000
+const FLUSH_INTERVAL = 30000
 const SEND_ATTEMPTS = 2
 
 class AnalyticsModule extends ModuleBase {
@@ -337,7 +337,9 @@ class AnalyticsModule extends ModuleBase {
         }
 
         this.#flushTimer = setInterval(() => {
-            this.send(`${MODULE_NAME.CORE}_ping`)
+            if (this._platformBridge.platformId === PLATFORM_ID.PLAYGAMA) {
+                this.send(`${MODULE_NAME.CORE}_ping`)
+            }
             this.#flush()
         }, FLUSH_INTERVAL)
     }

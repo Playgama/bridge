@@ -219,10 +219,6 @@ class PlaygamaBridge {
 
                     console.info(`%c PlaygamaBridge v${this.version} initialized. `, 'background: #01A5DA; color: white')
 
-                    const endTime = performance.now()
-                    const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
-                    analyticsModule.send(`${MODULE_NAME.CORE}_initialization_completed`, { time_s: timeInSeconds })
-
                     if (this.#initializationPromiseDecorator) {
                         this.#initializationPromiseDecorator.resolve()
                         this.#initializationPromiseDecorator = null

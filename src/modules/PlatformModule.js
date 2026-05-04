@@ -61,6 +61,13 @@ class PlatformModule extends ModuleBase {
 
     #startTime = performance.now()
 
+    #messagesExcludedFromAnalytics = new Set([
+        PLATFORM_MESSAGE.GAMEPLAY_STARTED,
+        PLATFORM_MESSAGE.GAMEPLAY_STOPPED,
+        PLATFORM_MESSAGE.IN_GAME_LOADING_STARTED,
+        PLATFORM_MESSAGE.IN_GAME_LOADING_STOPPED,
+    ])
+
     constructor(platformBridge) {
         super(platformBridge)
 
@@ -95,7 +102,9 @@ class PlatformModule extends ModuleBase {
             analyticsData.level = String(options.level)
         }
 
-        analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, analyticsData)
+        if (!this.#messagesExcludedFromAnalytics.has(message)) {
+            analyticsModule.send(`${MODULE_NAME.PLATFORM}_message_${message}`, analyticsData)
+        }
 
         eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, message)
 

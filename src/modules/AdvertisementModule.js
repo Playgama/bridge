@@ -452,7 +452,9 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#advancedBannersState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#advancedBannersPlacement })
+        if (state !== BANNER_STATE.LOADING) {
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`, { placement: this.#advancedBannersPlacement })
+        }
 
         eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#advancedBannersState)
     }
@@ -463,7 +465,9 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#bannerState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_banner_${state}`, { position: this.#bannerPosition, placement: this.#bannerPlacement })
+        if (state !== BANNER_STATE.LOADING) {
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_banner_${state}`, { position: this.#bannerPosition, placement: this.#bannerPlacement })
+        }
 
         eventBus.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#bannerState)
     }
@@ -474,7 +478,9 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#interstitialState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`, { placement: this.#interstitialPlacement })
+        if (state !== INTERSTITIAL_STATE.LOADING) {
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`, { placement: this.#interstitialPlacement })
+        }
 
         eventBus.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#interstitialState)
     }
@@ -485,7 +491,9 @@ class AdvertisementModule extends ModuleBase {
         }
 
         this.#rewardedState = state
-        analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, { placement: this.#rewardedPlacement })
+        if (state !== REWARDED_STATE.LOADING) {
+            analyticsModule.send(`${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`, { placement: this.#rewardedPlacement })
+        }
 
         eventBus.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#rewardedState)
     }
