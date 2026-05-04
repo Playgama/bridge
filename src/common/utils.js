@@ -1031,21 +1031,21 @@ export function createYoutubeSubscribeNotification() {
                 position: fixed;
                 inset: 0;
                 pointer-events: none;
-                transform-origin: 210px calc(100% - 70px);
+                transform-origin: 168px calc(100% - 56px);
                 z-index: 9999999;
                 animation: bridge-yt-press 650ms ease-in-out 1270ms forwards;
             }
 
             #bridge-youtube-subscribe .bridge-yt-button {
                 position: fixed;
-                bottom: -30px;
-                left: 30px;
-                width: 276px;
-                height: 80px;
-                border-radius: 134.75px;
-                padding: 14px 32px 16px 32px;
+                bottom: -24px;
+                left: 24px;
+                width: 220.8px;
+                height: 64px;
+                border-radius: 107.8px;
+                padding: 11.2px 25.6px 12.8px 25.6px;
                 background-color: #9747FF;
-                box-shadow: inset 0 0 21.33px 0 rgba(151, 71, 255, 0.7), inset 0 0 20px 0 rgba(255, 255, 255, 0.7);
+                box-shadow: inset 0 0 17.06px 0 rgba(151, 71, 255, 0.7), inset 0 0 16px 0 rgba(255, 255, 255, 0.7);
                 box-sizing: border-box;
                 border: none;
                 display: flex;
@@ -1061,21 +1061,21 @@ export function createYoutubeSubscribeNotification() {
             }
 
             #bridge-youtube-subscribe .bridge-yt-title {
-                width: 211px;
-                height: 36px;
+                width: 168.8px;
+                height: 28.8px;
                 display: block;
                 flex-shrink: 0;
             }
 
             #bridge-youtube-subscribe .bridge-yt-ball {
                 position: fixed;
-                bottom: -110px;
-                left: 310px;
-                width: 80px;
-                height: 80px;
+                bottom: -88px;
+                left: 248px;
+                width: 64px;
+                height: 64px;
                 border-radius: 50%;
                 background-color: #9747FF;
-                box-shadow: inset 0 0 21.33px 0 rgba(151, 71, 255, 0.7), inset 0 0 20px 0 rgba(255, 255, 255, 0.7);
+                box-shadow: inset 0 0 17.06px 0 rgba(151, 71, 255, 0.7), inset 0 0 16px 0 rgba(255, 255, 255, 0.7);
                 box-sizing: border-box;
                 display: flex;
                 align-items: center;
@@ -1091,40 +1091,40 @@ export function createYoutubeSubscribeNotification() {
             }
 
             #bridge-youtube-subscribe .bridge-yt-arrow {
-                width: 32px;
-                height: 32px;
+                width: 25.6px;
+                height: 25.6px;
                 opacity: 1;
                 animation: bridge-yt-arrow-fade-out 235ms ease 2220ms forwards;
             }
 
             #bridge-youtube-subscribe .bridge-yt-hand {
-                width: 36px;
-                height: 36px;
+                width: 28.8px;
+                height: 28.8px;
                 opacity: 0;
                 animation: bridge-yt-hand-fade-in 235ms ease 2335ms forwards;
             }
 
             @keyframes bridge-yt-rise-button {
-                0%   { bottom: -30px;  opacity: 0; }
-                40%  { bottom: 32px;   opacity: 1; }
-                48%  { bottom: 42px; }
-                60%  { bottom: 40px; }
-                70%  { bottom: 38px; }
-                79%  { bottom: 36px; }
-                88%  { bottom: 34px; }
-                95%  { bottom: 32px; }
-                100% { bottom: 30px;   opacity: 1; }
+                0%   { bottom: -24px;  opacity: 0; }
+                40%  { bottom: 25.6px; opacity: 1; }
+                48%  { bottom: 33.6px; }
+                60%  { bottom: 32px; }
+                70%  { bottom: 30.4px; }
+                79%  { bottom: 28.8px; }
+                88%  { bottom: 27.2px; }
+                95%  { bottom: 25.6px; }
+                100% { bottom: 24px;   opacity: 1; }
             }
             @keyframes bridge-yt-rise-ball {
-                0%   { bottom: -110px; opacity: 0; }
-                40%  { bottom: 32px;   opacity: 1; }
-                48%  { bottom: 42px; }
-                60%  { bottom: 40px; }
-                70%  { bottom: 38px; }
-                79%  { bottom: 36px; }
-                88%  { bottom: 34px; }
-                95%  { bottom: 32px; }
-                100% { bottom: 30px;   opacity: 1; }
+                0%   { bottom: -88px;  opacity: 0; }
+                40%  { bottom: 25.6px; opacity: 1; }
+                48%  { bottom: 33.6px; }
+                60%  { bottom: 32px; }
+                70%  { bottom: 30.4px; }
+                79%  { bottom: 28.8px; }
+                88%  { bottom: 27.2px; }
+                95%  { bottom: 25.6px; }
+                100% { bottom: 24px;   opacity: 1; }
             }
             @keyframes bridge-yt-press {
                 0%   { transform: scale(1); }
@@ -1135,12 +1135,12 @@ export function createYoutubeSubscribeNotification() {
                 100% { transform: scale(1); }
             }
             @keyframes bridge-yt-button-shrink {
-                0%   { width: 276px; opacity: 1; }
-                100% { width: 80px;  opacity: 0; }
+                0%   { width: 220.8px; opacity: 1; }
+                100% { width: 64px;    opacity: 0; }
             }
             @keyframes bridge-yt-ball-roll {
-                0%   { left: 310px; transform: rotate(0deg); }
-                100% { left: 30px;  transform: rotate(-360deg); }
+                0%   { left: 248px; transform: rotate(0deg); }
+                100% { left: 24px;  transform: rotate(-360deg); }
             }
             @keyframes bridge-yt-arrow-fade-out {
                 to { opacity: 0; }

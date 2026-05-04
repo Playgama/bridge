@@ -25,6 +25,7 @@ import {
     LEADERBOARD_TYPE,
     REWARDED_STATE,
     INTERSTITIAL_STATE,
+    DEVICE_TYPE,
 } from '../constants'
 
 class YoutubePlatformBridge extends PlatformBridgeBase {
@@ -72,7 +73,9 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            this.#subscribeNotification = createYoutubeSubscribeNotification()
+            if (this.deviceType === DEVICE_TYPE.DESKTOP) {
+                this.#subscribeNotification = createYoutubeSubscribeNotification()
+            }
 
             waitFor('ytgame').then(() => {
                 this._platformSdk = window.ytgame
