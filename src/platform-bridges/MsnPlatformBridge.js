@@ -17,14 +17,11 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, getKeysFromObject, waitFor } from '../common/utils'
-import eventBus from '../common/EventBus'
 import {
     PLATFORM_ID,
     ACTION_NAME,
     BANNER_STATE,
-    EVENT_NAME,
     INTERSTITIAL_STATE,
-    PLATFORM_MESSAGE,
     REWARDED_STATE,
     BANNER_POSITION,
     LEADERBOARD_TYPE,
@@ -129,6 +126,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then(() => waitFor('$msstart'))
                 .then(() => {
                     this._platformSdk = window.$msstart
+
+                    AUTO_NOTIFICATIONS.forEach((notification) => {
+                        this._platformSdk.scheduleNotificationAsync(notification).catch(() => {})
+                    })
+
                     this._platformSdk.getSignedInUserAsync()
                         .then((data) => {
                             this.#updatePlayerInfo(data)
@@ -145,16 +147,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                 })
-
-            eventBus.on(EVENT_NAME.PLATFORM_MESSAGE_SENT, (message) => {
-                if (message !== PLATFORM_MESSAGE.GAME_READY) {
-                    return
-                }
-
-                AUTO_NOTIFICATIONS.forEach((notification) => {
-                    this._platformSdk?.scheduleNotificationAsync(notification).catch(() => {})
-                })
-            })
 
             const advertisementBackfillId = this._options?.advertisement?.backfillId
             if (advertisementBackfillId) {
