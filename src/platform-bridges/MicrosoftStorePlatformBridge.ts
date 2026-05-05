@@ -296,14 +296,6 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
-        const next = this.#storageOpQueue
-            .catch(() => {})
-            .then(() => operation())
-        this.#storageOpQueue = next.catch(() => {})
-        return next
-    }
-
     paymentsPurchase(id: string): Promise<unknown> {
         const product = this._paymentsGetProductPlatformData(id)
         if (!product) {
@@ -373,6 +365,14 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
+        const next = this.#storageOpQueue
+            .catch(() => {})
+            .then(() => operation())
+        this.#storageOpQueue = next.catch(() => {})
+        return next
     }
 
     #getStorageKeyPrefix(): string | null {

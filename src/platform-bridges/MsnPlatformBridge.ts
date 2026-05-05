@@ -709,7 +709,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             this._playerApplyGuestData()
         }
     }
-
 }
 
 export default MsnPlatformBridge

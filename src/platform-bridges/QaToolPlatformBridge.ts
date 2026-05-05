@@ -41,7 +41,6 @@ import {
 } from '../constants'
 import type { AnyRecord, SafeArea } from '../types/common'
 
-
 const ADVERTISEMENT_TYPE = {
     INTERSTITIAL: 'interstitial',
     REWARD: 'reward',

@@ -153,14 +153,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
-        const next = this.#storageOpQueue
-            .catch(() => {})
-            .then(() => operation())
-        this.#storageOpQueue = next.catch(() => {})
-        return next
-    }
-
     // advertisement
     showInterstitial(placementId?: unknown): void {
         this.#postMessage(ACTION_NAME.SHOW_INTERSTITIAL, placementId)
@@ -220,6 +212,14 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
+        const next = this.#storageOpQueue
+            .catch(() => {})
+            .then(() => operation())
+        this.#storageOpQueue = next.catch(() => {})
+        return next
     }
 
     paymentsGetPurchases(): Promise<unknown> {
