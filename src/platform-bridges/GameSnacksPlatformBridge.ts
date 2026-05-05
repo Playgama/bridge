@@ -24,10 +24,11 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     LEADERBOARD_TYPE,
     type PlatformId,
     type LeaderboardType,
-    type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 
 interface GameSnacksAdBreakOptions {
@@ -93,6 +94,15 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
         return LEADERBOARD_TYPE.NATIVE
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     protected _isBannerSupported = false
 
     initialize(): Promise<unknown> {
@@ -106,7 +116,7 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
 
             waitFor('GameSnacks').then(() => {
                 this._platformSdk = window.GameSnacks as GameSnacksSdk
-                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
 
                 const sdk = this._platformSdk as GameSnacksSdk
                 sdk.game.onPause(() => {
@@ -215,86 +225,24 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as GameSnacksSdk
-            if (Array.isArray(key)) {
-                const values = key.map((storageKey) => this.#parseStorageValue(
-                    sdk.storage.getItem(storageKey),
-                    tryParseJson,
-                ))
-                return Promise.resolve(values)
-            }
-
-            const value = this.#parseStorageValue(sdk.storage.getItem(key), tryParseJson)
-            return Promise.resolve(value)
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key: string): Promise<unknown> {
+        const value = (this._platformSdk as GameSnacksSdk).storage.getItem(key)
+        return Promise.resolve(value === undefined ? null : value)
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as GameSnacksSdk
-            if (Array.isArray(key)) {
-                const values = value as unknown[]
-                for (let i = 0; i < key.length; i++) {
-                    sdk.storage.setItem(key[i], this.#toStorageString(values[i]))
-                }
-                return Promise.resolve()
-            }
-
-            sdk.storage.setItem(key, this.#toStorageString(value))
-            return Promise.resolve()
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        (this._platformSdk as GameSnacksSdk).storage.setItem(key, value as string)
+        return Promise.resolve()
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as GameSnacksSdk
-            if (Array.isArray(key)) {
-                for (let i = 0; i < key.length; i++) {
-                    sdk.storage.removeItem(key[i])
-                }
-                return Promise.resolve()
-            }
-
-            sdk.storage.removeItem(key)
-            return Promise.resolve()
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key: string): Promise<void> {
+        (this._platformSdk as GameSnacksSdk).storage.removeItem(key)
+        return Promise.resolve()
     }
 
     // leaderboards
     leaderboardsSetScore(_id?: unknown, score?: unknown): Promise<unknown> {
         return (this._platformSdk as GameSnacksSdk).score.update(score)
-    }
-
-    #toStorageString(value: unknown): string {
-        if (typeof value === 'object' && value !== null) {
-            return JSON.stringify(value)
-        }
-
-        if (typeof value === 'string') {
-            return value
-        }
-
-        return String(value)
-    }
-
-    #parseStorageValue(value: unknown, tryParseJson: boolean): unknown {
-        if (!tryParseJson || typeof value !== 'string') {
-            return value
-        }
-
-        try {
-            return JSON.parse(value)
-        } catch (e) {
-            return value
-        }
     }
 }
 

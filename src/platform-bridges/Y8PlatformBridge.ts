@@ -21,12 +21,13 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     ERROR,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     LEADERBOARD_TYPE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type LeaderboardType,
 } from '../constants'
 import type { AnyRecord } from '../types/common'
@@ -121,6 +122,18 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     // leaderboards
     get leaderboardsType(): LeaderboardType {
         return LEADERBOARD_TYPE.IN_GAME
@@ -193,7 +206,6 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             (this._platformSdk as Y8Sdk).login((response) => {
                 this.#updatePlayerInfo(response)
                 if (response.status === 'ok') {
-                    this._platformStorageCachedData = null
                     resolve(undefined)
                 } else {
                     reject()
@@ -203,87 +215,46 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                this.#getUserData()
-                    .then((userData) => {
-                        const keys = Array.isArray(key) ? key : [key]
-                        const data = keys.map((_key) => {
-                            const value = userData[_key]
-                            return !tryParseJson && typeof value === 'object' && value !== null ? JSON.stringify(value) : value ?? null
-                        })
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return new Promise((resolve, reject) => {
+            (this._platformSdk as Y8Sdk).api('user_data/retrieve', 'POST', { key: USERDATA_KEY }, ((response) => {
+                if (response.error && response.error !== NOT_FOUND_ERROR) {
+                    reject(response)
+                    return
+                }
 
-                        resolve(data)
-                    })
-                    .catch(reject)
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+                let userData: AnyRecord = {}
+                try {
+                    if (response.jsondata) {
+                        userData = JSON.parse(response.jsondata as string)
+                    }
+                } catch {
+                    userData = {}
+                }
+                resolve(userData)
+            }))
+        })
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise<void>((resolve, reject) => {
-                this.#getUserData()
-                    .then((userData) => {
-                        const newData: AnyRecord = { ...userData }
-
-                        if (Array.isArray(key)) {
-                            const values = value as unknown[]
-                            for (let i = 0; i < key.length; i++) {
-                                newData[key[i]] = values[i]
-                            }
-                        } else {
-                            newData[key] = value
-                        }
-
-                        (this._platformSdk as Y8Sdk).api('user_data/submit', 'POST', { key: USERDATA_KEY, value: JSON.stringify(newData) }, ((response) => {
-                            if (response.status === 'ok') {
-                                this._platformStorageCachedData = newData
-                                resolve()
-                            } else {
-                                reject(response)
-                            }
-                        }))
-                    })
-                    .catch(reject)
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            (this._platformSdk as Y8Sdk).api(
+                'user_data/submit',
+                'POST',
+                { key: USERDATA_KEY, value: JSON.stringify(snapshot) },
+                ((response) => {
+                    if (response.status === 'ok') {
+                        resolve()
+                    } else {
+                        reject(response)
+                    }
+                }),
+            )
+        })
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise<void>((resolve, reject) => {
-                this.#getUserData()
-                    .then((userData) => {
-                        const newData: AnyRecord = { ...userData }
-
-                        if (Array.isArray(key)) {
-                            for (let i = 0; i < key.length; i++) {
-                                delete newData[key[i]]
-                            }
-                        } else {
-                            delete newData[key]
-                        }
-
-                        (this._platformSdk as Y8Sdk).api('user_data/submit', 'POST', { key: USERDATA_KEY, value: JSON.stringify(newData) }, ((response) => {
-                            if (response.status === 'ok') {
-                                this._platformStorageCachedData = newData
-                                resolve()
-                            } else {
-                                reject(response)
-                            }
-                        }))
-                    })
-                    .catch(reject)
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
+        return this.saveCloudSnapshot(snapshot)
     }
 
     // advertisement
@@ -442,39 +413,10 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    #getUserData(): Promise<AnyRecord> {
-        return new Promise<AnyRecord>((resolve, reject) => {
-            if (this._platformStorageCachedData) {
-                resolve(this._platformStorageCachedData as AnyRecord)
-            } else {
-                (this._platformSdk as Y8Sdk).api('user_data/retrieve', 'POST', { key: USERDATA_KEY }, ((response) => {
-                    if (response.error) {
-                        if (response.error !== NOT_FOUND_ERROR) {
-                            reject(response)
-                        }
-                    }
-
-                    let userData: AnyRecord = {}
-
-                    try {
-                        if (response.jsondata) {
-                            userData = JSON.parse(response.jsondata)
-                        }
-                    } catch (e) {
-                        // keep value string or null
-                    }
-
-                    this._platformStorageCachedData = userData
-                    resolve(userData)
-                }))
-            }
-        })
-    }
-
     #updatePlayerInfo(data: Y8LoginResponse): void {
         if (data.status === 'ok' && data.authResponse) {
             this._isPlayerAuthorized = true
-            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
 
             const {
                 pid, locale, nickname, first_name: firstName, last_name: lastName, avatars,

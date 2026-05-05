@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { PLATFORM_ID, STORAGE_TYPE } from '../../../../src/constants'
+import { PLATFORM_ID } from '../../../../src/constants'
 import { createBridgeByPlatformId } from '../../../common/bridge/bridge'
 import { SUPPORTED_FEATURES } from '../../../../src/platform-bridges/QaToolPlatformBridge'
 import PlaygamaBridge from '../../../../src/PlaygamaBridge'
@@ -56,16 +56,6 @@ const FEATURES: Feature[] = [
     {
         keys: [SUPPORTED_FEATURES.SOCIAL_RATE],
         check: (bridge: PlaygamaBridge) => bridge.social.isRateSupported,
-    },
-
-    // Storage
-    {
-        keys: [SUPPORTED_FEATURES.STORAGE_LOCAL],
-        check: (bridge: PlaygamaBridge) => bridge.storage.isSupported(STORAGE_TYPE.LOCAL_STORAGE),
-    },
-    {
-        keys: [SUPPORTED_FEATURES.STORAGE_INTERNAL],
-        check: (bridge: PlaygamaBridge) => bridge.storage.isSupported(STORAGE_TYPE.PLATFORM_INTERNAL),
     },
 
     // Advertisement

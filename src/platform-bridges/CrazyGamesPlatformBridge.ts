@@ -30,11 +30,12 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     PLATFORM_MESSAGE,
     BANNER_CONTAINER_ID,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type DeviceType,
 } from '../constants'
 import type { AnyRecord, AdvancedBannerConfig } from '../types/common'
@@ -143,6 +144,15 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     // device
     get deviceType(): DeviceType {
         if (this.#isUserAccountAvailable) {
@@ -198,7 +208,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                 waitFor('CrazyGames', 'SDK', 'init').then(() => {
                     this._platformSdk = window.CrazyGames!.SDK
 
-                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                     this._isBannerSupported = true
                     this._isAdvancedBannersSupported = true;
                     (this._platformSdk as CrazyGamesSdk).init().then(() => {
@@ -287,92 +297,19 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve) => {
-                const sdk = this._platformSdk as CrazyGamesSdk
-                if (Array.isArray(key)) {
-                    const values: unknown[] = []
-                    key.forEach((k) => {
-                        let value: unknown = sdk.data.getItem(k)
-
-                        if (tryParseJson) {
-                            try {
-                                value = JSON.parse(value as string)
-                            } catch (e) {
-                                // keep value string or null
-                            }
-                        }
-                        values.push(value)
-                    })
-
-                    resolve(values)
-                    return
-                }
-
-                let value: unknown = sdk.data.getItem(key)
-
-                if (tryParseJson) {
-                    try {
-                        value = JSON.parse(value as string)
-                    } catch (e) {
-                        // keep value string or null
-                    }
-                }
-                resolve(value)
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key: string): Promise<unknown> {
+        const value = (this._platformSdk as CrazyGamesSdk).data.getItem(key)
+        return Promise.resolve(value === undefined ? null : value)
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise<void>((resolve) => {
-                const sdk = this._platformSdk as CrazyGamesSdk
-                if (Array.isArray(key)) {
-                    const values = value as unknown[]
-                    for (let i = 0; i < key.length; i++) {
-                        let valueData = values[i]
-
-                        if (typeof values[i] !== 'string') {
-                            valueData = JSON.stringify(values[i])
-                        }
-
-                        sdk.data.setItem(key[i], valueData as string)
-                    }
-
-                    resolve()
-                    return
-                }
-
-                let valueData = value
-
-                if (typeof value !== 'string') {
-                    valueData = JSON.stringify(value)
-                }
-
-                sdk.data.setItem(key, valueData as string)
-                resolve()
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        (this._platformSdk as CrazyGamesSdk).data.setItem(key, value as string)
+        return Promise.resolve()
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as CrazyGamesSdk
-            if (Array.isArray(key)) {
-                key.forEach((k) => sdk.data.removeItem(k))
-                return Promise.resolve()
-            }
-
-            sdk.data.removeItem(key)
-            return Promise.resolve()
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key: string): Promise<void> {
+        (this._platformSdk as CrazyGamesSdk).data.removeItem(key)
+        return Promise.resolve()
     }
 
     // advertisement

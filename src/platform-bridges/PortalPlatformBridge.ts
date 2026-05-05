@@ -24,8 +24,9 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 import type { AnyRecord } from '../types/common'
 
@@ -73,6 +74,15 @@ class PortalPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -89,7 +99,7 @@ class PortalPlatformBridge extends PlatformBridgeBase {
                         .then(() => {
                             (this._platformSdk as PortalSdk).initializeOverlay()
 
-                            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -103,64 +113,17 @@ class PortalPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as PortalSdk
-            if (Array.isArray(key)) {
-                const promises = key.map((k) => Promise.resolve(sdk.getValue(k)).then((rawValue) => {
-                    let parsedValue = rawValue
-                    if (tryParseJson && typeof rawValue === 'string') {
-                        try {
-                            parsedValue = JSON.parse(rawValue)
-                        } catch {
-                            // keep as-is
-                        }
-                    }
-                    return parsedValue
-                }))
-
-                return Promise.all(promises)
-            }
-
-            return Promise.resolve(sdk.getValue(key)).then((rawValue) => {
-                let parsedValue = rawValue
-                if (tryParseJson && typeof rawValue === 'string') {
-                    try {
-                        parsedValue = JSON.parse(rawValue)
-                    } catch {
-                        // keep as-is
-                    }
-                }
-                return parsedValue
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key: string): Promise<unknown> {
+        const value = (this._platformSdk as PortalSdk).getValue(key)
+        return Promise.resolve(value === undefined ? null : value)
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as PortalSdk
-            if (Array.isArray(key)) {
-                const values = value as unknown[]
-                const promises = key.map((k, i) => Promise.resolve(sdk.setValue(k, values[i])))
-                return Promise.all(promises).then(() => undefined)
-            }
-            return Promise.resolve(sdk.setValue(key, value)).then(() => undefined)
-        }
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        return Promise.resolve((this._platformSdk as PortalSdk).setValue(key, value)).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as PortalSdk
-            if (Array.isArray(key)) {
-                const promises = key.map((k) => Promise.resolve(sdk.removeValue(k)))
-                return Promise.all(promises).then(() => undefined)
-            }
-            return Promise.resolve(sdk.removeValue(key)).then(() => undefined)
-        }
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key: string): Promise<void> {
+        return Promise.resolve((this._platformSdk as PortalSdk).removeValue(key)).then(() => undefined)
     }
 
     showInterstitial(): void {

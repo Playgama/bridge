@@ -23,6 +23,7 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     ERROR,
     VISIBILITY_STATE,
     DEVICE_TYPE,
@@ -32,6 +33,7 @@ import {
     TIMESTAMP_URL,
     type PlatformId,
     type StorageType,
+    type CloudStorageMode,
     type VisibilityState,
     type DeviceType,
     type DeviceOs,
@@ -156,6 +158,14 @@ class PlatformBridgeBase {
     // storage
     get defaultStorageType(): StorageType {
         return this._defaultStorageType
+    }
+
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.NONE
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
     // advertisement
@@ -324,8 +334,6 @@ class PlatformBridgeBase {
 
     protected _defaultStorageType: StorageType = STORAGE_TYPE.LOCAL_STORAGE
 
-    protected _platformStorageCachedData: unknown = null
-
     protected _isBannerSupported = false
 
     protected _isAdvancedBannersSupported = false
@@ -419,75 +427,29 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        switch (storageType) {
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                if (this._localStorage) {
-                    if (Array.isArray(key)) {
-                        const values: unknown[] = []
-
-                        for (let i = 0; i < key.length; i++) {
-                            values.push(this._getDataFromLocalStorage(key[i], tryParseJson))
-                        }
-
-                        return Promise.resolve(values)
-                    }
-
-                    const value = this._getDataFromLocalStorage(key, tryParseJson)
-                    return Promise.resolve(value)
-                }
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    // cloud storage — v2 contract
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        switch (storageType) {
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                if (this._localStorage) {
-                    if (Array.isArray(key)) {
-                        const values = value as unknown[]
-                        for (let i = 0; i < key.length; i++) {
-                            this._setDataToLocalStorage(key[i], values[i])
-                        }
-                        return Promise.resolve()
-                    }
-
-                    this._setDataToLocalStorage(key, value)
-                    return Promise.resolve()
-                }
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    saveCloudSnapshot(_snapshot: Record<string, unknown>, _changedKeys: string[]): Promise<void> {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        switch (storageType) {
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                if (this._localStorage) {
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            this._deleteDataFromLocalStorage(key[i])
-                        }
-                        return Promise.resolve()
-                    }
+    deleteCloudKeys(_snapshot: Record<string, unknown>, _deletedKeys: string[]): Promise<void> {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+    }
 
-                    this._deleteDataFromLocalStorage(key)
-                    return Promise.resolve()
-                }
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    loadCloudKey(_key: string): Promise<unknown> {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+    }
+
+    saveCloudKey(_key: string, _value: unknown): Promise<void> {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+    }
+
+    deleteCloudKey(_key: string): Promise<void> {
+        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
     }
 
     // advertisement
@@ -676,26 +638,13 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    protected _getDataFromLocalStorage(key: string, tryParseJson: boolean): unknown {
-        let value: unknown = this._localStorage!.getItem(key)
-
-        if (tryParseJson && typeof value === 'string') {
-            try {
-                value = JSON.parse(value)
-            } catch {
-                // Nothing we can do with it
-            }
+    protected _setDefaultStorageType(storageType: StorageType): void {
+        if (this._defaultStorageType === storageType) {
+            return
         }
 
-        return value
-    }
-
-    protected _setDataToLocalStorage(key: string, value: unknown): void {
-        this._localStorage!.setItem(key, typeof value === 'object' ? JSON.stringify(value) : String(value))
-    }
-
-    protected _deleteDataFromLocalStorage(key: string): void {
-        this._localStorage!.removeItem(key)
+        this._defaultStorageType = storageType
+        this.emit(EVENT_NAME.DEFAULT_STORAGE_TYPE_CHANGED, storageType)
     }
 
     protected _setVisibilityState(state: VisibilityState): void {

@@ -23,13 +23,14 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     DEVICE_TYPE,
     DEVICE_OS,
     PLATFORM_MESSAGE,
     VISIBILITY_STATE,
     ERROR,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type DeviceType,
     type DeviceOs,
 } from '../constants'
@@ -71,6 +72,7 @@ interface TikTokSdk {
     login(callbacks: TikTokSuccessFailCallbacks): void
     setLoadingProgress(options: { progress: number }): void
     getStorage(options: { key: string } & TikTokSuccessFailCallbacks<{ data: unknown }>): void
+    getStorageInfoSync?(): { keys?: string[] }
     setStorage(options: { key: string, data: unknown } & TikTokSuccessFailCallbacks): void
     removeStorage(options: { key: string } & TikTokSuccessFailCallbacks): void
     createInterstitialAd(options: { adUnitId?: unknown }): TikTokAd
@@ -176,6 +178,15 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return null
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     get deviceType(): DeviceType {
         if (this.#systemInfo) {
             const { platform } = this.#systemInfo
@@ -231,7 +242,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
                 }
 
                 if (sdk.canIUse('getStorage')) {
-                    this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                 }
 
                 if (sdk.canIUse('getSystemInfoSync')) {
@@ -298,65 +309,34 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (Array.isArray(key)) {
-                    const promises = key.map((k) => this.#getStorageItem(k, tryParseJson))
-                    Promise.all(promises)
-                        .then((values) => resolve(values))
-                        .catch((error) => reject(error))
-                    return
-                }
-
-                this.#getStorageItem(key, tryParseJson)
-                    .then((value) => resolve(value))
-                    .catch((error) => reject(error))
-            })
+    async loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        const sdk = this._platformSdk as TikTokSdk
+        let keys: string[] = []
+        if (sdk.canIUse('getStorageInfoSync') && sdk.getStorageInfoSync) {
+            const info = sdk.getStorageInfoSync()
+            keys = info && info.keys ? info.keys : []
         }
 
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+        if (keys.length === 0) {
+            return {}
+        }
+
+        const values = await Promise.all(keys.map((k) => this.#getStorageItemRaw(k)))
+        const snapshot: Record<string, unknown> = {}
+        keys.forEach((k, i) => {
+            if (values[i] !== undefined && values[i] !== null) {
+                snapshot[k] = values[i]
+            }
+        })
+        return snapshot
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (Array.isArray(key)) {
-                    const values = value as unknown[]
-                    const promises = key.map((k, i) => this.#setStorageItem(k, values[i]))
-                    Promise.all(promises)
-                        .then(() => resolve())
-                        .catch((error) => reject(error))
-                    return
-                }
-
-                this.#setStorageItem(key, value)
-                    .then(() => resolve())
-                    .catch((error) => reject(error))
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot: Record<string, unknown>, changedKeys: string[]): Promise<void> {
+        return Promise.all(changedKeys.map((k) => this.#setStorageItem(k, snapshot[k]))).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                if (Array.isArray(key)) {
-                    const promises = key.map((k) => this.#removeStorageItem(k))
-                    Promise.all(promises)
-                        .then(() => resolve())
-                        .catch((error) => reject(error))
-                    return
-                }
-
-                this.#removeStorageItem(key)
-                    .then(() => resolve())
-                    .catch((error) => reject(error))
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(_snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
+        return Promise.all(deletedKeys.map((k) => this.#removeStorageItem(k))).then(() => undefined)
     }
 
     showInterstitial(placement?: unknown): void {
@@ -484,24 +464,12 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    #getStorageItem(key: string, tryParseJson: boolean): Promise<unknown> {
+    #getStorageItemRaw(key: string): Promise<unknown> {
         return new Promise((resolve, reject) => {
             (this._platformSdk as TikTokSdk).getStorage({
                 key,
-                success: (result) => {
-                    let { data } = result
-                    if (tryParseJson && typeof data === 'string') {
-                        try {
-                            data = JSON.parse(data)
-                        } catch {
-                            // Nothing we can do with it
-                        }
-                    }
-                    resolve(data)
-                },
-                fail: (error) => {
-                    reject(error)
-                },
+                success: (result) => resolve(result.data),
+                fail: (error) => reject(error),
             })
         })
     }

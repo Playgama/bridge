@@ -16,7 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor, getKeysFromObject } from '../common/utils'
+import { addJavaScript, waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
     ACTION_NAME,
@@ -24,10 +24,10 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
-    ERROR,
+    CLOUD_STORAGE_MODE,
     PLATFORM_MESSAGE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
 } from '../constants'
 import type { AnyRecord } from '../types/common'
 
@@ -134,6 +134,18 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return (this._platformSdk as PlaygamaSdk).platformService.getLanguage() || super.platformLanguage
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     protected _isAdvancedBannersSupported = true
 
     #isPaymentsSupported = true
@@ -237,105 +249,16 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
-            }
-
-            return this.#getDataFromPlatformStorage(key, tryParseJson)
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return (this._platformSdk as PlaygamaSdk).cloudSaveApi.getState() as Promise<Record<string, unknown>>
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        switch (storageType) {
-            case STORAGE_TYPE.PLATFORM_INTERNAL: {
-                if (!this._isPlayerAuthorized) {
-                    return Promise.reject()
-                }
-
-                return new Promise<void>((resolve, reject) => {
-                    const cached = this._platformStorageCachedData as AnyRecord | null
-                    const data: AnyRecord = cached !== null
-                        ? { ...cached }
-                        : {}
-
-                    if (Array.isArray(key)) {
-                        const values = value as unknown[]
-                        for (let i = 0; i < key.length; i++) {
-                            data[key[i]] = values[i]
-                        }
-                    } else {
-                        data[key] = value
-                    }
-
-                    (this.platformSdk as PlaygamaSdk).cloudSaveApi.setItems(data)
-                        .then(() => {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        })
-                        .catch((error) => {
-                            reject(error)
-                        })
-                })
-            }
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                const data: AnyRecord = {}
-                if (Array.isArray(key)) {
-                    const values = value as unknown[]
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = (typeof values[i] !== 'string') ? JSON.stringify(values[i]) : values[i]
-                    }
-                } else {
-                    data[key] = (typeof value !== 'string') ? JSON.stringify(value) : value
-                }
-
-                (this._platformSdk as PlaygamaSdk).storageApi.setItems(data)
-                return super.setDataToStorage(key, value, storageType)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return (this._platformSdk as PlaygamaSdk).cloudSaveApi.setItems(snapshot).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        switch (storageType) {
-            case STORAGE_TYPE.PLATFORM_INTERNAL: {
-                return new Promise<void>((resolve, reject) => {
-                    const cached = this._platformStorageCachedData as AnyRecord | null
-                    const data: AnyRecord = cached !== null
-                        ? { ...cached }
-                        : {}
-
-                    if (Array.isArray(key)) {
-                        for (let i = 0; i < key.length; i++) {
-                            delete data[key[i]]
-                        }
-                    } else {
-                        delete data[key]
-                    }
-
-                    (this.platformSdk as PlaygamaSdk).cloudSaveApi.setItems(data)
-                        .then(() => {
-                            this._platformStorageCachedData = data
-                            resolve()
-                        })
-                        .catch((error) => {
-                            reject(error)
-                        })
-                })
-            }
-            case STORAGE_TYPE.LOCAL_STORAGE: {
-                (this._platformSdk as PlaygamaSdk).storageApi.deleteItems(Array.isArray(key) ? key : [key])
-                return super.deleteDataFromStorage(key, storageType)
-            }
-            default: {
-                return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-        }
+    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
+        return (this._platformSdk as PlaygamaSdk).cloudSaveApi.setItems(snapshot).then(() => undefined)
     }
 
     // advertisement
@@ -521,12 +444,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player as unknown as Record<string, unknown>
-                        this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-                        return this.#getDataFromPlatformStorage([])
+                        this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                    } else {
+                        this._playerApplyGuestData()
                     }
-
-                    this._playerApplyGuestData()
-                    return Promise.resolve()
                 })
                 .catch(() => {
                     this._playerApplyGuestData()
@@ -535,14 +456,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     resolve()
                 })
         })
-    }
-
-    async #getDataFromPlatformStorage(key: string | string[], tryParseJson = true): Promise<unknown> {
-        if (!this._platformStorageCachedData) {
-            this._platformStorageCachedData = await (this.platformSdk as PlaygamaSdk).cloudSaveApi.getState()
-        }
-
-        return getKeysFromObject(key, this._platformStorageCachedData as AnyRecord, tryParseJson)
     }
 }
 

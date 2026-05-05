@@ -21,12 +21,13 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     PLATFORM_MESSAGE,
     LEADERBOARD_TYPE,
     REWARDED_STATE,
     INTERSTITIAL_STATE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type LeaderboardType,
 } from '../constants'
 
@@ -95,6 +96,15 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return LEADERBOARD_TYPE.NATIVE
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.EAGER
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     #platformLanguage: string | undefined
 
     initialize(): Promise<unknown> {
@@ -108,18 +118,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
             waitFor('ytgame').then(() => {
                 this._platformSdk = window.ytgame as YtgameSdk
                 const sdk = this._platformSdk as YtgameSdk
-                this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                 const getLanguagePromise = sdk.system.getLanguage()
                     .then((language) => {
                         this.#platformLanguage = language.length > 2 ? language.slice(0, 2) : language
-                    })
-
-                this._platformStorageCachedData = {}
-                const getDataPromise = sdk.game.loadData()
-                    .then((data) => {
-                        if (typeof data === 'string' && data !== '') {
-                            this._platformStorageCachedData = JSON.parse(data)
-                        }
                     })
 
                 sdk.system.onAudioEnabledChange((isEnabled) => {
@@ -134,7 +136,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                     this._setPauseState(false)
                 })
 
-                Promise.all([getLanguagePromise, getDataPromise])
+                Promise.all([getLanguagePromise])
                     .finally(() => {
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -146,120 +148,25 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                (this._platformSdk as YtgameSdk).game.loadData()
-                    .then((data) => {
-                        if (typeof data === 'string' && data !== '') {
-                            this._platformStorageCachedData = JSON.parse(data)
-                        }
-
-                        const cached = this._platformStorageCachedData as Record<string, unknown>
-
-                        if (Array.isArray(key)) {
-                            const values: unknown[] = []
-
-                            for (let i = 0; i < key.length; i++) {
-                                let value: unknown = typeof cached[key[i]] === 'undefined'
-                                    ? null
-                                    : cached[key[i]]
-
-                                if (typeof value === 'string' && tryParseJson) {
-                                    try {
-                                        value = JSON.parse(value)
-                                    } catch {
-                                        // keep value as-is
-                                    }
-                                }
-
-                                values.push(value)
-                            }
-
-                            resolve(values)
-                            return
-                        }
-
-                        let value: unknown = typeof cached[key] === 'undefined'
-                            ? null
-                            : cached[key]
-
-                        if (typeof value === 'string' && tryParseJson) {
-                            try {
-                                value = JSON.parse(value)
-                            } catch {
-                                // keep value as-is
-                            }
-                        }
-
-                        resolve(value)
-                    })
-                    .catch(() => {
-                        reject()
-                    })
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+        return (this._platformSdk as YtgameSdk).game.loadData().then((data) => {
+            if (typeof data === 'string' && data !== '') {
+                try {
+                    return JSON.parse(data)
+                } catch {
+                    return {}
+                }
+            }
+            return {}
+        })
     }
 
-    setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data: Record<string, unknown> = this._platformStorageCachedData !== null
-                    ? { ...(this._platformStorageCachedData as Record<string, unknown>) }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    const values = value as unknown[]
-                    for (let i = 0; i < key.length; i++) {
-                        data[key[i]] = values[i]
-                    }
-                } else {
-                    data[key] = value
-                }
-
-                (this._platformSdk as YtgameSdk).game.saveData(JSON.stringify(data))
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            })
-        }
-
-        return super.setDataToStorage(key, value, storageType)
+    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return (this._platformSdk as YtgameSdk).game.saveData(JSON.stringify(snapshot)).then(() => undefined)
     }
 
-    deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return new Promise((resolve, reject) => {
-                const data: Record<string, unknown> = this._platformStorageCachedData !== null
-                    ? { ...(this._platformStorageCachedData as Record<string, unknown>) }
-                    : {}
-
-                if (Array.isArray(key)) {
-                    for (let i = 0; i < key.length; i++) {
-                        delete data[key[i]]
-                    }
-                } else {
-                    delete data[key]
-                }
-
-                (this._platformSdk as YtgameSdk).game.saveData(JSON.stringify(data))
-                    .then(() => {
-                        this._platformStorageCachedData = data
-                        resolve()
-                    })
-                    .catch((error) => {
-                        reject(error)
-                    })
-            })
-        }
-
-        return super.deleteDataFromStorage(key, storageType)
+    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
+        return (this._platformSdk as YtgameSdk).game.saveData(JSON.stringify(snapshot)).then(() => undefined)
     }
 
     sendMessage(message?: unknown, _options?: unknown): Promise<unknown> {

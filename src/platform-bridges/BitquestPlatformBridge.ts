@@ -21,12 +21,13 @@ import {
     PLATFORM_ID,
     ACTION_NAME,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
     LEADERBOARD_TYPE,
     type PlatformId,
-    type StorageType,
+    type CloudStorageMode,
     type LeaderboardType,
 } from '../constants'
 import type { AnyRecord } from '../types/common'
@@ -112,6 +113,15 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
         return LEADERBOARD_TYPE.IN_GAME
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -153,7 +163,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._playerId = id ?? null
                             this._playerName = name
                             this._isPlayerAuthorized = true
-                            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+                            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                             this._playerExtra = player
 
                             this.#setupAdvertisementHandlers()
@@ -173,71 +183,18 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    getDataFromStorage(key: string | string[], storageType: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as BqSdk
-            if (Array.isArray(key)) {
-                const promises = key.map((k) => sdk.storage.get(k, 'platform_internal').then((rawValue) => {
-                    let parsedValue: unknown = rawValue
-
-                    if (tryParseJson && typeof rawValue === 'string') {
-                        try {
-                            parsedValue = JSON.parse(rawValue)
-                        } catch {
-                            // keep parsedValue as-is
-                        }
-                    }
-
-                    return parsedValue
-                }))
-
-                return Promise.all(promises)
-            }
-
-            return sdk.storage.get(key, 'platform_internal').then((rawValue) => {
-                let parsedValue: unknown = rawValue
-
-                if (tryParseJson && typeof rawValue === 'string') {
-                    try {
-                        parsedValue = JSON.parse(rawValue)
-                    } catch {
-                        // keep parsedValue as-is
-                    }
-                }
-
-                return parsedValue
-            })
-        }
-
-        return super.getDataFromStorage(key, storageType, tryParseJson)
+    loadCloudKey(key: string): Promise<unknown> {
+        return (this._platformSdk as BqSdk).storage.get(key, 'platform_internal').then((value) => (
+            value === undefined ? null : value
+        ))
     }
 
-    async setDataToStorage(key: string | string[], value: unknown | unknown[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            await (this._platformSdk as BqSdk).storage.set(key as string, value, 'platform_internal')
-            return
-        }
-        await super.setDataToStorage(key, value, storageType)
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        return (this._platformSdk as BqSdk).storage.set(key, value, 'platform_internal').then(() => undefined)
     }
 
-    async deleteDataFromStorage(key: string | string[], storageType: StorageType): Promise<void> {
-        if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            const sdk = this._platformSdk as BqSdk
-            if (Array.isArray(key)) {
-                /* eslint-disable no-await-in-loop */
-                for (let i = 0; i < key.length; i++) {
-                    await sdk.storage.delete(key[i], 'platform_internal')
-                }
-                /* eslint-enable no-await-in-loop */
-
-                return
-            }
-
-            await sdk.storage.delete(key, 'platform_internal')
-            return
-        }
-
-        await super.deleteDataFromStorage(key, storageType)
+    deleteCloudKey(key: string): Promise<void> {
+        return (this._platformSdk as BqSdk).storage.delete(key, 'platform_internal').then(() => undefined)
     }
 
     // advertisement

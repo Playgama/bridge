@@ -23,8 +23,10 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type PlatformId,
     type StorageType,
+    type CloudStorageMode,
     type InterstitialState,
     type RewardedState,
 } from '../constants'
@@ -71,9 +73,20 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // storage
+    get cloudStorageMode(): CloudStorageMode {
+        return CLOUD_STORAGE_MODE.LAZY
+    }
+
+    get cloudStorageReady(): Promise<void> {
+        return Promise.resolve()
+    }
+
     protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     #appId: string | null = null
+
+    #storageOpQueue: Promise<unknown> = Promise.resolve()
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -116,49 +129,36 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    setDataToStorage(key: string | string[], value: unknown | unknown[], type: StorageType): Promise<void> {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.setDataToStorage(key, value, type)
-        }
-
-        let promiseDecorator = this._getPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-
-            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    getDataFromStorage(key: string | string[], type: StorageType, tryParseJson: boolean): Promise<unknown> {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.getDataFromStorage(key, type, tryParseJson)
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-
+    loadCloudKey(key: string): Promise<unknown> {
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, key)
-        }
-
-        return promiseDecorator.promise
+            return promiseDecorator.promise
+        })
     }
 
-    deleteDataFromStorage(key: string | string[], type: StorageType): Promise<void> {
-        if (type !== STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return super.deleteDataFromStorage(key, type)
-        }
+    saveCloudKey(key: string, value: unknown): Promise<void> {
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
+            return promiseDecorator.promise
+        })
+    }
 
-        let promiseDecorator = this._getPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
-
+    deleteCloudKey(key: string): Promise<void> {
+        return this.#enqueueStorageOp(() => {
+            const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, key)
-        }
+            return promiseDecorator.promise
+        })
+    }
 
-        return promiseDecorator.promise
+    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
+        const next = this.#storageOpQueue
+            .catch(() => {})
+            .then(() => operation())
+        this.#storageOpQueue = next.catch(() => {})
+        return next
     }
 
     // advertisement
