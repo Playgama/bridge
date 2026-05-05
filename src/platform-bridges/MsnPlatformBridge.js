@@ -17,11 +17,14 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, getKeysFromObject, waitFor } from '../common/utils'
+import eventBus from '../common/EventBus'
 import {
     PLATFORM_ID,
     ACTION_NAME,
     BANNER_STATE,
+    EVENT_NAME,
     INTERSTITIAL_STATE,
+    PLATFORM_MESSAGE,
     REWARDED_STATE,
     BANNER_POSITION,
     LEADERBOARD_TYPE,
@@ -30,6 +33,27 @@ import {
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
+
+const AUTO_NOTIFICATIONS = [
+    {
+        title: 'Ready for another round?',
+        description: 'Jump back in right where you left off.',
+        type: 8,
+        minDelayInSeconds: 86400,
+    },
+    {
+        title: 'Missing your moves',
+        description: "It's perfect time to come back",
+        type: 9,
+        minDelayInSeconds: 259200,
+    },
+    {
+        title: 'We miss you',
+        description: 'Seriously. Come play.',
+        type: 10,
+        minDelayInSeconds: 604800,
+    },
+]
 
 const MSN_SIZES_BY_POSITION = {
     top: [[728, 90], [970, 250], [320, 50]],
@@ -86,11 +110,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return this.#isPaymentsSupported
     }
 
-    // notifications
-    get isNotificationsSupported() {
-        return true
-    }
-
     _isAdvancedBannersSupported = true
 
     #playgamaAds = null
@@ -126,6 +145,16 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                 })
+
+            eventBus.on(EVENT_NAME.PLATFORM_MESSAGE_SENT, (message) => {
+                if (message !== PLATFORM_MESSAGE.GAME_READY) {
+                    return
+                }
+
+                AUTO_NOTIFICATIONS.forEach((notification) => {
+                    this._platformSdk?.scheduleNotificationAsync(notification).catch(() => {})
+                })
+            })
 
             const advertisementBackfillId = this._options?.advertisement?.backfillId
             if (advertisementBackfillId) {
@@ -517,23 +546,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    // notifications
-    scheduleNotification(options) {
-        if (!options || typeof options !== 'object') {
-            return Promise.reject(new Error('Notification options are required'))
-        }
-
-        return this._platformSdk.scheduleNotificationAsync(options)
-    }
-
-    getNotificationPayload() {
-        if (typeof this._platformSdk?.getNotificationPayload !== 'function') {
-            return null
-        }
-
-        return this._platformSdk.getNotificationPayload()
     }
 
     #showPlaygamaInterstitial() {

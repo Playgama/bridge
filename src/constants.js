@@ -67,7 +67,6 @@ export const MODULE_NAME = {
     ACHIEVEMENTS: 'achievements',
     ANALYTICS: 'analytics',
     RECORDER: 'recorder',
-    NOTIFICATIONS: 'notifications',
 }
 
 export const EVENT_NAME = {
