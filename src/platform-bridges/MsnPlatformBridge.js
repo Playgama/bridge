@@ -31,6 +31,27 @@ import {
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
+const AUTO_NOTIFICATIONS = [
+    {
+        title: 'Ready for another round?',
+        description: 'Jump back in right where you left off.',
+        type: 8,
+        minDelayInSeconds: 86400,
+    },
+    {
+        title: 'Missing your moves',
+        description: "It's perfect time to come back",
+        type: 9,
+        minDelayInSeconds: 259200,
+    },
+    {
+        title: 'We miss you',
+        description: 'Seriously. Come play.',
+        type: 10,
+        minDelayInSeconds: 604800,
+    },
+]
+
 const MSN_SIZES_BY_POSITION = {
     top: [[728, 90], [970, 250], [320, 50]],
     bottom: [[320, 50]],
@@ -105,6 +126,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then(() => waitFor('$msstart'))
                 .then(() => {
                     this._platformSdk = window.$msstart
+
+                    AUTO_NOTIFICATIONS.forEach((notification) => {
+                        this._platformSdk.scheduleNotificationAsync(notification).catch(() => {})
+                    })
+
                     this._platformSdk.getSignedInUserAsync()
                         .then((data) => {
                             this.#updatePlayerInfo(data)
