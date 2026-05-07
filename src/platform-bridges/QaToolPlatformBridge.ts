@@ -1069,28 +1069,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             return []
         }
 
-        return this._options.payments
-            .map((product) => ({
-                id: product.id,
-                ...(product.playgama as AnyRecord | undefined),
-            }))
+        return this._options.payments.map((product) => ({
+            id: product.id,
+            ...(product[PLATFORM_ID.PLAYGAMA] as AnyRecord | undefined),
+            ...(product[PLATFORM_ID.QA_TOOL] as AnyRecord | undefined),
+        }))
     }
 
     protected _paymentsGetProductPlatformData(id: string): AnyRecord | null {
-        const products = this._options.payments
-        if (!products) {
-            return null
-        }
-
-        const product = products.find((p) => p.id === id)
-        if (!product) {
-            return null
-        }
-
-        return {
-            id: product.id,
-            ...(product.playgama as AnyRecord | undefined),
-        }
+        return this._paymentsGetProductsPlatformData().find((p) => p.id === id) ?? null
     }
 
     #handleInitializeResponse(data: QaToolMessage): void {
