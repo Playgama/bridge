@@ -82,6 +82,7 @@ export const ACTION_NAME_QA = {
     CLEAN_CACHE: 'clean_cache',
     SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
     HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
+    CONFIG_OVERRIDE: 'config_override',
 } as const
 export type ActionNameQa = typeof ACTION_NAME_QA[keyof typeof ACTION_NAME_QA]
 
@@ -354,6 +355,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         this.#getPerformanceResources(messageId, requestedProps)
                     } else if (data.action === ACTION_NAME_QA.CLEAN_CACHE) {
                         this.#cleanCache()
+                    } else if (data.action === ACTION_NAME_QA.CONFIG_OVERRIDE) {
+                        this.#handleConfigOverride(data)
                     }
                 } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
                     this.#handleAdvertisement(data)
@@ -1126,6 +1129,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     #handlePauseState(data: QaToolMessage): void {
         this._setPauseState((data.options as { isPaused: boolean }).isPaused)
+    }
+
+    #handleConfigOverride(data: QaToolMessage): void {
+        const newOptions = data?.options
+        if (!newOptions || typeof newOptions !== 'object') {
+            return
+        }
+
+        this._options = { ...this._options, ...newOptions }
     }
 
     #getPerformanceResources(messageId: string, requestedProps: string[] = []): Promise<PerformanceEntry[]> {
