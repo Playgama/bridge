@@ -20,6 +20,7 @@ import {
     MODULE_NAME,
     EVENT_NAME,
     INTERSTITIAL_STATE,
+    LAUNCH_SOURCE,
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
@@ -168,6 +169,10 @@ class PlaygamaBridge {
 
     get DEVICE_ORIENTATION() {
         return DEVICE_ORIENTATION
+    }
+
+    get LAUNCH_SOURCE() {
+        return LAUNCH_SOURCE
     }
 
     #isInitialized = false

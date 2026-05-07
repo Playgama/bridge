@@ -171,6 +171,10 @@ export const LEADERBOARD_TYPE = {
     NATIVE_POPUP: 'native_popup',
 }
 
+export const LAUNCH_SOURCE = {
+    NOTIFICATION: 'notification',
+}
+
 export const ACTION_NAME = {
     INITIALIZE: 'initialize',
     AUTHORIZE_PLAYER: 'authorize_player',

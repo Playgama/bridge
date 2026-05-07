@@ -48,8 +48,6 @@ class AnalyticsModule extends ModuleBase {
 
     #isCompressionSupported = typeof CompressionStream !== 'undefined'
 
-    #launchedFromNotification = false
-
     constructor() {
         super()
         this.#sessionId = this.#generateSessionId()
@@ -69,7 +67,6 @@ class AnalyticsModule extends ModuleBase {
         this.#fetchTimeDiff()
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
-        this.#launchedFromNotification = new URLSearchParams(window.location.search).has('notificationPayload')
 
         this.send(`${MODULE_NAME.CORE}_initialization_started`)
         this.#startFlushInterval()
@@ -134,7 +131,7 @@ class AnalyticsModule extends ModuleBase {
             device_type: this._platformBridge.deviceType,
             device_os: this._platformBridge.deviceOs,
             clid: this._platformBridge.additionalData?.clid ?? '',
-            from_notification: this.#launchedFromNotification,
+            launch_source: this._platformBridge.launchSource,
         }
 
         const publicToken = this._platformBridge.options?.saas?.publicToken

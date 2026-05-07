@@ -22,6 +22,7 @@ import {
     ACTION_NAME,
     BANNER_STATE,
     INTERSTITIAL_STATE,
+    LAUNCH_SOURCE,
     REWARDED_STATE,
     BANNER_POSITION,
     LEADERBOARD_TYPE,
@@ -70,6 +71,14 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
         return PLATFORM_ID.MSN
+    }
+
+    get launchSource() {
+        if (new URLSearchParams(window.location.search).has('notificationPayload')) {
+            return LAUNCH_SOURCE.NOTIFICATION
+        }
+
+        return super.launchSource
     }
 
     // advertisement
