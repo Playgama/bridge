@@ -75,6 +75,7 @@ export const ACTION_NAME_QA = {
     CLEAN_CACHE: 'clean_cache',
     SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
     HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
+    CONFIG_OVERRIDE: 'config_override',
 }
 
 const RECORDER_ACTION = {
@@ -303,6 +304,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         this.#getPerformanceResources(messageId, requestedProps)
                     } else if (data.action === ACTION_NAME_QA.CLEAN_CACHE) {
                         this.#cleanCache()
+                    } else if (data.action === ACTION_NAME_QA.CONFIG_OVERRIDE) {
+                        this.#handleConfigOverride(data)
                     }
                 } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
                     this.#handleAdvertisement(data)
@@ -1099,6 +1102,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     #handlePauseState(data) {
         this._setPauseState(data.options.isPaused)
+    }
+
+    #handleConfigOverride(data) {
+        const newOptions = data?.options
+        if (!newOptions || typeof newOptions !== 'object') {
+            return
+        }
+
+        this._options = { ...this._options, ...newOptions }
     }
 
     #getPerformanceResources(messageId, requestedProps = []) {
