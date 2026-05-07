@@ -73,6 +73,10 @@ class PlatformBridgeBase {
         return null
     }
 
+    get launchSource() {
+        return null
+    }
+
     get isPlatformGetAllGamesSupported() {
         return false
     }

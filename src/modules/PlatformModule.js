@@ -41,6 +41,10 @@ class PlatformModule extends ModuleBase {
         return this._platformBridge.platformTld
     }
 
+    get launchSource() {
+        return this._platformBridge.launchSource
+    }
+
     get isGetAllGamesSupported() {
         return this._platformBridge.isPlatformGetAllGamesSupported
     }

@@ -22,6 +22,7 @@ import {
     ACTION_NAME,
     BANNER_STATE,
     INTERSTITIAL_STATE,
+    LAUNCH_SOURCE,
     REWARDED_STATE,
     BANNER_POSITION,
     LEADERBOARD_TYPE,
@@ -37,18 +38,21 @@ const AUTO_NOTIFICATIONS = [
         description: 'Jump back in right where you left off.',
         type: 8,
         minDelayInSeconds: 86400,
+        payload: 'msn_auto_24h',
     },
     {
         title: 'Missing your moves',
         description: "It's perfect time to come back",
         type: 9,
         minDelayInSeconds: 259200,
+        payload: 'msn_auto_3d',
     },
     {
         title: 'We miss you',
         description: 'Seriously. Come play.',
         type: 10,
         minDelayInSeconds: 604800,
+        payload: 'msn_auto_7d',
     },
 ]
 
@@ -67,6 +71,14 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
         return PLATFORM_ID.MSN
+    }
+
+    get launchSource() {
+        if (new URLSearchParams(window.location.search).has('notificationPayload')) {
+            return LAUNCH_SOURCE.NOTIFICATION
+        }
+
+        return super.launchSource
     }
 
     // advertisement

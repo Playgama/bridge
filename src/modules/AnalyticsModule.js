@@ -131,6 +131,7 @@ class AnalyticsModule extends ModuleBase {
             device_type: this._platformBridge.deviceType,
             device_os: this._platformBridge.deviceOs,
             clid: this._platformBridge.additionalData?.clid ?? '',
+            launch_source: this._platformBridge.launchSource,
         }
 
         const publicToken = this._platformBridge.options?.saas?.publicToken
