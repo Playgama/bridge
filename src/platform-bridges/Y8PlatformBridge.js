@@ -44,7 +44,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     }
 
     get initialInterstitialDelay() {
-        return 60
+        return 180
     }
 
     get isRewardedSupported() {
