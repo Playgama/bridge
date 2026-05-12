@@ -1018,6 +1018,30 @@ export function applySafeAreaStyles() {
     document.head.appendChild(style)
 }
 
+export function applyBrowserDefaultsProtection() {
+    if (document.getElementById('bridge-browser-defaults-protection')) {
+        return
+    }
+
+    const style = document.createElement('style')
+    style.id = 'bridge-browser-defaults-protection'
+    style.textContent = `
+        html, body {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            overscroll-behavior: contain;
+        }
+        input, textarea, [contenteditable] {
+            -webkit-user-select: text;
+            user-select: text;
+            -webkit-touch-callout: default;
+        }
+    `
+    document.head.appendChild(style)
+    document.addEventListener('contextmenu', (e) => e.preventDefault())
+}
+
 export function findGameCanvas() {
     return document.querySelector('canvas')
 }
