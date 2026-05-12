@@ -16,20 +16,23 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { waitFor } from '../common/utils'
+import { waitFor } from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
     PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    LEADERBOARD_TYPE,
-    type PlatformId,
-    type LeaderboardType,
     type CloudStorageMode,
-} from '../constants'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 interface GameSnacksAdBreakOptions {
     type: 'next' | 'reward'

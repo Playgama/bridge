@@ -16,30 +16,36 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import MessageBroker from '../common/MessageBroker'
-import configFileModule from '../modules/ConfigFileModule'
-import recorderModule from '../modules/RecorderModule'
+import MessageBroker from '../lib/MessageBroker'
+import configLoader from '../lib/ConfigLoader'
+import recorderModule from '../lib/RecorderModule'
 
 import {
-    PLATFORM_ID,
     MODULE_NAME,
     ACTION_NAME,
     EVENT_NAME,
+    ERROR,
+} from '../constants'
+import {
+    PLATFORM_ID,
     PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import type { DeviceType } from '../modules/device/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    LEADERBOARD_TYPE,
-    ERROR,
-    type PlatformId,
     type StorageType,
     type CloudStorageMode,
-    type DeviceType,
-    type LeaderboardType,
-} from '../constants'
-import type { AnyRecord, SafeArea } from '../types/common'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
+import type { AnyRecord } from '../utils'
+import type { SafeAreaInsets } from '../lib/safe-area'
 
 const ADVERTISEMENT_TYPE = {
     INTERSTITIAL: 'interstitial',
@@ -289,7 +295,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    get safeArea(): SafeArea | null {
+    get safeArea(): SafeAreaInsets | null {
         return null
     }
 
@@ -373,13 +379,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     engine: this.engine,
                     version: PLUGIN_VERSION,
                     configFile: {
-                        loadingStatus: configFileModule.loadStatus,
-                        parsingStatus: configFileModule.parseStatus,
-                        loadError: configFileModule.loadError,
-                        parseError: configFileModule.parseError,
-                        options: configFileModule.options,
-                        path: configFileModule.path,
-                        rawContent: configFileModule.rawContent,
+                        loadingStatus: configLoader.loadStatus,
+                        parsingStatus: configLoader.parseStatus,
+                        loadError: configLoader.loadError,
+                        parseError: configLoader.parseError,
+                        options: configLoader.options,
+                        path: configLoader.path,
+                        rawContent: configLoader.rawContent,
                     },
                 },
             })

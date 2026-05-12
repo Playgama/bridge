@@ -16,33 +16,35 @@
  */
 
 import {
-    PLATFORM_ID,
     MODULE_NAME,
     EVENT_NAME,
+    ERROR,
+} from './constants'
+import {
+    PLATFORM_ID,
+    PLATFORM_MESSAGE,
+    type PlatformId,
+} from './modules/platform/constants'
+import { DEVICE_TYPE, DEVICE_ORIENTATION } from './modules/device/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
-    STORAGE_TYPE,
-    VISIBILITY_STATE,
-    DEVICE_TYPE,
-    DEVICE_ORIENTATION,
-    PLATFORM_MESSAGE,
-    ERROR,
-    type PlatformId,
-} from './constants'
+} from './modules/advertisement/constants'
+import { STORAGE_TYPE } from './modules/storage/constants'
 
-import { applyEventBusMixin } from './common/EventBus'
-import PromiseDecorator from './common/PromiseDecorator'
-import configFileModule from './modules/ConfigFileModule'
-import PlatformModule from './modules/PlatformModule'
+import { applyEventBusMixin } from './lib/EventBus'
+import PromiseDecorator from './lib/PromiseDecorator'
+import { LoadingScreen } from './lib/loading-screen'
+import { SafeArea } from './lib/safe-area'
+import configLoader from './lib/ConfigLoader'
+import PlatformModule from './modules/platform'
 import PlayerModule from './modules/PlayerModule'
-import GameModule from './modules/GameModule'
-import StorageModule from './modules/StorageModule'
-import AdvertisementModule from './modules/AdvertisementModule'
+import StorageModule from './modules/storage'
+import AdvertisementModule from './modules/advertisement'
 import SocialModule from './modules/SocialModule'
-import DeviceModule from './modules/DeviceModule'
-import LeaderboardsModule from './modules/LeaderboardsModule'
-import LeaderboardsSaasModule from './modules/LeaderboardsSaasModule'
+import DeviceModule from './modules/device'
+import LeaderboardsModule, { LeaderboardsSaasModule } from './modules/leaderboards'
 import PaymentsModule from './modules/PaymentsModule'
 import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
@@ -50,7 +52,7 @@ import AchievementsModule from './modules/AchievementsModule'
 import analyticsModule from './modules/AnalyticsModule'
 import { fetchPlatformBridge } from './platformImports'
 import type PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
-import type { EventEmitter } from './types/common'
+import type { EventEmitter } from './lib/EventBus'
 
 interface AnalyticsModuleLike {
     send(eventType: string, data?: Record<string, unknown>): void
@@ -83,10 +85,6 @@ class PlaygamaBridge {
 
     get player(): unknown {
         return this.#getModule(MODULE_NAME.PLAYER)
-    }
-
-    get game(): unknown {
-        return this.#getModule(MODULE_NAME.GAME)
     }
 
     get storage(): unknown {
@@ -173,10 +171,6 @@ class PlaygamaBridge {
         return STORAGE_TYPE
     }
 
-    get VISIBILITY_STATE(): typeof VISIBILITY_STATE {
-        return VISIBILITY_STATE
-    }
-
     get DEVICE_TYPE(): typeof DEVICE_TYPE {
         return DEVICE_TYPE
     }
@@ -193,6 +187,8 @@ class PlaygamaBridge {
 
     #modules: Record<string, unknown> = {}
 
+    #loadingScreen: LoadingScreen | null = null
+
     #engine = 'javascript'
 
     async initialize(options?: PlaygamaInitOptions): Promise<void> {
@@ -205,16 +201,17 @@ class PlaygamaBridge {
 
             const startTime = performance.now()
             const configFilePath = options?.configFilePath
-            await configFileModule.load(configFilePath, options)
+            await configLoader.load(configFilePath, options)
 
             await this.#createPlatformBridge()
 
             const bridge = this.#platformBridge as PlatformBridgeBase & { engine?: string }
             bridge.engine = this.engine
 
+            this.#setupLoadingVisuals(bridge)
+
             this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(bridge as never)
             this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(bridge as never)
-            this.#modules[MODULE_NAME.GAME] = new GameModule(bridge as never)
             this.#modules[MODULE_NAME.STORAGE] = new StorageModule(bridge as never)
             this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(bridge as never)
             this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(bridge as never)
@@ -269,10 +266,7 @@ class PlaygamaBridge {
                     console.error('PlaygamaBridge initialization failed:', error)
                 })
                 .finally(() => {
-                    setTimeout(
-                        () => (this.#modules[MODULE_NAME.GAME] as GameModule).setLoadingProgress(100, true),
-                        700,
-                    )
+                    setTimeout(() => this.#loadingScreen?.setProgress(100, true), 700)
                 })
         }
 
@@ -284,8 +278,8 @@ class PlaygamaBridge {
 
         const url = new URL(window.location.href)
 
-        if (configFileModule.options.forciblySetPlatformId) {
-            platformId = this.#getPlatformId(String(configFileModule.options.forciblySetPlatformId).toLowerCase())
+        if (configLoader.options.forciblySetPlatformId) {
+            platformId = this.#getPlatformId(String(configLoader.options.forciblySetPlatformId).toLowerCase())
         } else if (url.searchParams.has('platform_id')) {
             platformId = this.#getPlatformId((url.searchParams.get('platform_id') ?? '').toLowerCase())
         } else if (__INCLUDE_YANDEX__ && (url.hostname.includes(['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')) || url.hash.includes('yandex'))) {
@@ -334,6 +328,30 @@ class PlaygamaBridge {
 
         const PlatformBridge = await fetchPlatformBridge(platformId)
         this.#platformBridge = new PlatformBridge() as PlatformBridgeBase
+    }
+
+    #setupLoadingVisuals(bridge: PlatformBridgeBase): void {
+        const options = (bridge.options ?? {}) as {
+            disableLoadingLogo?: boolean
+            showFullLoadingLogo?: boolean
+            showLoadingText?: boolean
+            game?: { adaptToSafeArea?: boolean }
+        }
+
+        if (!options.disableLoadingLogo) {
+            const showFullLogo = bridge.platformId === PLATFORM_ID.YANDEX
+                || bridge.platformId === PLATFORM_ID.Y8
+                ? false
+                : options.showFullLoadingLogo === true
+            const showLoadingText = bridge.platformId === PLATFORM_ID.XIAOMI
+                || options.showLoadingText === true
+            this.#loadingScreen = new LoadingScreen()
+            this.#loadingScreen.show({ showFullLogo, showLoadingText })
+        }
+
+        if (options.game?.adaptToSafeArea) {
+            SafeArea.applyStyles()
+        }
     }
 
     #getPlatformId(value: string): PlatformId {

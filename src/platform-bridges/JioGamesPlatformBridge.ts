@@ -16,17 +16,15 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript } from '../common/utils'
+import { addJavaScript } from '../utils'
+import { ACTION_NAME } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    LEADERBOARD_TYPE,
     BANNER_STATE,
-    type PlatformId,
-    type LeaderboardType,
-} from '../constants'
+} from '../modules/advertisement/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://jiogames.akamaized.net/gameSDK/jiogames/stable/v2.0/jiogames_sdk.js'
 

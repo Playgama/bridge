@@ -16,21 +16,21 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addAdsByGoogle, addJavaScript, waitFor } from '../common/utils'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    ERROR,
+    addAdsByGoogle, addJavaScript, waitFor, type AnyRecord,
+} from '../utils'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    LEADERBOARD_TYPE,
-    type PlatformId,
+} from '../modules/advertisement/constants'
+import {
+    STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type CloudStorageMode,
-    type LeaderboardType,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://cdn.y8.com/api/sdk.js'
 const USERDATA_KEY = 'userData'

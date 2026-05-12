@@ -16,18 +16,18 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript } from '../common/utils'
+import { addJavaScript, type AnyRecord } from '../utils'
+import { ACTION_NAME } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    type PlatformId,
     type CloudStorageMode,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
 
 const SDK_URL = 'https://unpkg.com/@agru/sdk/dist/umd/index.min.js'
 

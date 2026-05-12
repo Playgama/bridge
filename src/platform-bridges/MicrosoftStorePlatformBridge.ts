@@ -16,25 +16,25 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    ACTION_NAME,
-    ERROR,
     INTERSTITIAL_STATE,
-    PLATFORM_ID,
     REWARDED_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    type PlatformId,
     type StorageType,
     type CloudStorageMode,
-} from '../constants'
+} from '../modules/storage/constants'
 import {
     addJavaScript,
     deformatPrice,
     postToWebView,
     waitFor,
-} from '../common/utils'
-import type { AnyRecord } from '../types/common'
+    type AnyRecord,
+} from '../utils'
 
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 const PLAYGAMA_ADS_PROMISE = 'playgama_ads_promise'

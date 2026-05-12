@@ -1,4 +1,4 @@
-import { STORAGE_TYPE } from '../../../src/constants'
+import { STORAGE_TYPE } from '../../../src/modules/storage/constants'
 import type { PlayerState, StorageStateType } from './stateManager.types'
 
 export class StateManager {

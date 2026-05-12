@@ -16,14 +16,11 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, deformatPrice, waitFor } from '../common/utils'
 import {
-    ACTION_NAME,
-    ERROR,
-    PLATFORM_ID,
-    type PlatformId,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+    addJavaScript, deformatPrice, waitFor, type AnyRecord,
+} from '../utils'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 
 const SDK_URL = '/cdn/discord/discord-v2.0.0.min.js'
 const APPLICATION_SERVER_PROXY_URL = '/api'

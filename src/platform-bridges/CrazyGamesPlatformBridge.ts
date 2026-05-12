@@ -22,23 +22,27 @@ import {
     createAdvancedBannerContainers,
     removeAdvancedBannerContainers,
     waitFor,
-} from '../common/utils'
+    type AnyRecord,
+    type AdvancedBannerConfig,
+} from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
+    PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import { DEVICE_TYPE, type DeviceType } from '../modules/device/constants'
+import {
     BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    BANNER_CONTAINER_ID,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    DEVICE_TYPE,
-    PLATFORM_MESSAGE,
-    BANNER_CONTAINER_ID,
-    type PlatformId,
     type CloudStorageMode,
-    type DeviceType,
-} from '../constants'
-import type { AnyRecord, AdvancedBannerConfig } from '../types/common'
+} from '../modules/storage/constants'
 
 const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js'
 const XSOLLA_PAYSTATION_EMBED_URL = 'https://cdn.xsolla.net/payments-bucket-prod/embed/1.5.0/widget.min.js'

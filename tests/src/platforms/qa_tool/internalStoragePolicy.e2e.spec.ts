@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest'
-import { PLATFORM_ID, STORAGE_TYPE } from '../../../../src/constants'
+import { PLATFORM_ID } from '../../../../src/modules/platform/constants'
+import { STORAGE_TYPE } from '../../../../src/modules/storage/constants'
 import { createBridgeByPlatformId } from '../../../common/bridge/bridge'
 import { INTERNAL_STORAGE_POLICY, SUPPORTED_FEATURES } from '../../../../src/platform-bridges/QaToolPlatformBridge'
 

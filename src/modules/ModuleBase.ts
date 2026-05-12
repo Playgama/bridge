@@ -15,8 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import eventBus from '../common/EventBus'
-import type { EventEmitter } from '../types/common'
+import eventBus, { type EventEmitter } from '../lib/EventBus'
 
 // Platform bridge contract used by modules. Until PlatformBridgeBase is migrated,
 // we rely on the EventEmitter-shaped subset that ModuleBase actually depends on.

@@ -16,20 +16,23 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor, type AnyRecord } from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
+    PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import {
     BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    PLATFORM_MESSAGE,
-    type PlatformId,
     type CloudStorageMode,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
 
 const SDK_URL = 'https://playgama.com/platform-sdk/v1.js'
 

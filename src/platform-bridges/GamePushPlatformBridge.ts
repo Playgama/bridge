@@ -16,16 +16,14 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor } from '../utils'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
-    ERROR,
     BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    type PlatformId,
-} from '../constants'
+} from '../modules/advertisement/constants'
 
 interface GamePushAds {
     showFullscreen(): void

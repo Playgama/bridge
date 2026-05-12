@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { PLATFORM_ID, type PlatformId } from './constants'
+import { PLATFORM_ID, type PlatformId } from './modules/platform/constants'
 import PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
 
 type PlatformBridgeConstructor = new (...args: never[]) => PlatformBridgeBase

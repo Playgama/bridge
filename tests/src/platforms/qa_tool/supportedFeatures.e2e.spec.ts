@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { PLATFORM_ID } from '../../../../src/constants'
+import { PLATFORM_ID } from '../../../../src/modules/platform/constants'
 import { createBridgeByPlatformId } from '../../../common/bridge/bridge'
 import { SUPPORTED_FEATURES } from '../../../../src/platform-bridges/QaToolPlatformBridge'
 import PlaygamaBridge from '../../../../src/PlaygamaBridge'

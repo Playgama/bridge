@@ -19,16 +19,20 @@ import PlatformBridgeBase from './PlatformBridgeBase'
 import {
     addJavaScript,
     waitFor,
-} from '../common/utils'
+    type AnyRecord,
+} from '../utils'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME, STORAGE_TYPE,
+    REWARDED_STATE,
+    INTERSTITIAL_STATE,
+    BANNER_STATE,
+} from '../modules/advertisement/constants'
+import {
+    STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    ERROR, REWARDED_STATE, INTERSTITIAL_STATE, BANNER_STATE,
-    type PlatformId,
     type CloudStorageMode,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
 
 const SDK_URL = '//api.ok.ru/js/fapi5.js'
 const AUTH_STATE = 'AUTHORIZED'

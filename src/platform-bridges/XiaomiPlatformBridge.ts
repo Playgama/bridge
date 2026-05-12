@@ -16,19 +16,19 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import { ACTION_NAME, ERROR } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
-    ERROR,
+    PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import {
     BANNER_STATE,
     BANNER_CONTAINER_ID,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    PLATFORM_MESSAGE,
-    type PlatformId,
-} from '../constants'
-import { addAdsByGoogle, createAdvertisementBannerContainer } from '../common/utils'
-import type { AnyRecord } from '../types/common'
+} from '../modules/advertisement/constants'
+import { addAdsByGoogle, createAdvertisementBannerContainer, type AnyRecord } from '../utils'
 
 interface FunmaxApi {
     loadStart?: () => void

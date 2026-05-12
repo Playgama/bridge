@@ -16,20 +16,23 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { waitFor } from '../common/utils'
+import { waitFor } from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
     PLATFORM_MESSAGE,
-    LEADERBOARD_TYPE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
-    type PlatformId,
+} from '../modules/advertisement/constants'
+import {
+    STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type CloudStorageMode,
-    type LeaderboardType,
-} from '../constants'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 interface YtgameSystem {
     getLanguage(): Promise<string>

@@ -16,20 +16,23 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import { ACTION_NAME } from '../constants'
 import {
-    ACTION_NAME,
     PLATFORM_ID,
     PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    type PlatformId,
     type StorageType,
     type CloudStorageMode,
-} from '../constants'
-import { postToParent } from '../common/utils'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
+import { postToParent, type AnyRecord } from '../utils'
 
 interface PlayDeckMessage {
     method: string

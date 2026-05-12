@@ -16,19 +16,17 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, createAdvertisementBannerContainer } from '../common/utils'
+import { addJavaScript, createAdvertisementBannerContainer } from '../utils'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
     BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    STORAGE_TYPE,
-    ERROR,
     BANNER_CONTAINER_ID,
-    type PlatformId,
     type BannerPosition,
-} from '../constants'
+} from '../modules/advertisement/constants'
+import { STORAGE_TYPE } from '../modules/storage/constants'
 
 const SDK_URL = 'https://html5.api.gamedistribution.com/main.min.js'
 

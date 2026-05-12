@@ -21,25 +21,27 @@ import {
     createLoadingOverlay,
     isBase64Image,
     waitFor,
-} from '../common/utils'
+    type AnyRecord,
+} from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
+    PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import { DEVICE_TYPE, type DeviceType } from '../modules/device/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    DEVICE_TYPE,
-    PLATFORM_MESSAGE,
-    LEADERBOARD_TYPE,
-    type PlatformId,
-    type DeviceType,
-    type LeaderboardType,
     type StorageType,
     type CloudStorageMode,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 

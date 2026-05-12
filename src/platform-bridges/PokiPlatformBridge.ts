@@ -16,15 +16,17 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor } from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
-    INTERSTITIAL_STATE,
-    REWARDED_STATE,
     PLATFORM_MESSAGE,
     type PlatformId,
-} from '../constants'
+} from '../modules/platform/constants'
+import {
+    INTERSTITIAL_STATE,
+    REWARDED_STATE,
+} from '../modules/advertisement/constants'
 
 const SDK_URL = 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js'
 

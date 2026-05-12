@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { PLATFORM_ID } from '../../../src/constants'
+import { PLATFORM_ID } from '../../../src/modules/platform/constants'
 import { createBridgeByPlatformId, createBridgeByUrl } from '../../common/bridge/bridge'
 
 describe('initialize (integration, PlaygamaBridge)', () => {

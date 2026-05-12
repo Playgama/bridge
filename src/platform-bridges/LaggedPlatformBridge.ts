@@ -16,17 +16,14 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor } from '../utils'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
-    ERROR,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    LEADERBOARD_TYPE,
-    type PlatformId,
-    type LeaderboardType,
-} from '../constants'
+} from '../modules/advertisement/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://lagged.com/api/rev-share/lagged.js'
 
@@ -123,7 +120,6 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
                 addJavaScript(SDK_URL).then(() => {
                     waitFor('LaggedAPI').then(() => {
                         this._platformSdk = window.LaggedAPI as LaggedSdk
-
                         const sdk = this._platformSdk as LaggedSdk
                         sdk.init(this._options.devId as string, this._options.publisherId as string)
 

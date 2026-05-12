@@ -15,12 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-    MODULE_NAME, PLATFORM_ID, TIMESTAMP_URL, type PlatformId,
-    DeviceOs, DeviceType,
-} from '../constants'
+import { MODULE_NAME, TIMESTAMP_URL } from '../constants'
+import { PLATFORM_ID, type PlatformId } from './platform/constants'
+import type { DeviceOs, DeviceType } from './device/constants'
 import packageJson from '../../package.json'
-import { generateRandomId, getGuestUser } from '../common/utils'
+import { generateRandomId, getGuestUser } from '../utils'
 import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
 
 const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'

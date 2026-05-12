@@ -1,4 +1,5 @@
-import { MODULE_NAME, STORAGE_TYPE, ACTION_NAME } from "../../../src/constants"
+import { MODULE_NAME, ACTION_NAME } from "../../../src/constants"
+import { STORAGE_TYPE } from "../../../src/modules/storage/constants"
 import { ACTION_NAME_QA } from "../../../src/platform-bridges/QaToolPlatformBridge"
 
 export interface QaToolMessageDataBase {

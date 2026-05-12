@@ -16,23 +16,29 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript } from '../common/utils'
+import { addJavaScript } from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
-    REWARDED_STATE,
-    INTERSTITIAL_STATE,
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    DEVICE_TYPE,
-    DEVICE_OS,
     PLATFORM_MESSAGE,
     type PlatformId,
+} from '../modules/platform/constants'
+import {
+    DEVICE_TYPE,
+    DEVICE_OS,
     type DeviceType,
     type DeviceOs,
+} from '../modules/device/constants'
+import {
+    REWARDED_STATE,
+    INTERSTITIAL_STATE,
+} from '../modules/advertisement/constants'
+import {
+    STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type StorageType,
     type CloudStorageMode,
-} from '../constants'
+} from '../modules/storage/constants'
 
 const SDK_URL = 'https://telegram.org/js/telegram-web-app.js'
 const ADS_SDK_URL = 'https://sad.adsgram.ai/js/sad.min.js'

@@ -16,21 +16,20 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor, type AnyRecord } from '../utils'
+import { ACTION_NAME } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
-    LEADERBOARD_TYPE,
-    type PlatformId,
+} from '../modules/advertisement/constants'
+import {
+    STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
     type CloudStorageMode,
-    type LeaderboardType,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const PROD_SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
 const STAGE_SDK_URL = 'https://app-stage.bitquest.games/bqsdk.min.js'

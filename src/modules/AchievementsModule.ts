@@ -16,8 +16,8 @@
  */
 
 import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
-import type { PlatformId } from '../constants'
-import type { AnyRecord } from '../types/common'
+import type { PlatformId } from './platform/constants'
+import type { AnyRecord } from '../utils'
 
 export type AchievementsOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
 

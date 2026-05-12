@@ -16,22 +16,26 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
+    addJavaScript,
+    waitFor,
+    type AnyRecord,
+    type AdvancedBannerConfig,
+} from '../utils'
+import { ACTION_NAME } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+import {
     BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_POSITION,
-    LEADERBOARD_TYPE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    type PlatformId,
     type CloudStorageMode,
-    type LeaderboardType,
-} from '../constants'
-import type { AdvancedBannerConfig, AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'

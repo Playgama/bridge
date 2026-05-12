@@ -16,21 +16,21 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor } from '../utils'
+import { ACTION_NAME } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+import { DEVICE_TYPE, type DeviceType } from '../modules/device/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    BANNER_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    DEVICE_TYPE,
-    BANNER_STATE,
-    type PlatformId,
     type CloudStorageMode,
-    type DeviceType,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
+import type { AnyRecord } from '../utils'
 
 const SDK_URL = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js'
 

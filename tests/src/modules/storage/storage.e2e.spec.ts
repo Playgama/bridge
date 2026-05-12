@@ -2,7 +2,8 @@ import {
     describe, test, expect, beforeEach,
 } from 'vitest'
 import { createBridgeByPlatformId } from '../../../common/bridge/bridge'
-import { PLATFORM_ID, STORAGE_TYPE } from '../../../../src/constants'
+import { PLATFORM_ID } from '../../../../src/modules/platform/constants'
+import { STORAGE_TYPE } from '../../../../src/modules/storage/constants'
 import { SUPPORTED_FEATURES } from '../../../../src/platform-bridges/QaToolPlatformBridge'
 
 describe('StorageModule (integration, PlaygamaBridge)', () => {

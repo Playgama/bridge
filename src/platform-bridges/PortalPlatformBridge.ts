@@ -16,19 +16,22 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, waitFor } from '../common/utils'
+import { addJavaScript, waitFor, type AnyRecord } from '../utils'
+import { ACTION_NAME } from '../constants'
 import {
-    ACTION_NAME,
     PLATFORM_ID,
     PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    type PlatformId,
     type CloudStorageMode,
-} from '../constants'
-import type { AnyRecord } from '../types/common'
+} from '../modules/storage/constants'
 
 const SDK_URL = 'https://storage.googleapis.com/social-networth/scripts/sdk.umd.js'
 
@@ -94,10 +97,11 @@ class PortalPlatformBridge extends PlatformBridgeBase {
 
             addJavaScript(SDK_URL).then(() => {
                 waitFor('PortalSDK').then(() => {
-                    this._platformSdk = window.PortalSDK as PortalSdk;
-                    (this._platformSdk as PortalSdk).initialize()
+                    this._platformSdk = window.PortalSDK as PortalSdk
+                    const sdk = this._platformSdk as PortalSdk
+                    sdk.initialize()
                         .then(() => {
-                            (this._platformSdk as PortalSdk).initializeOverlay()
+                            sdk.initializeOverlay()
 
                             this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
                             this._isInitialized = true

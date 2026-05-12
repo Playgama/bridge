@@ -16,19 +16,20 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import { ACTION_NAME, ERROR } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
-    ERROR,
+    PLATFORM_MESSAGE,
+    type PlatformId,
+} from '../modules/platform/constants'
+import {
     BANNER_STATE,
     BANNER_CONTAINER_ID,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    PLATFORM_MESSAGE,
-    type PlatformId,
     type BannerPosition,
-} from '../constants'
-import { addJavaScript, createAdvertisementBannerContainer } from '../common/utils'
+} from '../modules/advertisement/constants'
+import { addJavaScript, createAdvertisementBannerContainer } from '../utils'
 
 const SDK_URL = 'https://www.hippoobox.com/static/sdk/adsdk_1.9.5.js'
 const INIT_TIMEOUT = 5000

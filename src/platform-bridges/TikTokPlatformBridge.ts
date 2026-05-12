@@ -16,25 +16,30 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { getGuestUser, waitFor } from '../common/utils'
+import { getGuestUser, waitFor } from '../utils'
+import { ACTION_NAME, ERROR } from '../constants'
 import {
     PLATFORM_ID,
-    ACTION_NAME,
-    REWARDED_STATE,
-    INTERSTITIAL_STATE,
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    DEVICE_TYPE,
-    DEVICE_OS,
     PLATFORM_MESSAGE,
     VISIBILITY_STATE,
-    ERROR,
     type PlatformId,
-    type CloudStorageMode,
+} from '../modules/platform/constants'
+import {
+    DEVICE_TYPE,
+    DEVICE_OS,
     type DeviceType,
     type DeviceOs,
-} from '../constants'
-import type { SafeArea } from '../types/common'
+} from '../modules/device/constants'
+import {
+    REWARDED_STATE,
+    INTERSTITIAL_STATE,
+} from '../modules/advertisement/constants'
+import {
+    STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
+    type CloudStorageMode,
+} from '../modules/storage/constants'
+import type { SafeAreaInsets } from '../lib/safe-area'
 
 interface TikTokSystemInfo {
     language: string
@@ -165,7 +170,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    get safeArea(): SafeArea | null {
+    get safeArea(): SafeAreaInsets | null {
         if (this.#menuButtonRect) {
             return {
                 top: this.#menuButtonRect.bottom,

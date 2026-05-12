@@ -15,36 +15,45 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { applyLocalEventMixin } from '../common/EventBus'
+import { applyLocalEventMixin } from '../lib/EventBus'
+import {
+    EVENT_NAME,
+    ERROR,
+    MODULE_NAME,
+    TIMESTAMP_URL,
+} from '../constants'
 import {
     PLATFORM_ID,
-    EVENT_NAME,
+    VISIBILITY_STATE,
+    type PlatformId,
+    type VisibilityState,
+} from '../modules/platform/constants'
+import {
+    DEVICE_TYPE,
+    DEVICE_OS,
+    type DeviceType,
+    type DeviceOs,
+} from '../modules/device/constants'
+import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
+} from '../modules/advertisement/constants'
+import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
-    ERROR,
-    VISIBILITY_STATE,
-    DEVICE_TYPE,
-    DEVICE_OS,
-    LEADERBOARD_TYPE,
-    MODULE_NAME,
-    TIMESTAMP_URL,
-    type PlatformId,
     type StorageType,
     type CloudStorageMode,
-    type VisibilityState,
-    type DeviceType,
-    type DeviceOs,
-    type LeaderboardType,
-} from '../constants'
+} from '../modules/storage/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import analyticsModule from '../modules/AnalyticsModule'
-import PromiseDecorator from '../common/PromiseDecorator'
-import StateAggregator from '../common/StateAggregator'
-import { getGuestUser, showInfoPopup, showAdFailurePopup } from '../common/utils'
-import configFileModule from '../modules/ConfigFileModule'
-import type { AnyRecord, EventEmitter } from '../types/common'
+import PromiseDecorator from '../lib/PromiseDecorator'
+import StateAggregator from '../lib/StateAggregator'
+import {
+    getGuestUser, showInfoPopup, showAdFailurePopup, type AnyRecord,
+} from '../utils'
+import configLoader from '../lib/ConfigLoader'
+import type { EventEmitter } from '../lib/EventBus'
 
 interface AnalyticsModuleLike {
     send(eventType: string, data?: Record<string, unknown>): void
@@ -123,11 +132,6 @@ class PlatformBridgeBase {
         }
 
         return false
-    }
-
-    // game
-    get visibilityState(): VisibilityState | null {
-        return this._visibilityState
     }
 
     // player
@@ -380,7 +384,7 @@ class PlatformBridgeBase {
             this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
         })
 
-        this._options = (configFileModule.getPlatformOptions(this.platformId) ?? {}) as PlatformBridgeOptions
+        this._options = (configLoader.getPlatformOptions(this.platformId) ?? {}) as PlatformBridgeOptions
     }
 
     initialize(): Promise<unknown> {
@@ -653,7 +657,6 @@ class PlatformBridgeBase {
         }
 
         this._visibilityState = state
-        this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, this._visibilityState)
 
         const isHidden = state === VISIBILITY_STATE.HIDDEN
         if (this._pauseStateAggregator) {

@@ -16,22 +16,21 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import { ACTION_NAME, ERROR } from '../constants'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
-    PLATFORM_ID,
-    ACTION_NAME,
-    ERROR,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type PlatformId,
-    type StorageType,
-    type CloudStorageMode,
     type InterstitialState,
     type RewardedState,
-} from '../constants'
-import { postToSystem } from '../common/utils'
-import type { AnyRecord } from '../types/common'
+} from '../modules/advertisement/constants'
+import {
+    STORAGE_TYPE,
+    CLOUD_STORAGE_MODE,
+    type StorageType,
+    type CloudStorageMode,
+} from '../modules/storage/constants'
+import { postToSystem, type AnyRecord } from '../utils'
 
 interface HuaweiSystem {
     onmessage: ((event: string) => void) | null
@@ -214,14 +213,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
-        const next = this.#storageOpQueue
-            .catch(() => {})
-            .then(() => operation())
-        this.#storageOpQueue = next.catch(() => {})
-        return next
-    }
-
     paymentsGetPurchases(): Promise<unknown> {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
@@ -231,6 +222,14 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
+        const next = this.#storageOpQueue
+            .catch(() => {})
+            .then(() => operation())
+        this.#storageOpQueue = next.catch(() => {})
+        return next
     }
 
     #postMessage(action: string, data?: unknown): void {
