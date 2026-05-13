@@ -20,8 +20,8 @@ import {
     addJavaScript,
     waitFor,
     type AnyRecord,
-    type AdvancedBannerConfig,
 } from '../utils'
+import type { AdvancedBannerConfig } from '../modules/advertisement'
 import { ACTION_NAME } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {

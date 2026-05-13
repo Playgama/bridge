@@ -15,23 +15,35 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AdvertisementModule from './AdvertisementModule'
+import { generateRandomId } from '../../utils/random'
+import { GUEST_ID_STORAGE_KEY } from './constants'
 
-export type {
-    AdvertisementBridgeContract,
-    AdvertisementBridgeOptions,
-    AdvertisementOptions,
-    PlacementMapping,
-    AdvancedBannersPlacementConfig,
-} from './types'
-export {
-    createAdvertisementBannerContainer,
-    createAdvancedBannerContainers,
-    removeAdvancedBannerContainers,
-    createAdContainer,
-    findGameCanvas,
-    showInfoPopup,
-    showAdFailurePopup,
-    type AdvancedBannerConfig,
-} from './dom'
-export default AdvertisementModule
+export interface GuestUser {
+    id: string
+    name: string
+}
+
+export function getGuestUser(): GuestUser {
+    let id: string | null = null
+
+    try {
+        id = localStorage.getItem(GUEST_ID_STORAGE_KEY)
+    } catch {
+        // ignore
+    }
+
+    if (!id) {
+        id = generateRandomId()
+
+        try {
+            localStorage.setItem(GUEST_ID_STORAGE_KEY, id)
+        } catch {
+            // ignore
+        }
+    }
+
+    return {
+        id,
+        name: `Guest ${id}`,
+    }
+}

@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { AnyRecord } from '../object'
+import type { AnyRecord } from './object'
 
 interface AdsByGoogleOptions {
     adSenseId: string

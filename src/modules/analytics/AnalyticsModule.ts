@@ -15,54 +15,26 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MODULE_NAME, TIMESTAMP_URL } from '../constants'
-import { PLATFORM_ID, type PlatformId } from './platform/constants'
-import type { DeviceOs, DeviceType } from './device/constants'
-import packageJson from '../../package.json'
-import { generateRandomId, getGuestUser } from '../utils'
-import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
-
-const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'
-const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
-const FLUSH_INTERVAL = 15000
-const SEND_ATTEMPTS = 2
-
-export interface AnalyticsBridgeOptions {
-    sendAnalyticsEvents?: boolean
-    [key: string]: unknown
-}
-
-export interface AnalyticsBridgeContract extends PlatformBridgeLike {
-    platformId: PlatformId
-    playerId: string | null
-    deviceType: DeviceType
-    deviceOs: DeviceOs
-    options: AnalyticsBridgeOptions
-    additionalData?: { clid?: string } & Record<string, unknown>
-}
-
-interface AnalyticsEvent {
-    event_name: string
-    timestamp: string
-    data: Record<string, unknown>
-}
-
-interface AnalyticsMeta {
-    bridge_version: string
-    platform_id: PlatformId
-    game_id: string | null
-    session_id: string
-    player_id: string | null
-    player_guest_id: string | null
-    device_type: DeviceType
-    device_os: DeviceOs
-    clid: string
-}
-
-interface AnalyticsPayload {
-    meta: AnalyticsMeta
-    events: AnalyticsEvent[]
-}
+import { MODULE_NAME } from '../../constants'
+import { TIMESTAMP_URL } from '../../lib/serverTime'
+import { PLATFORM_ID, type PlatformId } from '../platform/constants'
+import packageJson from '../../../package.json'
+import { generateRandomId } from '../../utils'
+import { getGuestUser } from '../player'
+import ModuleBase from '../ModuleBase'
+import {
+    API_URL,
+    DISCORD_API_URL,
+    FLUSH_INTERVAL,
+    SEND_ATTEMPTS,
+} from './constants'
+import type {
+    AnalyticsBridgeContract,
+    AnalyticsSender,
+    AnalyticsEvent,
+    AnalyticsMeta,
+    AnalyticsPayload,
+} from './types'
 
 class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     #eventQueue: AnalyticsEvent[] = []
@@ -380,4 +352,6 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 }
 
-export default new AnalyticsModule()
+const analyticsModule = new AnalyticsModule()
+export const internalAnalytics: AnalyticsSender = analyticsModule
+export default analyticsModule

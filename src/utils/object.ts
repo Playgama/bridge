@@ -52,6 +52,20 @@ export function getKeysFromObject(
     return value
 }
 
+export function resolvePlatformOptions<T extends AnyRecord>(
+    options: T | undefined,
+    platformId: string,
+): T | undefined {
+    if (!options) {
+        return options
+    }
+    const nested = options[platformId]
+    if (nested && typeof nested === 'object') {
+        return resolvePlatformOptions(nested as T, platformId)
+    }
+    return options
+}
+
 export function deepMerge<A extends AnyRecord, B extends AnyRecord>(
     firstObject: A,
     secondObject: B,

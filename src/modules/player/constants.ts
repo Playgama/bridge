@@ -15,6 +15,4 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export function findGameCanvas(): HTMLCanvasElement | null {
-    return document.querySelector('canvas')
-}
+export const GUEST_ID_STORAGE_KEY = 'bridge_player_guest_id'

@@ -15,8 +15,26 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export * from './script'
-export * from './banners'
-export * from './overlays'
-export * from './popups'
-export * from './canvas'
+import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
+
+export interface ClipboardBridgeContract extends PlatformBridgeLike {
+    isClipboardSupported: boolean
+    clipboardRead(): Promise<string>
+    clipboardWrite(text: string): Promise<void>
+}
+
+class ClipboardModule extends ModuleBase<ClipboardBridgeContract> {
+    get isSupported(): boolean {
+        return this._platformBridge.isClipboardSupported
+    }
+
+    read(): Promise<string> {
+        return this._platformBridge.clipboardRead()
+    }
+
+    write(text: string): Promise<void> {
+        return this._platformBridge.clipboardWrite(text)
+    }
+}
+
+export default ClipboardModule

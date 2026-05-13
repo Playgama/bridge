@@ -15,9 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
-import type { PlatformId } from './platform/constants'
-import type { AnyRecord } from '../utils'
+import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
+import type { PlatformId } from '../platform/constants'
+import { resolvePlatformOptions, type AnyRecord } from '../../utils'
 
 export type AchievementsOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
 
@@ -45,36 +45,18 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     }
 
     unlock(options?: AchievementsOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.unlock(platformDependedOptions as AchievementsOptions)
-            }
-        }
-
-        return this._platformBridge.unlockAchievement(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.unlockAchievement(resolvedOptions)
     }
 
     getList(options?: AchievementsOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.getList(platformDependedOptions as AchievementsOptions)
-            }
-        }
-
-        return this._platformBridge.getAchievementsList(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.getAchievementsList(resolvedOptions)
     }
 
     showNativePopup(options?: AchievementsOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.showNativePopup(platformDependedOptions as AchievementsOptions)
-            }
-        }
-
-        return this._platformBridge.showAchievementsNativePopup(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.showAchievementsNativePopup(resolvedOptions)
     }
 }
 

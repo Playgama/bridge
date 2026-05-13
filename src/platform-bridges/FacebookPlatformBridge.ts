@@ -18,7 +18,6 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import {
     addJavaScript,
-    createLoadingOverlay,
     isBase64Image,
     waitFor,
     type AnyRecord,
@@ -44,6 +43,29 @@ import {
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
+
+function createLoadingOverlay(): HTMLDivElement {
+    const overlay = document.createElement('div')
+    overlay.style.position = 'fixed'
+    overlay.style.top = '0'
+    overlay.style.left = '0'
+    overlay.style.width = '100vw'
+    overlay.style.height = '100vh'
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'
+    overlay.style.display = 'flex'
+    overlay.style.justifyContent = 'center'
+    overlay.style.alignItems = 'center'
+    overlay.style.zIndex = '9999'
+    overlay.id = 'loading-overlay'
+
+    const loading = document.createElement('div')
+    loading.style.fontSize = '24px'
+    loading.style.color = '#fff'
+    loading.innerText = 'Loading...'
+    overlay.appendChild(loading)
+
+    return overlay
+}
 
 const LEADERBOARD_XML = `
     <View style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center" onTapEvent="close">

@@ -34,34 +34,38 @@ import {
 import { STORAGE_TYPE } from './modules/storage/constants'
 
 import { applyEventBusMixin } from './lib/EventBus'
-import PromiseDecorator from './lib/PromiseDecorator'
+import Deferred from './lib/Deferred'
 import { LoadingScreen } from './lib/loading-screen'
 import { SafeArea } from './lib/safe-area'
 import configLoader from './lib/ConfigLoader'
 import PlatformModule from './modules/platform'
-import PlayerModule from './modules/PlayerModule'
+import PlayerModule from './modules/player'
 import StorageModule from './modules/storage'
 import AdvertisementModule from './modules/advertisement'
-import SocialModule from './modules/SocialModule'
+import SocialModule from './modules/social'
 import DeviceModule from './modules/device'
 import LeaderboardsModule, { LeaderboardsSaasModule } from './modules/leaderboards'
-import PaymentsModule from './modules/PaymentsModule'
-import RemoteConfigModule from './modules/RemoteConfigModule'
-import ClipboardModule from './modules/ClipboardModule'
-import AchievementsModule from './modules/AchievementsModule'
-import analyticsModule from './modules/AnalyticsModule'
+import PaymentsModule from './modules/payments'
+import RemoteConfigModule from './modules/remote-config'
+import ClipboardModule from './modules/clipboard'
+import AchievementsModule from './modules/achievements'
+import analyticsModule, { internalAnalytics } from './modules/analytics'
 import { fetchPlatformBridge } from './platformImports'
+import { PLATFORM_DETECTORS, type PlatformDetectorContext } from './platformDetectors'
 import type PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
 import type { EventEmitter } from './lib/EventBus'
-
-interface AnalyticsModuleLike {
-    send(eventType: string, data?: Record<string, unknown>): void
-    initialize(bridge: unknown): unknown
-}
 
 export interface PlaygamaInitOptions {
     configFilePath?: string
     [key: string]: unknown
+}
+
+// Data-driven module wiring. Each entry maps a MODULE_NAME to a factory
+// that produces the module instance from the already-constructed platform bridge.
+type ModuleFactory = (bridge: PlatformBridgeBase) => unknown
+interface ModuleEntry {
+    name: string
+    factory: ModuleFactory
 }
 
 interface PlaygamaBridge extends EventEmitter {}
@@ -139,49 +143,23 @@ class PlaygamaBridge {
         this.#engine = value
     }
 
-    get PLATFORM_ID(): typeof PLATFORM_ID {
-        return PLATFORM_ID
-    }
-
-    get PLATFORM_MESSAGE(): typeof PLATFORM_MESSAGE {
-        return PLATFORM_MESSAGE
-    }
-
-    get MODULE_NAME(): typeof MODULE_NAME {
-        return MODULE_NAME
-    }
-
-    get EVENT_NAME(): typeof EVENT_NAME {
-        return EVENT_NAME
-    }
-
-    get INTERSTITIAL_STATE(): typeof INTERSTITIAL_STATE {
-        return INTERSTITIAL_STATE
-    }
-
-    get REWARDED_STATE(): typeof REWARDED_STATE {
-        return REWARDED_STATE
-    }
-
-    get BANNER_STATE(): typeof BANNER_STATE {
-        return BANNER_STATE
-    }
-
-    get STORAGE_TYPE(): typeof STORAGE_TYPE {
-        return STORAGE_TYPE
-    }
-
-    get DEVICE_TYPE(): typeof DEVICE_TYPE {
-        return DEVICE_TYPE
-    }
-
-    get DEVICE_ORIENTATION(): typeof DEVICE_ORIENTATION {
-        return DEVICE_ORIENTATION
-    }
+    // Constants are exposed on the prototype below the class declaration
+    /* eslint-disable lines-between-class-members */
+    declare readonly PLATFORM_ID: typeof PLATFORM_ID
+    declare readonly PLATFORM_MESSAGE: typeof PLATFORM_MESSAGE
+    declare readonly MODULE_NAME: typeof MODULE_NAME
+    declare readonly EVENT_NAME: typeof EVENT_NAME
+    declare readonly INTERSTITIAL_STATE: typeof INTERSTITIAL_STATE
+    declare readonly REWARDED_STATE: typeof REWARDED_STATE
+    declare readonly BANNER_STATE: typeof BANNER_STATE
+    declare readonly STORAGE_TYPE: typeof STORAGE_TYPE
+    declare readonly DEVICE_TYPE: typeof DEVICE_TYPE
+    declare readonly DEVICE_ORIENTATION: typeof DEVICE_ORIENTATION
+    /* eslint-enable lines-between-class-members */
 
     #isInitialized = false
 
-    #initializationPromiseDecorator: PromiseDecorator<void> | null = null
+    #initializationPromiseDecorator: Deferred<void> | null = null
 
     #platformBridge: PlatformBridgeBase | null = null
 
@@ -197,7 +175,7 @@ class PlaygamaBridge {
         }
 
         if (!this.#initializationPromiseDecorator) {
-            this.#initializationPromiseDecorator = new PromiseDecorator<void>()
+            this.#initializationPromiseDecorator = new Deferred<void>()
 
             const startTime = performance.now()
             const configFilePath = options?.configFilePath
@@ -210,20 +188,29 @@ class PlaygamaBridge {
 
             this.#setupLoadingVisuals(bridge)
 
-            this.#modules[MODULE_NAME.PLATFORM] = new PlatformModule(bridge as never)
-            this.#modules[MODULE_NAME.PLAYER] = new PlayerModule(bridge as never)
-            this.#modules[MODULE_NAME.STORAGE] = new StorageModule(bridge as never)
-            this.#modules[MODULE_NAME.ADVERTISEMENT] = new AdvertisementModule(bridge as never)
-            this.#modules[MODULE_NAME.SOCIAL] = new SocialModule(bridge as never)
-            this.#modules[MODULE_NAME.DEVICE] = new DeviceModule(bridge as never)
-            this.#modules[MODULE_NAME.LEADERBOARDS] = this.#isSaas(MODULE_NAME.LEADERBOARDS)
-                ? new LeaderboardsSaasModule(bridge as never)
-                : new LeaderboardsModule(bridge as never)
-            this.#modules[MODULE_NAME.PAYMENTS] = new PaymentsModule(bridge as never)
-            this.#modules[MODULE_NAME.REMOTE_CONFIG] = new RemoteConfigModule(bridge as never)
-            this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(bridge as never)
-            this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(bridge as never)
-            this.#modules[MODULE_NAME.ANALYTICS] = (analyticsModule as unknown as AnalyticsModuleLike).initialize(bridge)
+            const moduleRegistry: ModuleEntry[] = [
+                { name: MODULE_NAME.PLATFORM, factory: (b) => new PlatformModule(b as never) },
+                { name: MODULE_NAME.PLAYER, factory: (b) => new PlayerModule(b as never) },
+                { name: MODULE_NAME.STORAGE, factory: (b) => new StorageModule(b as never) },
+                { name: MODULE_NAME.ADVERTISEMENT, factory: (b) => new AdvertisementModule(b as never) },
+                { name: MODULE_NAME.SOCIAL, factory: (b) => new SocialModule(b as never) },
+                { name: MODULE_NAME.DEVICE, factory: (b) => new DeviceModule(b as never) },
+                {
+                    name: MODULE_NAME.LEADERBOARDS,
+                    factory: (b) => (this.#isSaas(MODULE_NAME.LEADERBOARDS)
+                        ? new LeaderboardsSaasModule(b as never)
+                        : new LeaderboardsModule(b as never)),
+                },
+                { name: MODULE_NAME.PAYMENTS, factory: (b) => new PaymentsModule(b as never) },
+                { name: MODULE_NAME.REMOTE_CONFIG, factory: (b) => new RemoteConfigModule(b as never) },
+                { name: MODULE_NAME.CLIPBOARD, factory: (b) => new ClipboardModule(b as never) },
+                { name: MODULE_NAME.ACHIEVEMENTS, factory: (b) => new AchievementsModule(b as never) },
+                { name: MODULE_NAME.ANALYTICS, factory: (b) => analyticsModule.initialize(b as never) },
+            ]
+
+            moduleRegistry.forEach((entry) => {
+                this.#modules[entry.name] = entry.factory(bridge)
+            })
 
             bridge
                 .initialize()
@@ -233,8 +220,8 @@ class PlaygamaBridge {
                     console.info(`%c PlaygamaBridge v${this.version} initialized. `, 'background: #01A5DA; color: white')
 
                     const endTime = performance.now()
-                    const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-                    (analyticsModule as unknown as AnalyticsModuleLike).send(
+                    const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
+                    internalAnalytics.send(
                         `${MODULE_NAME.CORE}_initialization_completed`,
                         { time_s: timeInSeconds },
                     )
@@ -258,8 +245,8 @@ class PlaygamaBridge {
                 .catch((error) => {
                     const endTime = performance.now()
                     const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
-                    const errorMessage = error?.message || String(error);
-                    (analyticsModule as unknown as AnalyticsModuleLike).send(
+                    const errorMessage = error?.message || String(error)
+                    internalAnalytics.send(
                         `${MODULE_NAME.CORE}_initialization_failed`,
                         { error: errorMessage, time_s: timeInSeconds },
                     )
@@ -282,48 +269,19 @@ class PlaygamaBridge {
             platformId = this.#getPlatformId(String(configLoader.options.forciblySetPlatformId).toLowerCase())
         } else if (url.searchParams.has('platform_id')) {
             platformId = this.#getPlatformId((url.searchParams.get('platform_id') ?? '').toLowerCase())
-        } else if (__INCLUDE_YANDEX__ && (url.hostname.includes(['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')) || url.hash.includes('yandex'))) {
-            platformId = PLATFORM_ID.YANDEX
-        } else if (__INCLUDE_CRAZY_GAMES__ && (url.hostname.includes('crazygames.') || url.hostname.includes('1001juegos.com'))) {
-            platformId = PLATFORM_ID.CRAZY_GAMES
-        } else if (__INCLUDE_GAME_DISTRIBUTION__ && url.hostname.includes('gamedistribution.com')) {
-            platformId = PLATFORM_ID.GAME_DISTRIBUTION
-        } else if (__INCLUDE_LAGGED__ && url.hostname.includes('lagged.')) {
-            platformId = PLATFORM_ID.LAGGED
-        } else if (__INCLUDE_VK__ && ((url.searchParams.has('api_id') && url.searchParams.has('viewer_id') && url.searchParams.has('auth_key')) || url.searchParams.has('vk_app_id'))) {
-            platformId = PLATFORM_ID.VK
-        } else if (__INCLUDE_ABSOLUTE_GAMES__ && (url.searchParams.has('app_id') && url.searchParams.has('player_id') && url.searchParams.has('game_sid') && url.searchParams.has('auth_key'))) {
-            platformId = PLATFORM_ID.ABSOLUTE_GAMES
-        } else if (__INCLUDE_PLAYDECK__ && url.searchParams.has('playdeck')) {
-            platformId = PLATFORM_ID.PLAYDECK
-        } else if (__INCLUDE_TELEGRAM__ && url.hash.includes('tgWebAppData')) {
-            platformId = PLATFORM_ID.TELEGRAM
-        } else if (__INCLUDE_Y8__ && url.hostname.includes('y8')) {
-            platformId = PLATFORM_ID.Y8
-        } else if (__INCLUDE_FACEBOOK__ && url.hostname.includes('fbsbx')) {
-            platformId = PLATFORM_ID.FACEBOOK
-        } else if (__INCLUDE_POKI__ && (url.hostname.includes('poki-gdn') || url.hostname.includes('poki-user-content'))) {
-            platformId = PLATFORM_ID.POKI
-        } else if (__INCLUDE_MSN__ && (url.hostname.includes('msn.') || url.hostname.includes('msnfun.') || url.hostname.includes('start.gg'))) {
-            platformId = PLATFORM_ID.MSN
-        } else if (__INCLUDE_BITQUEST__ && (url.hash.includes('customUrl_') || document.referrer.includes('bitquest'))) {
-            platformId = PLATFORM_ID.BITQUEST
-        } else if (__INCLUDE_GAMEPUSH__ && url.hostname.includes('eponesh.')) {
-            platformId = PLATFORM_ID.GAMEPUSH
-        } else if (__INCLUDE_DISCORD__ && url.hostname.includes('discordsays.com')) {
-            platformId = PLATFORM_ID.DISCORD
-        } else if (__INCLUDE_YOUTUBE__ && url.hostname.includes('usercontent.goog')) {
-            platformId = PLATFORM_ID.YOUTUBE
-        } else if (__INCLUDE_PORTAL__ && url.hostname.includes('portalapp.')) {
-            platformId = PLATFORM_ID.PORTAL
-        } else if (__INCLUDE_REDDIT__ && url.hostname.includes('devvit.')) {
-            platformId = PLATFORM_ID.REDDIT
-        } else if (__INCLUDE_DLIGHTEK__ && (url.hostname.includes('hippoobox.com') || url.hostname.includes('ahagamecenter.com'))) {
-            platformId = PLATFORM_ID.DLIGHTEK
-        } else if (__INCLUDE_TIKTOK__ && typeof window.TTMinis !== 'undefined') {
-            platformId = PLATFORM_ID.TIKTOK
-        } else if (__INCLUDE_GAMESNACKS__ && typeof window.GameSnacks !== 'undefined') {
-            platformId = PLATFORM_ID.GAMESNACKS
+        } else {
+            const ctx: PlatformDetectorContext = {
+                url,
+                hostname: url.hostname,
+                hash: url.hash,
+                searchParams: url.searchParams,
+                referrer: document.referrer,
+                win: window,
+            }
+            const detected = PLATFORM_DETECTORS.find(({ predicate }) => predicate(ctx))
+            if (detected) {
+                platformId = detected.platformId
+            }
         }
 
         const PlatformBridge = await fetchPlatformBridge(platformId)
@@ -367,7 +325,7 @@ class PlaygamaBridge {
 
     #getModule(id: string): unknown {
         if (!this.#isInitialized) {
-            console.error(ERROR.SDK_NOT_INITIALIZED)
+            console.error(ERROR.SDK_NOT_INITIALIZED.message)
         }
 
         return this.#modules[id]
@@ -391,4 +349,18 @@ class PlaygamaBridge {
 }
 
 applyEventBusMixin(PlaygamaBridge.prototype)
+
+Object.assign(PlaygamaBridge.prototype, {
+    PLATFORM_ID,
+    PLATFORM_MESSAGE,
+    MODULE_NAME,
+    EVENT_NAME,
+    INTERSTITIAL_STATE,
+    REWARDED_STATE,
+    BANNER_STATE,
+    STORAGE_TYPE,
+    DEVICE_TYPE,
+    DEVICE_ORIENTATION,
+})
+
 export default PlaygamaBridge

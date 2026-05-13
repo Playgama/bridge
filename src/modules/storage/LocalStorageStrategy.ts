@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ERROR } from '../../constants'
+import { BridgeError, ERROR_CODE } from '../../constants'
 import { parseValue, serializeValue } from './helpers'
 import type { StorageBridgeContract } from './types'
 
@@ -33,7 +33,7 @@ class LocalStorageStrategy {
     read(key: string | string[], tryParseJson: boolean): Promise<unknown> {
         const localStorage = this.storage
         if (!localStorage) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
         }
 
         if (Array.isArray(key)) {
@@ -47,7 +47,7 @@ class LocalStorageStrategy {
     write(key: string | string[], value: unknown | unknown[]): Promise<void> {
         const localStorage = this.storage
         if (!localStorage) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
         }
 
         try {
@@ -62,7 +62,7 @@ class LocalStorageStrategy {
             return Promise.resolve()
         } catch (error) {
             if (error && (error as Error).name === 'QuotaExceededError') {
-                return Promise.reject(ERROR.STORAGE_QUOTA_EXCEEDED)
+                return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_QUOTA_EXCEEDED))
             }
             return Promise.reject(error)
         }
@@ -71,7 +71,7 @@ class LocalStorageStrategy {
     delete(key: string | string[]): Promise<void> {
         const localStorage = this.storage
         if (!localStorage) {
-            return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
         }
 
         if (Array.isArray(key)) {

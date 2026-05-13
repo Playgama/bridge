@@ -15,9 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
-import type { PlatformId } from './platform/constants'
-import type { AnyRecord } from '../utils'
+import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
+import type { PlatformId } from '../platform/constants'
+import { resolvePlatformOptions, type AnyRecord } from '../../utils'
 
 export type RemoteConfigOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
 
@@ -33,13 +33,8 @@ class RemoteConfigModule extends ModuleBase<RemoteConfigBridgeContract> {
     }
 
     get(options?: RemoteConfigOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.get(platformDependedOptions as RemoteConfigOptions)
-            }
-        }
-        return this._platformBridge.getRemoteConfig(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.getRemoteConfig(resolvedOptions)
     }
 }
 

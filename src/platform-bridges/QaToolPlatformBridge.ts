@@ -18,7 +18,7 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import MessageBroker from '../lib/MessageBroker'
 import configLoader from '../lib/ConfigLoader'
-import recorderModule from '../lib/RecorderModule'
+import Recorder from '../lib/Recorder'
 
 import {
     MODULE_NAME,
@@ -58,6 +58,7 @@ const MESSAGE_SOURCE = 'bridge'
 
 const MODULE_NAME_QA = {
     LIVENESS: 'liveness',
+    RECORDER: 'recorder',
 } as const
 
 export const INTERNAL_STORAGE_POLICY = {
@@ -317,6 +318,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     #messageBroker = new MessageBroker()
 
+    #recorder = new Recorder()
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -363,7 +366,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     }
                 } else if (data.type === MODULE_NAME.ADVERTISEMENT) {
                     this.#handleAdvertisement(data)
-                } else if (data.type === MODULE_NAME.RECORDER) {
+                } else if (data.type === MODULE_NAME_QA.RECORDER) {
                     this.#handleRecorder(data)
                 }
             }
@@ -1306,21 +1309,21 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     #handleRecorder(data: QaToolMessage): void {
         switch (data.action) {
             case RECORDER_ACTION.START_CAPTURE:
-                recorderModule.startCapture((data.options as Record<string, unknown> | undefined) || {})
+                this.#recorder.startCapture((data.options as Record<string, unknown> | undefined) || {})
                 break
             case RECORDER_ACTION.STOP_CAPTURE:
-                recorderModule.stopCapture()
+                this.#recorder.stopCapture()
                 break
             case RECORDER_ACTION.RTC_ANSWER:
-                recorderModule.handleAnswer(data.options as { sdp: string })
+                this.#recorder.handleAnswer(data.options as { sdp: string })
                 break
             case RECORDER_ACTION.RTC_ICE:
-                recorderModule.handleIce(data.options as RTCIceCandidateInit)
+                this.#recorder.handleIce(data.options as RTCIceCandidateInit)
                 break
             case RECORDER_ACTION.TAKE_SCREENSHOT: {
-                const result = recorderModule.takeScreenshot((data.options as Record<string, unknown> | undefined) || {})
+                const result = this.#recorder.takeScreenshot((data.options as Record<string, unknown> | undefined) || {})
                 this.#sendMessage({
-                    type: MODULE_NAME.RECORDER,
+                    type: MODULE_NAME_QA.RECORDER,
                     action: RECORDER_ACTION.SCREENSHOT_RESULT,
                     payload: result as unknown as Record<string, unknown>,
                 })
@@ -1332,29 +1335,29 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     #initRecorderCallbacks(): void {
-        recorderModule.onOffer = (sdp) => {
+        this.#recorder.onOffer = (sdp) => {
             this.#sendMessage({
-                type: MODULE_NAME.RECORDER,
+                type: MODULE_NAME_QA.RECORDER,
                 action: RECORDER_ACTION.RTC_OFFER,
                 payload: { sdp },
             })
         }
-        recorderModule.onIceCandidate = (candidate) => {
+        this.#recorder.onIceCandidate = (candidate) => {
             this.#sendMessage({
-                type: MODULE_NAME.RECORDER,
+                type: MODULE_NAME_QA.RECORDER,
                 action: RECORDER_ACTION.RTC_ICE,
                 payload: candidate as unknown as Record<string, unknown>,
             })
         }
-        recorderModule.onStarted = () => {
+        this.#recorder.onStarted = () => {
             this.#sendMessage({
-                type: MODULE_NAME.RECORDER,
+                type: MODULE_NAME_QA.RECORDER,
                 action: RECORDER_ACTION.CAPTURE_STARTED,
             })
         }
-        recorderModule.onError = (message) => {
+        this.#recorder.onError = (message) => {
             this.#sendMessage({
-                type: MODULE_NAME.RECORDER,
+                type: MODULE_NAME_QA.RECORDER,
                 action: RECORDER_ACTION.CAPTURE_ERROR,
                 payload: { message },
             })

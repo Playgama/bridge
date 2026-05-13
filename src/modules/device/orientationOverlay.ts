@@ -15,30 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ORIENTATION_OVERLAY_ID } from '../../modules/device/constants'
-
-export function createLoadingOverlay(): HTMLDivElement {
-    const overlay = document.createElement('div')
-    overlay.style.position = 'fixed'
-    overlay.style.top = '0'
-    overlay.style.left = '0'
-    overlay.style.width = '100vw'
-    overlay.style.height = '100vh'
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'
-    overlay.style.display = 'flex'
-    overlay.style.justifyContent = 'center'
-    overlay.style.alignItems = 'center'
-    overlay.style.zIndex = '9999'
-    overlay.id = 'loading-overlay'
-
-    const loading = document.createElement('div')
-    loading.style.fontSize = '24px'
-    loading.style.color = '#fff'
-    loading.innerText = 'Loading...'
-    overlay.appendChild(loading)
-
-    return overlay
-}
+import { ORIENTATION_OVERLAY_ID } from './constants'
 
 export function createOrientationOverlay(): HTMLDivElement {
     if (!document.getElementById('bridge-orientation-overlay-styles')) {

@@ -15,9 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
-import type { PlatformId } from './platform/constants'
-import type { AnyRecord } from '../utils'
+import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
+import type { PlatformId } from '../platform/constants'
+import { resolvePlatformOptions, type AnyRecord } from '../../utils'
 
 export type PlayerAuthorizeOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
 
@@ -58,18 +58,13 @@ class PlayerModule extends ModuleBase<PlayerBridgeContract> {
     }
 
     authorize(options?: PlayerAuthorizeOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.authorize(platformDependedOptions as PlayerAuthorizeOptions)
-            }
-        }
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
 
         if (!this.isAuthorizationSupported) {
             return Promise.reject()
         }
 
-        return this._platformBridge.authorizePlayer(options)
+        return this._platformBridge.authorizePlayer(resolvedOptions)
     }
 }
 

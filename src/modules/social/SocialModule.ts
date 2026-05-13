@@ -15,9 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
-import type { PlatformId } from './platform/constants'
-import type { AnyRecord } from '../utils'
+import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
+import type { PlatformId } from '../platform/constants'
+import { resolvePlatformOptions, type AnyRecord } from '../../utils'
 
 export type SocialOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
 
@@ -86,47 +86,23 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     inviteFriends(options?: SocialOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.inviteFriends(platformDependedOptions as SocialOptions)
-            }
-        }
-
-        return this._platformBridge.inviteFriends(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.inviteFriends(resolvedOptions)
     }
 
     joinCommunity(options?: SocialOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.joinCommunity(platformDependedOptions as SocialOptions)
-            }
-        }
-
-        return this._platformBridge.joinCommunity(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.joinCommunity(resolvedOptions)
     }
 
     share(options?: SocialOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.share(platformDependedOptions as SocialOptions)
-            }
-        }
-
-        return this._platformBridge.share(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.share(resolvedOptions)
     }
 
     createPost(options?: SocialOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.createPost(platformDependedOptions as SocialOptions)
-            }
-        }
-
-        return this._platformBridge.createPost(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.createPost(resolvedOptions)
     }
 
     addToHomeScreen(): Promise<unknown> {

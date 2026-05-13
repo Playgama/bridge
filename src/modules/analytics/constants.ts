@@ -15,31 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-class PromiseDecorator<T = unknown> {
-    get promise(): Promise<T> {
-        return this.#promise
-    }
-
-    #promise: Promise<T>
-
-    #resolve!: (value: T | PromiseLike<T>) => void
-
-    #reject!: (reason?: unknown) => void
-
-    constructor() {
-        this.#promise = new Promise<T>((resolve, reject) => {
-            this.#resolve = resolve
-            this.#reject = reject
-        })
-    }
-
-    resolve(data: T): void {
-        this.#resolve(data)
-    }
-
-    reject(error?: unknown): void {
-        this.#reject(error)
-    }
-}
-
-export default PromiseDecorator
+export const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'
+export const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
+export const FLUSH_INTERVAL = 15000
+export const SEND_ATTEMPTS = 2

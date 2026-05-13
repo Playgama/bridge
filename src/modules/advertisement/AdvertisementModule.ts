@@ -17,7 +17,7 @@
 
 import eventBus, { applyEventBusMixin } from '../../lib/EventBus'
 import ModuleBase from '../ModuleBase'
-import analyticsModule from '../AnalyticsModule'
+import { internalAnalytics } from '../analytics'
 import { EVENT_NAME } from '../../constants'
 import {
     BANNER_POSITION,
@@ -32,10 +32,7 @@ import BannerController from './BannerController'
 import InterstitialController from './InterstitialController'
 import RewardedController from './RewardedController'
 import AdvancedBannersController from './AdvancedBannersController'
-import type {
-    AdvertisementBridgeContract,
-    AnalyticsSender,
-} from './types'
+import type { AdvertisementBridgeContract } from './types'
 import type { EventEmitter } from '../../lib/EventBus'
 
 interface AdvertisementModule extends EventEmitter {}
@@ -92,25 +89,23 @@ class AdvertisementModule extends ModuleBase<AdvertisementBridgeContract> {
     constructor(platformBridge: AdvertisementBridgeContract) {
         super(platformBridge)
 
-        const analytics = analyticsModule as unknown as AnalyticsSender
-
-        this.#banner = new BannerController(platformBridge, analytics)
+        this.#banner = new BannerController(platformBridge, internalAnalytics)
 
         this.#interstitial = new InterstitialController(
             platformBridge,
-            analytics,
+            internalAnalytics,
             (state) => this.#onInterstitialStateChange(state),
         )
 
         this.#rewarded = new RewardedController(
             platformBridge,
-            analytics,
+            internalAnalytics,
             (state) => this.#onRewardedStateChange(state),
         )
 
         this.#advancedBanners = new AdvancedBannersController(
             platformBridge,
-            analytics,
+            internalAnalytics,
             () => this.#hasAdvertisementInProgress(),
         )
 

@@ -15,10 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { DEVICE_ORIENTATION, type DeviceOrientation } from '../modules/device/constants'
+import PlayerModule from './PlayerModule'
 
-export function detectOrientation(): DeviceOrientation {
-    return window.innerHeight > window.innerWidth
-        ? DEVICE_ORIENTATION.PORTRAIT
-        : DEVICE_ORIENTATION.LANDSCAPE
-}
+export type { PlayerBridgeContract, PlayerAuthorizeOptions } from './PlayerModule'
+export { getGuestUser, type GuestUser } from './guestUser'
+export default PlayerModule

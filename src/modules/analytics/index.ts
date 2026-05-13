@@ -15,23 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AdvertisementModule from './AdvertisementModule'
+import AnalyticsModule from './AnalyticsModule'
 
-export type {
-    AdvertisementBridgeContract,
-    AdvertisementBridgeOptions,
-    AdvertisementOptions,
-    PlacementMapping,
-    AdvancedBannersPlacementConfig,
-} from './types'
-export {
-    createAdvertisementBannerContainer,
-    createAdvancedBannerContainers,
-    removeAdvancedBannerContainers,
-    createAdContainer,
-    findGameCanvas,
-    showInfoPopup,
-    showAdFailurePopup,
-    type AdvancedBannerConfig,
-} from './dom'
-export default AdvertisementModule
+export { internalAnalytics } from './AnalyticsModule'
+export * from './types'
+export * from './constants'
+export default AnalyticsModule

@@ -18,7 +18,7 @@
 import type { PlatformId } from '../platform/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from './constants'
 import LeaderboardsModule, { type LeaderboardsBridgeContract, type LeaderboardMapping } from './LeaderboardsModule'
-import SaasRequestMixin from '../../mixins/SaasRequestMixin'
+import SaasRequest from '../../lib/SaasRequest'
 import type { EventListener } from '../../lib/EventBus'
 
 export interface LeaderboardsSaasBridgeContract {
@@ -43,23 +43,24 @@ export interface LeaderboardsSaasBridgeContract {
     [key: string]: unknown
 }
 
-// Cast bridge contract to LeaderboardsBridgeContract for the generic constraint;
-// the real shape is structurally compatible.
-class LeaderboardsSaasModule extends SaasRequestMixin(
-    LeaderboardsModule as unknown as new (
-        bridge: LeaderboardsSaasBridgeContract,
-    ) => LeaderboardsModule<LeaderboardsBridgeContract>,
-) {
+class LeaderboardsSaasModule extends LeaderboardsModule<LeaderboardsBridgeContract> {
     get type(): LeaderboardType {
         return LEADERBOARD_TYPE.IN_GAME
     }
 
+    #saas: SaasRequest
+
+    constructor(bridge: LeaderboardsSaasBridgeContract) {
+        super(bridge as unknown as LeaderboardsBridgeContract)
+        this.#saas = new SaasRequest(bridge)
+    }
+
     async setScore(leaderboardId: string, score: number): Promise<unknown> {
-        return this.request.post(`leaderboards/${leaderboardId}`, { score })
+        return this.#saas.post(`leaderboards/${leaderboardId}`, { score })
     }
 
     async getEntries(leaderboardId: string): Promise<unknown> {
-        return this.request.get(`leaderboards/${leaderboardId}`)
+        return this.#saas.get(`leaderboards/${leaderboardId}`)
     }
 }
 

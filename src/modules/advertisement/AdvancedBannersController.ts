@@ -16,7 +16,8 @@
  */
 
 import eventBus from '../../lib/EventBus'
-import { detectOrientation, findGameCanvas } from '../../utils'
+import { detectOrientation } from '../device/orientation'
+import { findGameCanvas } from './dom'
 import { EVENT_NAME, MODULE_NAME } from '../../constants'
 import type { DeviceOrientation, DeviceType } from '../device/constants'
 import {

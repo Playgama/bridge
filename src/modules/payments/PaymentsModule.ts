@@ -15,13 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ModuleBase, { type PlatformBridgeLike } from './ModuleBase'
-import analyticsModule from './AnalyticsModule'
-import { MODULE_NAME } from '../constants'
-
-interface AnalyticsModuleLike {
-    send(eventType: string, data?: Record<string, unknown>): void
-}
+import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
+import { internalAnalytics } from '../analytics'
+import { MODULE_NAME } from '../../constants'
 
 export interface PaymentsBridgeContract extends PlatformBridgeLike {
     isPaymentsSupported: boolean
@@ -37,21 +33,21 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
     }
 
     purchase(id: string, options?: unknown): Promise<unknown> {
-        (analyticsModule as unknown as AnalyticsModuleLike).send(
+        internalAnalytics.send(
             `${MODULE_NAME.PAYMENTS}_purchase_started`,
             { id },
         )
 
         return this._platformBridge.paymentsPurchase(id, options)
             .then((result) => {
-                (analyticsModule as unknown as AnalyticsModuleLike).send(
+                internalAnalytics.send(
                     `${MODULE_NAME.PAYMENTS}_purchase_completed`,
                     { id },
                 )
                 return result
             })
             .catch((error) => {
-                (analyticsModule as unknown as AnalyticsModuleLike).send(
+                internalAnalytics.send(
                     `${MODULE_NAME.PAYMENTS}_purchase_failed`,
                     { id },
                 )
@@ -68,21 +64,21 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
     }
 
     consumePurchase(id: string): Promise<unknown> {
-        (analyticsModule as unknown as AnalyticsModuleLike).send(
+        internalAnalytics.send(
             `${MODULE_NAME.PAYMENTS}_consume_purchase_started`,
             { id },
         )
 
         return this._platformBridge.paymentsConsumePurchase(id)
             .then((result) => {
-                (analyticsModule as unknown as AnalyticsModuleLike).send(
+                internalAnalytics.send(
                     `${MODULE_NAME.PAYMENTS}_consume_purchase_completed`,
                     { id },
                 )
                 return result
             })
             .catch((error) => {
-                (analyticsModule as unknown as AnalyticsModuleLike).send(
+                internalAnalytics.send(
                     `${MODULE_NAME.PAYMENTS}_consume_purchase_failed`,
                     { id },
                 )

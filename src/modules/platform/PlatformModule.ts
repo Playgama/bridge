@@ -23,7 +23,8 @@ import {
     type PlatformId,
     type PlatformMessage,
 } from './constants'
-import analyticsModule from '../AnalyticsModule'
+import { internalAnalytics } from '../analytics'
+import { resolvePlatformOptions } from '../../utils'
 import type { EventEmitter } from '../../lib/EventBus'
 
 export interface PlatformMessageOptions {
@@ -49,10 +50,6 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     getServerTime(): Promise<unknown>
     getAllGames(): Promise<unknown>
     getGameById(options?: unknown): Promise<unknown>
-}
-
-interface PlatformAnalyticsModule {
-    send(eventType: string, data?: Record<string, unknown>): void
 }
 
 interface PlatformModule extends EventEmitter {}
@@ -132,7 +129,7 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
             analyticsData.level = String(options.level)
         }
 
-        (analyticsModule as unknown as PlatformAnalyticsModule).send(
+        internalAnalytics.send(
             `${MODULE_NAME.PLATFORM}_message_${message}`,
             analyticsData,
         )
@@ -143,7 +140,7 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
     }
 
     sendCustomMessage(id: string, options?: unknown): Promise<unknown> {
-        (analyticsModule as unknown as PlatformAnalyticsModule).send(
+        internalAnalytics.send(
             `${MODULE_NAME.PLATFORM}_custom_message`,
             { id },
         )
@@ -162,14 +159,8 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
     }
 
     getGameById(options?: GameByIdOptions): Promise<unknown> {
-        if (options) {
-            const platformDependedOptions = options[this._platformBridge.platformId]
-            if (platformDependedOptions) {
-                return this.getGameById(platformDependedOptions as GameByIdOptions)
-            }
-        }
-
-        return this._platformBridge.getGameById(options)
+        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
+        return this._platformBridge.getGameById(resolvedOptions)
     }
 }
 

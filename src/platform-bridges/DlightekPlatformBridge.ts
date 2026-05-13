@@ -29,7 +29,8 @@ import {
     REWARDED_STATE,
     type BannerPosition,
 } from '../modules/advertisement/constants'
-import { addJavaScript, createAdvertisementBannerContainer } from '../utils'
+import { addJavaScript } from '../utils'
+import { createAdvertisementBannerContainer } from '../modules/advertisement'
 
 const SDK_URL = 'https://www.hippoobox.com/static/sdk/adsdk_1.9.5.js'
 const INIT_TIMEOUT = 5000

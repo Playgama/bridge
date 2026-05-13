@@ -15,23 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AdvertisementModule from './AdvertisementModule'
+import RemoteConfigModule from './RemoteConfigModule'
 
-export type {
-    AdvertisementBridgeContract,
-    AdvertisementBridgeOptions,
-    AdvertisementOptions,
-    PlacementMapping,
-    AdvancedBannersPlacementConfig,
-} from './types'
-export {
-    createAdvertisementBannerContainer,
-    createAdvancedBannerContainers,
-    removeAdvancedBannerContainers,
-    createAdContainer,
-    findGameCanvas,
-    showInfoPopup,
-    showAdFailurePopup,
-    type AdvancedBannerConfig,
-} from './dom'
-export default AdvertisementModule
+export type { RemoteConfigBridgeContract, RemoteConfigOptions } from './RemoteConfigModule'
+export default RemoteConfigModule

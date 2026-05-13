@@ -16,7 +16,8 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { addJavaScript, createAdvertisementBannerContainer } from '../utils'
+import { addJavaScript } from '../utils'
+import { createAdvertisementBannerContainer } from '../modules/advertisement'
 import { ACTION_NAME, ERROR } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {

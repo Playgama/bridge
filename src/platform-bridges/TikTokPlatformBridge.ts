@@ -16,7 +16,8 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import { getGuestUser, waitFor } from '../utils'
+import { waitFor } from '../utils'
+import { getGuestUser } from '../modules/player'
 import { ACTION_NAME, ERROR } from '../constants'
 import {
     PLATFORM_ID,

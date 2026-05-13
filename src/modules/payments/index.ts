@@ -15,23 +15,12 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AdvertisementModule from './AdvertisementModule'
+import PaymentsModule from './PaymentsModule'
 
-export type {
-    AdvertisementBridgeContract,
-    AdvertisementBridgeOptions,
-    AdvertisementOptions,
-    PlacementMapping,
-    AdvancedBannersPlacementConfig,
-} from './types'
+export type { PaymentsBridgeContract } from './PaymentsModule'
 export {
-    createAdvertisementBannerContainer,
-    createAdvancedBannerContainers,
-    removeAdvancedBannerContainers,
-    createAdContainer,
-    findGameCanvas,
-    showInfoPopup,
-    showAdFailurePopup,
-    type AdvancedBannerConfig,
-} from './dom'
-export default AdvertisementModule
+    getPaymentsProductsPlatformData,
+    getPaymentsProductPlatformData,
+    generatePaymentsTransactionId,
+} from './helpers'
+export default PaymentsModule

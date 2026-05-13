@@ -82,6 +82,4 @@ export interface AdvertisementBridgeContract extends PlatformBridgeLike {
     checkAdBlock(): Promise<unknown>
 }
 
-export interface AnalyticsSender {
-    send(eventType: string, data?: Record<string, unknown>): void
-}
+export type { AnalyticsSender } from '../analytics'

@@ -15,40 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export interface GuestUser {
-    id: string
-    name: string
-}
-
 export function generateRandomId(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     const randomPart = Array.from({ length: 8 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('')
     const timestampPart = Date.now().toString(36)
     return `${randomPart}${timestampPart}`
-}
-
-export function getGuestUser(): GuestUser {
-    const localStorageKey = 'bridge_player_guest_id'
-    let id: string | null = null
-
-    try {
-        id = localStorage.getItem(localStorageKey)
-    } catch {
-        // ignore
-    }
-
-    if (!id) {
-        id = generateRandomId()
-
-        try {
-            localStorage.setItem(localStorageKey, id)
-        } catch {
-            // ignore
-        }
-    }
-
-    return {
-        id,
-        name: `Guest ${id}`,
-    }
 }

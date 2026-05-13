@@ -28,7 +28,8 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
-import { addAdsByGoogle, createAdvertisementBannerContainer, type AnyRecord } from '../utils'
+import { addAdsByGoogle, type AnyRecord } from '../utils'
+import { createAdvertisementBannerContainer } from '../modules/advertisement'
 
 interface FunmaxApi {
     loadStart?: () => void

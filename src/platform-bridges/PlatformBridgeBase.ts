@@ -18,10 +18,11 @@
 import { applyLocalEventMixin } from '../lib/EventBus'
 import {
     EVENT_NAME,
-    ERROR,
+    BridgeError,
+    ERROR_CODE,
     MODULE_NAME,
-    TIMESTAMP_URL,
 } from '../constants'
+import { TIMESTAMP_URL } from '../lib/serverTime'
 import {
     PLATFORM_ID,
     VISIBILITY_STATE,
@@ -46,18 +47,19 @@ import {
     type CloudStorageMode,
 } from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
-import analyticsModule from '../modules/AnalyticsModule'
-import PromiseDecorator from '../lib/PromiseDecorator'
-import StateAggregator from '../lib/StateAggregator'
+import { internalAnalytics } from '../modules/analytics'
 import {
-    getGuestUser, showInfoPopup, showAdFailurePopup, type AnyRecord,
-} from '../utils'
+    getPaymentsProductsPlatformData,
+    getPaymentsProductPlatformData,
+    generatePaymentsTransactionId,
+} from '../modules/payments'
+import Deferred from '../lib/Deferred'
+import StateAggregator from '../lib/StateAggregator'
+import type { AnyRecord } from '../utils'
+import { showInfoPopup, showAdFailurePopup } from '../modules/advertisement'
+import { getGuestUser } from '../modules/player'
 import configLoader from '../lib/ConfigLoader'
 import type { EventEmitter } from '../lib/EventBus'
-
-interface AnalyticsModuleLike {
-    send(eventType: string, data?: Record<string, unknown>): void
-}
 
 type AggregationStateKey = 'interstitial' | 'rewarded' | 'visibility' | 'platform' | 'rate'
 
@@ -169,7 +171,7 @@ class PlatformBridgeBase {
     }
 
     get cloudStorageReady(): Promise<void> {
-        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
     // advertisement
@@ -350,7 +352,8 @@ class PlatformBridgeBase {
 
     protected _audioStateAggregator: StateAggregator<AggregationStateKey> | null = null
 
-    #promiseDecorators: Record<string, PromiseDecorator<unknown>> = {}
+    // Helper methods keep the `PromiseDecorator` naming for backward-compatible subclass API.
+    #promiseDecorators: Record<string, Deferred<unknown>> = {}
 
     #lastAdFailurePopupTime = 0
 
@@ -433,27 +436,27 @@ class PlatformBridgeBase {
 
     // cloud storage — v2 contract
     loadCloudSnapshot(): Promise<Record<string, unknown>> {
-        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
     saveCloudSnapshot(_snapshot: Record<string, unknown>, _changedKeys: string[]): Promise<void> {
-        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
     deleteCloudKeys(_snapshot: Record<string, unknown>, _deletedKeys: string[]): Promise<void> {
-        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
     loadCloudKey(_key: string): Promise<unknown> {
-        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
     saveCloudKey(_key: string, _value: unknown): Promise<void> {
-        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
     deleteCloudKey(_key: string): Promise<void> {
-        return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
     // advertisement
@@ -718,14 +721,14 @@ class PlatformBridgeBase {
         }
     }
 
-    protected _createPromiseDecorator<T = unknown>(actionName: string): PromiseDecorator<T> {
-        const promiseDecorator = new PromiseDecorator<T>()
-        this.#promiseDecorators[actionName] = promiseDecorator as PromiseDecorator<unknown>
+    protected _createPromiseDecorator<T = unknown>(actionName: string): Deferred<T> {
+        const promiseDecorator = new Deferred<T>()
+        this.#promiseDecorators[actionName] = promiseDecorator as Deferred<unknown>
         return promiseDecorator
     }
 
-    protected _getPromiseDecorator<T = unknown>(actionName: string): PromiseDecorator<T> | undefined {
-        return this.#promiseDecorators[actionName] as PromiseDecorator<T> | undefined
+    protected _getPromiseDecorator<T = unknown>(actionName: string): Deferred<T> | undefined {
+        return this.#promiseDecorators[actionName] as Deferred<T> | undefined
     }
 
     protected _resolvePromiseDecorator(id: string, data?: unknown): void {
@@ -743,48 +746,15 @@ class PlatformBridgeBase {
     }
 
     protected _paymentsGetProductsPlatformData(): AnyRecord[] {
-        if (!this._options.payments) {
-            return []
-        }
-
-        return this._options.payments
-            .map((product) => {
-                const platformProduct = (product[this.platformId] ?? {}) as AnyRecord
-                const mergedProduct: AnyRecord = {
-                    ...platformProduct,
-                }
-
-                mergedProduct.platformProductId = mergedProduct.id ?? product.id
-                mergedProduct.id = product.id
-
-                return mergedProduct
-            })
+        return getPaymentsProductsPlatformData(this._options.payments, this.platformId)
     }
 
     protected _paymentsGetProductPlatformData(id: string): AnyRecord | null {
-        const products = this._options.payments
-        if (!products) {
-            return null
-        }
-
-        const product = products.find((p) => p.id === id)
-        if (!product) {
-            return null
-        }
-
-        const platformProduct = (product[this.platformId] ?? {}) as AnyRecord
-        const mergedProduct: AnyRecord = {
-            ...platformProduct,
-        }
-
-        mergedProduct.platformProductId = mergedProduct.id ?? product.id
-        mergedProduct.id = product.id
-
-        return mergedProduct
+        return getPaymentsProductPlatformData(this._options.payments, this.platformId, id)
     }
 
     protected _paymentsGenerateTransactionId(id: string): string {
-        return `${id}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`
+        return generatePaymentsTransactionId(id)
     }
 
     protected _advertisementShowErrorPopup(isRewarded: boolean): Promise<void> {
@@ -836,25 +806,25 @@ class PlatformBridgeBase {
         }
 
         if (isRewarded) {
-            this._setRewardedState(REWARDED_STATE.OPENED);
-            (analyticsModule as unknown as AnalyticsModuleLike).send(
+            this._setRewardedState(REWARDED_STATE.OPENED)
+            internalAnalytics.send(
                 `${MODULE_NAME.ADVERTISEMENT}_rewarded_fallback_opened`,
             )
         } else {
-            this._setInterstitialState(INTERSTITIAL_STATE.OPENED);
-            (analyticsModule as unknown as AnalyticsModuleLike).send(
+            this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
+            internalAnalytics.send(
                 `${MODULE_NAME.ADVERTISEMENT}_interstitial_fallback_opened`,
             )
         }
 
         return showAdFailurePopup().then(() => {
             if (isRewarded) {
-                (analyticsModule as unknown as AnalyticsModuleLike).send(
+                internalAnalytics.send(
                     `${MODULE_NAME.ADVERTISEMENT}_rewarded_fallback_closed`,
                 )
                 this._setRewardedState(REWARDED_STATE.FAILED)
             } else {
-                (analyticsModule as unknown as AnalyticsModuleLike).send(
+                internalAnalytics.send(
                     `${MODULE_NAME.ADVERTISEMENT}_interstitial_fallback_closed`,
                 )
                 this._setInterstitialState(INTERSTITIAL_STATE.FAILED)

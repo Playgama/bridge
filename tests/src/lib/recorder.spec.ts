@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { RecorderModule } from '../../../src/modules/RecorderModule'
+import Recorder from '../../../src/lib/Recorder'
 
-function createRecorderModule() {
-    return new RecorderModule()
+function createRecorder() {
+    return new Recorder()
 }
 
 function createMockCanvas(options: { toDataURL?: string } = {}) {
@@ -37,7 +37,7 @@ function createMockRTCPeerConnection() {
     return mockPc
 }
 
-describe('RecorderModule', () => {
+describe('Recorder', () => {
     let canvas: HTMLCanvasElement | null = null
 
     beforeEach(() => {
@@ -65,7 +65,7 @@ describe('RecorderModule', () => {
             canvas = createMockCanvas()
             // RTCPeerConnection not defined (deleted in afterEach)
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             const result = module.checkAvailability()
 
             expect(result).toEqual({ available: false, reason: 'RTCPeerConnection is not supported' })
@@ -77,7 +77,7 @@ describe('RecorderModule', () => {
             // @ts-expect-error remove captureStream
             delete HTMLCanvasElement.prototype.captureStream
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             const result = module.checkAvailability()
 
             expect(result).toEqual({ available: false, reason: 'captureStream is not supported' })
@@ -86,7 +86,7 @@ describe('RecorderModule', () => {
         test('should return unavailable when canvas is not found', () => {
             createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             const result = module.checkAvailability()
 
             expect(result).toEqual({ available: false, reason: 'Canvas not found' })
@@ -96,7 +96,7 @@ describe('RecorderModule', () => {
             canvas = createMockCanvas()
             createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             const result = module.checkAvailability()
 
             expect(result).toEqual({ available: true, reason: null })
@@ -108,7 +108,7 @@ describe('RecorderModule', () => {
             createMockRTCPeerConnection()
             const onError = vi.fn()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             module.onError = onError
             await module.startCapture()
 
@@ -121,7 +121,7 @@ describe('RecorderModule', () => {
             const onOffer = vi.fn()
             const onStarted = vi.fn()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             module.onOffer = onOffer
             module.onStarted = onStarted
             await module.startCapture()
@@ -136,7 +136,7 @@ describe('RecorderModule', () => {
             canvas = createMockCanvas()
             createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture({ fps: 60 })
 
             expect(canvas.captureStream).toHaveBeenCalledWith(60)
@@ -146,7 +146,7 @@ describe('RecorderModule', () => {
             canvas = createMockCanvas()
             createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture()
 
             expect(canvas.captureStream).toHaveBeenCalledWith(30)
@@ -157,7 +157,7 @@ describe('RecorderModule', () => {
             const mockPc = createMockRTCPeerConnection()
             const sender = mockPc.getSenders()[0]
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture({ maxBitrate: 5000000 })
 
             expect(sender.getParameters).toHaveBeenCalled()
@@ -173,7 +173,7 @@ describe('RecorderModule', () => {
             const mockPc = createMockRTCPeerConnection()
             const sender = mockPc.getSenders()[0]
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture({ minBitrate: 1000000 })
 
             expect(sender.setParameters).toHaveBeenCalledWith(
@@ -188,7 +188,7 @@ describe('RecorderModule', () => {
             const mockPc = createMockRTCPeerConnection()
             const sender = mockPc.getSenders()[0]
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture({ maxBitrate: 5000000, minBitrate: 1000000 })
 
             expect(sender.setParameters).toHaveBeenCalledWith(
@@ -203,7 +203,7 @@ describe('RecorderModule', () => {
             const mockPc = createMockRTCPeerConnection()
             const sender = mockPc.getSenders()[0]
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture()
 
             expect(sender.setParameters).toHaveBeenCalledWith(
@@ -217,7 +217,7 @@ describe('RecorderModule', () => {
             const onIceCandidate = vi.fn()
             const mockCandidate = { candidate: 'mock-candidate', sdpMid: '0', sdpMLineIndex: 0 }
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             module.onIceCandidate = onIceCandidate
             await module.startCapture()
 
@@ -233,7 +233,7 @@ describe('RecorderModule', () => {
             const mockPc = createMockRTCPeerConnection()
             const onIceCandidate = vi.fn()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             module.onIceCandidate = onIceCandidate
             await module.startCapture()
 
@@ -246,7 +246,7 @@ describe('RecorderModule', () => {
             canvas = createMockCanvas()
             createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await expect(module.startCapture()).resolves.toBeUndefined()
         })
     })
@@ -256,7 +256,7 @@ describe('RecorderModule', () => {
             canvas = createMockCanvas()
             const mockPc = createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture()
             await module.handleAnswer({ sdp: 'mock-answer-sdp' })
 
@@ -266,7 +266,7 @@ describe('RecorderModule', () => {
         })
 
         test('should do nothing when peer connection does not exist', async () => {
-            const module = createRecorderModule()
+            const module = createRecorder()
             await expect(module.handleAnswer({ sdp: 'mock-answer-sdp' })).resolves.toBeUndefined()
         })
     })
@@ -277,7 +277,7 @@ describe('RecorderModule', () => {
             const mockPc = createMockRTCPeerConnection()
 
             const candidate = { candidate: 'mock', sdpMid: '0', sdpMLineIndex: 0 }
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture()
             await module.handleIce(candidate)
 
@@ -285,7 +285,7 @@ describe('RecorderModule', () => {
         })
 
         test('should do nothing when peer connection does not exist', async () => {
-            const module = createRecorderModule()
+            const module = createRecorder()
             await expect(module.handleIce({ candidate: 'mock' })).resolves.toBeUndefined()
         })
 
@@ -293,7 +293,7 @@ describe('RecorderModule', () => {
             canvas = createMockCanvas()
             const mockPc = createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture()
             await module.handleIce(null)
 
@@ -303,7 +303,7 @@ describe('RecorderModule', () => {
 
     describe('takeScreenshot', () => {
         test('should return error when canvas is not found', () => {
-            const module = createRecorderModule()
+            const module = createRecorder()
             const result = module.takeScreenshot()
 
             expect(result).toEqual({ success: false, reason: 'Canvas not found', data: null })
@@ -312,7 +312,7 @@ describe('RecorderModule', () => {
         test('should return base64 data from canvas', () => {
             canvas = createMockCanvas({ toDataURL: 'data:image/png;base64,screenshotData' })
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             const result = module.takeScreenshot()
 
             expect(result).toEqual({
@@ -325,7 +325,7 @@ describe('RecorderModule', () => {
         test('should use default type and quality', () => {
             canvas = createMockCanvas()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             module.takeScreenshot()
 
             expect(canvas.toDataURL).toHaveBeenCalledWith('image/png', 0.92)
@@ -334,7 +334,7 @@ describe('RecorderModule', () => {
         test('should use custom type and quality', () => {
             canvas = createMockCanvas()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             module.takeScreenshot({ type: 'image/jpeg', quality: 0.5 })
 
             expect(canvas.toDataURL).toHaveBeenCalledWith('image/jpeg', 0.5)
@@ -350,7 +350,7 @@ describe('RecorderModule', () => {
             })
             const mockPc = createMockRTCPeerConnection()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             await module.startCapture()
             module.stopCapture()
 
@@ -359,7 +359,7 @@ describe('RecorderModule', () => {
         })
 
         test('should not throw when called without startCapture', () => {
-            const module = createRecorderModule()
+            const module = createRecorder()
             expect(() => module.stopCapture()).not.toThrow()
         })
 
@@ -368,7 +368,7 @@ describe('RecorderModule', () => {
             createMockRTCPeerConnection()
             const onStarted = vi.fn()
 
-            const module = createRecorderModule()
+            const module = createRecorder()
             module.onStarted = onStarted
             await module.startCapture()
             module.stopCapture()

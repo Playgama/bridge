@@ -18,13 +18,15 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import {
     addJavaScript,
+    waitFor,
+    type AnyRecord,
+} from '../utils'
+import {
     createAdvertisementBannerContainer,
     createAdvancedBannerContainers,
     removeAdvancedBannerContainers,
-    waitFor,
-    type AnyRecord,
     type AdvancedBannerConfig,
-} from '../utils'
+} from '../modules/advertisement'
 import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,

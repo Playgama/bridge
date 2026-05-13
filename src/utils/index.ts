@@ -15,11 +15,10 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export * from './dom'
-export * from './device-detect'
+export * from './script'
 export * from './messaging'
 export * from './async'
 export * from './object'
 export * from './string'
-export * from './id'
+export * from './random'
 export * from './json'

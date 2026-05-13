@@ -15,23 +15,31 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AdvertisementModule from './AdvertisementModule'
+class Deferred<T = unknown> {
+    get promise(): Promise<T> {
+        return this.#promise
+    }
 
-export type {
-    AdvertisementBridgeContract,
-    AdvertisementBridgeOptions,
-    AdvertisementOptions,
-    PlacementMapping,
-    AdvancedBannersPlacementConfig,
-} from './types'
-export {
-    createAdvertisementBannerContainer,
-    createAdvancedBannerContainers,
-    removeAdvancedBannerContainers,
-    createAdContainer,
-    findGameCanvas,
-    showInfoPopup,
-    showAdFailurePopup,
-    type AdvancedBannerConfig,
-} from './dom'
-export default AdvertisementModule
+    #promise: Promise<T>
+
+    #resolve!: (value: T | PromiseLike<T>) => void
+
+    #reject!: (reason?: unknown) => void
+
+    constructor() {
+        this.#promise = new Promise<T>((resolve, reject) => {
+            this.#resolve = resolve
+            this.#reject = reject
+        })
+    }
+
+    resolve(data: T): void {
+        this.#resolve(data)
+    }
+
+    reject(error?: unknown): void {
+        this.#reject(error)
+    }
+}
+
+export default Deferred

@@ -50,7 +50,7 @@ export type RecorderIceCandidateCallback = (candidate: RTCIceCandidateInit) => v
 export type RecorderStartedCallback = () => void
 export type RecorderErrorCallback = (reason: string | null) => void
 
-class RecorderModule {
+class Recorder {
     #pc: RTCPeerConnection | null = null
 
     #stream: MediaStream | null = null
@@ -205,5 +205,4 @@ class RecorderModule {
     }
 }
 
-export { RecorderModule }
-export default new RecorderModule()
+export default Recorder

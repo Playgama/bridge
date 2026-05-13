@@ -15,5 +15,4 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const SAAS_URL = 'https://playgama.com/api/bridge/v1'
 export const TIMESTAMP_URL = 'https://playgama.com/api/v1/timestamp/now'

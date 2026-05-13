@@ -25,9 +25,8 @@ import {
     type DeviceOs,
     type DeviceOrientation,
 } from './constants'
-import {
-    createOrientationOverlay, detectOrientation,
-} from '../../utils'
+import { createOrientationOverlay } from './orientationOverlay'
+import { detectOrientation } from './orientation'
 import { SafeArea, type SafeAreaInsets } from '../../lib/safe-area'
 import type { EventEmitter } from '../../lib/EventBus'
 
