@@ -9,12 +9,12 @@ describe('Internal Storage Policy (integration, QaToolPlatform)', () => {
         const { bridge, stateManager } = await createBridgeByPlatformId(PLATFORM_ID.QA_TOOL, {
             supportedFeatures: [SUPPORTED_FEATURES.STORAGE_INTERNAL, SUPPORTED_FEATURES.PLAYER_AUTHORIZATION],
         })
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
 
         stateManager.setPlayerState({ authorized: true, id: '123' })
         await bridge.player.authorize()
 
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
     })
 
     test('Check default storage type when internal storage policy is never', async () => {
@@ -22,12 +22,12 @@ describe('Internal Storage Policy (integration, QaToolPlatform)', () => {
             supportedFeatures: [SUPPORTED_FEATURES.STORAGE_INTERNAL, SUPPORTED_FEATURES.PLAYER_AUTHORIZATION],
             internalStoragePolicy: INTERNAL_STORAGE_POLICY.NEVER,
         })
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
 
         stateManager.setPlayerState({ authorized: true, id: '123' })
         await bridge.player.authorize()
 
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
     })
 
     test('Check default storage type when internal storage policy is authorized only', async () => {
@@ -35,12 +35,12 @@ describe('Internal Storage Policy (integration, QaToolPlatform)', () => {
             supportedFeatures: [SUPPORTED_FEATURES.STORAGE_INTERNAL, SUPPORTED_FEATURES.PLAYER_AUTHORIZATION],
             internalStoragePolicy: INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY,
         })
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
 
         stateManager.setPlayerState({ authorized: true, id: '123' })
         await bridge.player.authorize()
 
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
     })
 
     test('Check default storage type when internal storage policy is always', async () => {
@@ -48,11 +48,11 @@ describe('Internal Storage Policy (integration, QaToolPlatform)', () => {
             supportedFeatures: [SUPPORTED_FEATURES.STORAGE_INTERNAL, SUPPORTED_FEATURES.PLAYER_AUTHORIZATION],
             internalStoragePolicy: INTERNAL_STORAGE_POLICY.ALWAYS,
         })
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
 
         stateManager.setPlayerState({ authorized: true, id: '123' })
         await bridge.player.authorize()
 
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
     })
 })

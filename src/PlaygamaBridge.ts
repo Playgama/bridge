@@ -31,7 +31,6 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
 } from './modules/advertisement/constants'
-import { STORAGE_TYPE } from './modules/storage/constants'
 
 import { applyEventBusMixin } from './lib/EventBus'
 import Deferred from './lib/Deferred'
@@ -152,7 +151,6 @@ class PlaygamaBridge {
     declare readonly INTERSTITIAL_STATE: typeof INTERSTITIAL_STATE
     declare readonly REWARDED_STATE: typeof REWARDED_STATE
     declare readonly BANNER_STATE: typeof BANNER_STATE
-    declare readonly STORAGE_TYPE: typeof STORAGE_TYPE
     declare readonly DEVICE_TYPE: typeof DEVICE_TYPE
     declare readonly DEVICE_ORIENTATION: typeof DEVICE_ORIENTATION
     /* eslint-enable lines-between-class-members */
@@ -358,7 +356,6 @@ Object.assign(PlaygamaBridge.prototype, {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     BANNER_STATE,
-    STORAGE_TYPE,
     DEVICE_TYPE,
     DEVICE_ORIENTATION,
 })

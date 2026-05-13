@@ -17,20 +17,12 @@
 
 import ModuleBase from '../ModuleBase'
 import { EVENT_NAME } from '../../constants'
-import {
-    CLOUD_STORAGE_MODE,
-    STORAGE_TYPE,
-    type StorageType,
-} from './constants'
+import { CLOUD_STORAGE_MODE, STORAGE_TYPE } from './constants'
 import LocalStorageStrategy from './LocalStorageStrategy'
 import PlatformStorageStrategy from './PlatformStorageStrategy'
 import type { StorageBridgeContract } from './types'
 
 class StorageModule extends ModuleBase<StorageBridgeContract> {
-    get defaultType(): StorageType {
-        return this._platformBridge.defaultStorageType
-    }
-
     #localStrategy: LocalStorageStrategy
 
     #platformStrategy: PlatformStorageStrategy
@@ -91,7 +83,7 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
     }
 
     #useLocal(): boolean {
-        const storageType = this.defaultType
+        const storageType = this._platformBridge.defaultStorageType
         const cloudMode = this._platformBridge.cloudStorageMode
         return storageType === STORAGE_TYPE.LOCAL_STORAGE || cloudMode === CLOUD_STORAGE_MODE.NONE
     }
