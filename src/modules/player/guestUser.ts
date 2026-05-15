@@ -15,6 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import localStorage from '../../lib/LocalStorage'
 import { generateRandomId } from '../../utils/random'
 import { GUEST_ID_STORAGE_KEY } from './constants'
 
@@ -24,13 +25,7 @@ export interface GuestUser {
 }
 
 export function getGuestUser(): GuestUser {
-    let id: string | null = null
-
-    try {
-        id = localStorage.getItem(GUEST_ID_STORAGE_KEY)
-    } catch {
-        // ignore
-    }
+    let id = localStorage.getItem(GUEST_ID_STORAGE_KEY)
 
     if (!id) {
         id = generateRandomId()

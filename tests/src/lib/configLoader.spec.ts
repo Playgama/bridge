@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
-import { ConfigLoader, LOAD_STATUS, PARSE_STATUS } from '../../../src/lib/ConfigLoader'
+import { ConfigLoader, LOAD_STATUS, PARSE_STATUS } from '../../../src/lib/bridge-config-loader'
 
 function createConfigLoader() {
     return new ConfigLoader()

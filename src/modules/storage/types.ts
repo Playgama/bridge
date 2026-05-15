@@ -22,7 +22,6 @@ export interface StorageBridgeContract extends PlatformBridgeLike {
     defaultStorageType: StorageType
     cloudStorageMode: CloudStorageMode
     cloudStorageReady: Promise<void>
-    _localStorage: Storage | null
     loadCloudSnapshot(): Promise<Record<string, unknown>>
     saveCloudSnapshot(snapshot: Record<string, unknown>, changedKeys: string[]): Promise<void>
     deleteCloudKeys(snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void>

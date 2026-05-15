@@ -16,23 +16,16 @@
  */
 
 import { BridgeError, ERROR_CODE } from '../../constants'
+import localStorage from '../../lib/LocalStorage'
 import { parseValue, serializeValue } from './helpers'
-import type { StorageBridgeContract } from './types'
 
 class LocalStorageStrategy {
-    get storage(): Storage | null {
-        return this.#bridge._localStorage
-    }
-
-    #bridge: StorageBridgeContract
-
-    constructor(bridge: StorageBridgeContract) {
-        this.#bridge = bridge
+    get isAvailable(): boolean {
+        return localStorage.isAvailable
     }
 
     read(key: string | string[], tryParseJson: boolean): Promise<unknown> {
-        const localStorage = this.storage
-        if (!localStorage) {
+        if (!localStorage.isAvailable) {
             return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
         }
 
@@ -45,8 +38,7 @@ class LocalStorageStrategy {
     }
 
     write(key: string | string[], value: unknown | unknown[]): Promise<void> {
-        const localStorage = this.storage
-        if (!localStorage) {
+        if (!localStorage.isAvailable) {
             return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
         }
 
@@ -69,8 +61,7 @@ class LocalStorageStrategy {
     }
 
     delete(key: string | string[]): Promise<void> {
-        const localStorage = this.storage
-        if (!localStorage) {
+        if (!localStorage.isAvailable) {
             return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
         }
 
@@ -83,8 +74,7 @@ class LocalStorageStrategy {
     }
 
     removeMany(keys: string[]): void {
-        const localStorage = this.storage
-        if (!localStorage) {
+        if (!localStorage.isAvailable) {
             return
         }
         keys.forEach((k) => localStorage.removeItem(k))

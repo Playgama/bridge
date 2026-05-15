@@ -58,7 +58,7 @@ import StateAggregator from '../lib/StateAggregator'
 import type { AnyRecord } from '../utils'
 import { showInfoPopup, showAdFailurePopup } from '../modules/advertisement'
 import { getGuestUser } from '../modules/player'
-import configLoader from '../lib/ConfigLoader'
+import configLoader from '../lib/bridge-config-loader'
 import type { EventEmitter } from '../lib/EventBus'
 
 type AggregationStateKey = 'interstitial' | 'rewarded' | 'visibility' | 'platform' | 'rate'
@@ -336,8 +336,6 @@ class PlatformBridgeBase {
 
     protected _visibilityState: VisibilityState | null = null
 
-    protected _localStorage: Storage | null = null
-
     protected _defaultStorageType: StorageType = STORAGE_TYPE.LOCAL_STORAGE
 
     protected _isBannerSupported = false
@@ -358,10 +356,6 @@ class PlatformBridgeBase {
     #lastAdFailurePopupTime = 0
 
     constructor() {
-        try { this._localStorage = window.localStorage } catch {
-            // Nothing we can do with it
-        }
-
         this._visibilityState = document.visibilityState
 
         const aggregationStates: AggregationStateKey[] = ['interstitial', 'rewarded', 'visibility', 'platform', 'rate']

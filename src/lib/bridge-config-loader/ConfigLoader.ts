@@ -15,7 +15,13 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { deepMerge, type AnyRecord } from '../utils'
+import { deepMerge, type AnyRecord } from '../../utils'
+import { LOCAL_ONLY_CONFIG_FIELDS } from './constants'
+import RemoteConfigLoader, {
+    REMOTE_LOAD_STATUS,
+    type RemoteAppliedSource,
+    type RemoteLoadStatus,
+} from './RemoteConfigLoader'
 
 export const LOAD_STATUS = {
     PENDING: 'pending',
@@ -36,6 +42,9 @@ export type ParseStatus = typeof PARSE_STATUS[keyof typeof PARSE_STATUS]
 
 export interface ConfigFileOptions extends AnyRecord {
     platforms?: Record<string, AnyRecord>
+    remoteConfigUrl?: string
+    remoteConfigTimeout?: number
+    remoteConfigTtl?: number
 }
 
 class ConfigLoader {
@@ -72,6 +81,18 @@ class ConfigLoader {
         return this.#parseError
     }
 
+    get remoteLoadStatus(): RemoteLoadStatus {
+        return this.#remoteLoader ? this.#remoteLoader.loadStatus : REMOTE_LOAD_STATUS.SKIPPED
+    }
+
+    get remoteLoadError(): string {
+        return this.#remoteLoader ? this.#remoteLoader.loadError : ''
+    }
+
+    get remoteAppliedSource(): RemoteAppliedSource | null {
+        return this.#remoteLoader ? this.#remoteLoader.appliedSource : null
+    }
+
     // private properties
     #defaultConfigFilePath = './playgama-bridge-config.json'
 
@@ -93,6 +114,8 @@ class ConfigLoader {
 
     #fallbackOptions: ConfigFileOptions = {}
 
+    #remoteLoader: RemoteConfigLoader | null = null
+
     // public methods
     async load(configFilePath?: string, fallbackOptions: ConfigFileOptions = {}): Promise<void> {
         this.#path = configFilePath || this.#defaultConfigFilePath
@@ -110,6 +133,7 @@ class ConfigLoader {
             this.#rawContent = text
             this.#loadStatus = LOAD_STATUS.SUCCESS
             this.#parseContent(text)
+            await this.#applyRemoteConfig()
         } catch (error) {
             this.#setOptions(this.#fallbackOptions)
             this.#loadStatus = LOAD_STATUS.FAILED
@@ -143,6 +167,35 @@ class ConfigLoader {
 
     #setOptions(options: ConfigFileOptions): void {
         this.#options = { ...options }
+    }
+
+    async #applyRemoteConfig(): Promise<void> {
+        const url = this.#options.remoteConfigUrl
+        if (!url) {
+            return
+        }
+
+        const loader = new RemoteConfigLoader({
+            url,
+            timeoutMs: this.#options.remoteConfigTimeout,
+            ttlMs: this.#options.remoteConfigTtl,
+        })
+
+        this.#remoteLoader = loader
+
+        const result = await loader.load()
+        if (!result.options) {
+            return
+        }
+
+        const localOnly: AnyRecord = {}
+        LOCAL_ONLY_CONFIG_FIELDS.forEach((key) => {
+            if (key in this.#options) {
+                localOnly[key] = this.#options[key]
+            }
+        })
+
+        this.#setOptions({ ...result.options, ...localOnly } as ConfigFileOptions)
     }
 }
 

@@ -15,6 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import localStorage from '../../lib/LocalStorage'
 import { CLOUD_STORAGE_MODE, type CloudStorageMode } from './constants'
 import { parseValue, serializeValue } from './helpers'
 import type LocalStorageStrategy from './LocalStorageStrategy'
@@ -155,8 +156,7 @@ class PlatformStorageStrategy {
     }
 
     #applyLocalStorageFallback(keys: string[], rawValues: unknown[]): unknown[] {
-        const localStorage = this.#localStrategy.storage
-        if (!localStorage) {
+        if (!localStorage.isAvailable) {
             return rawValues
         }
 

@@ -15,4 +15,15 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const GUEST_ID_STORAGE_KEY = 'bridge-player-guest-id'
+export const REMOTE_CONFIG_CACHE_STORAGE_KEY = 'bridge-remote-config-cache'
+export const REMOTE_CONFIG_DEFAULT_TIMEOUT = 2000
+export const REMOTE_CONFIG_DEFAULT_TTL = 60 * 60 * 1000
+
+// Fields whose source is the local build/distribution and which must never
+// be overridden by a remotely fetched bridge config. Includes bootstrap
+// fields for the remote loader itself — otherwise a bad remote response
+// could disable remote control of subsequent loads.
+export const LOCAL_ONLY_CONFIG_FIELDS = [
+    'forciblySetPlatformId',
+    'remoteConfigUrl',
+] as const

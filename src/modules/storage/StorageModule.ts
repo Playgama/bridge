@@ -38,7 +38,7 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
     constructor(platformBridge: StorageBridgeContract) {
         super(platformBridge)
 
-        this.#localStrategy = new LocalStorageStrategy(platformBridge)
+        this.#localStrategy = new LocalStorageStrategy()
         this.#platformStrategy = new PlatformStorageStrategy(platformBridge, this.#localStrategy)
 
         this._platformBridge.on(EVENT_NAME.DEFAULT_STORAGE_TYPE_CHANGED, () => {

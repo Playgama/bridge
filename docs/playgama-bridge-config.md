@@ -5,6 +5,7 @@ This document describes all available configuration parameters for `playgama-bri
 ## Table of Contents
 
 - [Root-Level Parameters](#root-level-parameters)
+- [Remote Configuration](#remote-configuration)
 - [Advertisement Configuration](#advertisement-configuration)
 - [Game Configuration](#game-configuration)
 - [Device Configuration](#device-configuration)
@@ -25,6 +26,49 @@ This document describes all available configuration parameters for `playgama-bri
 | `sendAnalyticsEvents` | boolean | `true` | Enable/disable sending analytics events to Playgama servers |
 | `disableLoadingLogo` | boolean | `false` | Hide the loading progress logo during initialization |
 | `showFullLoadingLogo` | boolean | `false` | Show full Playgama Bridge branding in loading screen (hardcode `false` for Yandex) |
+| `remoteConfigUrl` | string | `undefined` | URL of the remote bridge config that overrides the local one when reachable. See [Remote Configuration](#remote-configuration) |
+| `remoteConfigTimeout` | number | `5000` | Network timeout (ms) for remote config fetch |
+| `remoteConfigTtl` | number | `3600000` | Remote config cache TTL (ms). Defaults to 1 hour |
+
+---
+
+## Remote Configuration
+
+The bridge config can be served from a remote URL so that values (placement IDs, minimum delays, payments mapping, advanced banners, SaaS flags, etc.) can be updated without rebuilding and re-uploading the game archive. The local `playgama-bridge-config.json` remains the bootstrap and the offline fallback.
+
+### How it works
+
+1. The local file is always loaded first. It must contain the `remoteConfigUrl` (and optional `remoteConfigTimeout` / `remoteConfigTtl`).
+2. If a non-stale cached remote response is available in `localStorage`, it is applied immediately and the loader refreshes the cache in the background.
+3. Otherwise a blocking `fetch` is performed with an `AbortController` and the configured timeout.
+4. On success the remote response **replaces** the local options (except for the protected fields listed below) and is cached in `localStorage`.
+5. On error or timeout the loader falls back to the stale cache if any, otherwise it keeps the local config.
+
+If the local file itself fails to load or parse, the remote step is skipped — the local file is the last-resort source of `remoteConfigUrl`.
+
+### Protected fields (not overridden by remote)
+
+These fields are bound to the build/distribution and the bootstrap of the remote loader itself. They are read **only** from the local file; remote values are ignored:
+
+- `forciblySetPlatformId`
+- `remoteConfigUrl`
+- `remoteConfigTimeout`
+- `remoteConfigTtl`
+
+### Example
+
+```jsonc
+{
+    "remoteConfigUrl": "https://cdn.example.com/games/<gameId>/bridge-config.json",
+    "remoteConfigTimeout": 5000,
+    "remoteConfigTtl": 3600000,
+    // ... rest of the local config used as fallback
+}
+```
+
+### Cache key
+
+The cached remote response is stored under the `playgama-bridge-remote-config` key in `localStorage`. The cache is automatically invalidated when `remoteConfigUrl` changes.
 
 ---
 

@@ -16,8 +16,9 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import localStorage from '../lib/LocalStorage'
 import MessageBroker from '../lib/MessageBroker'
-import configLoader from '../lib/ConfigLoader'
+import configLoader from '../lib/bridge-config-loader'
 import Recorder from '../lib/Recorder'
 
 import {
@@ -389,6 +390,9 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         options: configLoader.options,
                         path: configLoader.path,
                         rawContent: configLoader.rawContent,
+                        remoteLoadStatus: configLoader.remoteLoadStatus,
+                        remoteLoadError: configLoader.remoteLoadError,
+                        remoteAppliedSource: configLoader.remoteAppliedSource,
                     },
                 },
             })
@@ -500,14 +504,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_INTERNAL)
             && this.#isPlatformInternalStorageAvailable()
         ) {
-            return this._localStorage !== null
+            return localStorage.isAvailable
         }
 
         if (
             storageType === STORAGE_TYPE.LOCAL_STORAGE
             && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_LOCAL)
         ) {
-            return this._localStorage !== null
+            return localStorage.isAvailable
         }
 
         return false
