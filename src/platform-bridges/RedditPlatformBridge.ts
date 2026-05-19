@@ -49,6 +49,10 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.REDDIT
     }
 
+    get isPlatformExternalCallsSupported(): boolean {
+        return false
+    }
+
     get isPaymentsSupported(): boolean {
         return true
     }

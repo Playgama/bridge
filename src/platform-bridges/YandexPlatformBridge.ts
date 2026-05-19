@@ -156,6 +156,10 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isPlatformExternalCallsSupported(): boolean {
+        return false
+    }
+
     // advertisement
     get isInterstitialSupported(): boolean {
         return true

@@ -56,6 +56,10 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.GAME_DISTRIBUTION
     }
 
+    get isPlatformExternalCallsSupported(): boolean {
+        return false
+    }
+
     // advertisement
     get isInterstitialSupported(): boolean {
         return true
