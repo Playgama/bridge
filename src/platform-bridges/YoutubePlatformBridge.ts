@@ -75,10 +75,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.YOUTUBE
     }
 
-    get isPlatformExternalCallsSupported(): boolean {
-        return false
-    }
-
     get platformLanguage(): string {
         if (this.#platformLanguage) {
             return this.#platformLanguage
