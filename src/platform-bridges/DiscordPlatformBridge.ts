@@ -71,6 +71,10 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.DISCORD
     }
 
+    get isPlatformExternalCallsSupported(): boolean {
+        return false
+    }
+
     // player
     get isPlayerAuthorizationSupported(): boolean {
         return true
