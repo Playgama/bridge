@@ -20,6 +20,7 @@ import {
     MODULE_NAME,
     EVENT_NAME,
     INTERSTITIAL_STATE,
+    LAUNCH_SOURCE,
     REWARDED_STATE,
     BANNER_STATE,
     STORAGE_TYPE,
@@ -32,6 +33,7 @@ import {
 
 import { applyEventBusMixin } from './common/EventBus'
 import PromiseDecorator from './common/PromiseDecorator'
+import { applyBrowserDefaultsProtection } from './common/utils'
 import configFileModule from './modules/ConfigFileModule'
 import PlatformModule from './modules/PlatformModule'
 import PlayerModule from './modules/PlayerModule'
@@ -170,6 +172,10 @@ class PlaygamaBridge {
         return DEVICE_ORIENTATION
     }
 
+    get LAUNCH_SOURCE() {
+        return LAUNCH_SOURCE
+    }
+
     #isInitialized = false
 
     #initializationPromiseDecorator = null
@@ -191,6 +197,8 @@ class PlaygamaBridge {
             const startTime = performance.now()
             const configFilePath = options?.configFilePath
             await configFileModule.load(configFilePath, options)
+
+            applyBrowserDefaultsProtection()
 
             await this.#createPlatformBridge()
 

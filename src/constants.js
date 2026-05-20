@@ -15,8 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const SAAS_URL = 'https://playgama.com/api/bridge/v1'
-export const TIMESTAMP_URL = 'https://playgama.com/api/v1/timestamp/now'
+export const SAAS_URL = 'https://api.playgama.com/api/bridge/v1'
+export const TIMESTAMP_URL = 'https://api.playgama.com/api/v1/timestamp/now'
 
 export const PLATFORM_ID = {
     VK: 'vk',
@@ -169,6 +169,10 @@ export const LEADERBOARD_TYPE = {
     IN_GAME: 'in_game',
     NATIVE: 'native',
     NATIVE_POPUP: 'native_popup',
+}
+
+export const LAUNCH_SOURCE = {
+    NOTIFICATION: 'notification',
 }
 
 export const ACTION_NAME = {

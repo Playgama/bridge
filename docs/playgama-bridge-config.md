@@ -239,7 +239,7 @@ The `saas` object configures Playgama SaaS services.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `saas.baseUrl` | string | `https://playgama.com/api/bridge/v1` | Base URL for SaaS API requests |
+| `saas.baseUrl` | string | `https://api.playgama.com/api/bridge/v1` | Base URL for SaaS API requests |
 | `saas.publicToken` | string | `""` | Public token for SaaS API authentication |
 | `saas.leaderboards.platforms` | array | `[]` | List of platform IDs to use SaaS leaderboards instead of native |
 

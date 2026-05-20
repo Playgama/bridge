@@ -22,6 +22,7 @@ import {
     ACTION_NAME,
     BANNER_STATE,
     INTERSTITIAL_STATE,
+    LAUNCH_SOURCE,
     REWARDED_STATE,
     BANNER_POSITION,
     LEADERBOARD_TYPE,
@@ -30,6 +31,16 @@ import {
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
+
+const AUTO_NOTIFICATIONS = [
+    {
+        title: 'Ready for another round?',
+        description: 'Jump back in right where you left off.',
+        type: 8,
+        minDelayInSeconds: 86400,
+        payload: 'msn_auto_24h',
+    },
+]
 
 const MSN_SIZES_BY_POSITION = {
     top: [[728, 90], [970, 250], [320, 50]],
@@ -48,13 +59,17 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.MSN
     }
 
+    get launchSource() {
+        if (new URLSearchParams(window.location.search).has('notificationPayload')) {
+            return LAUNCH_SOURCE.NOTIFICATION
+        }
+
+        return super.launchSource
+    }
+
     // advertisement
     get isInterstitialSupported() {
         return true
-    }
-
-    get initialInterstitialDelay() {
-        return 60
     }
 
     get isRewardedSupported() {
@@ -105,6 +120,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then(() => waitFor('$msstart'))
                 .then(() => {
                     this._platformSdk = window.$msstart
+
+                    AUTO_NOTIFICATIONS.forEach((notification) => {
+                        this._platformSdk.scheduleNotificationAsync(notification).catch(() => {})
+                    })
+
                     this._platformSdk.getSignedInUserAsync()
                         .then((data) => {
                             this.#updatePlayerInfo(data)
