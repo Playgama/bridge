@@ -57,12 +57,12 @@ describe('StorageModule (integration, PlaygamaBridge)', () => {
             SUPPORTED_FEATURES.STORAGE_LOCAL,
         ] })
 
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.LOCAL_STORAGE)
 
         stateManager.setPlayerState({ authorized: true, id: '123' })
         await bridge.player.authorize()
 
-        expect(bridge.storage.defaultType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
+        expect((bridge.storage as unknown as { _platformBridge: { defaultStorageType: string } })._platformBridge.defaultStorageType).toBe(STORAGE_TYPE.PLATFORM_INTERNAL)
     })
 
     test.each([
