@@ -17,6 +17,9 @@
 
 export const ERROR_CODE = {
     SDK_NOT_INITIALIZED: 'SDK_NOT_INITIALIZED',
+    INITIALIZATION_FAILED: 'INITIALIZATION_FAILED',
+    CONFIG_LOAD_FAILED: 'CONFIG_LOAD_FAILED',
+    CONFIG_PARSE_FAILED: 'CONFIG_PARSE_FAILED',
     STORAGE_NOT_SUPPORTED: 'STORAGE_NOT_SUPPORTED',
     STORAGE_NOT_AVAILABLE: 'STORAGE_NOT_AVAILABLE',
     STORAGE_QUOTA_EXCEEDED: 'STORAGE_QUOTA_EXCEEDED',
@@ -28,6 +31,9 @@ export type ErrorCode = typeof ERROR_CODE[keyof typeof ERROR_CODE]
 
 const ERROR_MESSAGES: Record<ErrorCode, string> = {
     SDK_NOT_INITIALIZED: 'Before using the SDK you must initialize it',
+    INITIALIZATION_FAILED: 'SDK initialization failed',
+    CONFIG_LOAD_FAILED: 'Failed to load the bridge config file',
+    CONFIG_PARSE_FAILED: 'Failed to parse the bridge config file',
     STORAGE_NOT_SUPPORTED: 'Storage not supported',
     STORAGE_NOT_AVAILABLE: 'Storage not available',
     STORAGE_QUOTA_EXCEEDED: 'Storage quota exceeded',
@@ -38,10 +44,14 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
 export class BridgeError extends Error {
     readonly code: ErrorCode
 
-    constructor(code: ErrorCode) {
+    // Underlying error that caused this one, when the failure is wrapped.
+    readonly originalError?: unknown
+
+    constructor(code: ErrorCode, originalError?: unknown) {
         super(ERROR_MESSAGES[code])
         this.name = 'BridgeError'
         this.code = code
+        this.originalError = originalError
     }
 }
 

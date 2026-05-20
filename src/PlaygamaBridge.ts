@@ -19,6 +19,8 @@ import {
     MODULE_NAME,
     EVENT_NAME,
     ERROR,
+    ERROR_CODE,
+    BridgeError,
 } from './constants'
 import {
     PLATFORM_ID,
@@ -38,6 +40,7 @@ import Deferred from './lib/Deferred'
 import { LoadingScreen } from './lib/loading-screen'
 import { SafeArea } from './lib/safe-area'
 import configLoader from './lib/bridge-config-loader'
+import logger, { createModuleLoggerProxy, LOGS_QUERY_PARAM } from './lib/logger'
 import PlatformModule from './modules/platform'
 import PlayerModule from './modules/player'
 import StorageModule from './modules/storage'
@@ -177,9 +180,24 @@ class PlaygamaBridge {
         if (!this.#initializationPromiseDecorator) {
             this.#initializationPromiseDecorator = new Deferred<void>()
 
+            // The URL parameter, when present, overrides the config file value.
+            const url = new URL(window.location.href)
+            const logsParamPresent = url.searchParams.has(LOGS_QUERY_PARAM)
+            if (logsParamPresent) {
+                logger.enabled = url.searchParams.get(LOGS_QUERY_PARAM) !== 'false'
+            }
+
+            logger.info('Initialization started')
+
             const startTime = performance.now()
             const configFilePath = options?.configFilePath
             await configLoader.load(configFilePath, options)
+
+            if (!logsParamPresent) {
+                logger.enabled = configLoader.options.logs === true
+            }
+
+            logger.info('Config loaded')
 
             await this.#createPlatformBridge()
 
@@ -209,7 +227,10 @@ class PlaygamaBridge {
             ]
 
             moduleRegistry.forEach((entry) => {
-                this.#modules[entry.name] = entry.factory(bridge)
+                const moduleInstance = entry.factory(bridge)
+                this.#modules[entry.name] = typeof moduleInstance === 'object' && moduleInstance !== null
+                    ? createModuleLoggerProxy(entry.name, moduleInstance)
+                    : moduleInstance
             })
 
             bridge
@@ -217,7 +238,7 @@ class PlaygamaBridge {
                 .then(() => {
                     this.#isInitialized = true
 
-                    console.info(`%c PlaygamaBridge v${this.version} initialized. `, 'background: #01A5DA; color: white')
+                    logger.banner(`PlaygamaBridge v${this.version} initialized.`)
 
                     const endTime = performance.now()
                     const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
@@ -250,7 +271,14 @@ class PlaygamaBridge {
                         `${MODULE_NAME.CORE}_initialization_failed`,
                         { error: errorMessage, time_s: timeInSeconds },
                     )
-                    console.error('PlaygamaBridge initialization failed:', error)
+
+                    const initializationError = new BridgeError(ERROR_CODE.INITIALIZATION_FAILED, error)
+                    logger.error(initializationError.message, error)
+
+                    if (this.#initializationPromiseDecorator) {
+                        this.#initializationPromiseDecorator.reject(initializationError)
+                        this.#initializationPromiseDecorator = null
+                    }
                 })
                 .finally(() => {
                     setTimeout(() => this.#loadingScreen?.setProgress(100, true), 700)
@@ -283,6 +311,8 @@ class PlaygamaBridge {
                 platformId = detected.platformId
             }
         }
+
+        logger.info(`Platform detected: ${platformId}`)
 
         const PlatformBridge = await fetchPlatformBridge(platformId)
         this.#platformBridge = new PlatformBridge() as PlatformBridgeBase
@@ -325,7 +355,7 @@ class PlaygamaBridge {
 
     #getModule(id: string): unknown {
         if (!this.#isInitialized) {
-            console.error(ERROR.SDK_NOT_INITIALIZED.message)
+            logger.error(ERROR.SDK_NOT_INITIALIZED.message)
         }
 
         return this.#modules[id]

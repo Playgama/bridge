@@ -15,6 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import logger from './logger'
+
 export type EventListener = (...args: unknown[]) => void
 
 export interface EventEmitter {
@@ -80,7 +82,7 @@ export function applyLocalEventMixin(target: object): void {
             try {
                 cb(...args)
             } catch (e) {
-                console.error(`[EventBus] Listener error on "${eventName}":`, e)
+                logger.error(`[EventBus] Listener error on "${eventName}":`, e)
             }
         })
     }
@@ -89,6 +91,13 @@ export function applyLocalEventMixin(target: object): void {
 
 const eventBus = {} as EventEmitter
 applyLocalEventMixin(eventBus)
+
+// Log every event that flows through the global bus (module state changes, etc.).
+const emitWithoutLogging = eventBus.emit.bind(eventBus)
+eventBus.emit = function emit(eventName: string, ...args: unknown[]): void {
+    logger.info(`[event] ${eventName}`, ...args)
+    emitWithoutLogging(eventName, ...args)
+}
 
 export function applyEventBusMixin(target: object): void {
     /* eslint-disable no-param-reassign */

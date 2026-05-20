@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import logger from '../lib/logger'
 import { ACTION_NAME, ERROR } from '../constants'
 import {
     PLATFORM_ID,
@@ -81,7 +82,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                 window.funmax.loadStart()
             }
         } catch (e) {
-            console.error(e)
+            logger.error('Xiaomi error:', e)
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -122,7 +123,7 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                             window.funmax.loadReady()
                         }
                     } catch (e) {
-                        console.error(e)
+                        logger.error('Xiaomi error:', e)
                     }
                     resolve(undefined)
                 })

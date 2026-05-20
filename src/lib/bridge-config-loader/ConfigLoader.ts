@@ -16,6 +16,8 @@
  */
 
 import { deepMerge, type AnyRecord } from '../../utils'
+import { ERROR_CODE, BridgeError } from '../../constants'
+import logger from '../logger'
 import { LOCAL_ONLY_CONFIG_FIELDS } from './constants'
 import RemoteConfigLoader, {
     REMOTE_LOAD_STATUS,
@@ -45,6 +47,7 @@ export interface ConfigFileOptions extends AnyRecord {
     remoteConfigUrl?: string
     remoteConfigTimeout?: number
     remoteConfigTtl?: number
+    logs?: boolean
 }
 
 class ConfigLoader {
@@ -138,7 +141,7 @@ class ConfigLoader {
             this.#setOptions(this.#fallbackOptions)
             this.#loadStatus = LOAD_STATUS.FAILED
             this.#loadError = (error as Error).message || String(error)
-            console.error(error)
+            logger.error(new BridgeError(ERROR_CODE.CONFIG_LOAD_FAILED, error).message, error)
         }
     }
 
@@ -161,7 +164,7 @@ class ConfigLoader {
             this.#setOptions(this.#fallbackOptions)
             this.#parseStatus = PARSE_STATUS.FAILED
             this.#parseError = `Failed to parse bridge config: ${(parseError as Error).message || String(parseError)}`
-            console.error('Config parsing error.', parseError)
+            logger.error(new BridgeError(ERROR_CODE.CONFIG_PARSE_FAILED, parseError).message, parseError)
         }
     }
 

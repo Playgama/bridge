@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import logger from '../lib/logger'
 import { ACTION_NAME, ERROR } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
@@ -431,7 +432,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                     this.#deleteStorageData(parsed)
                 }
             } catch (error) {
-                console.error('Error parsing Microsoft Store message:', error)
+                logger.error('Error parsing Microsoft Store message:', error)
             }
         })
     }

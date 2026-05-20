@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import logger from '../lib/logger'
 import { addJavaScript, waitFor, type AnyRecord } from '../utils'
 import { ACTION_NAME } from '../constants'
 import {
@@ -458,7 +459,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     }
                 },
                 onError: (err: unknown) => {
-                    console.error(err)
+                    logger.error('Yandex interstitial error:', err)
                 },
             },
         })

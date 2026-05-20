@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import logger from '../lib/logger'
 import { addJavaScript } from '../utils'
 import { ACTION_NAME } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
@@ -157,7 +158,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                 },
                 onAdFailedToLoad: (error) => {
-                    console.error(error)
+                    logger.error('JioGames interstitial failed to load:', error)
                     this._showAdFailurePopup(false)
                 },
             })
@@ -182,7 +183,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                     this._setRewardedState(REWARDED_STATE.CLOSED)
                 },
                 onAdFailedToLoad: (error) => {
-                    console.error(error)
+                    logger.error('JioGames rewarded failed to load:', error)
                     this._showAdFailurePopup(true)
                 },
             })
@@ -203,7 +204,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
                 window.JGBanner?.showBanner((position as string) || (window.BannerPosition?.TOP ?? 'TOP'))
             })
             .catch((error) => {
-                console.error(error)
+                logger.error('JioGames banner failed to load:', error)
                 this._setBannerState(BANNER_STATE.FAILED)
             })
     }

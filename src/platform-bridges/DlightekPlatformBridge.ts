@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import logger from '../lib/logger'
 import { ACTION_NAME, ERROR } from '../constants'
 import {
     PLATFORM_ID,
@@ -182,7 +183,7 @@ class DlightekPlatformBridge extends PlatformBridgeBase {
                             sdk.gameLoadingCompleted()
                         }
                     } catch (e) {
-                        console.error(e)
+                        logger.error('Dlightek error:', e)
                     }
                     resolve(undefined)
                 })

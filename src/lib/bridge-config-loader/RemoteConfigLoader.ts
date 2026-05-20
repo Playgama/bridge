@@ -21,6 +21,7 @@ import {
     REMOTE_CONFIG_DEFAULT_TTL,
 } from './constants'
 import localStorage from '../LocalStorage'
+import logger from '../logger'
 import type { AnyRecord } from '../../utils'
 
 export const REMOTE_LOAD_STATUS = {
@@ -120,7 +121,7 @@ class RemoteConfigLoader {
             const isTimeout = (error as Error)?.name === 'AbortError'
             this.#loadStatus = isTimeout ? REMOTE_LOAD_STATUS.TIMEOUT : REMOTE_LOAD_STATUS.FAILED
             this.#loadError = (error as Error)?.message || String(error)
-            console.error('Remote bridge config load failed:', error)
+            logger.error('Remote config load failed:', error)
 
             if (cache) {
                 this.#appliedSource = REMOTE_APPLIED_SOURCE.STALE_CACHE
@@ -145,7 +146,7 @@ class RemoteConfigLoader {
                 this.#writeCache(options)
             })
             .catch((error) => {
-                console.error('Remote bridge config background refresh failed:', error)
+                logger.error('Remote config background refresh failed:', error)
             })
     }
 

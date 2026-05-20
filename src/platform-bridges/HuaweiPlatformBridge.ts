@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import logger from '../lib/logger'
 import { ACTION_NAME, ERROR } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
@@ -269,7 +270,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
                     this.#deleteStorageData(data)
                 }
             } catch (error) {
-                console.error('Error parsing Huawei message:', error)
+                logger.error('Error parsing Huawei message:', error)
             }
         }
     }
