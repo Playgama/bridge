@@ -286,6 +286,10 @@ class PlaygamaBridge {
         return this.#initializationPromiseDecorator!.promise
     }
 
+    setGameLoadingProgress(percent: number): void {
+        this.#loadingScreen?.setProgress(percent)
+    }
+
     async #createPlatformBridge(): Promise<void> {
         let platformId: PlatformId = PLATFORM_ID.MOCK
 
