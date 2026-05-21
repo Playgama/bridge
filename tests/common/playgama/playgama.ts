@@ -48,12 +48,15 @@ export function createPlaygamaSdk(
         getAdditionalParams: vi.fn().mockReturnValue({}),
     }
 
-    testGlobalThis.PLAYGAMA_SDK = {
+    const sdk = {
         userService,
         advService,
         cloudSaveApi,
         platformService,
     }
+
+    testGlobalThis.PLAYGAMA_SDK = sdk
+    testGlobalThis.PLAYGAMA_WRAP = sdk
 
     return Promise.resolve()
 }

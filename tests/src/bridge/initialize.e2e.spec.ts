@@ -15,9 +15,15 @@ describe('initialize (integration, PlaygamaBridge)', () => {
         PLATFORM_ID.MOCK,
         PLATFORM_ID.QA_TOOL,
         PLATFORM_ID.PLAYGAMA,
+        PLATFORM_ID.STANDALONE,
         PLATFORM_ID.ABSOLUTE_GAMES
     ])('Initialize by platform_id query parameter %s', async (platformId: string) => {
         const { bridge } = await createBridgeByUrl(`http://localhost/?platform_id=${platformId}`)
         expect(bridge.platform.id).toBe(platformId)
+    })
+
+    test('Initialize standalone by platform query parameter', async () => {
+        const { bridge } = await createBridgeByUrl(`http://localhost/?platform=${PLATFORM_ID.STANDALONE}`)
+        expect(bridge.platform.id).toBe(PLATFORM_ID.STANDALONE)
     })
 })

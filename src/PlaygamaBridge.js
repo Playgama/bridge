@@ -276,6 +276,8 @@ class PlaygamaBridge {
             platformId = this.#getPlatformId(configFileModule.options.forciblySetPlatformId.toLowerCase())
         } else if (url.searchParams.has('platform_id')) {
             platformId = this.#getPlatformId(url.searchParams.get('platform_id').toLowerCase())
+        } else if (__INCLUDE_STANDALONE__ && url.searchParams.get('platform') === PLATFORM_ID.STANDALONE) {
+            platformId = PLATFORM_ID.STANDALONE
         } else if (__INCLUDE_YANDEX__ && (url.hostname.includes(['y', 'a', 'n', 'd', 'e', 'x', '.', 'n', 'e', 't'].join('')) || url.hash.includes('yandex'))) {
             platformId = PLATFORM_ID.YANDEX
         } else if (__INCLUDE_CRAZY_GAMES__ && (url.hostname.includes('crazygames.') || url.hostname.includes('1001juegos.com'))) {

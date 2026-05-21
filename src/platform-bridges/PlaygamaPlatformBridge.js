@@ -28,12 +28,26 @@ import {
     PLATFORM_MESSAGE,
 } from '../constants'
 
-const SDK_URL = 'https://playgama.com/platform-sdk/v1.js'
-
 class PlaygamaPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId() {
         return PLATFORM_ID.PLAYGAMA
+    }
+
+    get sdkUrl() {
+        return 'https://playgama.com/platform-sdk/v1.js'
+    }
+
+    get sdkGlobalName() {
+        return 'PLAYGAMA_SDK'
+    }
+
+    get platformSdk() {
+        return window[this.sdkGlobalName]
+    }
+
+    get platformLanguage() {
+        return this._platformSdk?.platformService?.getLanguage?.() || super.platformLanguage
     }
 
     // advertisement
@@ -60,10 +74,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return this.#isPaymentsSupported
     }
 
-    get platformLanguage() {
-        return this._platformSdk.platformService.getLanguage() || super.platformLanguage
-    }
-
     _isAdvancedBannersSupported = true
 
     #isPaymentsSupported = true
@@ -76,9 +86,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            addJavaScript(SDK_URL).then(() => {
-                waitFor('PLAYGAMA_SDK').then(() => {
-                    this._platformSdk = window.PLAYGAMA_SDK
+            addJavaScript(this.sdkUrl).then(() => {
+                waitFor(this.sdkGlobalName).then(() => {
+                    this._platformSdk = this.platformSdk
 
                     this._platformSdk.advService.subscribeToAdStateChanges((adType, state) => {
                         if (adType === 'interstitial') {
@@ -134,7 +144,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
                     Promise.all([
                         this.#getPlayer(),
-                        this._platformSdk.platformService?.isReady,
+                        this._platformSdk.platformService?.isReady ?? Promise.resolve(),
                     ]).then(() => {
                         if (this._platformSdk.platformService?.getIsPaymentsSupported) {
                             this.#isPaymentsSupported = this._platformSdk.platformService.getIsPaymentsSupported()
@@ -143,7 +153,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
 
-                    if (this._platformSdk.platformService.getAdditionalParams) {
+                    if (this._platformSdk.platformService?.getAdditionalParams) {
                         this._additionalData = this._platformSdk.platformService.getAdditionalParams() || {}
                     }
                 })
@@ -157,7 +167,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     sendMessage(message) {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
-                this._platformSdk.gameService.gameReady()
+                this._platformSdk.gameService?.gameReady?.()
                 return Promise.resolve()
             }
             default: {
@@ -235,7 +245,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     data[key] = (typeof value !== 'string') ? JSON.stringify(value) : value
                 }
 
-                this._platformSdk.storageApi.setItems(data)
+                this._platformSdk.storageApi?.setItems?.(data)
                 return super.setDataToStorage(key, value, storageType)
             }
             default: {
@@ -271,7 +281,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 })
             }
             case STORAGE_TYPE.LOCAL_STORAGE: {
-                this._platformSdk.storageApi.deleteItems(Array.isArray(key) ? key : [key])
+                this._platformSdk.storageApi?.deleteItems?.(Array.isArray(key) ? key : [key])
                 return super.deleteDataFromStorage(key, storageType)
             }
             default: {
