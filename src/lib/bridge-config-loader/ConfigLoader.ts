@@ -47,7 +47,7 @@ export interface ConfigFileOptions extends AnyRecord {
     remoteConfigUrl?: string
     remoteConfigTimeout?: number
     remoteConfigTtl?: number
-    logs?: boolean
+    debug?: boolean
 }
 
 class ConfigLoader {

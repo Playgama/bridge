@@ -37,7 +37,7 @@ export const LOGGER_RESET_STYLE = ''
 export const LOGGER_BANNER_STYLE = `background: ${LOGGER_BRAND_COLOR}; color: white; padding: 1px 6px; border-radius: 4px`
 
 // Query parameter that enables logs regardless of the config file value.
-export const LOGS_QUERY_PARAM = 'logs'
+export const DEBUG_QUERY_PARAM = 'debug'
 
 // Module methods excluded from call logging — event emitter plumbing whose
 // arguments (listener callbacks) only add noise to the console.

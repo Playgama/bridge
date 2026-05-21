@@ -39,7 +39,7 @@ import Deferred from './lib/Deferred'
 import { LoadingScreen } from './lib/loading-screen'
 import { SafeArea } from './lib/safe-area'
 import configLoader from './lib/bridge-config-loader'
-import logger, { createModuleLoggerProxy, LOGS_QUERY_PARAM } from './lib/logger'
+import logger, { createModuleLoggerProxy, DEBUG_QUERY_PARAM } from './lib/logger'
 import PlatformModule from './modules/platform'
 import PlayerModule from './modules/player'
 import StorageModule from './modules/storage'
@@ -180,9 +180,9 @@ class PlaygamaBridge {
 
             // The URL parameter, when present, overrides the config file value.
             const url = new URL(window.location.href)
-            const logsParamPresent = url.searchParams.has(LOGS_QUERY_PARAM)
-            if (logsParamPresent) {
-                logger.enabled = url.searchParams.get(LOGS_QUERY_PARAM) !== 'false'
+            const debugParamPresent = url.searchParams.has(DEBUG_QUERY_PARAM)
+            if (debugParamPresent) {
+                logger.enabled = url.searchParams.get(DEBUG_QUERY_PARAM) !== 'false'
             }
 
             logger.info('Initialization started')
@@ -191,8 +191,8 @@ class PlaygamaBridge {
             const configFilePath = options?.configFilePath
             await configLoader.load(configFilePath, options)
 
-            if (!logsParamPresent) {
-                logger.enabled = configLoader.options.logs === true
+            if (!debugParamPresent) {
+                logger.enabled = configLoader.options.debug === true
             }
 
             logger.info('Config loaded')
