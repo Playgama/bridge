@@ -20,4 +20,11 @@ export interface PlaygamaSdk {
         getState: () => Promise<Record<string, unknown>>
         setItems: (items: Record<string, unknown>) => Promise<void>
     }
+    platformService: {
+        isReady: Promise<void>
+        getIsPlayerAuthorizationSupported: ReturnType<typeof vi.fn>
+        getIsCloudSaveSupported: ReturnType<typeof vi.fn>
+        getIsPaymentsSupported: ReturnType<typeof vi.fn>
+        getAdditionalParams: ReturnType<typeof vi.fn>
+    }
 }

@@ -35,10 +35,6 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
         return true
     }
 
-    get isPaymentsSupported() {
-        return true
-    }
-
     _isAdvancedBannersSupported = false
 }
 
