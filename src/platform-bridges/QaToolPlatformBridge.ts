@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import ServerTimeCache from '../lib/ServerTimeCache'
 import localStorage from '../lib/LocalStorage'
 import MessageBroker from '../lib/MessageBroker'
 import configLoader from '../lib/bridge-config-loader'
@@ -321,6 +322,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     #recorder = new Recorder()
 
+    #serverTimeCache = new ServerTimeCache(() => this.#requestServerTime())
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -455,17 +458,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     getServerTime(): Promise<number> {
-        return this.#requestMessage(MODULE_NAME.PLATFORM, ACTION_NAME_QA.GET_SERVER_TIME, {
-            options: {},
-        }, { timeout: 5_000 }).then((data) => {
-            const { time } = (data as { time?: number })
-            if (!time) {
-                throw new Error('Invalid server time')
-            }
-            return time
-        }).catch(() => {
-            throw new Error('Server time request timeout')
-        })
+        return this.#serverTimeCache.getServerTime()
     }
 
     isStorageSupported(storageType: StorageType): boolean {
@@ -1171,6 +1164,20 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         this.#messageBroker.send({
             source: MESSAGE_SOURCE,
             ...message,
+        })
+    }
+
+    #requestServerTime(): Promise<number> {
+        return this.#requestMessage(MODULE_NAME.PLATFORM, ACTION_NAME_QA.GET_SERVER_TIME, {
+            options: {},
+        }, { timeout: 5_000 }).then((data) => {
+            const { time } = (data as { time?: number })
+            if (!time) {
+                throw new Error('Invalid server time')
+            }
+            return time
+        }).catch(() => {
+            throw new Error('Server time request timeout')
         })
     }
 

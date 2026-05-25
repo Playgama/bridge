@@ -16,7 +16,7 @@
  */
 
 import { MODULE_NAME } from '../../constants'
-import { TIMESTAMP_URL } from '../../lib/serverTime'
+import { serverTimeCache } from '../../lib/serverTime'
 import { PLATFORM_ID, type PlatformId } from '../platform/constants'
 import packageJson from '../../../package.json'
 import { generateRandomId } from '../../utils'
@@ -107,13 +107,8 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     async #fetchTimeDiff(): Promise<void> {
         try {
-            const response = await fetch(TIMESTAMP_URL)
-            if (!response.ok) {
-                return
-            }
-
-            const data = await response.json() as { timestamp: number }
-            this.#timeDiff = data.timestamp * 1000 - Date.now()
+            const serverTime = await serverTimeCache.getServerTime()
+            this.#timeDiff = serverTime - Date.now()
 
             for (let i = 0; i < this.#eventQueue.length; i++) {
                 const event = this.#eventQueue[i]

@@ -22,7 +22,7 @@ import {
     ERROR_CODE,
     MODULE_NAME,
 } from '../constants'
-import { TIMESTAMP_URL } from '../lib/serverTime'
+import { serverTimeCache } from '../lib/serverTime'
 import {
     PLATFORM_ID,
     VISIBILITY_STATE,
@@ -402,21 +402,7 @@ class PlatformBridgeBase {
     }
 
     getServerTime(): Promise<number> {
-        return new Promise((resolve, reject) => {
-            fetch(TIMESTAMP_URL)
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok')
-                    }
-                    return response.json()
-                })
-                .then((data: { timestamp: number }) => {
-                    resolve(data.timestamp * 1000)
-                })
-                .catch(() => {
-                    reject()
-                })
-        })
+        return serverTimeCache.getServerTime()
     }
 
     getAllGames(): Promise<unknown> {

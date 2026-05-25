@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import ServerTimeCache from '../lib/ServerTimeCache'
 import logger from '../lib/logger'
 import { addJavaScript, waitFor, type AnyRecord } from '../utils'
 import { ACTION_NAME } from '../constants'
@@ -244,6 +245,10 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
     #playerPromise: Promise<void> | null = null
 
+    #serverTimeCache = new ServerTimeCache(
+        () => Promise.resolve((this._platformSdk as YandexSdk).serverTime()),
+    )
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -353,10 +358,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     getServerTime(): Promise<number> {
-        return new Promise((resolve) => {
-            const ts = (this._platformSdk as YandexSdk).serverTime()
-            resolve(ts)
-        })
+        return this.#serverTimeCache.getServerTime()
     }
 
     getAllGames(): Promise<unknown> {

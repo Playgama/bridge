@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import ServerTimeCache from '../lib/ServerTimeCache'
 import { addJavaScript, waitFor, type AnyRecord } from '../utils'
 import { ACTION_NAME } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
@@ -120,6 +121,10 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     get cloudStorageReady(): Promise<void> {
         return Promise.resolve()
     }
+
+    #serverTimeCache = new ServerTimeCache(
+        () => Promise.resolve((this._platformSdk as BqSdk).platform.getServerTime()),
+    )
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -388,10 +393,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
 
     // platform
     getServerTime(): Promise<number> {
-        return new Promise((resolve) => {
-            const ts = (this._platformSdk as BqSdk).platform.getServerTime()
-            resolve(ts)
-        })
+        return this.#serverTimeCache.getServerTime()
     }
 
     #setupAdvertisementHandlers(): void {
