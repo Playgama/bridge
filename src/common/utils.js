@@ -895,7 +895,6 @@ export function deepMerge(firstObject, secondObject) {
 }
 
 export function deformatPrice(priceStr) {
-    if (!priceStr) return null
     const cleaned = priceStr.replace(/[^\d.,-]/g, '')
 
     if (cleaned.includes('.') && cleaned.includes(',') && cleaned.indexOf(',') < cleaned.indexOf('.')) {
