@@ -67,6 +67,7 @@ export const MODULE_NAME = {
     ACHIEVEMENTS: 'achievements',
     ANALYTICS: 'analytics',
     RECORDER: 'recorder',
+    CROSS_PROMO: 'cross_promo',
 }
 
 export const EVENT_NAME = {
