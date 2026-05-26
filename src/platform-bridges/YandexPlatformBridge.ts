@@ -35,6 +35,7 @@ import {
     STORAGE_TYPE,
     CLOUD_STORAGE_MODE,
     type CloudStorageMode,
+    type StorageType,
 } from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
@@ -216,10 +217,15 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     }
 
     get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
+        if (!this.#playerPromise) {
             return Promise.reject()
         }
-        return this.#playerPromise!.then(() => undefined)
+        return this.#playerPromise.then(() => {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject<void>()
+            }
+            return undefined
+        })
     }
 
     // leaderboards
@@ -236,6 +242,8 @@ class YandexPlatformBridge extends PlatformBridgeBase {
     get isRemoteConfigSupported(): boolean {
         return true
     }
+
+    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     #isAddToHomeScreenSupported = false
 
