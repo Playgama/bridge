@@ -5,6 +5,11 @@ export interface BridgeOptions {
     supportedFeatures?: string[]
     bridgeOptions?: Record<string, unknown>
     internalStoragePolicy?: string
+    playgamaCapabilities?: {
+        playerAuthorization?: boolean
+        cloudSave?: boolean
+        payments?: boolean
+    }
 }
 
 export interface CreateBridgeResult {

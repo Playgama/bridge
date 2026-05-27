@@ -26,6 +26,7 @@ export const PLATFORM_ID = {
     ABSOLUTE_GAMES: 'absolute_games',
     GAME_DISTRIBUTION: 'game_distribution',
     PLAYGAMA: 'playgama',
+    STANDALONE: 'standalone',
     PLAYDECK: 'playdeck',
     TELEGRAM: 'telegram',
     Y8: 'y8',

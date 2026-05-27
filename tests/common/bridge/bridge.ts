@@ -29,7 +29,7 @@ async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeRe
     const stateManager = new StateManager()
     const bridge = new PlaygamaBridge()
 
-    await createPlaygamaSdk(testGlobal, stateManager)
+    await createPlaygamaSdk(testGlobal, stateManager, mergedOptions.playgamaCapabilities)
     await createQaToolSdk(testGlobal, stateManager)
     await AbsoluteGamesSdkEmulator.create(testGlobal)
 
