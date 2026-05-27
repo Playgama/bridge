@@ -41,6 +41,10 @@ class PlayerModule extends ModuleBase<PlayerBridgeContract> {
         return this._platformBridge.isPlayerAuthorized
     }
 
+    get isGuest(): boolean {
+        return !this._platformBridge.isPlayerAuthorized
+    }
+
     get id(): string | null {
         return this._platformBridge.playerId
     }

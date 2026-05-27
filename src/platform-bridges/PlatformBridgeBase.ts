@@ -360,6 +360,8 @@ class PlatformBridgeBase {
     #lastAdFailurePopupTime = 0
 
     constructor() {
+        this._playerApplyGuestData()
+
         this._visibilityState = document.visibilityState
 
         const aggregationStates: AggregationStateKey[] = ['interstitial', 'rewarded', 'visibility', 'platform', 'rate']

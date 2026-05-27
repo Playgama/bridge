@@ -268,7 +268,6 @@ class DlightekPlatformBridge extends PlatformBridgeBase {
     }
 
     #completeInitialization(): void {
-        this._playerApplyGuestData()
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
     }

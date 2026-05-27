@@ -709,8 +709,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             this._playerName = data.playerDisplayName as string
             this._playerExtra = data
             this.#isPaymentsSupported = (data.userAccountType as string).toLowerCase() === 'personal'
-        } else {
-            this._playerApplyGuestData()
         }
     }
 }
