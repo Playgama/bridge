@@ -472,16 +472,22 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     const mergedProducts = products.map((product) => {
                         const msnProduct = msnProducts.find((p) => p.productId === product.platformProductId)
 
+                        const listPrice = msnProduct?.price?.listPrice ?? null
+                        const priceCurrencyCode = msnProduct?.price?.currencyCode || null
+                        const price = listPrice !== null && priceCurrencyCode
+                            ? `${listPrice} ${priceCurrencyCode} `
+                            : null
+
                         return {
                             id: product.id,
-                            title: msnProduct.title,
-                            description: msnProduct.description,
-                            publisherName: msnProduct.publisherName,
-                            inAppOfferToken: msnProduct.inAppOfferToken,
-                            isConsumable: msnProduct.isConsumable,
-                            price: `${msnProduct.price.listPrice} ${msnProduct.price.currencyCode} `,
-                            priceCurrencyCode: msnProduct.price.currencyCode,
-                            priceValue: msnProduct.price.listPrice,
+                            title: msnProduct?.title || null,
+                            description: msnProduct?.description || null,
+                            publisherName: msnProduct?.publisherName || null,
+                            inAppOfferToken: msnProduct?.inAppOfferToken || null,
+                            isConsumable: msnProduct?.isConsumable ?? null,
+                            price,
+                            priceCurrencyCode,
+                            priceValue: listPrice,
                         }
                     })
 
