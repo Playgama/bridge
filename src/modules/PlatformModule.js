@@ -79,7 +79,10 @@ class PlatformModule extends ModuleBase {
         this._forwardEvent(EVENT_NAME.PAUSE_STATE_CHANGED)
     }
 
-    sendMessage(message, options = {}) {
+    sendMessage(message, rawOptions) {
+        // Engine integrations (e.g. Godot) can pass an explicit null instead of omitting the argument
+        const options = rawOptions ?? {}
+
         const analyticsData = {}
 
         if (message === PLATFORM_MESSAGE.GAME_READY) {
