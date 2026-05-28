@@ -55,7 +55,9 @@ class AnalyticsModule extends ModuleBase {
 
     initialize(platformBridge) {
         this._platformBridge = platformBridge
-        if (this._platformBridge.options?.sendAnalyticsEvents === false) {
+
+        const isPlaygama = this._platformBridge.platformId === PLATFORM_ID.PLAYGAMA
+        if (!isPlaygama && this._platformBridge.options?.sendAnalyticsEvents === false) {
             this.#isDisabled = true
         }
 
@@ -64,7 +66,10 @@ class AnalyticsModule extends ModuleBase {
             this.#isDisabled = true
         }
 
-        this.#fetchTimeDiff()
+        if (!this.#isDisabled) {
+            this.#fetchTimeDiff()
+        }
+
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
 
@@ -338,9 +343,7 @@ class AnalyticsModule extends ModuleBase {
         }
 
         this.#flushTimer = setInterval(() => {
-            if (this._platformBridge.platformId === PLATFORM_ID.PLAYGAMA) {
-                this.send(`${MODULE_NAME.CORE}_ping`)
-            }
+            this.send(`${MODULE_NAME.CORE}_ping`)
             this.#flush()
         }, FLUSH_INTERVAL)
     }

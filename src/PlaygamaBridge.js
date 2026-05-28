@@ -348,9 +348,18 @@ class PlaygamaBridge {
     #isSaas(feature) {
         const { options, platformId } = this.#platformBridge
 
+        if (!options.saas?.[feature]) {
+            return false
+        }
+
+        // On Playgama the feature runs through SaaS as soon as a token is set,
+        // without listing the platform explicitly.
+        if (platformId === PLATFORM_ID.PLAYGAMA && options.saas.publicToken) {
+            return true
+        }
+
         return (
-            options.saas?.[feature]
-            && Array.isArray(options.saas[feature].platforms)
+            Array.isArray(options.saas[feature].platforms)
             && options.saas[feature].platforms.includes(platformId)
         )
     }
