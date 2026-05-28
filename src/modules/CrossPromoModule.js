@@ -20,6 +20,8 @@ import configFileModule from './ConfigFileModule'
 const STYLE_ID = 'bridge-cross-promo-styles'
 const CONTAINER_ID = 'bridge-cross-promo'
 const DEFAULT_TITLE = 'More games'
+const GAMES_PER_SHOW = 4
+const ICON_ASPECT_RATIO = '183 / 256'
 
 const STYLES = `
     #${CONTAINER_ID} {
@@ -30,7 +32,7 @@ const STYLES = `
         align-items: center;
         justify-content: center;
         background: rgba(0, 0, 0, 0.72);
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+        font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
         animation: bridge-cp-fade-in 180ms ease-out;
         padding: 16px;
         box-sizing: border-box;
@@ -39,57 +41,63 @@ const STYLES = `
     #${CONTAINER_ID} .bridge-cp-modal {
         position: relative;
         width: 100%;
-        max-width: 720px;
+        max-width: 640px;
         max-height: 100%;
-        background: linear-gradient(180deg, #1f1733 0%, #120b22 100%);
-        border-radius: 24px;
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-        padding: 24px 20px 20px;
+        background: #212121;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        padding: 24px;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        color: #ffffff;
+    }
+
+    #${CONTAINER_ID} .bridge-cp-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 20px;
     }
 
     #${CONTAINER_ID} .bridge-cp-title {
-        margin: 0 40px 16px 4px;
+        margin: 0;
         color: #ffffff;
         font-size: 20px;
         font-weight: 700;
         line-height: 1.2;
+        letter-spacing: -0.2px;
     }
 
     #${CONTAINER_ID} .bridge-cp-close {
-        position: absolute;
-        top: 14px;
-        right: 14px;
+        flex-shrink: 0;
         width: 36px;
         height: 36px;
         border: 0;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.12);
-        color: #ffffff;
+        background: transparent;
+        color: #aaaaaa;
+        font-size: 24px;
+        line-height: 1;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 0;
-        transition: background 120ms ease;
+        transition: background 200ms ease, color 200ms ease;
     }
 
     #${CONTAINER_ID} .bridge-cp-close:hover {
-        background: rgba(255, 255, 255, 0.22);
-    }
-
-    #${CONTAINER_ID} .bridge-cp-close svg {
-        width: 16px;
-        height: 16px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
     }
 
     #${CONTAINER_ID} .bridge-cp-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 16px;
         overflow-y: auto;
         padding: 4px;
         margin: -4px;
@@ -99,47 +107,40 @@ const STYLES = `
     #${CONTAINER_ID} .bridge-cp-tile {
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 8px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.06);
         text-decoration: none;
         color: inherit;
         cursor: pointer;
-        transition: background 150ms ease, transform 150ms ease;
     }
 
-    #${CONTAINER_ID} .bridge-cp-tile:hover {
-        background: rgba(255, 255, 255, 0.12);
-        transform: translateY(-2px);
-    }
-
-    #${CONTAINER_ID} .bridge-cp-tile:active {
-        transform: translateY(0);
-    }
-
-    #${CONTAINER_ID} .bridge-cp-icon {
+    #${CONTAINER_ID} .bridge-cp-thumb {
+        position: relative;
         width: 100%;
-        aspect-ratio: 1 / 1;
-        max-width: 140px;
-        border-radius: 14px;
-        background: #2b1f47 center/cover no-repeat;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        aspect-ratio: ${ICON_ASPECT_RATIO};
+        border-radius: 12px;
+        overflow: hidden;
+        background: #333333 center/cover no-repeat;
+        transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 250ms ease;
+    }
+
+    #${CONTAINER_ID} .bridge-cp-tile:hover .bridge-cp-thumb {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
     }
 
     #${CONTAINER_ID} .bridge-cp-name {
+        margin-top: 8px;
         font-size: 14px;
-        font-weight: 600;
-        color: #ffffff;
+        font-weight: 500;
         text-align: center;
-        line-height: 1.25;
-        max-width: 100%;
+        color: #f1f1f1;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
+        transition: color 200ms ease;
+    }
+
+    #${CONTAINER_ID} .bridge-cp-tile:hover .bridge-cp-name {
+        color: #3ea6ff;
     }
 
     @keyframes bridge-cp-fade-in {
@@ -148,36 +149,10 @@ const STYLES = `
     }
 
     @media (min-width: 600px) {
-        #${CONTAINER_ID} .bridge-cp-modal {
-            padding: 28px 28px 24px;
-        }
-
-        #${CONTAINER_ID} .bridge-cp-title {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-
-        #${CONTAINER_ID} .bridge-cp-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        #${CONTAINER_ID} .bridge-cp-name {
-            font-size: 15px;
-        }
-    }
-
-    @media (min-width: 960px) {
         #${CONTAINER_ID} .bridge-cp-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr));
         }
     }
-`
-
-const CLOSE_ICON_SVG = `
-    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M1.5 1.5 14.5 14.5M14.5 1.5 1.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
 `
 
 class CrossPromoModule {
@@ -204,8 +179,10 @@ class CrossPromoModule {
             return
         }
 
+        const selectedGames = this.#pickRandomGames(games, GAMES_PER_SHOW)
+
         this.#injectStyles()
-        this.#container = this.#createContainer(games, config.title)
+        this.#container = this.#createContainer(selectedGames, config.title)
         document.body.appendChild(this.#container)
     }
 
@@ -235,6 +212,21 @@ class CrossPromoModule {
         return games.filter((game) => game && game.url)
     }
 
+    #pickRandomGames(games, count) {
+        if (games.length <= count) {
+            return games.slice()
+        }
+
+        const pool = games.slice()
+        for (let i = pool.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(Math.random() * (i + 1))
+            const temp = pool[i]
+            pool[i] = pool[j]
+            pool[j] = temp
+        }
+        return pool.slice(0, count)
+    }
+
     #injectStyles() {
         if (document.getElementById(STYLE_ID)) {
             return
@@ -253,17 +245,22 @@ class CrossPromoModule {
         const modal = document.createElement('div')
         modal.className = 'bridge-cp-modal'
 
+        const header = document.createElement('div')
+        header.className = 'bridge-cp-header'
+
         const titleEl = document.createElement('h2')
         titleEl.className = 'bridge-cp-title'
         titleEl.textContent = typeof title === 'string' && title.length > 0 ? title : DEFAULT_TITLE
-        modal.appendChild(titleEl)
+        header.appendChild(titleEl)
 
         const closeButton = document.createElement('button')
         closeButton.className = 'bridge-cp-close'
         closeButton.type = 'button'
         closeButton.setAttribute('aria-label', 'Close')
-        closeButton.innerHTML = CLOSE_ICON_SVG
-        modal.appendChild(closeButton)
+        closeButton.textContent = '×'
+        header.appendChild(closeButton)
+
+        modal.appendChild(header)
 
         const grid = document.createElement('div')
         grid.className = 'bridge-cp-grid'
@@ -307,12 +304,12 @@ class CrossPromoModule {
         tile.target = '_blank'
         tile.rel = 'noopener noreferrer'
 
-        const icon = document.createElement('div')
-        icon.className = 'bridge-cp-icon'
+        const thumb = document.createElement('div')
+        thumb.className = 'bridge-cp-thumb'
         if (game.icon) {
-            icon.style.backgroundImage = `url('${game.icon.replace(/'/g, "\\'")}')`
+            thumb.style.backgroundImage = `url('${game.icon.replace(/'/g, "\\'")}')`
         }
-        tile.appendChild(icon)
+        tile.appendChild(thumb)
 
         if (game.name) {
             const name = document.createElement('div')
