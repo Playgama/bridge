@@ -16,6 +16,8 @@
  */
 
 import configFileModule from './ConfigFileModule'
+import eventBus from '../common/EventBus'
+import { EVENT_NAME, INTERSTITIAL_STATE, REWARDED_STATE } from '../constants'
 
 const STYLE_ID = 'bridge-cross-promo-styles'
 const CONTAINER_ID = 'bridge-cross-promo'
@@ -166,6 +168,7 @@ class CrossPromoModule {
 
     init(platformId) {
         this.#platformId = platformId
+        this.#subscribeToAdEvents()
     }
 
     show() {
@@ -193,6 +196,20 @@ class CrossPromoModule {
 
         this.#container.remove()
         this.#container = null
+    }
+
+    #subscribeToAdEvents() {
+        eventBus.on(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, (state) => {
+            if (state === INTERSTITIAL_STATE.LOADING || state === INTERSTITIAL_STATE.OPENED) {
+                this.hide()
+            }
+        })
+
+        eventBus.on(EVENT_NAME.REWARDED_STATE_CHANGED, (state) => {
+            if (state === REWARDED_STATE.LOADING || state === REWARDED_STATE.OPENED) {
+                this.hide()
+            }
+        })
     }
 
     #getConfig() {

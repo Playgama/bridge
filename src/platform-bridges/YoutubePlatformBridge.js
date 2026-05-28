@@ -269,7 +269,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showInterstitial() {
-        crossPromoModule.hide()
         this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
         this._platformSdk.ads.requestInterstitialAd()
             .then(() => {
@@ -281,7 +280,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
     }
 
     showRewarded(placement) {
-        crossPromoModule.hide()
         this._setRewardedState(REWARDED_STATE.OPENED)
         this._platformSdk.ads.requestRewardedAd(placement)
             .then((isRewardEarned) => {
