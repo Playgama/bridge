@@ -137,6 +137,11 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         this.#isUserAccountAvailable = this._platformSdk.user.isUserAccountAvailable
                         const getPlayerInfoPromise = this.#getPlayer()
 
+                        this._platformSdk.game.addSettingsChangeListener((settings) => {
+                            this._setAudioState(!settings.muteAudio)
+                        })
+                        this._setAudioState(!this._platformSdk.game.settings.muteAudio)
+
                         if (this.options.xsollaProjectId) {
                             this.#ensurePaystationLoaded()
                         }
