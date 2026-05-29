@@ -6,6 +6,7 @@ export type TestGlobalThis = Omit<typeof globalThis, 'addEventListener' | 'remov
     fetch?: ReturnType<typeof vi.fn>
     location?: Location
     PLAYGAMA_SDK?: PlaygamaSdk
+    PLAYGAMA_WRAP?: PlaygamaSdk
     AgRuSdkMethods?: {
         ShowCampaign: string
     }

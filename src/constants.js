@@ -26,6 +26,7 @@ export const PLATFORM_ID = {
     ABSOLUTE_GAMES: 'absolute_games',
     GAME_DISTRIBUTION: 'game_distribution',
     PLAYGAMA: 'playgama',
+    STANDALONE: 'standalone',
     PLAYDECK: 'playdeck',
     TELEGRAM: 'telegram',
     Y8: 'y8',
@@ -67,6 +68,7 @@ export const MODULE_NAME = {
     ACHIEVEMENTS: 'achievements',
     ANALYTICS: 'analytics',
     RECORDER: 'recorder',
+    CROSS_PROMO: 'cross_promo',
 }
 
 export const EVENT_NAME = {

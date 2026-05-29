@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import crossPromoModule from '../modules/CrossPromoModule'
 import { waitFor } from '../common/utils'
 import {
     PLATFORM_ID,
@@ -99,10 +100,12 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
                 this._platformSdk.system.onPause(() => {
                     this._setPauseState(true)
+                    this.#tryShowCrossPromo()
                 })
 
                 this._platformSdk.system.onResume(() => {
                     this._setPauseState(false)
+                    crossPromoModule.hide()
                 })
 
                 Promise.all([getLanguagePromise, getDataPromise])
@@ -315,6 +318,16 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #tryShowCrossPromo() {
+        const interstitialActive = this._pauseStateAggregator?.getState('interstitial')
+        const rewardedActive = this._pauseStateAggregator?.getState('rewarded')
+        if (interstitialActive || rewardedActive) {
+            return
+        }
+
+        crossPromoModule.show()
     }
 
     #createSubscribeNotification() {

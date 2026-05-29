@@ -49,6 +49,7 @@ import RemoteConfigModule from './modules/RemoteConfigModule'
 import ClipboardModule from './modules/ClipboardModule'
 import AchievementsModule from './modules/AchievementsModule'
 import analyticsModule from './modules/AnalyticsModule'
+import crossPromoModule from './modules/CrossPromoModule'
 import { fetchPlatformBridge } from './platformImports'
 
 class PlaygamaBridge {
@@ -118,6 +119,10 @@ class PlaygamaBridge {
 
     get analytics() {
         return this.#getModule(MODULE_NAME.ANALYTICS)
+    }
+
+    get crossPromo() {
+        return this.#getModule(MODULE_NAME.CROSS_PROMO)
     }
 
     get engine() {
@@ -219,6 +224,8 @@ class PlaygamaBridge {
             this.#modules[MODULE_NAME.CLIPBOARD] = new ClipboardModule(this.#platformBridge)
             this.#modules[MODULE_NAME.ACHIEVEMENTS] = new AchievementsModule(this.#platformBridge)
             this.#modules[MODULE_NAME.ANALYTICS] = analyticsModule.initialize(this.#platformBridge)
+            crossPromoModule.init(this.#platformBridge.platformId)
+            this.#modules[MODULE_NAME.CROSS_PROMO] = crossPromoModule
 
             this.#platformBridge
                 .initialize()
@@ -341,9 +348,18 @@ class PlaygamaBridge {
     #isSaas(feature) {
         const { options, platformId } = this.#platformBridge
 
+        if (!options.saas?.[feature]) {
+            return false
+        }
+
+        // On Playgama the feature runs through SaaS as soon as a token is set,
+        // without listing the platform explicitly.
+        if (platformId === PLATFORM_ID.PLAYGAMA && options.saas.publicToken) {
+            return true
+        }
+
         return (
-            options.saas?.[feature]
-            && Array.isArray(options.saas[feature].platforms)
+            Array.isArray(options.saas[feature].platforms)
             && options.saas[feature].platforms.includes(platformId)
         )
     }
