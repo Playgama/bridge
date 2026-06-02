@@ -17,7 +17,6 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import ServerTimeCache from '../lib/ServerTimeCache'
-import localStorage from '../lib/LocalStorage'
 import MessageBroker from '../lib/MessageBroker'
 import configLoader from '../lib/bridge-config-loader'
 import Recorder from '../lib/Recorder'
@@ -26,7 +25,6 @@ import {
     MODULE_NAME,
     ACTION_NAME,
     EVENT_NAME,
-    ERROR,
 } from '../constants'
 import {
     PLATFORM_ID,
@@ -63,16 +61,7 @@ const MODULE_NAME_QA = {
     RECORDER: 'recorder',
 } as const
 
-export const INTERNAL_STORAGE_POLICY = {
-    AUTHORIZED_ONLY: 'authorized_only',
-    ALWAYS: 'always',
-    NEVER: 'never',
-} as const
-export type InternalStoragePolicy = typeof INTERNAL_STORAGE_POLICY[keyof typeof INTERNAL_STORAGE_POLICY]
-
 export const ACTION_NAME_QA = {
-    IS_STORAGE_AVAILABLE: 'is_storage_available',
-    IS_STORAGE_SUPPORTED: 'is_storage_supported',
     GET_DATA_FROM_STORAGE: 'get_data_from_storage',
     SET_DATA_TO_STORAGE: 'set_data_to_storage',
     DELETE_DATA_FROM_STORAGE: 'delete_data_from_storage',
@@ -102,8 +91,6 @@ const RECORDER_ACTION = {
     RTC_ICE: 'rtc_ice',
     CAPTURE_STARTED: 'capture_started',
     CAPTURE_ERROR: 'capture_error',
-    TAKE_SCREENSHOT: 'take_screenshot',
-    SCREENSHOT_RESULT: 'screenshot_result',
 } as const
 
 const INTERSTITIAL_STATUS = {
@@ -135,9 +122,6 @@ export const SUPPORTED_FEATURES = {
     SOCIAL_ADD_TO_FAVORITES: 'isAddToFavoritesSupported',
     SOCIAL_ADD_TO_HOME_SCREEN: 'isAddToHomeScreenSupported',
     SOCIAL_RATE: 'isRateSupported',
-
-    STORAGE_LOCAL: 'isLocalStorageSupported',
-    STORAGE_INTERNAL: 'isPlatformInternalStorageSupported',
 
     BANNER: 'isBannerSupported',
     INTERSTITIAL: 'isInterstitialSupported',
@@ -284,17 +268,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
+    // QA Tool is a platform emulator: it always persists data through itself,
+    // so the bridge unconditionally routes every storage operation to the platform.
     get cloudStorageMode(): CloudStorageMode {
-        if (this.isStorageSupported(STORAGE_TYPE.PLATFORM_INTERNAL)) {
-            return CLOUD_STORAGE_MODE.LAZY
-        }
-        return CLOUD_STORAGE_MODE.NONE
+        return CLOUD_STORAGE_MODE.LAZY
     }
 
     get cloudStorageReady(): Promise<void> {
-        if (!this.isStorageAvailable(STORAGE_TYPE.PLATFORM_INTERNAL)) {
-            return Promise.reject(ERROR.STORAGE_NOT_AVAILABLE)
-        }
         return Promise.resolve()
     }
 
@@ -314,7 +294,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     protected _deviceType: DeviceType | null = null
 
-    protected _internalStoragePolicy: InternalStoragePolicy = INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY
+    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
     engine: string = 'javascript'
 
@@ -459,55 +439,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     getServerTime(): Promise<number> {
         return this.#serverTimeCache.getServerTime()
-    }
-
-    isStorageSupported(storageType: StorageType): boolean {
-        this.#sendMessage({
-            type: MODULE_NAME.STORAGE,
-            action: ACTION_NAME_QA.IS_STORAGE_SUPPORTED,
-            options: { storageType },
-        })
-
-        if (
-            storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_INTERNAL)
-        ) {
-            return true
-        }
-
-        if (
-            storageType === STORAGE_TYPE.LOCAL_STORAGE
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_LOCAL)
-        ) {
-            return true
-        }
-
-        return false
-    }
-
-    isStorageAvailable(storageType: StorageType): boolean {
-        this.#sendMessage({
-            type: MODULE_NAME.STORAGE,
-            action: ACTION_NAME_QA.IS_STORAGE_AVAILABLE,
-            options: { storageType },
-        })
-
-        if (
-            storageType === STORAGE_TYPE.PLATFORM_INTERNAL
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_INTERNAL)
-            && this.#isPlatformInternalStorageAvailable()
-        ) {
-            return localStorage.isAvailable
-        }
-
-        if (
-            storageType === STORAGE_TYPE.LOCAL_STORAGE
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.STORAGE_LOCAL)
-        ) {
-            return localStorage.isAvailable
-        }
-
-        return false
     }
 
     loadCloudKey(key: string): Promise<unknown> {
@@ -1108,16 +1039,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             : super.platformLanguage
         this._platformTld = (config.platformTld as string | null | undefined) ?? super.platformTld
         this._platformPayload = (config.platformPayload as string | null | undefined) ?? super.platformPayload
-        this._leaderboardsType = (config.leaderboardsType as LeaderboardType | undefined) ?? LEADERBOARD_TYPE.NOT_AVAILABLE
-        this._internalStoragePolicy = (config.internalStoragePolicy as InternalStoragePolicy | undefined)
-            ?? INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY
+        this._leaderboardsType = (config.leaderboardsType as LeaderboardType | undefined)
+            ?? LEADERBOARD_TYPE.NOT_AVAILABLE
 
         this._paymentsPurchases = (data.purchases as Array<AnyRecord & { id: string }>) || []
 
         this._isInitialized = true
         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-
-        this.#updateDefaultStorageType()
 
         this.#sendMessage({
             type: MODULE_NAME_QA.LIVENESS,
@@ -1236,7 +1164,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._playerPhotos = [...(player.photos as string[])]
                 }
                 this._playerExtra = player
-                this.#updateDefaultStorageType()
             } else {
                 this._playerApplyGuestData()
             }
@@ -1331,15 +1258,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             case RECORDER_ACTION.RTC_ICE:
                 this.#recorder.handleIce(data.options as RTCIceCandidateInit)
                 break
-            case RECORDER_ACTION.TAKE_SCREENSHOT: {
-                const result = this.#recorder.takeScreenshot((data.options as Record<string, unknown> | undefined) || {})
-                this.#sendMessage({
-                    type: MODULE_NAME_QA.RECORDER,
-                    action: RECORDER_ACTION.SCREENSHOT_RESULT,
-                    payload: result as unknown as Record<string, unknown>,
-                })
-                break
-            }
             default:
                 break
         }
@@ -1373,19 +1291,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 payload: { message },
             })
         }
-    }
-
-    #isPlatformInternalStorageAvailable(): boolean {
-        return (this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.AUTHORIZED_ONLY && this._isPlayerAuthorized)
-            || this._internalStoragePolicy === INTERNAL_STORAGE_POLICY.ALWAYS
-    }
-
-    #updateDefaultStorageType(): void {
-        this._setDefaultStorageType(
-            this.#isPlatformInternalStorageAvailable()
-                ? STORAGE_TYPE.PLATFORM_INTERNAL
-                : STORAGE_TYPE.LOCAL_STORAGE,
-        )
     }
 
     #cleanCache(): void {
