@@ -20,7 +20,7 @@ import packageJson from '../../package.json'
 import { generateRandomId, getGuestUser } from '../common/utils'
 import ModuleBase from './ModuleBase'
 
-const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'
+const API_URL = 'https://api.playgama.com/api/events/v3/bridge/analytics'
 const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
 const FLUSH_INTERVAL = 30000
 const SEND_ATTEMPTS = 2
@@ -43,6 +43,8 @@ class AnalyticsModule extends ModuleBase {
     #visibilityHandler = null
 
     #pagehideHandler = null
+
+    #isSessionEndSent = false
 
     #timeDiff = 0
 
@@ -240,17 +242,27 @@ class AnalyticsModule extends ModuleBase {
 
     #setupPageUnloadHandler() {
         this.#pagehideHandler = () => {
-            this.#flushSync()
+            this.#sendSessionEnd()
         }
 
         this.#visibilityHandler = () => {
             if (document.visibilityState === 'hidden') {
-                this.#flushSync()
+                this.#sendSessionEnd()
             }
         }
 
         document.addEventListener('visibilitychange', this.#visibilityHandler)
         window.addEventListener('pagehide', this.#pagehideHandler)
+    }
+
+    #sendSessionEnd() {
+        if (this.#isSessionEndSent || this.#isDisabled) {
+            return
+        }
+
+        this.#isSessionEndSent = true
+        this.send(`${MODULE_NAME.CORE}_session_end`)
+        this.#flushSync()
     }
 
     #disable() {
