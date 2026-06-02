@@ -44,6 +44,8 @@ class AnalyticsModule extends ModuleBase {
 
     #pagehideHandler = null
 
+    #isSessionEndSent = false
+
     #timeDiff = 0
 
     #isCompressionSupported = typeof CompressionStream !== 'undefined'
@@ -240,17 +242,27 @@ class AnalyticsModule extends ModuleBase {
 
     #setupPageUnloadHandler() {
         this.#pagehideHandler = () => {
-            this.#flushSync()
+            this.#sendSessionEnd()
         }
 
         this.#visibilityHandler = () => {
             if (document.visibilityState === 'hidden') {
-                this.#flushSync()
+                this.#sendSessionEnd()
             }
         }
 
         document.addEventListener('visibilitychange', this.#visibilityHandler)
         window.addEventListener('pagehide', this.#pagehideHandler)
+    }
+
+    #sendSessionEnd() {
+        if (this.#isSessionEndSent || this.#isDisabled) {
+            return
+        }
+
+        this.#isSessionEndSent = true
+        this.send(`${MODULE_NAME.CORE}_session_end`)
+        this.#flushSync()
     }
 
     #disable() {
