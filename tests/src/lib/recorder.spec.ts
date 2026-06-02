@@ -7,9 +7,8 @@ function createRecorder() {
     return new Recorder()
 }
 
-function createMockCanvas(options: { toDataURL?: string } = {}) {
+function createMockCanvas() {
     const canvas = document.createElement('canvas')
-    vi.spyOn(canvas, 'toDataURL').mockReturnValue(options.toDataURL || 'data:image/png;base64,mockData')
     canvas.captureStream = vi.fn().mockReturnValue({
         getTracks: () => [{ stop: vi.fn() }],
     })

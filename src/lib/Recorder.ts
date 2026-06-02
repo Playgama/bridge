@@ -34,17 +34,6 @@ export interface RecorderAvailability {
     reason: string | null
 }
 
-export interface RecorderScreenshotOptions {
-    type?: string
-    quality?: number
-}
-
-export interface RecorderScreenshotResult {
-    success: boolean
-    reason: string | null
-    data: string | null
-}
-
 export type RecorderOfferCallback = (sdp: string | undefined) => void
 export type RecorderIceCandidateCallback = (candidate: RTCIceCandidateInit) => void
 export type RecorderStartedCallback = () => void
