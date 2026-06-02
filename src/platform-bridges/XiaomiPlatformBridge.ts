@@ -103,8 +103,6 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                 }).then((showAd) => {
                     this.#showAd = showAd as ShowAdFn
                 }).finally(() => {
-                    this._playerApplyGuestData()
-
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })

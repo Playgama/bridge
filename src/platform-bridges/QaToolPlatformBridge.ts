@@ -1164,12 +1164,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     this._playerPhotos = [...(player.photos as string[])]
                 }
                 this._playerExtra = player
-            } else {
-                this._playerApplyGuestData()
             }
-        }).catch(() => {
-            this._playerApplyGuestData()
-        })
+        }).catch(() => {})
     }
 
     #handleAdvertisement(data: QaToolMessage): void {

@@ -448,13 +448,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._playerPhotos = player.photos
                         this._playerExtra = player as unknown as Record<string, unknown>
                         this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
-                    } else {
-                        this._playerApplyGuestData()
                     }
                 })
-                .catch(() => {
-                    this._playerApplyGuestData()
-                })
+                .catch(() => {})
                 .finally(() => {
                     resolve()
                 })

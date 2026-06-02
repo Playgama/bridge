@@ -175,7 +175,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                 })
                 .then((auth) => {
                     if (auth === null) {
-                        this._playerApplyGuestData()
                         throw new Error('Authorization failed')
                     }
 
@@ -204,7 +203,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                 })
                 .catch((error) => {
-                    this._playerApplyGuestData()
                     this._accessToken = null
 
                     this._rejectPromiseDecorator(
