@@ -24,7 +24,13 @@ export interface GuestUser {
     name: string
 }
 
+let cachedId: string | null = null
+
 export function getGuestUser(): GuestUser {
+    if (cachedId) {
+        return { id: cachedId, name: `Guest ${cachedId}` }
+    }
+
     let id = localStorage.getItem(GUEST_ID_STORAGE_KEY)
 
     if (!id) {
@@ -36,6 +42,8 @@ export function getGuestUser(): GuestUser {
             // ignore
         }
     }
+
+    cachedId = id
 
     return {
         id,

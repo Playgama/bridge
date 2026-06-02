@@ -1237,12 +1237,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 }
                 this._playerExtra = player
                 this.#updateDefaultStorageType()
-            } else {
-                this._playerApplyGuestData()
             }
-        }).catch(() => {
-            this._playerApplyGuestData()
-        })
+        }).catch(() => {})
     }
 
     #handleAdvertisement(data: QaToolMessage): void {

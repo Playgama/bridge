@@ -290,7 +290,6 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
 
     #authorizePlayer(data: Record<string, unknown>): void {
         if (!data.success) {
-            this._playerApplyGuestData()
             this._rejectPromiseDecorator(
                 ACTION_NAME.AUTHORIZE_PLAYER,
                 new Error(String(data)),
