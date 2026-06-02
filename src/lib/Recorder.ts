@@ -136,15 +136,6 @@ class Recorder {
         }
     }
 
-    takeScreenshot({ type = 'image/png', quality = 0.92 }: RecorderScreenshotOptions = {}): RecorderScreenshotResult {
-        const canvas = this.#getCanvas()
-        if (!canvas) {
-            return { success: false, reason: 'Canvas not found', data: null }
-        }
-        const data = canvas.toDataURL(type, quality)
-        return { success: true, reason: null, data }
-    }
-
     stopCapture(): void {
         this.#stream?.getTracks().forEach((t) => t.stop())
         this.#pc?.close()
