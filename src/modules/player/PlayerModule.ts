@@ -18,6 +18,7 @@
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import { resolvePlatformOptions, type AnyRecord } from '../../utils'
+import { getGuestUser } from './guestUser'
 
 export type PlayerAuthorizeOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
 
@@ -42,7 +43,11 @@ class PlayerModule extends ModuleBase<PlayerBridgeContract> {
     }
 
     get isGuest(): boolean {
-        return !this._platformBridge.isPlayerAuthorized
+        if (!this._platformBridge.isPlayerAuthorized) {
+            return true
+        }
+        const id = this._platformBridge.playerId
+        return !id || id === getGuestUser().id
     }
 
     get id(): string | null {
