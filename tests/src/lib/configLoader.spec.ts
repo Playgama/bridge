@@ -1,4 +1,6 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import {
+    describe, test, expect, vi, beforeEach,
+} from 'vitest'
 import { ConfigLoader, LOAD_STATUS, PARSE_STATUS } from '../../../src/lib/bridge-config-loader'
 
 function createConfigLoader() {
@@ -479,8 +481,12 @@ describe('ConfigLoader', () => {
         test('should merge payments arrays by index (deepMerge behavior)', async () => {
             const configData = {
                 payments: [
-                    { id: 'base_item', title: 'Base Item', description: 'Base', price: 1.99 },
-                    { id: 'base_item_2', title: 'Base Item 2', description: 'Base 2', price: 3.99 },
+                    {
+                        id: 'base_item', title: 'Base Item', description: 'Base', price: 1.99,
+                    },
+                    {
+                        id: 'base_item_2', title: 'Base Item 2', description: 'Base 2', price: 3.99,
+                    },
                 ],
                 leaderboards: [
                     { id: 'base_board', title: 'Base Board' },
@@ -489,7 +495,9 @@ describe('ConfigLoader', () => {
                     facebook: {
                         subscribeForNotificationsOnStart: false,
                         payments: [
-                            { id: 'fb_item', title: 'FB Item', description: 'FB only', price: 2.99 },
+                            {
+                                id: 'fb_item', title: 'FB Item', description: 'FB only', price: 2.99,
+                            },
                         ],
                     },
                 },
@@ -507,8 +515,12 @@ describe('ConfigLoader', () => {
 
             expect(fbOptions.subscribeForNotificationsOnStart).toBe(false)
             // deepMerge merges arrays by index - first element is overwritten, second remains
-            expect(fbOptions.payments[0]).toEqual({ id: 'fb_item', title: 'FB Item', description: 'FB only', price: 2.99 })
-            expect(fbOptions.payments[1]).toEqual({ id: 'base_item_2', title: 'Base Item 2', description: 'Base 2', price: 3.99 })
+            expect(fbOptions.payments[0]).toEqual({
+                id: 'fb_item', title: 'FB Item', description: 'FB only', price: 2.99,
+            })
+            expect(fbOptions.payments[1]).toEqual({
+                id: 'base_item_2', title: 'Base Item 2', description: 'Base 2', price: 3.99,
+            })
             // Base leaderboards should still be present
             expect(fbOptions.leaderboards).toEqual([
                 { id: 'base_board', title: 'Base Board' },

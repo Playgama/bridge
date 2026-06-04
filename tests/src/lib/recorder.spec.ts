@@ -1,13 +1,14 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
+import {
+    describe, test, expect, vi, beforeEach, afterEach,
+} from 'vitest'
 import Recorder from '../../../src/lib/Recorder'
 
 function createRecorder() {
     return new Recorder()
 }
 
-function createMockCanvas(options: { toDataURL?: string } = {}) {
+function createMockCanvas() {
     const canvas = document.createElement('canvas')
-    vi.spyOn(canvas, 'toDataURL').mockReturnValue(options.toDataURL || 'data:image/png;base64,mockData')
     canvas.captureStream = vi.fn().mockReturnValue({
         getTracks: () => [{ stop: vi.fn() }],
     })
@@ -43,7 +44,9 @@ describe('Recorder', () => {
     beforeEach(() => {
         vi.restoreAllMocks()
         HTMLCanvasElement.prototype.captureStream = vi.fn()
-        global.RTCSessionDescription = vi.fn().mockImplementation((desc) => desc) as unknown as typeof RTCSessionDescription
+        global.RTCSessionDescription = vi.fn().mockImplementation(
+            (desc) => desc,
+        ) as unknown as typeof RTCSessionDescription
         global.RTCIceCandidate = vi.fn().mockImplementation((c) => c) as unknown as typeof RTCIceCandidate
     })
 
@@ -298,46 +301,6 @@ describe('Recorder', () => {
             await module.handleIce(null)
 
             expect(mockPc.addIceCandidate).not.toHaveBeenCalled()
-        })
-    })
-
-    describe('takeScreenshot', () => {
-        test('should return error when canvas is not found', () => {
-            const module = createRecorder()
-            const result = module.takeScreenshot()
-
-            expect(result).toEqual({ success: false, reason: 'Canvas not found', data: null })
-        })
-
-        test('should return base64 data from canvas', () => {
-            canvas = createMockCanvas({ toDataURL: 'data:image/png;base64,screenshotData' })
-
-            const module = createRecorder()
-            const result = module.takeScreenshot()
-
-            expect(result).toEqual({
-                success: true,
-                reason: null,
-                data: 'data:image/png;base64,screenshotData',
-            })
-        })
-
-        test('should use default type and quality', () => {
-            canvas = createMockCanvas()
-
-            const module = createRecorder()
-            module.takeScreenshot()
-
-            expect(canvas.toDataURL).toHaveBeenCalledWith('image/png', 0.92)
-        })
-
-        test('should use custom type and quality', () => {
-            canvas = createMockCanvas()
-
-            const module = createRecorder()
-            module.takeScreenshot({ type: 'image/jpeg', quality: 0.5 })
-
-            expect(canvas.toDataURL).toHaveBeenCalledWith('image/jpeg', 0.5)
         })
     })
 

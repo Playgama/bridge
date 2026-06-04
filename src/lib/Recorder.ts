@@ -34,17 +34,6 @@ export interface RecorderAvailability {
     reason: string | null
 }
 
-export interface RecorderScreenshotOptions {
-    type?: string
-    quality?: number
-}
-
-export interface RecorderScreenshotResult {
-    success: boolean
-    reason: string | null
-    data: string | null
-}
-
 export type RecorderOfferCallback = (sdp: string | undefined) => void
 export type RecorderIceCandidateCallback = (candidate: RTCIceCandidateInit) => void
 export type RecorderStartedCallback = () => void
@@ -134,15 +123,6 @@ class Recorder {
         if (this.#pc && candidate) {
             await this.#pc.addIceCandidate(new RTCIceCandidate(candidate))
         }
-    }
-
-    takeScreenshot({ type = 'image/png', quality = 0.92 }: RecorderScreenshotOptions = {}): RecorderScreenshotResult {
-        const canvas = this.#getCanvas()
-        if (!canvas) {
-            return { success: false, reason: 'Canvas not found', data: null }
-        }
-        const data = canvas.toDataURL(type, quality)
-        return { success: true, reason: null, data }
     }
 
     stopCapture(): void {
