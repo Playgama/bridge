@@ -23,19 +23,19 @@ import PlatformStorageStrategy from './PlatformStorageStrategy'
 import type { StorageBridgeContract } from './types'
 
 class StorageModule extends ModuleBase<StorageBridgeContract> {
-    #localStrategy: LocalStorageStrategy
+    #localStrategy = new LocalStorageStrategy()
 
-    #platformStrategy: PlatformStorageStrategy
+    #platformStrategy!: PlatformStorageStrategy
 
-    constructor(platformBridge: StorageBridgeContract) {
-        super(platformBridge)
+    initialize(platformBridge: StorageBridgeContract): this {
+        super.initialize(platformBridge)
 
-        this.#localStrategy = new LocalStorageStrategy()
         this.#platformStrategy = new PlatformStorageStrategy(platformBridge, this.#localStrategy)
 
         this._platformBridge.on(EVENT_NAME.DEFAULT_STORAGE_TYPE_CHANGED, () => {
             this.#platformStrategy.reset()
         })
+        return this
     }
 
     get(key: string | string[], tryParseJson = true): Promise<unknown> {

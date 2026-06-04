@@ -17,7 +17,9 @@
 
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
-import type { LeaderboardType } from './constants'
+import { MODULE_NAME } from '../../constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from './constants'
+import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
 
 export interface LeaderboardMapping {
     id: string
@@ -39,14 +41,28 @@ export interface LeaderboardsBridgeContract extends PlatformBridgeLike {
     leaderboardsShowNativePopup(id: string | null | undefined): Promise<unknown>
 }
 
-class LeaderboardsModule<
-    TBridge extends LeaderboardsBridgeContract = LeaderboardsBridgeContract,
-> extends ModuleBase<TBridge> {
+class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
     get type(): LeaderboardType {
-        return this._platformBridge.leaderboardsType
+        return this.#saas ? LEADERBOARD_TYPE.IN_GAME : this._platformBridge.leaderboardsType
+    }
+
+    // SaaS request client; set during initialize() when the active platform is
+    // configured to use the SaaS (in-game) leaderboards backend.
+    #saas: SaasRequest | null = null
+
+    initialize(platformBridge: LeaderboardsBridgeContract): this {
+        super.initialize(platformBridge)
+        if (this._isSaas(MODULE_NAME.LEADERBOARDS)) {
+            this.#saas = new SaasRequest(platformBridge as unknown as SaasBridgeLike)
+        }
+        return this
     }
 
     setScore(id: string, score: number): Promise<unknown> {
+        if (this.#saas) {
+            return this.#saas.post(`leaderboards/${id}`, { score })
+        }
+
         const modifiedId = this._getPlatformLeaderboardId(id)
         const isMain = this.#getIsMain(id)
 
@@ -54,6 +70,10 @@ class LeaderboardsModule<
     }
 
     getEntries(id: string): Promise<unknown> {
+        if (this.#saas) {
+            return this.#saas.get(`leaderboards/${id}`)
+        }
+
         const modifiedId = this._getPlatformLeaderboardId(id)
 
         return this._platformBridge.leaderboardsGetEntries(modifiedId)

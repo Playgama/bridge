@@ -34,4 +34,4 @@ export {
     showAdFailurePopup,
     type AdvancedBannerConfig,
 } from './dom'
-export default AdvertisementModule
+export default new AdvertisementModule()

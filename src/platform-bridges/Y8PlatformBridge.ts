@@ -82,11 +82,17 @@ interface Y8Sdk {
     GameAPI: {
         Leaderboards: {
             save(options: AnyRecord, callback: (response: { success: boolean; errormessage?: unknown }) => void): void
-            listCustom(options: AnyRecord, callback: (response: { success: boolean; scores: AnyRecord[]; errormessage?: unknown }) => void): void
+            listCustom(
+                options: AnyRecord,
+                callback: (response: { success: boolean; scores: AnyRecord[]; errormessage?: unknown }) => void,
+            ): void
         }
         Achievements: {
             save(options: AnyRecord, callback: (data: unknown) => void): void
-            listCustom(options: AnyRecord, callback: (data: { success: boolean; achievements: AnyRecord[]; errorcode?: string }) => void): void
+            listCustom(
+                options: AnyRecord,
+                callback: (data: { success: boolean; achievements: AnyRecord[]; errorcode?: string }) => void,
+            ): void
             list(options: AnyRecord): void
         }
     }
@@ -271,7 +277,8 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
             },
             afterAd: () => {
-                if ((this as unknown as { interstitialState?: string }).interstitialState !== INTERSTITIAL_STATE.FAILED) {
+                const { interstitialState } = this as unknown as { interstitialState?: string }
+                if (interstitialState !== INTERSTITIAL_STATE.FAILED) {
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                 }
             },
@@ -349,8 +356,9 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             const options = {
                 table: id,
                 mode: 'alltime',
-            };
-            (this._platformSdk as Y8Sdk).GameAPI.Leaderboards.listCustom(options, ({ scores, success, errormessage: error }) => {
+            }
+            const leaderboards = (this._platformSdk as Y8Sdk).GameAPI.Leaderboards
+            leaderboards.listCustom(options, ({ scores, success, errormessage: error }) => {
                 if (success) {
                     const entries = scores.map((entry) => ({
                         id: entry.playerid,

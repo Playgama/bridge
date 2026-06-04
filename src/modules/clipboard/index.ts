@@ -18,4 +18,4 @@
 import ClipboardModule from './ClipboardModule'
 
 export type { ClipboardBridgeContract } from './ClipboardModule'
-export default ClipboardModule
+export default new ClipboardModule()

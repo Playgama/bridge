@@ -60,14 +60,14 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     #isCompressionSupported = typeof CompressionStream !== 'undefined'
 
     constructor() {
-    // Singleton: created without a real bridge; bridge is injected via
-    // initialize(). Cast to satisfy the typed constructor signature.
-        super(undefined as never)
+        // Singleton: created at import time without a bridge; the bridge is
+        // injected later via initialize().
+        super()
         this.#sessionId = this.#generateSessionId()
     }
 
     initialize(platformBridge: AnalyticsBridgeContract): this {
-        this._platformBridge = platformBridge
+        super.initialize(platformBridge)
         if (this._platformBridge.options?.sendAnalyticsEvents === false) {
             this.#isDisabled = true
         }

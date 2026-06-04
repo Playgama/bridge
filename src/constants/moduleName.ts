@@ -29,5 +29,6 @@ export const MODULE_NAME = {
     CLIPBOARD: 'clipboard',
     ACHIEVEMENTS: 'achievements',
     ANALYTICS: 'analytics',
+    DAILY_REWARDS: 'daily_rewards',
 } as const
 export type ModuleName = typeof MODULE_NAME[keyof typeof MODULE_NAME]

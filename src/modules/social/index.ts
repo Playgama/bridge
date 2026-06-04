@@ -18,4 +18,4 @@
 import SocialModule from './SocialModule'
 
 export type { SocialBridgeContract, SocialOptions } from './SocialModule'
-export default SocialModule
+export default new SocialModule()

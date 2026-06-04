@@ -204,7 +204,8 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                         })
                 })
 
-            const advertisementBackfillId = (this._options?.advertisement as AnyRecord | undefined)?.backfillId as string | undefined
+            const advertisementOptions = this._options?.advertisement as AnyRecord | undefined
+            const advertisementBackfillId = advertisementOptions?.backfillId as string | undefined
             if (advertisementBackfillId) {
                 addJavaScript(PLAYGAMA_ADS_SDK_URL)
                     .then(() => waitFor('pgAds'))
@@ -247,7 +248,8 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     // storage
     loadCloudSnapshot(): Promise<Record<string, unknown>> {
-        return (this._platformSdk as MsnSdk).cloudSave.getDataAsync({ gameId: this._options.gameId }) as Promise<Record<string, unknown>>
+        return (this._platformSdk as MsnSdk).cloudSave
+            .getDataAsync({ gameId: this._options.gameId }) as Promise<Record<string, unknown>>
     }
 
     saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {

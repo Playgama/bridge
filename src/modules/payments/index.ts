@@ -23,4 +23,4 @@ export {
     getPaymentsProductPlatformData,
     generatePaymentsTransactionId,
 } from './helpers'
-export default PaymentsModule
+export default new PaymentsModule()

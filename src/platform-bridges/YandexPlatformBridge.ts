@@ -80,7 +80,12 @@ interface YandexSdk {
     deviceInfo: { type: string }
     features: {
         PluginEngineDataReporterAPI?: {
-            report(data: { engineName: string; engineVersion: string; pluginName: string; pluginVersion: string }): Promise<unknown>
+            report(data: {
+                engineName: string;
+                engineVersion: string;
+                pluginName: string;
+                pluginVersion: string;
+            }): Promise<unknown>
         }
         LoadingAPI?: { ready(): void }
         GameplayAPI?: { start(): void; stop(): void }
@@ -306,7 +311,8 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                         })
 
                                     this._isBannerSupported = true
-                                    const getBannerStatePromise = (this._platformSdk as YandexSdk).adv.getBannerAdvStatus()
+                                    const getBannerStatePromise = (this._platformSdk as YandexSdk)
+                                        .adv.getBannerAdvStatus()
                                         .then((data) => {
                                             if (data.stickyAdvIsShowing) {
                                                 this._setBannerState(BANNER_STATE.SHOWN)

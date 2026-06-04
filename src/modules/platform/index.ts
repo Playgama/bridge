@@ -22,4 +22,4 @@ export type {
     PlatformMessageOptions,
     GameByIdOptions,
 } from './PlatformModule'
-export default PlatformModule
+export default new PlatformModule()

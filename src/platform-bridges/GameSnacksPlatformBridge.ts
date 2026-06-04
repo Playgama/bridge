@@ -185,7 +185,8 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
             },
             afterAd: () => {
-                if ((this as unknown as { interstitialState?: string }).interstitialState !== INTERSTITIAL_STATE.FAILED) {
+                const { interstitialState } = this as unknown as { interstitialState?: string }
+                if (interstitialState !== INTERSTITIAL_STATE.FAILED) {
                     this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
                 }
             },

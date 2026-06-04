@@ -98,13 +98,15 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     #isGameReadyMessageSent = false
 
-    #startTime = performance.now()
+    #startTime = 0
 
-    constructor(platformBridge: PlatformBridgeContract) {
-        super(platformBridge)
+    initialize(platformBridge: PlatformBridgeContract): this {
+        super.initialize(platformBridge)
 
+        this.#startTime = performance.now()
         this._forwardEvent(EVENT_NAME.AUDIO_STATE_CHANGED)
         this._forwardEvent(EVENT_NAME.PAUSE_STATE_CHANGED)
+        return this
     }
 
     sendMessage(message: PlatformMessage | string, options: PlatformMessageOptions = {}): Promise<unknown> {

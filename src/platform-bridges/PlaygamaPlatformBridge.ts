@@ -393,7 +393,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        const purchase = this._paymentsPurchases.find((p) => p.id === id) as (AnyRecord & { id: string; orderId?: string; externalId?: string }) | undefined
+        type PurchaseRecord = AnyRecord & { id: string; orderId?: string; externalId?: string }
+        const purchase = this._paymentsPurchases.find((p) => p.id === id) as PurchaseRecord | undefined
         if (!purchase) {
             return Promise.reject()
         }

@@ -166,7 +166,8 @@ class Recorder {
                 params.encodings[0].networkPriority = networkPriority
             }
             if (scalabilityMode !== undefined) {
-                (params.encodings[0] as RTCRtpEncodingParameters & { scalabilityMode?: string }).scalabilityMode = scalabilityMode
+                const encoding = params.encodings[0] as RTCRtpEncodingParameters & { scalabilityMode?: string }
+                encoding.scalabilityMode = scalabilityMode
             }
             sender.setParameters(params)
         })

@@ -16,7 +16,6 @@
  */
 
 import LeaderboardsModule from './LeaderboardsModule'
-import LeaderboardsSaasModule from './LeaderboardsSaasModule'
 
 export type {
     LeaderboardsBridgeContract,
@@ -24,7 +23,4 @@ export type {
     LeaderboardMapping,
 } from './LeaderboardsModule'
 
-export type { LeaderboardsSaasBridgeContract } from './LeaderboardsSaasModule'
-
-export { LeaderboardsSaasModule }
-export default LeaderboardsModule
+export default new LeaderboardsModule()

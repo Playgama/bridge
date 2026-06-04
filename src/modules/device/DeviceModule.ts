@@ -79,10 +79,11 @@ class DeviceModule extends ModuleBase<DeviceBridgeContract> {
 
     #resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
-    constructor(platformBridge: DeviceBridgeContract) {
-        super(platformBridge)
+    initialize(platformBridge: DeviceBridgeContract): this {
+        super.initialize(platformBridge)
         this.#initializeOrientationTracking()
         this.#initializeScreenSizeTracking()
+        return this
     }
 
     #initializeOrientationTracking(): void {

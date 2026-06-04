@@ -225,7 +225,8 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE);
-            (this._platformSdk as DiscordSdkInstance).commands.startPurchase({ sku_id: product.platformProductId as string })
+            (this._platformSdk as DiscordSdkInstance).commands
+                .startPurchase({ sku_id: product.platformProductId as string })
                 .then((purchase) => {
                     if (!purchase) {
                         throw new Error('Purchase failed')
@@ -286,9 +287,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
             (this._platformSdk as DiscordSdkInstance).commands.getSkus()
                 .then(({ skus: discordProducts }) => {
                     const mergedProducts = products.map((product) => {
-                        const discordProduct = discordProducts.find((p) => p.id === product.platformProductId) as DiscordSku
+                        const discordProduct = discordProducts
+                            .find((p) => p.id === product.platformProductId) as DiscordSku
 
-                        const formattedPrice = (window.discord as DiscordGlobal).PriceUtils.formatPrice(discordProduct.price)
+                        const formattedPrice = (window.discord as DiscordGlobal)
+                            .PriceUtils.formatPrice(discordProduct.price)
                         const priceValue = deformatPrice(formattedPrice)
                         const priceCurrencyCode = discordProduct.price?.currency?.toUpperCase()
                         const price = `${priceValue} ${priceCurrencyCode}`

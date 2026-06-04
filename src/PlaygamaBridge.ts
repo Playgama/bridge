@@ -40,17 +40,18 @@ import { LoadingScreen } from './lib/loading-screen'
 import { SafeArea } from './lib/safe-area'
 import configLoader from './lib/bridge-config-loader'
 import logger, { createModuleLoggerProxy, DEBUG_QUERY_PARAM } from './lib/logger'
-import PlatformModule from './modules/platform'
-import PlayerModule from './modules/player'
-import StorageModule from './modules/storage'
-import AdvertisementModule from './modules/advertisement'
-import SocialModule from './modules/social'
-import DeviceModule from './modules/device'
-import LeaderboardsModule, { LeaderboardsSaasModule } from './modules/leaderboards'
-import PaymentsModule from './modules/payments'
-import RemoteConfigModule from './modules/remote-config'
-import ClipboardModule from './modules/clipboard'
-import AchievementsModule from './modules/achievements'
+import platformModule from './modules/platform'
+import playerModule from './modules/player'
+import storageModule from './modules/storage'
+import advertisementModule from './modules/advertisement'
+import socialModule from './modules/social'
+import deviceModule from './modules/device'
+import leaderboardsModule from './modules/leaderboards'
+import paymentsModule from './modules/payments'
+import remoteConfigModule from './modules/remote-config'
+import clipboardModule from './modules/clipboard'
+import achievementsModule from './modules/achievements'
+import dailyRewardsModule from './modules/daily-rewards'
 import analyticsModule, { internalAnalytics } from './modules/analytics'
 import { fetchPlatformBridge } from './platformImports'
 import { PLATFORM_DETECTORS, type PlatformDetectorContext } from './platformDetectors'
@@ -62,12 +63,11 @@ export interface PlaygamaInitOptions {
     [key: string]: unknown
 }
 
-// Data-driven module wiring. Each entry maps a MODULE_NAME to a factory
-// that produces the module instance from the already-constructed platform bridge.
-type ModuleFactory = (bridge: PlatformBridgeBase) => unknown
+// Data-driven module wiring. Each entry pairs a MODULE_NAME with its singleton
+// module instance; the platform bridge is injected via initialize() during init.
 interface ModuleEntry {
     name: string
-    factory: ModuleFactory
+    module: { initialize(platformBridge: never): unknown }
 }
 
 interface PlaygamaBridge extends EventEmitter {}
@@ -135,6 +135,10 @@ class PlaygamaBridge {
 
     get analytics(): unknown {
         return this.#getModule(MODULE_NAME.ANALYTICS)
+    }
+
+    get dailyRewards(): unknown {
+        return this.#getModule(MODULE_NAME.DAILY_REWARDS)
     }
 
     get engine(): string {
@@ -205,30 +209,24 @@ class PlaygamaBridge {
             this.#setupLoadingVisuals(bridge)
 
             const moduleRegistry: ModuleEntry[] = [
-                { name: MODULE_NAME.PLATFORM, factory: (b) => new PlatformModule(b as never) },
-                { name: MODULE_NAME.PLAYER, factory: (b) => new PlayerModule(b as never) },
-                { name: MODULE_NAME.STORAGE, factory: (b) => new StorageModule(b as never) },
-                { name: MODULE_NAME.ADVERTISEMENT, factory: (b) => new AdvertisementModule(b as never) },
-                { name: MODULE_NAME.SOCIAL, factory: (b) => new SocialModule(b as never) },
-                { name: MODULE_NAME.DEVICE, factory: (b) => new DeviceModule(b as never) },
-                {
-                    name: MODULE_NAME.LEADERBOARDS,
-                    factory: (b) => (this.#isSaas(MODULE_NAME.LEADERBOARDS)
-                        ? new LeaderboardsSaasModule(b as never)
-                        : new LeaderboardsModule(b as never)),
-                },
-                { name: MODULE_NAME.PAYMENTS, factory: (b) => new PaymentsModule(b as never) },
-                { name: MODULE_NAME.REMOTE_CONFIG, factory: (b) => new RemoteConfigModule(b as never) },
-                { name: MODULE_NAME.CLIPBOARD, factory: (b) => new ClipboardModule(b as never) },
-                { name: MODULE_NAME.ACHIEVEMENTS, factory: (b) => new AchievementsModule(b as never) },
-                { name: MODULE_NAME.ANALYTICS, factory: (b) => analyticsModule.initialize(b as never) },
+                { name: MODULE_NAME.PLATFORM, module: platformModule },
+                { name: MODULE_NAME.PLAYER, module: playerModule },
+                { name: MODULE_NAME.STORAGE, module: storageModule },
+                { name: MODULE_NAME.ADVERTISEMENT, module: advertisementModule },
+                { name: MODULE_NAME.SOCIAL, module: socialModule },
+                { name: MODULE_NAME.DEVICE, module: deviceModule },
+                { name: MODULE_NAME.LEADERBOARDS, module: leaderboardsModule },
+                { name: MODULE_NAME.PAYMENTS, module: paymentsModule },
+                { name: MODULE_NAME.REMOTE_CONFIG, module: remoteConfigModule },
+                { name: MODULE_NAME.CLIPBOARD, module: clipboardModule },
+                { name: MODULE_NAME.ACHIEVEMENTS, module: achievementsModule },
+                { name: MODULE_NAME.ANALYTICS, module: analyticsModule },
+                { name: MODULE_NAME.DAILY_REWARDS, module: dailyRewardsModule },
             ]
 
-            moduleRegistry.forEach((entry) => {
-                const moduleInstance = entry.factory(bridge)
-                this.#modules[entry.name] = typeof moduleInstance === 'object' && moduleInstance !== null
-                    ? createModuleLoggerProxy(entry.name, moduleInstance)
-                    : moduleInstance
+            moduleRegistry.forEach(({ name, module }) => {
+                module.initialize(bridge as never)
+                this.#modules[name] = createModuleLoggerProxy(name, module as object)
             })
 
             bridge
@@ -250,8 +248,13 @@ class PlaygamaBridge {
                         this.#initializationPromiseDecorator = null
                     }
 
-                    const adOptions = (bridge.options as { advertisement?: { interstitial?: { preloadOnStart?: string }; rewarded?: { preloadOnStart?: string } } })?.advertisement
-                    const adModule = this.#modules[MODULE_NAME.ADVERTISEMENT] as AdvertisementModule
+                    const adOptions = (bridge.options as {
+                        advertisement?: {
+                            interstitial?: { preloadOnStart?: string }
+                            rewarded?: { preloadOnStart?: string }
+                        }
+                    })?.advertisement
+                    const adModule = this.#modules[MODULE_NAME.ADVERTISEMENT] as typeof advertisementModule
 
                     if (adOptions?.interstitial?.preloadOnStart) {
                         adModule.preloadInterstitial(adOptions.interstitial.preloadOnStart)
@@ -361,22 +364,6 @@ class PlaygamaBridge {
         }
 
         return this.#modules[id]
-    }
-
-    #isSaas(feature: string): boolean {
-        if (!this.#platformBridge) {
-            return false
-        }
-
-        const { options, platformId } = this.#platformBridge as PlatformBridgeBase & {
-            options: { saas?: Record<string, { platforms?: string[] }> }
-        }
-
-        return Boolean(
-            options.saas?.[feature]
-            && Array.isArray(options.saas[feature].platforms)
-            && options.saas[feature].platforms!.includes(platformId),
-        )
     }
 }
 

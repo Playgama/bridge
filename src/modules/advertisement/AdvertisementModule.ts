@@ -78,16 +78,16 @@ class AdvertisementModule extends ModuleBase<AdvertisementBridgeContract> {
         return this.#advancedBanners.state
     }
 
-    #banner: BannerController
+    #banner!: BannerController
 
-    #interstitial: InterstitialController
+    #interstitial!: InterstitialController
 
-    #rewarded: RewardedController
+    #rewarded!: RewardedController
 
-    #advancedBanners: AdvancedBannersController
+    #advancedBanners!: AdvancedBannersController
 
-    constructor(platformBridge: AdvertisementBridgeContract) {
-        super(platformBridge)
+    initialize(platformBridge: AdvertisementBridgeContract): this {
+        super.initialize(platformBridge)
 
         this.#banner = new BannerController(platformBridge, internalAnalytics)
 
@@ -113,6 +113,7 @@ class AdvertisementModule extends ModuleBase<AdvertisementBridgeContract> {
             EVENT_NAME.PLATFORM_MESSAGE_SENT,
             (message: unknown) => this.#advancedBanners.tryShow(message as string),
         )
+        return this
     }
 
     setMinimumDelayBetweenInterstitial(value: unknown): void {

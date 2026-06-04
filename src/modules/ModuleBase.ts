@@ -22,14 +22,35 @@ import eventBus, { type EventEmitter } from '../lib/EventBus'
 export type PlatformBridgeLike = EventEmitter & Record<string, unknown>
 
 class ModuleBase<TPlatformBridge extends PlatformBridgeLike = PlatformBridgeLike> {
-    protected _platformBridge: TPlatformBridge
+    // Assigned during initialize(), which the SDK calls once the platform bridge exists.
+    protected _platformBridge!: TPlatformBridge
 
-    constructor(platformBridge: TPlatformBridge) {
+    // Injects the platform bridge. Subclasses override to add bridge-dependent
+    // setup and must call super.initialize(platformBridge) first.
+    initialize(platformBridge: TPlatformBridge): this {
         this._platformBridge = platformBridge
+        return this
     }
 
     protected _forwardEvent(eventName: string): void {
         this._platformBridge.on(eventName, (...args: unknown[]) => eventBus.emit(eventName, ...args))
+    }
+
+    // Whether the active platform is configured to use the SaaS backend for the
+    // given feature. Reusable across modules: a module that supports a SaaS
+    // variant calls this in initialize() to pick its implementation.
+    protected _isSaas(feature: string): boolean {
+        const { options, platformId } = this._platformBridge as {
+            options?: { saas?: Record<string, { platforms?: string[] }> }
+            platformId?: string
+        }
+        const config = options?.saas?.[feature]
+        return Boolean(
+            config
+            && Array.isArray(config.platforms)
+            && platformId != null
+            && config.platforms.includes(platformId),
+        )
     }
 }
 

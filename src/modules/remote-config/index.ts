@@ -18,4 +18,4 @@
 import RemoteConfigModule from './RemoteConfigModule'
 
 export type { RemoteConfigBridgeContract, RemoteConfigOptions } from './RemoteConfigModule'
-export default RemoteConfigModule
+export default new RemoteConfigModule()

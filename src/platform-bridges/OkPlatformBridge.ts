@@ -159,7 +159,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
                         .then(() => {
                             this._platformSdk = window.FAPI as OkSdk
                             window.API_callback = (method, result, data) => {
-                                const callbacks = this.#apiCallbacks as Record<string, (result: string, data: unknown) => void>
+                                const callbacks = this.#apiCallbacks
                                 callbacks[method]?.(result, data)
                             }
 
@@ -356,8 +356,12 @@ class OkPlatformBridge extends PlatformBridgeBase {
 
     get #callbacks() {
         return {
-            userProfileCallback: (status: string, data: AnyRecord, error?: unknown) => this.#onGetUserProfileCompleted(status, data, error),
-            hasValueAccessCallback: (_: string, result: unknown, data: unknown) => this.#onHasAccessValuePermissionCompleted(result, data),
+            userProfileCallback: (status: string, data: AnyRecord, error?: unknown) => (
+                this.#onGetUserProfileCompleted(status, data, error)
+            ),
+            hasValueAccessCallback: (_: string, result: unknown, data: unknown) => (
+                this.#onHasAccessValuePermissionCompleted(result, data)
+            ),
         }
     }
 

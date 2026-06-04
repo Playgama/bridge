@@ -19,4 +19,4 @@ import PlayerModule from './PlayerModule'
 
 export type { PlayerBridgeContract, PlayerAuthorizeOptions } from './PlayerModule'
 export { getGuestUser, type GuestUser } from './guestUser'
-export default PlayerModule
+export default new PlayerModule()
