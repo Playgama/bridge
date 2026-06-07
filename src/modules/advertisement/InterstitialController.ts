@@ -170,10 +170,12 @@ class InterstitialController {
         }
 
         this.#state = state
-        this.#analytics.send(
-            `${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`,
-            { placement: this.#placement },
-        )
+        if (state !== INTERSTITIAL_STATE.LOADING) {
+            this.#analytics.send(
+                `${MODULE_NAME.ADVERTISEMENT}_interstitial_${state}`,
+                { placement: this.#placement },
+            )
+        }
 
         eventBus.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, this.#state)
         this.#onStateChange(this.#state)

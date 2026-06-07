@@ -208,10 +208,12 @@ class AdvancedBannersController {
         }
 
         this.#state = state
-        this.#analytics.send(
-            `${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`,
-            { placement: this.#placement },
-        )
+        if (state !== BANNER_STATE.LOADING) {
+            this.#analytics.send(
+                `${MODULE_NAME.ADVERTISEMENT}_advanced_banners_${state}`,
+                { placement: this.#placement },
+            )
+        }
 
         eventBus.emit(EVENT_NAME.ADVANCED_BANNERS_STATE_CHANGED, this.#state)
     }

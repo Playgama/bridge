@@ -94,6 +94,8 @@ interface CrazyGamesSdk {
         gameplayStart(): void
         gameplayStop(): void
         happytime(): void
+        addSettingsChangeListener(callback: (settings: { muteAudio: boolean }) => void): void
+        settings: { muteAudio: boolean }
     }
     analytics: {
         trackOrder(provider: string, order: AnyRecord): void
@@ -219,7 +221,12 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                     this._isAdvancedBannersSupported = true;
                     (this._platformSdk as CrazyGamesSdk).init().then(() => {
                         this.#isUserAccountAvailable = (this._platformSdk as CrazyGamesSdk).user.isUserAccountAvailable
-                        const getPlayerInfoPromise = this.#getPlayer()
+                        const getPlayerInfoPromise = this.#getPlayer();
+
+                        (this._platformSdk as CrazyGamesSdk).game.addSettingsChangeListener((settings) => {
+                            this._setAudioState(!settings.muteAudio)
+                        })
+                        this._setAudioState(!(this._platformSdk as CrazyGamesSdk).game.settings.muteAudio)
 
                         if (this.options.xsollaProjectId) {
                             this.#ensurePaystationLoaded()

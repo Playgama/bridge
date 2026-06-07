@@ -17,7 +17,7 @@
 
 import eventBus, { applyEventBusMixin } from '../../lib/EventBus'
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
-import { EVENT_NAME, MODULE_NAME } from '../../constants'
+import { EVENT_NAME, MODULE_NAME, type LaunchSource } from '../../constants'
 import {
     PLATFORM_MESSAGE,
     type PlatformId,
@@ -41,6 +41,7 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     platformLanguage: string
     platformPayload: string | null
     platformTld: string | null
+    launchSource: LaunchSource | null
     isPlatformGetAllGamesSupported: boolean
     isPlatformGetGameByIdSupported: boolean
     isPlatformExternalCallsSupported: boolean
@@ -76,6 +77,10 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
         return this._platformBridge.platformTld
     }
 
+    get launchSource(): LaunchSource | null {
+        return this._platformBridge.launchSource
+    }
+
     get isGetAllGamesSupported(): boolean {
         return this._platformBridge.isPlatformGetAllGamesSupported
     }
@@ -100,6 +105,13 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     #startTime = 0
 
+    #messagesExcludedFromAnalytics = new Set<string>([
+        PLATFORM_MESSAGE.GAMEPLAY_STARTED,
+        PLATFORM_MESSAGE.GAMEPLAY_STOPPED,
+        PLATFORM_MESSAGE.IN_GAME_LOADING_STARTED,
+        PLATFORM_MESSAGE.IN_GAME_LOADING_STOPPED,
+    ])
+
     initialize(platformBridge: PlatformBridgeContract): this {
         super.initialize(platformBridge)
 
@@ -109,7 +121,10 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
         return this
     }
 
-    sendMessage(message: PlatformMessage | string, options: PlatformMessageOptions = {}): Promise<unknown> {
+    sendMessage(message: PlatformMessage | string, rawOptions?: PlatformMessageOptions | null): Promise<unknown> {
+        // Engine integrations (e.g. Godot) can pass an explicit null instead of omitting the argument
+        const options = rawOptions ?? {}
+
         const analyticsData: Record<string, unknown> = {}
 
         if (message === PLATFORM_MESSAGE.GAME_READY) {
@@ -136,10 +151,12 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
             analyticsData.level = String(options.level)
         }
 
-        internalAnalytics.send(
-            `${MODULE_NAME.PLATFORM}_message_${message}`,
-            analyticsData,
-        )
+        if (!this.#messagesExcludedFromAnalytics.has(message)) {
+            internalAnalytics.send(
+                `${MODULE_NAME.PLATFORM}_message_${message}`,
+                analyticsData,
+            )
+        }
 
         eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, message)
 

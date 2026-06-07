@@ -119,4 +119,8 @@ export const PLATFORM_DETECTORS: PlatformDetector[] = [
         platformId: PLATFORM_ID.GAMESNACKS,
         predicate: ({ win }: PlatformDetectorContext) => typeof win.GameSnacks !== 'undefined',
     }] : []),
+    ...(__INCLUDE_SAMSUNG__ ? [{
+        platformId: PLATFORM_ID.SAMSUNG,
+        predicate: ({ win }: PlatformDetectorContext) => typeof win.GSInstant !== 'undefined',
+    }] : []),
 ]

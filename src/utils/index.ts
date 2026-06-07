@@ -16,6 +16,7 @@
  */
 
 export * from './script'
+export * from './dom'
 export * from './messaging'
 export * from './async'
 export * from './object'

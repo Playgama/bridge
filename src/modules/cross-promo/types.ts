@@ -15,19 +15,19 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ServerTimeCache from './ServerTimeCache'
+import type { PlatformBridgeLike } from '../ModuleBase'
 
-export const TIMESTAMP_URL = 'https://api.playgama.com/api/v1/timestamp/now'
-
-async function fetchServerTimestamp(): Promise<number> {
-    const response = await fetch(TIMESTAMP_URL)
-    if (!response.ok) {
-        throw new Error('Network response was not ok')
-    }
-
-    const data = await response.json() as { timestamp: number }
-    return data.timestamp * 1000
+export interface CrossPromoGame {
+    url: string
+    icon?: string
+    name?: string
 }
 
-// Shared session-wide cache: the timestamp endpoint is requested only once.
-export const serverTimeCache = new ServerTimeCache(fetchServerTimestamp)
+export interface CrossPromoConfig {
+    title?: string
+    games?: CrossPromoGame[]
+}
+
+export interface CrossPromoBridgeContract extends PlatformBridgeLike {
+    options?: { crossPromo?: CrossPromoConfig } & Record<string, unknown>
+}

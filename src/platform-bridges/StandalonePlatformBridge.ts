@@ -15,19 +15,27 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ServerTimeCache from './ServerTimeCache'
+import PlaygamaPlatformBridge from './PlaygamaPlatformBridge'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 
-export const TIMESTAMP_URL = 'https://api.playgama.com/api/v1/timestamp/now'
-
-async function fetchServerTimestamp(): Promise<number> {
-    const response = await fetch(TIMESTAMP_URL)
-    if (!response.ok) {
-        throw new Error('Network response was not ok')
+class StandalonePlatformBridge extends PlaygamaPlatformBridge {
+    get platformId(): PlatformId {
+        return PLATFORM_ID.STANDALONE
     }
 
-    const data = await response.json() as { timestamp: number }
-    return data.timestamp * 1000
+    get sdkUrl(): string {
+        return 'https://playgama.com/platform-sdk/wrap.v1.js'
+    }
+
+    get sdkGlobalName(): string {
+        return 'PLAYGAMA_WRAP'
+    }
+
+    get isExternalLinksAllowed(): boolean {
+        return true
+    }
+
+    protected _isAdvancedBannersSupported = false
 }
 
-// Shared session-wide cache: the timestamp endpoint is requested only once.
-export const serverTimeCache = new ServerTimeCache(fetchServerTimestamp)
+export default StandalonePlatformBridge

@@ -21,6 +21,7 @@ import {
     BridgeError,
     ERROR_CODE,
     MODULE_NAME,
+    type LaunchSource,
 } from '../constants'
 import { serverTimeCache } from '../lib/serverTime'
 import {
@@ -112,6 +113,10 @@ class PlatformBridgeBase {
         return null
     }
 
+    get launchSource(): LaunchSource | null {
+        return null
+    }
+
     get isPlatformGetAllGamesSupported(): boolean {
         return false
     }
@@ -196,7 +201,7 @@ class PlatformBridgeBase {
     }
 
     get initialInterstitialDelay(): number {
-        return 0
+        return 60
     }
 
     get isRewardedSupported(): boolean {

@@ -15,19 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ServerTimeCache from './ServerTimeCache'
-
-export const TIMESTAMP_URL = 'https://api.playgama.com/api/v1/timestamp/now'
-
-async function fetchServerTimestamp(): Promise<number> {
-    const response = await fetch(TIMESTAMP_URL)
-    if (!response.ok) {
-        throw new Error('Network response was not ok')
-    }
-
-    const data = await response.json() as { timestamp: number }
-    return data.timestamp * 1000
-}
-
-// Shared session-wide cache: the timestamp endpoint is requested only once.
-export const serverTimeCache = new ServerTimeCache(fetchServerTimestamp)
+export const LAUNCH_SOURCE = {
+    NOTIFICATION: 'notification',
+} as const
+export type LaunchSource = typeof LAUNCH_SOURCE[keyof typeof LAUNCH_SOURCE]

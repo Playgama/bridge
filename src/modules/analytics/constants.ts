@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const API_URL = 'https://playgama.com/api/events/v3/bridge/analytics'
+export const API_URL = 'https://api.playgama.com/api/events/v3/bridge/analytics'
 export const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
-export const FLUSH_INTERVAL = 15000
+export const FLUSH_INTERVAL = 30000
 export const SEND_ATTEMPTS = 2

@@ -55,6 +55,8 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     #pagehideHandler: (() => void) | null = null
 
+    #isSessionEndSent = false
+
     #timeDiff = 0
 
     #isCompressionSupported = typeof CompressionStream !== 'undefined'
@@ -68,7 +70,9 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     initialize(platformBridge: AnalyticsBridgeContract): this {
         super.initialize(platformBridge)
-        if (this._platformBridge.options?.sendAnalyticsEvents === false) {
+
+        const isPlaygama = this._platformBridge.platformId === PLATFORM_ID.PLAYGAMA
+        if (!isPlaygama && this._platformBridge.options?.sendAnalyticsEvents === false) {
             this.#isDisabled = true
         }
 
@@ -77,7 +81,10 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             this.#isDisabled = true
         }
 
-        this.#fetchTimeDiff()
+        if (!this.#isDisabled) {
+            this.#fetchTimeDiff()
+        }
+
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
 
@@ -129,7 +136,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 
     #createMeta(): AnalyticsMeta {
-        return {
+        const meta: AnalyticsMeta = {
             bridge_version: packageJson.version,
             platform_id: this._platformBridge.platformId,
             game_id: this.#gameId,
@@ -139,7 +146,15 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             device_type: this._platformBridge.deviceType,
             device_os: this._platformBridge.deviceOs,
             clid: this._platformBridge.additionalData?.clid ?? '',
+            launch_source: this._platformBridge.launchSource,
         }
+
+        const publicToken = this._platformBridge.options?.saas?.publicToken
+        if (publicToken) {
+            meta.public_token = publicToken
+        }
+
+        return meta
     }
 
     async #compressData(data: AnalyticsPayload): Promise<Blob> {
@@ -235,17 +250,27 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     #setupPageUnloadHandler(): void {
         this.#pagehideHandler = () => {
-            this.#flushSync()
+            this.#sendSessionEnd()
         }
 
         this.#visibilityHandler = () => {
             if (document.visibilityState === 'hidden') {
-                this.#flushSync()
+                this.#sendSessionEnd()
             }
         }
 
         document.addEventListener('visibilitychange', this.#visibilityHandler)
         window.addEventListener('pagehide', this.#pagehideHandler)
+    }
+
+    #sendSessionEnd(): void {
+        if (this.#isSessionEndSent || this.#isDisabled) {
+            return
+        }
+
+        this.#isSessionEndSent = true
+        this.send(`${MODULE_NAME.CORE}_session_end`)
+        this.#flushSync()
     }
 
     #disable(): void {
