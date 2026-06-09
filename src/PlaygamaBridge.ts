@@ -21,6 +21,7 @@ import {
     ERROR,
     ERROR_CODE,
     BridgeError,
+    LAUNCH_SOURCE,
 } from './constants'
 import {
     PLATFORM_ID,
@@ -52,7 +53,9 @@ import remoteConfigModule from './modules/remote-config'
 import clipboardModule from './modules/clipboard'
 import achievementsModule from './modules/achievements'
 import dailyRewardsModule from './modules/daily-rewards'
+import crossPromoModule from './modules/cross-promo'
 import analyticsModule, { internalAnalytics } from './modules/analytics'
+import { applyBrowserDefaultsProtection } from './utils'
 import { fetchPlatformBridge } from './platformImports'
 import { PLATFORM_DETECTORS, type PlatformDetectorContext } from './platformDetectors'
 import type PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
@@ -141,6 +144,10 @@ class PlaygamaBridge {
         return this.#getModule(MODULE_NAME.DAILY_REWARDS)
     }
 
+    get crossPromo(): unknown {
+        return this.#getModule(MODULE_NAME.CROSS_PROMO)
+    }
+
     get engine(): string {
         return this.#engine
     }
@@ -160,6 +167,7 @@ class PlaygamaBridge {
     declare readonly BANNER_STATE: typeof BANNER_STATE
     declare readonly DEVICE_TYPE: typeof DEVICE_TYPE
     declare readonly DEVICE_ORIENTATION: typeof DEVICE_ORIENTATION
+    declare readonly LAUNCH_SOURCE: typeof LAUNCH_SOURCE
     /* eslint-enable lines-between-class-members */
 
     #isInitialized = false
@@ -201,6 +209,8 @@ class PlaygamaBridge {
 
             logger.info('Config loaded')
 
+            applyBrowserDefaultsProtection()
+
             await this.#createPlatformBridge()
 
             const bridge = this.#platformBridge as PlatformBridgeBase & { engine?: string }
@@ -222,6 +232,7 @@ class PlaygamaBridge {
                 { name: MODULE_NAME.ACHIEVEMENTS, module: achievementsModule },
                 { name: MODULE_NAME.ANALYTICS, module: analyticsModule },
                 { name: MODULE_NAME.DAILY_REWARDS, module: dailyRewardsModule },
+                { name: MODULE_NAME.CROSS_PROMO, module: crossPromoModule },
             ]
 
             moduleRegistry.forEach(({ name, module }) => {
@@ -235,13 +246,6 @@ class PlaygamaBridge {
                     this.#isInitialized = true
 
                     logger.banner(`PlaygamaBridge v${this.version} initialized.`)
-
-                    const endTime = performance.now()
-                    const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
-                    internalAnalytics.send(
-                        `${MODULE_NAME.CORE}_initialization_completed`,
-                        { time_s: timeInSeconds },
-                    )
 
                     if (this.#initializationPromiseDecorator) {
                         this.#initializationPromiseDecorator.resolve()
@@ -379,6 +383,7 @@ Object.assign(PlaygamaBridge.prototype, {
     BANNER_STATE,
     DEVICE_TYPE,
     DEVICE_ORIENTATION,
+    LAUNCH_SOURCE,
 })
 
 export default PlaygamaBridge

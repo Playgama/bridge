@@ -16,6 +16,7 @@
  */
 
 import eventBus, { type EventEmitter } from '../lib/EventBus'
+import { PLATFORM_ID } from './platform/constants'
 
 // Platform bridge contract used by modules. Until PlatformBridgeBase is migrated,
 // we rely on the EventEmitter-shaped subset that ModuleBase actually depends on.
@@ -41,13 +42,23 @@ class ModuleBase<TPlatformBridge extends PlatformBridgeLike = PlatformBridgeLike
     // variant calls this in initialize() to pick its implementation.
     protected _isSaas(feature: string): boolean {
         const { options, platformId } = this._platformBridge as {
-            options?: { saas?: Record<string, { platforms?: string[] }> }
+            options?: { saas?: { publicToken?: string; [key: string]: unknown } }
             platformId?: string
         }
-        const config = options?.saas?.[feature]
+        const saas = options?.saas
+        const config = saas?.[feature] as { platforms?: string[] } | undefined
+        if (!config) {
+            return false
+        }
+
+        // On Playgama the feature runs through SaaS as soon as a token is set,
+        // without listing the platform explicitly.
+        if (platformId === PLATFORM_ID.PLAYGAMA && saas?.publicToken) {
+            return true
+        }
+
         return Boolean(
-            config
-            && Array.isArray(config.platforms)
+            Array.isArray(config.platforms)
             && platformId != null
             && config.platforms.includes(platformId),
         )

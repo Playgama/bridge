@@ -18,9 +18,11 @@
 import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { DeviceOs, DeviceType } from '../device/constants'
+import type { LaunchSource } from '../../constants'
 
 export interface AnalyticsBridgeOptions {
     sendAnalyticsEvents?: boolean
+    saas?: { publicToken?: string } & Record<string, unknown>
     [key: string]: unknown
 }
 
@@ -30,6 +32,7 @@ export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     deviceType: DeviceType
     deviceOs: DeviceOs
     options: AnalyticsBridgeOptions
+    launchSource: LaunchSource | null
     additionalData?: { clid?: string } & Record<string, unknown>
 }
 
@@ -53,6 +56,8 @@ export interface AnalyticsMeta {
     device_type: DeviceType
     device_os: DeviceOs
     clid: string
+    launch_source: LaunchSource | null
+    public_token?: string
 }
 
 export interface AnalyticsPayload {

@@ -15,7 +15,27 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const API_URL = 'https://api.playgama.com/api/events/v3/bridge/analytics'
-export const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
-export const FLUSH_INTERVAL = 30000
-export const SEND_ATTEMPTS = 2
+import PlaygamaPlatformBridge from './PlaygamaPlatformBridge'
+import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+
+class StandalonePlatformBridge extends PlaygamaPlatformBridge {
+    get platformId(): PlatformId {
+        return PLATFORM_ID.STANDALONE
+    }
+
+    get sdkUrl(): string {
+        return 'https://playgama.com/platform-sdk/wrap.v1.js'
+    }
+
+    get sdkGlobalName(): string {
+        return 'PLAYGAMA_WRAP'
+    }
+
+    get isExternalLinksAllowed(): boolean {
+        return true
+    }
+
+    protected _isAdvancedBannersSupported = false
+}
+
+export default StandalonePlatformBridge

@@ -12,6 +12,7 @@ declare global {
     const __INCLUDE_ABSOLUTE_GAMES__: boolean
     const __INCLUDE_GAME_DISTRIBUTION__: boolean
     const __INCLUDE_PLAYGAMA__: boolean
+    const __INCLUDE_STANDALONE__: boolean
     const __INCLUDE_PLAYDECK__: boolean
     const __INCLUDE_TELEGRAM__: boolean
     const __INCLUDE_Y8__: boolean
@@ -33,6 +34,7 @@ declare global {
     const __INCLUDE_TIKTOK__: boolean
     const __INCLUDE_DLIGHTEK__: boolean
     const __INCLUDE_GAMESNACKS__: boolean
+    const __INCLUDE_SAMSUNG__: boolean
 
     interface Window {
         bridge?: unknown

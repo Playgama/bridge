@@ -109,10 +109,12 @@ class BannerController {
         }
 
         this.#state = state
-        this.#analytics.send(
-            `${MODULE_NAME.ADVERTISEMENT}_banner_${state}`,
-            { position: this.#position, placement: this.#placement },
-        )
+        if (state !== BANNER_STATE.LOADING) {
+            this.#analytics.send(
+                `${MODULE_NAME.ADVERTISEMENT}_banner_${state}`,
+                { position: this.#position, placement: this.#placement },
+            )
+        }
 
         eventBus.emit(EVENT_NAME.BANNER_STATE_CHANGED, this.#state)
     }

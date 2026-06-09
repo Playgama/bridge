@@ -484,14 +484,15 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
             const msProduct = msProducts.find((p) => p.id === product.platformProductId)
             const msPrice = (msProduct?.price as AnyRecord | undefined) ?? {}
 
-            const priceValue = deformatPrice((msPrice.formattedPrice as string) ?? '')
+            const formattedPrice = msPrice.formattedPrice as string | undefined
+            const priceValue = formattedPrice ? deformatPrice(formattedPrice) : null
             const priceCurrencyCode = (msPrice.currencyCode as string | undefined) || null
-            const price = `${priceValue} ${priceCurrencyCode}`
+            const price = formattedPrice || null
 
             return {
                 id: product.id,
-                title: msProduct?.title,
-                description: msProduct?.description,
+                title: msProduct?.title || null,
+                description: msProduct?.description || null,
                 price,
                 priceValue,
                 priceCurrencyCode,

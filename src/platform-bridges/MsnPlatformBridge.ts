@@ -22,7 +22,7 @@ import {
     type AnyRecord,
 } from '../utils'
 import type { AdvancedBannerConfig } from '../modules/advertisement'
-import { ACTION_NAME } from '../constants'
+import { ACTION_NAME, LAUNCH_SOURCE, type LaunchSource } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
     BANNER_STATE,
@@ -39,6 +39,24 @@ import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
+
+interface MsnNotification {
+    title: string
+    description: string
+    type: number
+    minDelayInSeconds: number
+    payload: string
+}
+
+const AUTO_NOTIFICATIONS: MsnNotification[] = [
+    {
+        title: 'Ready for another round?',
+        description: 'Jump back in right where you left off.',
+        type: 8,
+        minDelayInSeconds: 86400,
+        payload: 'msn_auto_24h',
+    },
+]
 
 const MSN_SIZES_BY_POSITION: Record<string, [number, number][]> = {
     top: [[728, 90], [970, 250], [320, 50]],
@@ -79,6 +97,7 @@ interface MsnIap {
 interface MsnSdk {
     getSignedInUserAsync(): Promise<AnyRecord>
     signInAsync(): Promise<AnyRecord>
+    scheduleNotificationAsync(notification: MsnNotification): Promise<unknown>
     cloudSave: {
         saveDataAsync(params: { data: AnyRecord; gameId: unknown }): Promise<unknown>
         getDataAsync(params: { gameId: unknown }): Promise<AnyRecord>
@@ -116,13 +135,17 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.MSN
     }
 
+    get launchSource(): LaunchSource | null {
+        if (new URLSearchParams(window.location.search).has('notificationPayload')) {
+            return LAUNCH_SOURCE.NOTIFICATION
+        }
+
+        return super.launchSource
+    }
+
     // advertisement
     get isInterstitialSupported(): boolean {
         return true
-    }
-
-    get initialInterstitialDelay(): number {
-        return 60
     }
 
     get isRewardedSupported(): boolean {
@@ -184,7 +207,12 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             addJavaScript(SDK_URL)
                 .then(() => waitFor('$msstart'))
                 .then(() => {
-                    this._platformSdk = window.$msstart as MsnSdk;
+                    this._platformSdk = window.$msstart as MsnSdk
+
+                    AUTO_NOTIFICATIONS.forEach((notification) => {
+                        (this._platformSdk as MsnSdk).scheduleNotificationAsync(notification).catch(() => {})
+                    });
+
                     (this._platformSdk as MsnSdk).getSignedInUserAsync()
                         .then((data) => {
                             this.#updatePlayerInfo(data)
@@ -471,19 +499,26 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
                     const list = msnProducts as unknown as AnyRecord[]
                     const mergedProducts = products.map((product) => {
-                        const msnProduct = list.find((p) => p.productId === product.platformProductId) as AnyRecord
-                        const price = msnProduct.price as AnyRecord
+                        const msnProduct = list
+                            .find((p) => p.productId === product.platformProductId) as AnyRecord | undefined
+                        const price = (msnProduct?.price as AnyRecord | undefined) ?? {}
+
+                        const listPrice = price.listPrice ?? null
+                        const priceCurrencyCode = (price.currencyCode as string | undefined) || null
+                        const formattedPrice = listPrice !== null && priceCurrencyCode
+                            ? `${listPrice} ${priceCurrencyCode} `
+                            : null
 
                         return {
                             id: product.id,
-                            title: msnProduct.title,
-                            description: msnProduct.description,
-                            publisherName: msnProduct.publisherName,
-                            inAppOfferToken: msnProduct.inAppOfferToken,
-                            isConsumable: msnProduct.isConsumable,
-                            price: `${price.listPrice} ${price.currencyCode} `,
-                            priceCurrencyCode: price.currencyCode,
-                            priceValue: price.listPrice,
+                            title: msnProduct?.title || null,
+                            description: msnProduct?.description || null,
+                            publisherName: msnProduct?.publisherName || null,
+                            inAppOfferToken: msnProduct?.inAppOfferToken || null,
+                            isConsumable: msnProduct?.isConsumable ?? null,
+                            price: formattedPrice,
+                            priceCurrencyCode,
+                            priceValue: listPrice,
                         }
                     })
 

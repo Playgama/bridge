@@ -23,28 +23,30 @@ import {
     CLOUD_STORAGE_MODE,
     type CloudStorageMode,
 } from '../modules/storage/constants'
-import { postToParent } from '../utils'
+import type { AnyRecord } from '../utils'
 
-interface DevvitMessageData {
-    type?: string
+declare global {
+    interface Window {
+        __playgama_devvit?: {
+            purchase: (id: string) => Promise<unknown> | unknown
+        }
+    }
+}
+
+interface InitializePayload {
     isPlayerAuthorized?: boolean
     playerId?: string
     playerName?: string
     playerPhoto?: string
-    data?: {
-        success?: boolean
-        data?: unknown
-        [key: string]: unknown
-    }
-    [key: string]: unknown
 }
 
-interface DevvitMessageEvent {
-    type: 'devvit-message'
-    data: { message: DevvitMessageData }
+interface FetchJsonOptions {
+    method?: string
+    body?: unknown
 }
 
 class RedditPlatformBridge extends PlatformBridgeBase {
+    // platform
     get platformId(): PlatformId {
         return PLATFORM_ID.REDDIT
     }
@@ -53,15 +55,17 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    get isPaymentsSupported(): boolean {
-        return true
-    }
-
+    // social
     get isJoinCommunitySupported(): boolean {
         return true
     }
 
     get isCreatePostSupported(): boolean {
+        return true
+    }
+
+    // payments
+    get isPaymentsSupported(): boolean {
         return true
     }
 
@@ -77,10 +81,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    checkAdBlock(): Promise<boolean> {
-        return Promise.resolve(false)
-    }
-
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -88,35 +88,28 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
-            window.addEventListener('message', (event: MessageEvent) => {
-                const eventData = event.data as DevvitMessageEvent | undefined
-                if (eventData?.type === 'devvit-message') {
-                    const { message } = eventData.data
-                    if (message.type === ACTION_NAME.INITIALIZE) {
-                        this.#handleInitialize(message)
-                    } else if (message.type === ACTION_NAME.GET_STORAGE_DATA) {
-                        this.#handleGetStorage(message)
-                    } else if (message.type === ACTION_NAME.SET_STORAGE_DATA) {
-                        this.#handleSetStorage(message)
-                    } else if (message.type === ACTION_NAME.DELETE_STORAGE_DATA) {
-                        this.#handleDeleteStorage(message)
-                    } else if (message.type === ACTION_NAME.GET_CATALOG) {
-                        this.#handleGetCatalog(message)
-                    } else if (message.type === ACTION_NAME.PURCHASE) {
-                        this.#handlePurchase(message)
-                    } else if (message.type === ACTION_NAME.GET_PURCHASES) {
-                        this.#handleGetPurchases(message)
-                    } else if (message.type === ACTION_NAME.CREATE_POST) {
-                        this.#handleCreatePost(message)
-                    } else if (message.type === ACTION_NAME.JOIN_COMMUNITY) {
-                        this.#handleJoinCommunity(message)
-                    }
-                }
-            })
-
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            this.#postMessage(ACTION_NAME.INITIALIZE)
+            this.#fetchJson('/api/initialize')
+                .then((data) => {
+                    const payload = (data as InitializePayload) || {}
+                    this._isPlayerAuthorized = !!payload.isPlayerAuthorized
+
+                    if (this._isPlayerAuthorized) {
+                        this._playerId = payload.playerId ?? null
+                        this._playerName = payload.playerName ?? null
+                        if (payload.playerPhoto) {
+                            this._playerPhotos.push(payload.playerPhoto)
+                        }
+                        this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                    }
+
+                    this._isInitialized = true
+                    this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
+                })
         }
 
         return promiseDecorator.promise
@@ -124,28 +117,86 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     loadCloudKey(key: string): Promise<unknown> {
         const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-        this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, { key })
+
+        this.#fetchJson('/api/storage/get', { method: 'POST', body: { key } })
+            .then((data) => {
+                this._resolvePromiseDecorator(
+                    ACTION_NAME.GET_STORAGE_DATA,
+                    data === undefined ? null : data,
+                )
+            })
+            .catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, error)
+            })
+
         return promiseDecorator.promise
     }
 
     saveCloudKey(key: string, value: unknown): Promise<void> {
         const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-        this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
+
+        this.#fetchJson('/api/storage/set', { method: 'POST', body: { key, value } })
+            .then(() => {
+                this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
+            })
+            .catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA, error)
+            })
+
         return promiseDecorator.promise
     }
 
     deleteCloudKey(key: string): Promise<void> {
         const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
-        this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, { key })
+
+        this.#fetchJson('/api/storage/delete', { method: 'POST', body: { key } })
+            .then(() => {
+                this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
+            })
+            .catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, error)
+            })
+
         return promiseDecorator.promise
     }
 
+    // advertisement
+    checkAdBlock(): Promise<boolean> {
+        return Promise.resolve(false)
+    }
+
+    // payments
     paymentsPurchase(id: string): Promise<unknown> {
+        const purchaseFn = typeof window !== 'undefined' && window.__playgama_devvit
+            ? window.__playgama_devvit.purchase
+            : null
+
+        if (typeof purchaseFn !== 'function') {
+            return Promise.reject(new Error(
+                'window.__playgama_devvit.purchase is not registered. '
+                + 'Set window.__playgama_devvit = { purchase } using purchase() from '
+                + '@devvit/web/client before calling bridge.initialize().',
+            ))
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this.#postMessage(ACTION_NAME.PURCHASE, { id })
+            Promise.resolve(purchaseFn(id))
+                .then((result) => {
+                    const purchase = (result && typeof result === 'object'
+                        ? { ...(result as AnyRecord) }
+                        : {}) as AnyRecord & { id: string }
+                    if (!purchase.id) {
+                        purchase.id = id
+                    }
+                    this._paymentsPurchases.push(purchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
         }
 
         return promiseDecorator.promise
@@ -153,7 +204,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
     paymentsGetCatalog(): Promise<unknown> {
         const products = this._paymentsGetProductsPlatformData()
-
         if (!products) {
             return Promise.reject()
         }
@@ -162,7 +212,13 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
-            this.#postMessage(ACTION_NAME.GET_CATALOG)
+            this.#fetchJson('/api/catalog')
+                .then((data) => {
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, this.#extractList(data))
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                })
         }
 
         return promiseDecorator.promise
@@ -173,7 +229,13 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this.#postMessage(ACTION_NAME.GET_PURCHASES)
+            this.#fetchJson('/api/purchases')
+                .then((data) => {
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this.#extractList(data))
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                })
         }
 
         return promiseDecorator.promise
@@ -184,7 +246,13 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
 
-            this.#postMessage(ACTION_NAME.CREATE_POST, { options })
+            this.#fetchJson('/api/create-post', { method: 'POST', body: { options } })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CREATE_POST, error)
+                })
         }
 
         return promiseDecorator.promise
@@ -195,94 +263,59 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
 
-            this.#postMessage(ACTION_NAME.JOIN_COMMUNITY)
+            this.#fetchJson('/api/join-community', { method: 'POST' })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, error)
+                })
         }
 
         return promiseDecorator.promise
     }
 
-    #postMessage(type: string, data: Record<string, unknown> = {}): void {
-        postToParent({ type, data }, '*')
+    #extractList(data: unknown): unknown[] {
+        if (Array.isArray(data)) {
+            return data
+        }
+
+        const nested = (data as AnyRecord | null)?.data
+        if (Array.isArray(nested)) {
+            return nested
+        }
+
+        return []
     }
 
-    #handleInitialize(message: DevvitMessageData): void {
-        this._isPlayerAuthorized = !!message.isPlayerAuthorized
+    #fetchJson(url: string, { method = 'GET', body }: FetchJsonOptions = {}): Promise<unknown> {
+        const headers: Record<string, string> = {}
+        const init: RequestInit = { method, headers }
+        if (body !== undefined) {
+            headers['Content-Type'] = 'application/json'
+            init.body = JSON.stringify(body)
+        }
 
-        if (this._isPlayerAuthorized) {
-            this._playerId = message.playerId ?? null
-            this._playerName = message.playerName ?? null
-            if (message.playerPhoto) {
-                this._playerPhotos.push(message.playerPhoto)
+        return fetch(url, init).then((response) => {
+            if (!response.ok) {
+                return response.text().then((text) => {
+                    const detail = text ? `: ${text}` : ''
+                    throw new Error(`${method} ${url} failed (${response.status})${detail}`)
+                })
             }
-            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
-        }
 
-        this._isInitialized = true
-        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-    }
+            return response.text().then((text) => {
+                if (!text) {
+                    return null
+                }
 
-    #handleGetStorage(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, message.data.data ?? null)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-        }
-    }
-
-    #handleSetStorage(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-        }
-    }
-
-    #handleDeleteStorage(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-        }
-    }
-
-    #handlePurchase(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, message.data)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, message.data)
-        }
-    }
-
-    #handleGetCatalog(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, message.data)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, message.data)
-        }
-    }
-
-    #handleGetPurchases(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, message.data)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, message.data)
-        }
-    }
-
-    #handleCreatePost(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.CREATE_POST)
-        }
-    }
-
-    #handleJoinCommunity(message: DevvitMessageData): void {
-        if (message.data?.success) {
-            this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
-        } else {
-            this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
-        }
+                try {
+                    return JSON.parse(text)
+                } catch {
+                    return null
+                }
+            })
+        })
     }
 }
 

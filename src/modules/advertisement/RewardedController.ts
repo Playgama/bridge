@@ -116,10 +116,12 @@ class RewardedController {
         }
 
         this.#state = state
-        this.#analytics.send(
-            `${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`,
-            { placement: this.#placement },
-        )
+        if (state !== REWARDED_STATE.LOADING) {
+            this.#analytics.send(
+                `${MODULE_NAME.ADVERTISEMENT}_rewarded_${state}`,
+                { placement: this.#placement },
+            )
+        }
 
         eventBus.emit(EVENT_NAME.REWARDED_STATE_CHANGED, this.#state)
         this.#onStateChange(this.#state)
