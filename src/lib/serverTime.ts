@@ -20,20 +20,13 @@ import { SAAS_URL } from './SaasRequest'
 
 const TIMESTAMP_PATH = 'timestamp/now'
 
-// Fetches the server time from the SaaS timestamp endpoint and converts it to
-// milliseconds (the endpoint returns whole seconds). Public endpoint: only the
-// SaaS base URL is reused — no auth token, SaaS headers, or credentials are sent.
 async function fetchServerTimestamp(): Promise<number> {
     const response = await fetch(`${SAAS_URL}/${TIMESTAMP_PATH}`)
     if (!response.ok) {
         throw new Error('Network response was not ok')
     }
 
-    const data = await response.json() as { timestamp?: number }
-    if (typeof data?.timestamp !== 'number' || !Number.isFinite(data.timestamp)) {
-        throw new Error('Invalid timestamp response')
-    }
-
+    const data = await response.json() as { timestamp: number }
     return data.timestamp * 1000
 }
 
