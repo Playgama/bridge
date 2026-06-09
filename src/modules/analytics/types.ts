@@ -31,7 +31,6 @@ export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     deviceOs: DeviceOs
     options: AnalyticsBridgeOptions
     additionalData?: { clid?: string } & Record<string, unknown>
-    getServerTime(): Promise<number>
 }
 
 export interface AnalyticsSender {

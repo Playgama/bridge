@@ -18,13 +18,13 @@
 import ServerTimeCache from './ServerTimeCache'
 import { SAAS_URL } from './SaasRequest'
 
-const TIMESTAMP_PATH = 'timestamp'
+const TIMESTAMP_PATH = 'timestamp/now'
 
-// Fetches the server time (in milliseconds) from the SaaS timestamp endpoint.
-// This is a public endpoint: only the SaaS base URL is reused — no auth token,
-// SaaS headers, or credentials are sent.
-async function fetchServerTime(baseUrl: string): Promise<number> {
-    const response = await fetch(`${baseUrl}/${TIMESTAMP_PATH}`)
+// Fetches the server time from the SaaS timestamp endpoint and converts it to
+// milliseconds (the endpoint returns whole seconds). Public endpoint: only the
+// SaaS base URL is reused — no auth token, SaaS headers, or credentials are sent.
+async function fetchServerTimestamp(): Promise<number> {
+    const response = await fetch(`${SAAS_URL}/${TIMESTAMP_PATH}`)
     if (!response.ok) {
         throw new Error('Network response was not ok')
     }
@@ -34,16 +34,8 @@ async function fetchServerTime(baseUrl: string): Promise<number> {
         throw new Error('Invalid timestamp response')
     }
 
-    return data.timestamp
+    return data.timestamp * 1000
 }
 
-/**
- * Builds a per-bridge cache that resolves the SaaS base URL lazily (on first
- * retrieval), so a config override is respected even though it is applied after
- * construction. The endpoint is requested only once per session.
- */
-export function createSaasServerTimeCache(
-    getBaseUrl: () => string | undefined,
-): ServerTimeCache {
-    return new ServerTimeCache(() => fetchServerTime(getBaseUrl() || SAAS_URL))
-}
+// Shared session-wide cache: the timestamp endpoint is requested only once.
+export const serverTimeCache = new ServerTimeCache(fetchServerTimestamp)
