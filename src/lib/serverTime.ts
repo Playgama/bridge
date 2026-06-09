@@ -18,14 +18,12 @@
 import ServerTimeCache from './ServerTimeCache'
 import { SAAS_URL } from './SaasRequest'
 
-export const TIMESTAMP_PATH = 'timestamp'
+const TIMESTAMP_PATH = 'timestamp'
 
-/**
- * Fetches the server time (in milliseconds) from the SaaS timestamp endpoint.
- * This is a public endpoint: only the SaaS base URL is reused — no auth token,
- * SaaS headers, or credentials are sent.
- */
-export async function fetchSaasServerTime(baseUrl: string = SAAS_URL): Promise<number> {
+// Fetches the server time (in milliseconds) from the SaaS timestamp endpoint.
+// This is a public endpoint: only the SaaS base URL is reused — no auth token,
+// SaaS headers, or credentials are sent.
+async function fetchServerTime(baseUrl: string): Promise<number> {
     const response = await fetch(`${baseUrl}/${TIMESTAMP_PATH}`)
     if (!response.ok) {
         throw new Error('Network response was not ok')
@@ -45,7 +43,7 @@ export async function fetchSaasServerTime(baseUrl: string = SAAS_URL): Promise<n
  * construction. The endpoint is requested only once per session.
  */
 export function createSaasServerTimeCache(
-    getBaseUrl: () => string | undefined | null,
+    getBaseUrl: () => string | undefined,
 ): ServerTimeCache {
-    return new ServerTimeCache(() => fetchSaasServerTime(getBaseUrl() || SAAS_URL))
+    return new ServerTimeCache(() => fetchServerTime(getBaseUrl() || SAAS_URL))
 }

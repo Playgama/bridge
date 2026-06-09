@@ -366,7 +366,7 @@ class PlatformBridgeBase {
     // Server time is fetched once per session from the SaaS timestamp endpoint
     // (base URL from options.saas.baseUrl, public — no token/credentials); the
     // cache derives every later value from the offset against the local clock.
-    #serverTimeCache = createSaasServerTimeCache(() => this.options?.saas?.baseUrl)
+    #serverTimeCache = createSaasServerTimeCache(() => this._options?.saas?.baseUrl)
 
     constructor() {
         this._playerApplyGuestData()
