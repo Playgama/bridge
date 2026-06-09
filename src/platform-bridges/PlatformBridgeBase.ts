@@ -22,7 +22,7 @@ import {
     ERROR_CODE,
     MODULE_NAME,
 } from '../constants'
-import { serverTimeCache } from '../lib/serverTime'
+import { createSaasServerTimeCache } from '../lib/serverTime'
 import {
     PLATFORM_ID,
     VISIBILITY_STATE,
@@ -69,6 +69,10 @@ export interface PlatformBridgeOptions {
         useBuiltInErrorPopup?: boolean
         useAdvertisementErrorPopup?: boolean
         builtInErrorPopupCooldown?: number
+        [key: string]: unknown
+    }
+    saas?: {
+        baseUrl?: string
         [key: string]: unknown
     }
     [key: string]: unknown
@@ -359,6 +363,11 @@ class PlatformBridgeBase {
 
     #lastAdFailurePopupTime = 0
 
+    // Server time is fetched once per session from the SaaS timestamp endpoint
+    // (base URL from options.saas.baseUrl, public — no token/credentials); the
+    // cache derives every later value from the offset against the local clock.
+    #serverTimeCache = createSaasServerTimeCache(() => this.options?.saas?.baseUrl)
+
     constructor() {
         this._playerApplyGuestData()
 
@@ -404,7 +413,7 @@ class PlatformBridgeBase {
     }
 
     getServerTime(): Promise<number> {
-        return serverTimeCache.getServerTime()
+        return this.#serverTimeCache.getServerTime()
     }
 
     getAllGames(): Promise<unknown> {

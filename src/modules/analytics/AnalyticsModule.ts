@@ -16,7 +16,6 @@
  */
 
 import { MODULE_NAME } from '../../constants'
-import { serverTimeCache } from '../../lib/serverTime'
 import { PLATFORM_ID, type PlatformId } from '../platform/constants'
 import packageJson from '../../../package.json'
 import { generateRandomId } from '../../utils'
@@ -107,7 +106,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     async #fetchTimeDiff(): Promise<void> {
         try {
-            const serverTime = await serverTimeCache.getServerTime()
+            const serverTime = await this._platformBridge.getServerTime()
             this.#timeDiff = serverTime - Date.now()
 
             for (let i = 0; i < this.#eventQueue.length; i++) {

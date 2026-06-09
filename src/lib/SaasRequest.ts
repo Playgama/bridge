@@ -17,7 +17,7 @@
 
 import type { JsonValue } from '../utils'
 
-const SAAS_URL = 'https://playgama.com/api/bridge/v1'
+export const SAAS_URL = 'https://playgama.com/api/bridge/v1'
 
 export interface SaasBridgeLike {
     playerId?: string | null
