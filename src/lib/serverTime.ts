@@ -16,12 +16,11 @@
  */
 
 import ServerTimeCache from './ServerTimeCache'
-import { SAAS_URL } from './SaasRequest'
 
-const TIMESTAMP_PATH = 'timestamp/now'
+export const TIMESTAMP_URL = 'https://api.playgama.com/api/bridge/v1/timestamp/now'
 
 async function fetchServerTimestamp(): Promise<number> {
-    const response = await fetch(`${SAAS_URL}/${TIMESTAMP_PATH}`)
+    const response = await fetch(TIMESTAMP_URL)
     if (!response.ok) {
         throw new Error('Network response was not ok')
     }
