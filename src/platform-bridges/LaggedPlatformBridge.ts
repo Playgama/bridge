@@ -198,17 +198,15 @@ class LaggedPlatformBridge extends PlatformBridgeBase {
     }
 
     // achievements
-    unlockAchievement(options?: unknown): Promise<unknown> {
-        const opts = (options ?? {}) as { achievement?: unknown }
-        if (!opts.achievement) {
+    achievementsUnlock(data?: unknown): Promise<unknown> {
+        // Lagged expects a plain achievement id from the config mapping
+        if (!data || typeof data !== 'string') {
             return Promise.reject()
         }
 
         return new Promise((resolve, reject) => {
             (this._platformSdk as LaggedSdk).Achievements.save(
-                Array.isArray(opts.achievement)
-                    ? opts.achievement
-                    : [opts.achievement],
+                [data],
                 (response) => {
                     if (response.success) {
                         resolve(response)

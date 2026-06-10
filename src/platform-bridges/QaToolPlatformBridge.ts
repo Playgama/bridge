@@ -44,6 +44,7 @@ import {
     type CloudStorageMode,
 } from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
+import type { NormalizedAchievement } from '../modules/achievements/types'
 import type { AnyRecord } from '../utils'
 import type { SafeAreaInsets } from '../lib/safe-area'
 
@@ -966,26 +967,26 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
     }
 
-    unlockAchievement(options?: unknown): Promise<unknown> {
+    achievementsUnlock(data?: unknown): Promise<unknown> {
         if (!this.isAchievementsSupported) {
             return Promise.reject()
         }
 
         return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.UNLOCK_ACHIEVEMENT, {
-            options: options as Record<string, unknown> | undefined,
-        }).then((data) => (data as { result?: unknown }).result)
+            options: { achievement: data },
+        }).then((response) => (response as { result?: unknown }).result)
     }
 
-    getAchievementsList(options?: unknown): Promise<unknown> {
+    achievementsGetList(): Promise<NormalizedAchievement[]> {
         if (!this.isGetAchievementsListSupported) {
             return Promise.reject()
         }
         return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.GET_ACHIEVEMENTS, {
-            options: options as Record<string, unknown> | undefined,
-        }).then((data) => (data as { result?: unknown }).result)
+            options: {},
+        }).then((data) => (data as { result?: NormalizedAchievement[] }).result ?? [])
     }
 
-    showAchievementsNativePopup(): Promise<unknown> {
+    achievementsShowNativePopup(): Promise<unknown> {
         if (!this.isAchievementsNativePopupSupported) {
             return Promise.reject()
         }

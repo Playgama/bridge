@@ -17,5 +17,11 @@
 
 import AchievementsModule from './AchievementsModule'
 
-export type { AchievementsBridgeContract, AchievementsOptions } from './AchievementsModule'
+export type {
+    AchievementsBridgeContract,
+    AchievementsBridgeOptions,
+    AchievementMapping,
+    AchievementPlatformData,
+    NormalizedAchievement,
+} from './types'
 export default new AchievementsModule()

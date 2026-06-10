@@ -48,6 +48,7 @@ import {
     type CloudStorageMode,
 } from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
+import type { NormalizedAchievement } from '../modules/achievements/types'
 import { internalAnalytics } from '../modules/analytics'
 import {
     getPaymentsProductsPlatformData,
@@ -624,15 +625,15 @@ class PlatformBridgeBase {
     }
 
     // achievements
-    unlockAchievement(_options?: unknown): Promise<unknown> {
+    achievementsUnlock(_data?: unknown): Promise<unknown> {
         return Promise.reject()
     }
 
-    getAchievementsList(_options?: unknown): Promise<unknown> {
+    achievementsGetList(): Promise<NormalizedAchievement[]> {
         return Promise.reject()
     }
 
-    showAchievementsNativePopup(_options?: unknown): Promise<unknown> {
+    achievementsShowNativePopup(): Promise<unknown> {
         return Promise.reject()
     }
 
