@@ -25,6 +25,6 @@ export const EVENT_NAME = {
     ORIENTATION_STATE_CHANGED: 'orientation_state_changed',
     SCREEN_SIZE_CHANGED: 'screen_size_changed',
     PLATFORM_MESSAGE_SENT: 'platform_message_sent',
-    DEFAULT_STORAGE_TYPE_CHANGED: 'default_storage_type_changed',
+    PLATFORM_STORAGE_AVAILABILITY_CHANGED: 'platform_storage_availability_changed',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]

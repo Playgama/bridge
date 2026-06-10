@@ -35,11 +35,6 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import type { SafeAreaInsets } from '../lib/safe-area'
 
 interface TikTokSystemInfo {
@@ -78,7 +73,6 @@ interface TikTokSdk {
     login(callbacks: TikTokSuccessFailCallbacks): void
     setLoadingProgress(options: { progress: number }): void
     getStorage(options: { key: string } & TikTokSuccessFailCallbacks<{ data: unknown }>): void
-    getStorageInfoSync?(): { keys?: string[] }
     setStorage(options: { key: string, data: unknown } & TikTokSuccessFailCallbacks): void
     removeStorage(options: { key: string } & TikTokSuccessFailCallbacks): void
     createInterstitialAd(options: { adUnitId?: unknown }): TikTokAd
@@ -185,14 +179,6 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
     get deviceType(): DeviceType {
         if (this.#systemInfo) {
             const { platform } = this.#systemInfo
@@ -248,7 +234,7 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
                 }
 
                 if (sdk.canIUse('getStorage')) {
-                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                    this._setPlatformStorageAvailable(true)
                 }
 
                 if (sdk.canIUse('getSystemInfoSync')) {
@@ -315,34 +301,23 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    async loadCloudSnapshot(): Promise<Record<string, unknown>> {
-        const sdk = this._platformSdk as TikTokSdk
-        let keys: string[] = []
-        if (sdk.canIUse('getStorageInfoSync') && sdk.getStorageInfoSync) {
-            const info = sdk.getStorageInfoSync()
-            keys = info && info.keys ? info.keys : []
-        }
-
-        if (keys.length === 0) {
-            return {}
-        }
-
-        const values = await Promise.all(keys.map((k) => this.#getStorageItemRaw(k)))
-        const snapshot: Record<string, unknown> = {}
-        keys.forEach((k, i) => {
-            if (values[i] !== undefined && values[i] !== null) {
-                snapshot[k] = values[i]
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await this.#getStorageItemRaw(key).catch(() => undefined)
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
             }
-        })
-        return snapshot
+        }))
+        return result
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>, changedKeys: string[]): Promise<void> {
-        return Promise.all(changedKeys.map((k) => this.#setStorageItem(k, snapshot[k]))).then(() => undefined)
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        return Promise.all(Object.keys(data).map((key) => this.#setStorageItem(key, data[key]))).then(() => undefined)
     }
 
-    deleteCloudKeys(_snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
-        return Promise.all(deletedKeys.map((k) => this.#removeStorageItem(k))).then(() => undefined)
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        return Promise.all(keys.map((key) => this.#removeStorageItem(key))).then(() => undefined)
     }
 
     showInterstitial(placement?: unknown): void {

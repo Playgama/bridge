@@ -25,11 +25,6 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://cdn.y8.com/api/sdk.js'
@@ -128,18 +123,6 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
     // leaderboards
     get leaderboardsType(): LeaderboardType {
         return LEADERBOARD_TYPE.IN_GAME
@@ -221,7 +204,9 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+    async getDataFromStorage(): Promise<Record<string, unknown>> {
+        await this.#ensureStorageReady()
+
         return new Promise((resolve, reject) => {
             (this._platformSdk as Y8Sdk).api('user_data/retrieve', 'POST', { key: USERDATA_KEY }, ((response) => {
                 if (response.error && response.error !== NOT_FOUND_ERROR) {
@@ -242,25 +227,20 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            (this._platformSdk as Y8Sdk).api(
-                'user_data/submit',
-                'POST',
-                { key: USERDATA_KEY, value: JSON.stringify(snapshot) },
-                ((response) => {
-                    if (response.status === 'ok') {
-                        resolve()
-                    } else {
-                        reject(response)
-                    }
-                }),
-            )
-        })
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        await this.#ensureStorageReady()
+
+        const snapshot = await this.getDataFromStorage()
+        Object.keys(data).forEach((key) => { snapshot[key] = data[key] })
+        await this.#submitSnapshot(snapshot)
     }
 
-    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
-        return this.saveCloudSnapshot(snapshot)
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        await this.#ensureStorageReady()
+
+        const snapshot = await this.getDataFromStorage()
+        keys.forEach((key) => { delete snapshot[key] })
+        await this.#submitSnapshot(snapshot)
     }
 
     // advertisement
@@ -421,10 +401,34 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
+    #ensureStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
+    #submitSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            (this._platformSdk as Y8Sdk).api(
+                'user_data/submit',
+                'POST',
+                { key: USERDATA_KEY, value: JSON.stringify(snapshot) },
+                ((response) => {
+                    if (response.status === 'ok') {
+                        resolve()
+                    } else {
+                        reject(response)
+                    }
+                }),
+            )
+        })
+    }
+
     #updatePlayerInfo(data: Y8LoginResponse): void {
         if (data.status === 'ok' && data.authResponse) {
             this._isPlayerAuthorized = true
-            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+            this._setPlatformStorageAvailable(true)
 
             const {
                 pid, locale, nickname, first_name: firstName, last_name: lastName, avatars,

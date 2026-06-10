@@ -25,11 +25,6 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const PROD_SDK_URL = 'https://app.bitquest.games/bqsdk.min.js'
@@ -114,14 +109,6 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
     #serverTimeCache = new ServerTimeCache(
         () => Promise.resolve((this._platformSdk as BqSdk).platform.getServerTime()),
     )
@@ -167,7 +154,7 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
                             this._playerId = id ?? null
                             this._playerName = name
                             this._isPlayerAuthorized = true
-                            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                            this._setPlatformStorageAvailable(true)
                             this._playerExtra = player
 
                             this.#setupAdvertisementHandlers()
@@ -187,18 +174,30 @@ class BitquestPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        return (this._platformSdk as BqSdk).storage.get(key, 'platform_internal').then((value) => (
-            value === undefined ? null : value
-        ))
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await (this._platformSdk as BqSdk).storage.get(key, 'platform_internal').then((v) => (
+                v === undefined ? null : v
+            ))
+            if (value !== null && value !== undefined && value !== '') {
+                // The SDK may hand back a deserialized object; the cache holds serialized strings.
+                result[key] = typeof value === 'string' ? value : JSON.stringify(value)
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        return (this._platformSdk as BqSdk).storage.set(key, value, 'platform_internal').then(() => undefined)
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        return Promise.all(Object.keys(data).map((key) => (
+            (this._platformSdk as BqSdk).storage.set(key, data[key], 'platform_internal')
+        ))).then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        return (this._platformSdk as BqSdk).storage.delete(key, 'platform_internal').then(() => undefined)
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        return Promise.all(keys.map((key) => (
+            (this._platformSdk as BqSdk).storage.delete(key, 'platform_internal')
+        ))).then(() => undefined)
     }
 
     // advertisement

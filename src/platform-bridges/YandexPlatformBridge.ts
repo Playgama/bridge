@@ -31,12 +31,6 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-    type StorageType,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = '/sdk.js'
@@ -216,23 +210,6 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
-    // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this.#playerPromise) {
-            return Promise.reject()
-        }
-        return this.#playerPromise.then(() => {
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject<void>()
-            }
-            return undefined
-        })
-    }
-
     // leaderboards
     get leaderboardsType(): LeaderboardType {
         return LEADERBOARD_TYPE.IN_GAME
@@ -248,7 +225,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+    protected _isPlatformStorageAvailable = true
 
     #isAddToHomeScreenSupported = false
 
@@ -428,17 +405,24 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    // storage
-    loadCloudSnapshot(): Promise<Record<string, unknown>> {
-        return this.#playerPromise!.then(() => this.#yandexPlayer!.getData())
+    // storage — Yandex stores one data blob, so writes read-modify-write the whole object.
+    async getDataFromStorage(): Promise<Record<string, unknown>> {
+        await this.#ensureStorageReady()
+        return this.#yandexPlayer!.getData()
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
-        return this.#yandexPlayer!.setData(snapshot).then(() => undefined)
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        await this.#ensureStorageReady()
+        const snapshot = await this.#yandexPlayer!.getData()
+        Object.keys(data).forEach((key) => { snapshot[key] = data[key] })
+        await this.#yandexPlayer!.setData(snapshot)
     }
 
-    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
-        return this.#yandexPlayer!.setData(snapshot).then(() => undefined)
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        await this.#ensureStorageReady()
+        const snapshot = await this.#yandexPlayer!.getData()
+        keys.forEach((key) => { delete snapshot[key] })
+        await this.#yandexPlayer!.setData(snapshot)
     }
 
     // advertisement
@@ -807,6 +791,18 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise.then(() => undefined)
     }
 
+    #ensureStorageReady(): Promise<void> {
+        if (!this.#playerPromise) {
+            return Promise.reject()
+        }
+        return this.#playerPromise.then(() => {
+            if (!this._isPlayerAuthorized) {
+                return Promise.reject<void>()
+            }
+            return undefined
+        })
+    }
+
     #getPlayer(): Promise<void> {
         return new Promise<void>((resolve) => {
             let signed = false
@@ -819,11 +815,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                     this._playerId = player.getUniqueID()
                     this._isPlayerAuthorized = player.isAuthorized()
 
-                    this._setDefaultStorageType(
-                        this._isPlayerAuthorized
-                            ? STORAGE_TYPE.PLATFORM_INTERNAL
-                            : STORAGE_TYPE.LOCAL_STORAGE,
-                    )
+                    this._setPlatformStorageAvailable(this._isPlayerAuthorized)
 
                     const name = player.getName()
                     if (name !== '') {

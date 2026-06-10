@@ -25,21 +25,12 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import type { AnyRecord } from '../utils'
 
 const SDK_URL = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js'
 
 interface VkStorageGetResponse {
     keys: Array<{ key: string; value: string }>
-}
-
-interface VkStorageGetKeysResponse {
-    keys: string[]
 }
 
 interface VkBridge {
@@ -133,15 +124,6 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
     // social
     get isInviteFriendsSupported(): boolean {
         return true
@@ -208,7 +190,7 @@ class VkPlatformBridge extends PlatformBridgeBase {
                                 })
                                 .finally(() => {
                                     this._isInitialized = true
-                                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                                    this._setPlatformStorageAvailable(true)
                                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                                 })
                         })
@@ -224,41 +206,34 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    // storage
-    async loadCloudSnapshot(): Promise<Record<string, unknown>> {
+    // storage — VK stores values per key.
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
         const sdk = this._platformSdk as VkBridge
-        const keysResult = await sdk.send('VKWebAppStorageGetKeys', { count: 1000, offset: 0 }) as unknown as VkStorageGetKeysResponse
-
-        const keys = keysResult.keys || []
-        if (keys.length === 0) {
-            return {}
-        }
-
         const valuesResult = await sdk.send('VKWebAppStorageGet', { keys }) as unknown as VkStorageGetResponse
-        const snapshot: Record<string, unknown> = {}
+        const data: Record<string, unknown> = {}
         valuesResult.keys.forEach((entry) => {
             if (entry.value !== '') {
-                snapshot[entry.key] = entry.value
+                data[entry.key] = entry.value
             }
         })
-        return snapshot
+        return data
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>, changedKeys: string[]): Promise<void> {
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
         const sdk = this._platformSdk as VkBridge
         return Promise.all(
-            changedKeys.map((k) => sdk.send('VKWebAppStorageSet', {
-                key: k,
-                value: snapshot[k] as string,
+            Object.keys(data).map((key) => sdk.send('VKWebAppStorageSet', {
+                key,
+                value: data[key] as string,
             })),
         ).then(() => undefined)
     }
 
-    deleteCloudKeys(_snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
+    deleteDataFromStorage(keys: string[]): Promise<void> {
         const sdk = this._platformSdk as VkBridge
         return Promise.all(
-            deletedKeys.map((k) => sdk.send('VKWebAppStorageSet', {
-                key: k,
+            keys.map((key) => sdk.send('VKWebAppStorageSet', {
+                key,
                 value: '',
             })),
         ).then(() => undefined)

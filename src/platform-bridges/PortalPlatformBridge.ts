@@ -27,11 +27,6 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 
 const SDK_URL = 'https://storage.googleapis.com/social-networth/scripts/sdk.umd.js'
 
@@ -78,14 +73,6 @@ class PortalPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -103,7 +90,7 @@ class PortalPlatformBridge extends PlatformBridgeBase {
                         .then(() => {
                             sdk.initializeOverlay()
 
-                            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                            this._setPlatformStorageAvailable(true)
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
@@ -117,17 +104,28 @@ class PortalPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    loadCloudKey(key: string): Promise<unknown> {
-        const value = (this._platformSdk as PortalSdk).getValue(key)
-        return Promise.resolve(value === undefined ? null : value)
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const sdk = this._platformSdk as PortalSdk
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await Promise.resolve(sdk.getValue(key))
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        return Promise.resolve((this._platformSdk as PortalSdk).setValue(key, value)).then(() => undefined)
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        const sdk = this._platformSdk as PortalSdk
+        return Promise.all(Object.keys(data).map((key) => Promise.resolve(sdk.setValue(key, data[key]))))
+            .then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        return Promise.resolve((this._platformSdk as PortalSdk).removeValue(key)).then(() => undefined)
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        const sdk = this._platformSdk as PortalSdk
+        return Promise.all(keys.map((key) => Promise.resolve(sdk.removeValue(key))))
+            .then(() => undefined)
     }
 
     showInterstitial(): void {

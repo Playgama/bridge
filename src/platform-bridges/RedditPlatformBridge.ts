@@ -18,11 +18,6 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { ACTION_NAME } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import type { AnyRecord } from '../utils'
 
 declare global {
@@ -69,18 +64,6 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -101,7 +84,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                         if (payload.playerPhoto) {
                             this._playerPhotos.push(payload.playerPhoto)
                         }
-                        this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                        this._setPlatformStorageAvailable(true)
                     }
 
                     this._isInitialized = true
@@ -115,49 +98,28 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    loadCloudKey(key: string): Promise<unknown> {
-        const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-
-        this.#fetchJson('/api/storage/get', { method: 'POST', body: { key } })
-            .then((data) => {
-                this._resolvePromiseDecorator(
-                    ACTION_NAME.GET_STORAGE_DATA,
-                    data === undefined ? null : data,
-                )
-            })
-            .catch((error) => {
-                this._rejectPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA, error)
-            })
-
-        return promiseDecorator.promise
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        await this.#ensureStorageReady()
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await this.#fetchJson('/api/storage/get', { method: 'POST', body: { key } })
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-
-        this.#fetchJson('/api/storage/set', { method: 'POST', body: { key, value } })
-            .then(() => {
-                this._resolvePromiseDecorator(ACTION_NAME.SET_STORAGE_DATA)
-            })
-            .catch((error) => {
-                this._rejectPromiseDecorator(ACTION_NAME.SET_STORAGE_DATA, error)
-            })
-
-        return promiseDecorator.promise
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        await this.#ensureStorageReady()
+        return Promise.all(Object.keys(data).map((key) => this.#fetchJson('/api/storage/set', { method: 'POST', body: { key, value: data[key] } })))
+            .then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
-
-        this.#fetchJson('/api/storage/delete', { method: 'POST', body: { key } })
-            .then(() => {
-                this._resolvePromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA)
-            })
-            .catch((error) => {
-                this._rejectPromiseDecorator(ACTION_NAME.DELETE_STORAGE_DATA, error)
-            })
-
-        return promiseDecorator.promise
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        await this.#ensureStorageReady()
+        return Promise.all(keys.map((key) => this.#fetchJson('/api/storage/delete', { method: 'POST', body: { key } })))
+            .then(() => undefined)
     }
 
     // advertisement
@@ -273,6 +235,13 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #ensureStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
     }
 
     #extractList(data: unknown): unknown[] {

@@ -21,11 +21,6 @@ import logger from '../lib/logger'
 import { ACTION_NAME } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import { INTERSTITIAL_STATE, REWARDED_STATE } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 
 const SDK_URL = 'https://gtg.samsungapps.com/gsinstant-sdk/gsinstant.0.45.js'
 
@@ -102,18 +97,6 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
     get isExternalLinksAllowed(): boolean {
         return false
-    }
-
-    // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
     }
 
     #platformLanguage: string | null = null
@@ -214,7 +197,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                 .then((playerId) => {
                     this._isPlayerAuthorized = true
                     this._playerId = playerId
-                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                    this._setPlatformStorageAvailable(true)
                     this._resolvePromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
                 })
                 .catch((error: unknown) => {
@@ -230,18 +213,30 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        return (this._platformSdk as GSInstantSdk).getDataAsync([key])
-            .then((data) => (data && data[key] !== undefined ? data[key] : null))
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        await this.#ensureStorageReady()
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const data = await (this._platformSdk as GSInstantSdk).getDataAsync([key])
+            const value = data && data[key] !== undefined ? data[key] : null
+            if (value !== null && value !== undefined && value !== '') {
+                // The SDK may hand back a deserialized object; the cache holds serialized strings.
+                result[key] = typeof value === 'string' ? value : JSON.stringify(value)
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        return (this._platformSdk as GSInstantSdk).setDataAsync({ [key]: value as string })
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        await this.#ensureStorageReady()
+        return Promise.all(Object.keys(data)
+            .map((key) => (this._platformSdk as GSInstantSdk).setDataAsync({ [key]: data[key] as string })))
             .then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        return (this._platformSdk as GSInstantSdk).setDataAsync({ [key]: null })
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        await this.#ensureStorageReady()
+        return Promise.all(keys.map((key) => (this._platformSdk as GSInstantSdk).setDataAsync({ [key]: null })))
             .then(() => undefined)
     }
 
@@ -311,6 +306,13 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
+    #ensureStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
+    }
+
     #fetchPlayerData(): Promise<void> {
         const sdk = this._platformSdk as GSInstantSdk
         const loginStatus = sdk.getLoginStatus()
@@ -319,7 +321,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                 .then((playerId) => {
                     this._isPlayerAuthorized = true
                     this._playerId = playerId
-                    this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                    this._setPlatformStorageAvailable(true)
                 })
                 .catch(() => {
                     this._isPlayerAuthorized = false

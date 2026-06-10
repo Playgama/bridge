@@ -41,12 +41,6 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type StorageType,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import { internalAnalytics } from '../modules/analytics'
 import {
@@ -171,16 +165,8 @@ class PlatformBridgeBase {
     }
 
     // storage
-    get defaultStorageType(): StorageType {
-        return this._defaultStorageType
-    }
-
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.NONE
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
+    get isPlatformStorageAvailable(): boolean {
+        return this._isPlatformStorageAvailable
     }
 
     // advertisement
@@ -345,7 +331,7 @@ class PlatformBridgeBase {
 
     protected _visibilityState: VisibilityState | null = null
 
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.LOCAL_STORAGE
+    protected _isPlatformStorageAvailable = false
 
     protected _isBannerSupported = false
 
@@ -425,28 +411,16 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    // cloud storage — v2 contract
-    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+    // cloud storage — each platform that supports it implements these three methods itself
+    getDataFromStorage(_keys: string[]): Promise<Record<string, unknown>> {
         return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
-    saveCloudSnapshot(_snapshot: Record<string, unknown>, _changedKeys: string[]): Promise<void> {
+    setDataToStorage(_data: Record<string, unknown>): Promise<void> {
         return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
-    deleteCloudKeys(_snapshot: Record<string, unknown>, _deletedKeys: string[]): Promise<void> {
-        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
-    }
-
-    loadCloudKey(_key: string): Promise<unknown> {
-        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
-    }
-
-    saveCloudKey(_key: string, _value: unknown): Promise<void> {
-        return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
-    }
-
-    deleteCloudKey(_key: string): Promise<void> {
+    deleteDataFromStorage(_keys: string[]): Promise<void> {
         return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
     }
 
@@ -636,13 +610,13 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
-    protected _setDefaultStorageType(storageType: StorageType): void {
-        if (this._defaultStorageType === storageType) {
+    protected _setPlatformStorageAvailable(isAvailable: boolean): void {
+        if (this._isPlatformStorageAvailable === isAvailable) {
             return
         }
 
-        this._defaultStorageType = storageType
-        this.emit(EVENT_NAME.DEFAULT_STORAGE_TYPE_CHANGED, storageType)
+        this._isPlatformStorageAvailable = isAvailable
+        this.emit(EVENT_NAME.PLATFORM_STORAGE_AVAILABILITY_CHANGED, isAvailable)
     }
 
     protected _setVisibilityState(state: VisibilityState): void {

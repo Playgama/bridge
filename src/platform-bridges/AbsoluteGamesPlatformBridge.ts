@@ -23,11 +23,6 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 
 const SDK_URL = 'https://unpkg.com/@agru/sdk/dist/umd/index.min.js'
 
@@ -96,17 +91,6 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -162,11 +146,7 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
                     .finally(() => {
                         this._isInitialized = true
 
-                        this._setDefaultStorageType(
-                            this._isPlayerAuthorized
-                                ? STORAGE_TYPE.PLATFORM_INTERNAL
-                                : STORAGE_TYPE.LOCAL_STORAGE,
-                        )
+                        this._setPlatformStorageAvailable(this._isPlayerAuthorized)
 
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
@@ -198,7 +178,7 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+    getDataFromStorage(): Promise<Record<string, unknown>> {
         return new Promise((resolve, reject) => {
             (this._platformSdk as AgRuSdkInstance).getSaveData((data, error) => {
                 if (error === null) {
@@ -210,20 +190,16 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            (this._platformSdk as AgRuSdkInstance).setSaveData(snapshot, (_result, error) => {
-                if (error === null) {
-                    resolve()
-                } else {
-                    reject(error)
-                }
-            })
-        })
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        const snapshot = await this.getDataFromStorage()
+        Object.keys(data).forEach((key) => { snapshot[key] = data[key] })
+        await this.#saveSnapshot(snapshot)
     }
 
-    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
-        return this.saveCloudSnapshot(snapshot)
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        const snapshot = await this.getDataFromStorage()
+        keys.forEach((key) => { delete snapshot[key] })
+        await this.#saveSnapshot(snapshot)
     }
 
     // advertisement
@@ -233,6 +209,18 @@ class AbsoluteGamesPlatformBridge extends PlatformBridgeBase {
 
     showRewarded(): void {
         (this._platformSdk as AgRuSdkInstance).showCampaign('rewarded')
+    }
+
+    #saveSnapshot(snapshot: Record<string, unknown>): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            (this._platformSdk as AgRuSdkInstance).setSaveData(snapshot, (_result, error) => {
+                if (error === null) {
+                    resolve()
+                } else {
+                    reject(error)
+                }
+            })
+        })
     }
 
     #getPlayerInfo(): Promise<void> {

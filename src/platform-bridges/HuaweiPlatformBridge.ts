@@ -25,12 +25,6 @@ import {
     type InterstitialState,
     type RewardedState,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type StorageType,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { postToSystem, type AnyRecord } from '../utils'
 
 interface HuaweiSystem {
@@ -74,15 +68,7 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+    protected _isPlatformStorageAvailable = true
 
     #appId: string | null = null
 
@@ -129,28 +115,37 @@ class HuaweiPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        return this.#enqueueStorageOp(() => {
-            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-            this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, key)
-            return promiseDecorator.promise
-        })
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await this.#enqueueStorageOp(() => {
+                const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+                this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, key)
+                return promiseDecorator.promise
+            })
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        return this.#enqueueStorageOp(() => {
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        return Promise.all(Object.keys(data).map((key) => this.#enqueueStorageOp(() => {
             const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value })
+            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key, value: data[key] })
             return promiseDecorator.promise
-        })
+        })))
+            .then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        return this.#enqueueStorageOp(() => {
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        return Promise.all(keys.map((key) => this.#enqueueStorageOp(() => {
             const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
             this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, key)
             return promiseDecorator.promise
-        })
+        })))
+            .then(() => undefined)
     }
 
     // advertisement

@@ -27,11 +27,6 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 interface GameSnacksAdBreakOptions {
@@ -102,14 +97,6 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
     protected _isBannerSupported = false
 
     initialize(): Promise<unknown> {
@@ -123,7 +110,7 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
 
             waitFor('GameSnacks').then(() => {
                 this._platformSdk = window.GameSnacks as GameSnacksSdk
-                this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                this._setPlatformStorageAvailable(true)
 
                 const sdk = this._platformSdk as GameSnacksSdk
                 sdk.game.onPause(() => {
@@ -233,18 +220,28 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        const value = (this._platformSdk as GameSnacksSdk).storage.getItem(key)
-        return Promise.resolve(value === undefined ? null : value)
+    getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {}
+        keys.forEach((key) => {
+            const value = (this._platformSdk as GameSnacksSdk).storage.getItem(key)
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
+            }
+        })
+        return Promise.resolve(result)
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        (this._platformSdk as GameSnacksSdk).storage.setItem(key, value as string)
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        Object.keys(data).forEach((key) => {
+            (this._platformSdk as GameSnacksSdk).storage.setItem(key, data[key] as string)
+        })
         return Promise.resolve()
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        (this._platformSdk as GameSnacksSdk).storage.removeItem(key)
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        keys.forEach((key) => {
+            (this._platformSdk as GameSnacksSdk).storage.removeItem(key)
+        })
         return Promise.resolve()
     }
 

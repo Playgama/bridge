@@ -28,11 +28,6 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 
 type AdType = 'interstitial' | 'rewarded'
 type AdState = 'open' | 'empty' | 'rewarded' | 'close' | 'error' | string
@@ -146,18 +141,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return (this._platformSdk as PlaygamaSdk | null)?.platformService?.getLanguage?.() || super.platformLanguage
     }
 
-    // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this.#isCloudSaveSupported || !this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
     protected _isAdvancedBannersSupported = true
 
     #isPaymentsSupported = true
@@ -267,16 +250,23 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+    async getDataFromStorage(): Promise<Record<string, unknown>> {
+        await this.#ensureStorageReady()
         return (this._platformSdk as PlaygamaSdk).cloudSaveApi.getState() as Promise<Record<string, unknown>>
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
-        return (this._platformSdk as PlaygamaSdk).cloudSaveApi.setItems(snapshot).then(() => undefined)
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        await this.#ensureStorageReady()
+        const snapshot = await (this._platformSdk as PlaygamaSdk).cloudSaveApi.getState() as Record<string, unknown>
+        Object.keys(data).forEach((key) => { snapshot[key] = data[key] })
+        await (this._platformSdk as PlaygamaSdk).cloudSaveApi.setItems(snapshot)
     }
 
-    deleteCloudKeys(snapshot: Record<string, unknown>): Promise<void> {
-        return (this._platformSdk as PlaygamaSdk).cloudSaveApi.setItems(snapshot).then(() => undefined)
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        await this.#ensureStorageReady()
+        const snapshot = await (this._platformSdk as PlaygamaSdk).cloudSaveApi.getState() as Record<string, unknown>
+        keys.forEach((key) => { delete snapshot[key] })
+        await (this._platformSdk as PlaygamaSdk).cloudSaveApi.setItems(snapshot)
     }
 
     // advertisement
@@ -481,7 +471,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._playerPhotos = player.photos
                         this._playerExtra = player as unknown as Record<string, unknown>
                         if (this.#isCloudSaveSupported) {
-                            this._setDefaultStorageType(STORAGE_TYPE.PLATFORM_INTERNAL)
+                            this._setPlatformStorageAvailable(true)
                         }
                     }
                 })
@@ -505,6 +495,13 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (sdk.platformService?.getIsPaymentsSupported) {
             this.#isPaymentsSupported = sdk.platformService.getIsPaymentsSupported()
         }
+    }
+
+    #ensureStorageReady(): Promise<void> {
+        if (!this.#isCloudSaveSupported || !this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
     }
 }
 

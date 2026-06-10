@@ -24,12 +24,6 @@ import {
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
 import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type StorageType,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
-import {
     addJavaScript,
     deformatPrice,
     postToWebView,
@@ -94,18 +88,7 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+    protected _isPlatformStorageAvailable = true
 
     #playgamaAds: PgAdsSdk | null = null
 
@@ -270,31 +253,45 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
-        return this.#enqueueStorageOp(() => {
-            const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
-            this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, keyWithPrefix)
-            return promiseDecorator.promise
-        })
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        await this.#ensureStorageReady()
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
+            const value = await this.#enqueueStorageOp(() => {
+                const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_STORAGE_DATA)
+                this.#postMessage(ACTION_NAME.GET_STORAGE_DATA, keyWithPrefix)
+                return promiseDecorator.promise
+            })
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
-        return this.#enqueueStorageOp(() => {
-            const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
-            this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value })
-            return promiseDecorator.promise
-        })
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        await this.#ensureStorageReady()
+        return Promise.all(Object.keys(data).map((key) => {
+            const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
+            return this.#enqueueStorageOp(() => {
+                const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.SET_STORAGE_DATA)
+                this.#postMessage(ACTION_NAME.SET_STORAGE_DATA, { key: keyWithPrefix, value: data[key] })
+                return promiseDecorator.promise
+            })
+        })).then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
-        return this.#enqueueStorageOp(() => {
-            const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
-            this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, keyWithPrefix)
-            return promiseDecorator.promise
-        })
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        await this.#ensureStorageReady()
+        return Promise.all(keys.map((key) => {
+            const keyWithPrefix = this.#withStorageKeyPrefix(key) as string
+            return this.#enqueueStorageOp(() => {
+                const promiseDecorator = this._createPromiseDecorator<void>(ACTION_NAME.DELETE_STORAGE_DATA)
+                this.#postMessage(ACTION_NAME.DELETE_STORAGE_DATA, keyWithPrefix)
+                return promiseDecorator.promise
+            })
+        })).then(() => undefined)
     }
 
     paymentsPurchase(id: string): Promise<unknown> {
@@ -366,6 +363,13 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #ensureStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+        return Promise.resolve()
     }
 
     #enqueueStorageOp<T>(operation: () => Promise<T>): Promise<T> {
