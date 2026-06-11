@@ -9,7 +9,6 @@ declare global {
     const __INCLUDE_OK__: boolean
     const __INCLUDE_YANDEX__: boolean
     const __INCLUDE_CRAZY_GAMES__: boolean
-    const __INCLUDE_ABSOLUTE_GAMES__: boolean
     const __INCLUDE_GAME_DISTRIBUTION__: boolean
     const __INCLUDE_PLAYGAMA__: boolean
     const __INCLUDE_STANDALONE__: boolean
@@ -23,7 +22,6 @@ declare global {
     const __INCLUDE_MSN__: boolean
     const __INCLUDE_MICROSOFT_STORE__: boolean
     const __INCLUDE_HUAWEI__: boolean
-    const __INCLUDE_BITQUEST__: boolean
     const __INCLUDE_GAMEPUSH__: boolean
     const __INCLUDE_DISCORD__: boolean
     const __INCLUDE_JIO_GAMES__: boolean

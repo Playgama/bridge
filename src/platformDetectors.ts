@@ -55,10 +55,6 @@ export const PLATFORM_DETECTORS: PlatformDetector[] = [
         platformId: PLATFORM_ID.VK,
         predicate: ({ searchParams }: PlatformDetectorContext) => (searchParams.has('api_id') && searchParams.has('viewer_id') && searchParams.has('auth_key')) || searchParams.has('vk_app_id'),
     }] : []),
-    ...(__INCLUDE_ABSOLUTE_GAMES__ ? [{
-        platformId: PLATFORM_ID.ABSOLUTE_GAMES,
-        predicate: ({ searchParams }: PlatformDetectorContext) => searchParams.has('app_id') && searchParams.has('player_id') && searchParams.has('game_sid') && searchParams.has('auth_key'),
-    }] : []),
     ...(__INCLUDE_PLAYDECK__ ? [{
         platformId: PLATFORM_ID.PLAYDECK,
         predicate: ({ searchParams }: PlatformDetectorContext) => searchParams.has('playdeck'),
@@ -82,10 +78,6 @@ export const PLATFORM_DETECTORS: PlatformDetector[] = [
     ...(__INCLUDE_MSN__ ? [{
         platformId: PLATFORM_ID.MSN,
         predicate: ({ hostname }: PlatformDetectorContext) => hostname.includes('msn.') || hostname.includes('msnfun.') || hostname.includes('start.gg'),
-    }] : []),
-    ...(__INCLUDE_BITQUEST__ ? [{
-        platformId: PLATFORM_ID.BITQUEST,
-        predicate: ({ hash, referrer }: PlatformDetectorContext) => hash.includes('customUrl_') || referrer.includes('bitquest'),
     }] : []),
     ...(__INCLUDE_GAMEPUSH__ ? [{
         platformId: PLATFORM_ID.GAMEPUSH,
