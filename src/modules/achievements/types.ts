@@ -19,19 +19,15 @@ import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { AnyRecord } from '../../utils'
 
-// Platform-specific payload from the config mapping: a plain id for platforms
-// that need one value (e.g. Lagged) or an object for platforms that need
-// several fields (e.g. Y8 with achievement + achievementkey).
+// What a platform bridge receives from the module: the platform-specific data
+// object from the config mapping (e.g. { achievement, achievementkey } for Y8,
+// { id } for Lagged), or the plain game-level id when there is no mapping.
 export type AchievementPlatformData = string | AnyRecord
 
+// Config mapping entry: a game-level id plus a data object per platform.
 export interface AchievementMapping {
     id: string
-    [platform: string]: AchievementPlatformData | undefined
-}
-
-export interface AchievementsBridgeOptions {
-    achievements?: AchievementMapping[]
-    [key: string]: unknown
+    [platform: string]: string | AnyRecord | undefined
 }
 
 // Platform-agnostic achievement shape. Platform bridges normalize their raw
@@ -47,7 +43,6 @@ export interface NormalizedAchievement {
 
 export interface AchievementsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
-    options: AchievementsBridgeOptions
     isAchievementsSupported: boolean
     isGetAchievementsListSupported: boolean
     isAchievementsNativePopupSupported: boolean

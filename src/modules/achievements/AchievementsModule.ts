@@ -16,8 +16,10 @@
  */
 
 import ModuleBase from '../ModuleBase'
+import configLoader from '../../lib/bridge-config-loader'
+import { getAchievementPlatformData } from './helpers'
 import type {
-    AchievementPlatformData,
+    AchievementMapping,
     AchievementsBridgeContract,
     NormalizedAchievement,
 } from './types'
@@ -36,75 +38,27 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     }
 
     unlock(id: string): Promise<unknown> {
-        const platformData = this._getPlatformAchievementData(id)
+        const platformData = getAchievementPlatformData(
+            this.#getAchievementsConfig(),
+            this._platformBridge.platformId,
+            id,
+        )
         return this._platformBridge.achievementsUnlock(platformData)
     }
 
+    // The platform bridge returns the list already normalized, with ids
+    // mapped back to the game-level ids from the config.
     getList(): Promise<NormalizedAchievement[]> {
         return this._platformBridge.achievementsGetList()
-            .then((achievements) => achievements.map((achievement) => ({
-                ...achievement,
-                id: this.#getGameAchievementId(achievement.id),
-            })))
     }
 
     showNativePopup(): Promise<unknown> {
         return this._platformBridge.achievementsShowNativePopup()
     }
 
-    // Resolves the game-level id to the platform-specific payload from the
-    // config mapping. Falls back to the id itself when there is no mapping,
-    // which covers platforms where game and platform ids match.
-    protected _getPlatformAchievementData(id: string): AchievementPlatformData {
-        if (!id) {
-            return id
-        }
-
-        const achievements = this._platformBridge.options?.achievements
-        if (!achievements) {
-            return id
-        }
-
-        const achievement = achievements.find((a) => a.id === id)
-        if (!achievement) {
-            return id
-        }
-
-        const platformValue = achievement[this._platformBridge.platformId]
-        if (typeof platformValue === 'string' && platformValue) {
-            return platformValue
-        }
-
-        if (platformValue && typeof platformValue === 'object') {
-            return platformValue
-        }
-
-        return id
-    }
-
-    // Reverse mapping for getList(): platform-specific id -> game-level id.
-    // String mappings are compared directly; for object mappings any string
-    // field may act as the platform identifier (e.g. Y8's achievementkey).
-    #getGameAchievementId(platformAchievementId: string): string {
-        const achievements = this._platformBridge.options?.achievements
-        if (!achievements) {
-            return platformAchievementId
-        }
-
-        const achievement = achievements.find((a) => {
-            const platformValue = a[this._platformBridge.platformId]
-            if (typeof platformValue === 'string') {
-                return platformValue === platformAchievementId
-            }
-
-            if (platformValue && typeof platformValue === 'object') {
-                return Object.values(platformValue).includes(platformAchievementId)
-            }
-
-            return false
-        })
-
-        return achievement ? achievement.id : platformAchievementId
+    #getAchievementsConfig(): AchievementMapping[] | undefined {
+        const options = configLoader.getPlatformOptions(this._platformBridge.platformId)
+        return options?.achievements as AchievementMapping[] | undefined
     }
 }
 

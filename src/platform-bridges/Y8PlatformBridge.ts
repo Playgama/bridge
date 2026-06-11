@@ -31,7 +31,11 @@ import {
     type CloudStorageMode,
 } from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
-import type { NormalizedAchievement } from '../modules/achievements/types'
+import {
+    findAchievementGameId,
+    type AchievementMapping,
+    type NormalizedAchievement,
+} from '../modules/achievements'
 
 const SDK_URL = 'https://cdn.y8.com/api/sdk.js'
 const USERDATA_KEY = 'userData'
@@ -401,17 +405,25 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return new Promise((resolve, reject) => {
             (this._platformSdk as Y8Sdk).GameAPI.Achievements.listCustom({}, (data) => {
                 if (data.success) {
+                    const achievements = this._options.achievements as AchievementMapping[] | undefined
+
                     // listCustom returns achievements awarded to players,
                     // so every entry is an unlocked one
-                    resolve(data.achievements.map((item) => ({
-                        id: typeof item.achievementkey === 'string'
-                            ? item.achievementkey
-                            : String(item.achievementkey ?? ''),
-                        name: typeof item.achievement === 'string' ? item.achievement : undefined,
-                        description: typeof item.description === 'string' ? item.description : undefined,
-                        unlocked: true,
-                        platformData: item,
-                    })))
+                    resolve(data.achievements.map((item) => {
+                        const gameId = findAchievementGameId(
+                            achievements,
+                            PLATFORM_ID.Y8,
+                            (platformData) => platformData.achievementkey === item.achievementkey,
+                        )
+
+                        return {
+                            id: gameId ?? item.achievementkey as string,
+                            name: typeof item.achievement === 'string' ? item.achievement : undefined,
+                            description: typeof item.description === 'string' ? item.description : undefined,
+                            unlocked: true,
+                            platformData: item,
+                        }
+                    }))
                 } else {
                     reject(new Error(data.errorcode))
                 }

@@ -19,9 +19,10 @@ import AchievementsModule from './AchievementsModule'
 
 export type {
     AchievementsBridgeContract,
-    AchievementsBridgeOptions,
     AchievementMapping,
     AchievementPlatformData,
     NormalizedAchievement,
 } from './types'
+export { getAchievementPlatformData, findAchievementGameId } from './helpers'
+
 export default new AchievementsModule()
