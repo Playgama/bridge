@@ -366,7 +366,9 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
     }
 
     #ensureStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
+        // Store platform storage does not require player authorization (only that the native
+        // message handlers are up after init); reject before init so the module uses local storage.
+        if (!this._isInitialized) {
             return Promise.reject()
         }
         return Promise.resolve()

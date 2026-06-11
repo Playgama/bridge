@@ -32,6 +32,10 @@ export interface StorageBridgeContract extends PlatformBridgeLike {
     setDataToStorage(data: Record<string, unknown>): Promise<void>
     // Deletes the given keys.
     deleteDataFromStorage(keys: string[]): Promise<void>
+    // Optional, best-effort hook the module calls after it persists a batch to LOCAL storage
+    // (i.e. while cloud storage is unavailable). Lets a platform mirror local/guest writes to a
+    // secondary backend. Fire-and-forget — its result is ignored.
+    notifyLocalDataChanged?(batch: WriteBatch): void
 }
 
 // A single set entry. Its value is already serialized by the time it reaches a backend.

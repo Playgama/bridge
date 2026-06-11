@@ -730,6 +730,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             this._playerName = data.playerDisplayName as string
             this._playerExtra = data
             this.#isPaymentsSupported = (data.userAccountType as string).toLowerCase() === 'personal'
+            // The player may sign in after init (via authorizePlayer or implicitly through payments);
+            // enable cloud storage so the module migrates local data up and uses the cloud from now on.
+            this._setPlatformStorageAvailable(true)
         }
     }
 }

@@ -28,6 +28,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
+import type { WriteBatch } from '../modules/storage/types'
 
 type AdType = 'interstitial' | 'rewarded'
 type AdState = 'open' | 'empty' | 'rewarded' | 'close' | 'error' | string
@@ -78,9 +79,9 @@ interface PlaygamaSdk {
         getState(): Promise<AnyRecord>
         setItems(data: AnyRecord): Promise<unknown>
     }
-    storageApi: {
-        setItems(data: AnyRecord): unknown
-        deleteItems(keys: string[]): unknown
+    storageApi?: {
+        setItems?(data: AnyRecord): unknown
+        deleteItems?(keys: string[]): unknown
     }
     inGamePaymentsApi: {
         purchase(product: PlaygamaProductData): Promise<PlaygamaPurchase>
@@ -267,6 +268,24 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         const snapshot = await (this._platformSdk as PlaygamaSdk).cloudSaveApi.getState() as Record<string, unknown>
         keys.forEach((key) => { delete snapshot[key] })
         await (this._platformSdk as PlaygamaSdk).cloudSaveApi.setItems(snapshot)
+    }
+
+    // Mirror guest/local writes to Playgama's server-side storage (write-only backup, best-effort).
+    notifyLocalDataChanged(batch: WriteBatch): void {
+        const storageApi = (this._platformSdk as PlaygamaSdk | null)?.storageApi
+        if (!storageApi) {
+            return
+        }
+
+        if (batch.sets.length > 0) {
+            const data: Record<string, unknown> = {}
+            batch.sets.forEach((entry) => { data[entry.key] = entry.value })
+            storageApi.setItems?.(data)
+        }
+
+        if (batch.deletes.length > 0) {
+            storageApi.deleteItems?.(batch.deletes)
+        }
     }
 
     // advertisement

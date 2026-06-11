@@ -43,8 +43,6 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         return this
     }
 
-    // ---------------------------------------------------------------- public API
-
     get(key: string | string[], tryParseJson = true): Promise<unknown> {
         const isArray = Array.isArray(key)
         if (isArray && key.length === 0) {
@@ -94,8 +92,6 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         })
         return batch
     }
-
-    // ---------------------------------------------------------------- get
 
     async #get(keys: string[], tryParseJson: boolean): Promise<unknown[]> {
         // 1. Cache fast-path: every key is already known — return straight from the cache.
@@ -180,8 +176,6 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         }
     }
 
-    // ---------------------------------------------------------------- set
-
     async #set(batch: WriteBatch): Promise<void> {
         if (this.#usePlatform()) {
             try {
@@ -220,9 +214,8 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
 
         // These values live only in local storage until a later read or migration syncs them up.
         this.#applyToCache(batch, true)
+        this._platformBridge.notifyLocalDataChanged?.(batch)
     }
-
-    // ---------------------------------------------------------------- delete
 
     async #delete(keys: string[]): Promise<void> {
         // The local copy is always dropped (spec: in parallel with the cloud delete).
@@ -240,9 +233,8 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         }
 
         keys.forEach((key) => this.#cache.tombstone(key))
+        this._platformBridge.notifyLocalDataChanged?.({ sets: [], deletes: keys })
     }
-
-    // ---------------------------------------------------------------- availability change
 
     // The platform turned cloud storage on or off. Flush the cached data to whichever store is
     // now active, using the cache as the source of truth.
