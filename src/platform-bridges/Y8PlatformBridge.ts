@@ -421,7 +421,6 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                             name: typeof item.achievement === 'string' ? item.achievement : undefined,
                             description: typeof item.description === 'string' ? item.description : undefined,
                             unlocked: true,
-                            platformData: item,
                         }
                     }))
                 } else {

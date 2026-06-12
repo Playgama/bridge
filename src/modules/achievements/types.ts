@@ -30,15 +30,16 @@ export interface AchievementMapping {
     [platform: string]: string | AnyRecord | undefined
 }
 
-// Platform-agnostic achievement shape. Platform bridges normalize their raw
-// responses to this in achievementsGetList(); the module then replaces the
-// platform-specific `id` with the game-level id from the config mapping.
+// Platform-agnostic achievement shape returned by achievementsGetList().
+// Platform bridges normalize their raw responses to this, mapping the
+// platform-specific ids back to the game-level ids from the config.
+// Kept flat on purpose: engine SDKs (e.g. Unity) parse it with simple
+// parsers that do not support nested objects.
 export interface NormalizedAchievement {
     id: string
     name?: string
     description?: string
     unlocked: boolean
-    platformData?: Record<string, unknown>
 }
 
 export interface AchievementsBridgeContract extends PlatformBridgeLike {
