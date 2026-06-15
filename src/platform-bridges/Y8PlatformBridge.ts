@@ -155,14 +155,6 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isGetAchievementsListSupported(): boolean {
-        return true
-    }
-
-    get isAchievementsNativePopupSupported(): boolean {
-        return true
-    }
-
     #showAd: Y8AdShowFn | null = null
 
     initialize(): Promise<unknown> {
@@ -407,8 +399,9 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                 if (data.success) {
                     const achievements = this._options.achievements as AchievementMapping[] | undefined
 
-                    // listCustom returns achievements awarded to players,
-                    // so every entry is an unlocked one
+                    // listCustom returns every achievement configured for the app;
+                    // `awarded` marks the ones the logged-in player has unlocked
+                    // (false/absent when not logged in or not yet earned).
                     resolve(data.achievements.map((item) => {
                         const gameId = findAchievementGameId(
                             achievements,
@@ -420,7 +413,7 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                             id: gameId ?? item.achievementkey as string,
                             name: typeof item.achievement === 'string' ? item.achievement : undefined,
                             description: typeof item.description === 'string' ? item.description : undefined,
-                            unlocked: true,
+                            unlocked: item.awarded === true,
                         }
                     }))
                 } else {
@@ -428,11 +421,6 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                 }
             })
         })
-    }
-
-    achievementsShowNativePopup(): Promise<unknown> {
-        (this._platformSdk as Y8Sdk).GameAPI.Achievements.list({})
-        return Promise.resolve()
     }
 
     #updatePlayerInfo(data: Y8LoginResponse): void {

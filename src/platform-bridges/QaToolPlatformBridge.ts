@@ -72,7 +72,6 @@ export const ACTION_NAME_QA = {
     LIVENESS_PING: 'ping',
     UNLOCK_ACHIEVEMENT: 'unlock_achievement',
     GET_ACHIEVEMENTS: 'get_achievements',
-    SHOW_ACHIEVEMENTS_NATIVE_POPUP: 'show_achievements_native_popup',
     GET_PERFORMANCE_RESOURCES: 'get_performance_resources',
     GET_LANGUAGE: 'get_language',
     GET_PLAYER: 'get_player',
@@ -133,8 +132,6 @@ export const SUPPORTED_FEATURES = {
     ADVANCED_BANNERS: 'isAdvancedBannersSupported',
 
     ACHIEVEMENTS: 'isAchievementsSupported',
-    ACHIEVEMENTS_GET_LIST: 'isGetAchievementsListSupported',
-    ACHIEVEMENTS_NATIVE_POPUP: 'isAchievementsNativePopupSupported',
 } as const
 export type SupportedFeature = typeof SUPPORTED_FEATURES[keyof typeof SUPPORTED_FEATURES]
 
@@ -208,20 +205,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     get isAchievementsSupported(): boolean {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS)
-    }
-
-    get isGetAchievementsListSupported(): boolean {
-        return (
-            this.isAchievementsSupported
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_GET_LIST)
-        )
-    }
-
-    get isAchievementsNativePopupSupported(): boolean {
-        return (
-            this.isAchievementsSupported
-            && this._supportedFeatures.includes(SUPPORTED_FEATURES.ACHIEVEMENTS_NATIVE_POPUP)
-        )
     }
 
     get isInviteFriendsSupported(): boolean {
@@ -978,25 +961,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     achievementsGetList(): Promise<NormalizedAchievement[]> {
-        if (!this.isGetAchievementsListSupported) {
+        if (!this.isAchievementsSupported) {
             return Promise.reject()
         }
         return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.GET_ACHIEVEMENTS, {
             options: {},
         }).then((data) => (data as { result?: NormalizedAchievement[] }).result ?? [])
-    }
-
-    achievementsShowNativePopup(): Promise<unknown> {
-        if (!this.isAchievementsNativePopupSupported) {
-            return Promise.reject()
-        }
-
-        this.#sendMessage({
-            type: MODULE_NAME.ACHIEVEMENTS,
-            action: ACTION_NAME_QA.SHOW_ACHIEVEMENTS_NATIVE_POPUP,
-        })
-
-        return Promise.resolve()
     }
 
     protected _paymentsGetProductsPlatformData(): AnyRecord[] {

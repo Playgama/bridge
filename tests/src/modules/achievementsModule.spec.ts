@@ -37,11 +37,8 @@ function createBridge(platformId: string, overrides: Record<string, unknown> = {
     return {
         platformId,
         isAchievementsSupported: true,
-        isGetAchievementsListSupported: true,
-        isAchievementsNativePopupSupported: true,
         achievementsUnlock: vi.fn().mockResolvedValue('unlocked'),
         achievementsGetList: vi.fn().mockResolvedValue([]),
-        achievementsShowNativePopup: vi.fn().mockResolvedValue(undefined),
         ...overrides,
     }
 }
@@ -112,27 +109,10 @@ describe('AchievementsModule', () => {
         })
     })
 
-    describe('showNativePopup', () => {
-        test('delegates to the platform bridge', async () => {
-            const bridge = createBridge('y8')
-            await createModule(bridge).showNativePopup()
-
-            expect(bridge.achievementsShowNativePopup).toHaveBeenCalled()
-        })
-    })
-
-    describe('support flags', () => {
-        test('proxies the platform bridge getters', () => {
-            const bridge = createBridge('y8', {
-                isAchievementsSupported: true,
-                isGetAchievementsListSupported: false,
-                isAchievementsNativePopupSupported: true,
-            })
-            const module = createModule(bridge)
-
-            expect(module.isSupported).toBe(true)
-            expect(module.isGetListSupported).toBe(false)
-            expect(module.isNativePopupSupported).toBe(true)
+    describe('isSupported', () => {
+        test('proxies the platform bridge getter', () => {
+            expect(createModule(createBridge('y8', { isAchievementsSupported: true })).isSupported).toBe(true)
+            expect(createModule(createBridge('y8', { isAchievementsSupported: false })).isSupported).toBe(false)
         })
     })
 })

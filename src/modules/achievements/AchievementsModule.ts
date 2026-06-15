@@ -29,14 +29,6 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
         return this._platformBridge.isAchievementsSupported
     }
 
-    get isGetListSupported(): boolean {
-        return this._platformBridge.isGetAchievementsListSupported
-    }
-
-    get isNativePopupSupported(): boolean {
-        return this._platformBridge.isAchievementsNativePopupSupported
-    }
-
     unlock(id: string): Promise<unknown> {
         const platformData = getAchievementPlatformData(
             this.#getAchievementsConfig(),
@@ -50,10 +42,6 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     // mapped back to the game-level ids from the config.
     getList(): Promise<NormalizedAchievement[]> {
         return this._platformBridge.achievementsGetList()
-    }
-
-    showNativePopup(): Promise<unknown> {
-        return this._platformBridge.achievementsShowNativePopup()
     }
 
     #getAchievementsConfig(): AchievementMapping[] | undefined {

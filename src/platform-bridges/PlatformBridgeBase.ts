@@ -318,14 +318,6 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isGetAchievementsListSupported(): boolean {
-        return false
-    }
-
-    get isAchievementsNativePopupSupported(): boolean {
-        return false
-    }
-
     protected _options!: PlatformBridgeOptions
 
     protected _additionalData: Record<string, unknown> | null = null
@@ -630,10 +622,6 @@ class PlatformBridgeBase {
     }
 
     achievementsGetList(): Promise<NormalizedAchievement[]> {
-        return Promise.reject()
-    }
-
-    achievementsShowNativePopup(): Promise<unknown> {
         return Promise.reject()
     }
 
