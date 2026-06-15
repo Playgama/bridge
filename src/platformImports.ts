@@ -35,9 +35,6 @@ if (__INCLUDE_YANDEX__) {
 if (__INCLUDE_CRAZY_GAMES__) {
     platformImports[PLATFORM_ID.CRAZY_GAMES] = () => import('./platform-bridges/CrazyGamesPlatformBridge')
 }
-if (__INCLUDE_ABSOLUTE_GAMES__) {
-    platformImports[PLATFORM_ID.ABSOLUTE_GAMES] = () => import('./platform-bridges/AbsoluteGamesPlatformBridge')
-}
 if (__INCLUDE_GAME_DISTRIBUTION__) {
     platformImports[PLATFORM_ID.GAME_DISTRIBUTION] = () => import('./platform-bridges/GameDistributionPlatformBridge')
 }
@@ -76,9 +73,6 @@ if (__INCLUDE_MICROSOFT_STORE__) {
 }
 if (__INCLUDE_HUAWEI__) {
     platformImports[PLATFORM_ID.HUAWEI] = () => import('./platform-bridges/HuaweiPlatformBridge')
-}
-if (__INCLUDE_BITQUEST__) {
-    platformImports[PLATFORM_ID.BITQUEST] = () => import('./platform-bridges/BitquestPlatformBridge')
 }
 if (__INCLUDE_GAMEPUSH__) {
     platformImports[PLATFORM_ID.GAMEPUSH] = () => import('./platform-bridges/GamePushPlatformBridge')

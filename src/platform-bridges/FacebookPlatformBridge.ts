@@ -34,12 +34,6 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type StorageType,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
@@ -250,18 +244,6 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._supportedApis.includes('shareAsync')
     }
 
-    // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
     protected _platformLanguage: string | null = null
 
     protected _contextId: string | null = null
@@ -272,7 +254,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     protected _preloadedRewardedPromises: Record<string, Promise<FacebookAd> | null> = {}
 
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+    protected _isPlatformStorageAvailable = true
 
     protected _isJoinCommunitySupported = false
 
@@ -356,23 +338,31 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve()
     }
 
-    // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        return (this._platformSdk as FacebookSdk).player.getDataAsync([key]).then((data) => {
-            const value = data[key]
-            if (value === undefined || value === null) {
-                return null
+    // storage — Facebook reads and writes batches of keys at once.
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        await this.#ensureStorageReady()
+        const data = await (this._platformSdk as FacebookSdk).player.getDataAsync(keys)
+        const result: Record<string, unknown> = {}
+        keys.forEach((key) => {
+            const rawValue = data[key]
+            if (rawValue === undefined || rawValue === null || rawValue === '') {
+                return
             }
-            return typeof value === 'string' ? value : JSON.stringify(value)
+            result[key] = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue)
         })
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        return (this._platformSdk as FacebookSdk).player.setDataAsync({ [key]: value }).then(() => undefined)
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        await this.#ensureStorageReady()
+        return (this._platformSdk as FacebookSdk).player.setDataAsync(data).then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        return (this._platformSdk as FacebookSdk).player.setDataAsync({ [key]: null }).then(() => undefined)
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        await this.#ensureStorageReady()
+        const data: Record<string, unknown> = {}
+        keys.forEach((key) => { data[key] = null })
+        return (this._platformSdk as FacebookSdk).player.setDataAsync(data).then(() => undefined)
     }
 
     // advertisement
@@ -797,6 +787,13 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             throw new Error(e as string)
         }
 
+        return Promise.resolve()
+    }
+
+    #ensureStorageReady(): Promise<void> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
         return Promise.resolve()
     }
 }

@@ -26,12 +26,6 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type StorageType,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { postToParent, type AnyRecord } from '../utils'
 
 interface PlayDeckMessage {
@@ -92,15 +86,7 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+    protected _isPlatformStorageAvailable = true
 
     protected _isPlayerAuthorized = true
 
@@ -240,30 +226,43 @@ class PlayDeckPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        return new Promise((resolve) => {
-            const getDataHandler = ({ data }: MessageEvent<PlayDeckEventData>) => {
-                if (!data || !data.playdeck || data.playdeck.method !== 'getData' || data.playdeck.key !== key) {
-                    return
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await new Promise<unknown>((resolve) => {
+                const getDataHandler = ({ data }: MessageEvent<PlayDeckEventData>) => {
+                    if (!data || !data.playdeck || data.playdeck.method !== 'getData' || data.playdeck.key !== key) {
+                        return
+                    }
+                    window.removeEventListener('message', getDataHandler as EventListener)
+                    const keyValue = data.playdeck.value?.data
+                    resolve(keyValue === undefined ? null : keyValue)
                 }
-                window.removeEventListener('message', getDataHandler as EventListener)
-                const value = data.playdeck.value?.data
-                resolve(value === undefined ? null : value)
+
+                window.addEventListener('message', getDataHandler as EventListener)
+                postToParent({ playdeck: { method: 'getData', key } }, '*')
+            })
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
             }
-
-            window.addEventListener('message', getDataHandler as EventListener)
-            postToParent({ playdeck: { method: 'getData', key } }, '*')
-        })
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        postToParent({ playdeck: { method: 'setData', key, value: value as string } }, '*')
-        return Promise.resolve()
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        return Promise.all(Object.keys(data).map((key) => {
+            postToParent({ playdeck: { method: 'setData', key, value: data[key] as string } }, '*')
+            return Promise.resolve()
+        }))
+            .then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        postToParent({ playdeck: { method: 'setData', key, value: '' } }, '*')
-        return Promise.resolve()
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        return Promise.all(keys.map((key) => {
+            postToParent({ playdeck: { method: 'setData', key, value: '' } }, '*')
+            return Promise.resolve()
+        }))
+            .then(() => undefined)
     }
 
     // social

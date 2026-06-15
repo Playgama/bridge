@@ -27,7 +27,6 @@ import {
     BANNER_CONTAINER_ID,
     type BannerPosition,
 } from '../modules/advertisement/constants'
-import { STORAGE_TYPE } from '../modules/storage/constants'
 
 const SDK_URL = 'https://html5.api.gamedistribution.com/main.min.js'
 
@@ -130,7 +129,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
                     },
                 }
 
-                this._setDefaultStorageType(STORAGE_TYPE.LOCAL_STORAGE)
+                this._setPlatformStorageAvailable(false)
                 this._isBannerSupported = true
                 addJavaScript(SDK_URL)
             }

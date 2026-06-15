@@ -17,7 +17,7 @@
 
 import ServerTimeCache from './ServerTimeCache'
 
-export const TIMESTAMP_URL = 'https://api.playgama.com/api/v1/timestamp/now'
+export const TIMESTAMP_URL = 'https://api.playgama.com/api/bridge/v1/timestamp/now'
 
 async function fetchServerTimestamp(): Promise<number> {
     const response = await fetch(TIMESTAMP_URL)

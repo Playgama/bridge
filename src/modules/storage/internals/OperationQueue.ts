@@ -15,15 +15,18 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const STORAGE_TYPE = {
-    LOCAL_STORAGE: 'local_storage',
-    PLATFORM_INTERNAL: 'platform_internal',
-} as const
-export type StorageType = typeof STORAGE_TYPE[keyof typeof STORAGE_TYPE]
+// Runs operations one at a time in the order they were enqueued. Because reads, writes,
+// deletes and availability migrations all share this queue, each one observes the effects of
+// everything queued before it (read-your-writes), and the cache is never mutated concurrently.
+// A failed operation rejects its own promise but never breaks the chain.
+class OperationQueue {
+    #tail: Promise<unknown> = Promise.resolve()
 
-export const CLOUD_STORAGE_MODE = {
-    NONE: 'none',
-    EAGER: 'eager',
-    LAZY: 'lazy',
-} as const
-export type CloudStorageMode = typeof CLOUD_STORAGE_MODE[keyof typeof CLOUD_STORAGE_MODE]
+    enqueue<T>(operation: () => Promise<T>): Promise<T> {
+        const result = this.#tail.then(operation, operation)
+        this.#tail = result.then(() => {}, () => {})
+        return result
+    }
+}
+
+export default OperationQueue

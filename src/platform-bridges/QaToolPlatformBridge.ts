@@ -37,12 +37,6 @@ import {
     REWARDED_STATE,
     BANNER_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type StorageType,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
 import type { AnyRecord } from '../utils'
@@ -56,6 +50,9 @@ const ADVERTISEMENT_TYPE = {
 } as const
 
 const MESSAGE_SOURCE = 'bridge'
+
+// Wire value the external QA tool expects when a request targets platform storage.
+const QA_PLATFORM_STORAGE_TYPE = 'platform_internal'
 
 const MODULE_NAME_QA = {
     LIVENESS: 'liveness',
@@ -252,16 +249,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    // QA Tool is a platform emulator: it always persists data through itself,
-    // so the bridge unconditionally routes every storage operation to the platform.
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
     get safeArea(): SafeAreaInsets | null {
         return null
     }
@@ -278,7 +265,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
 
     protected _deviceType: DeviceType | null = null
 
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+    protected _isPlatformStorageAvailable = true
 
     engine: string = 'javascript'
 
@@ -425,32 +412,42 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this.#serverTimeCache.getServerTime()
     }
 
-    loadCloudKey(key: string): Promise<unknown> {
-        return this.#requestMessage(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, {
-            options: { key, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
-        }).then((data) => {
-            const { storage } = (data as { storage: AnyRecord })
-            const value = storage && storage[key]
-            return value === undefined ? null : value
-        })
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await this.#requestMessage(MODULE_NAME.STORAGE, ACTION_NAME_QA.GET_DATA_FROM_STORAGE, {
+                options: { key, storageType: QA_PLATFORM_STORAGE_TYPE },
+            }).then((data) => {
+                const { storage } = (data as { storage: AnyRecord })
+                return storage && storage[key]
+            })
+            if (value !== null && value !== undefined && value !== '') {
+                result[key] = value
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        this.#sendMessage({
-            type: MODULE_NAME.STORAGE,
-            action: ACTION_NAME_QA.SET_DATA_TO_STORAGE,
-            options: { key, value, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
-        })
-        return Promise.resolve()
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        return Promise.all(Object.keys(data).map((key) => {
+            this.#sendMessage({
+                type: MODULE_NAME.STORAGE,
+                action: ACTION_NAME_QA.SET_DATA_TO_STORAGE,
+                options: { key, value: data[key], storageType: QA_PLATFORM_STORAGE_TYPE },
+            })
+            return Promise.resolve()
+        })).then(() => undefined)
     }
 
-    deleteCloudKey(key: string): Promise<void> {
-        this.#sendMessage({
-            type: MODULE_NAME.STORAGE,
-            action: ACTION_NAME_QA.DELETE_DATA_FROM_STORAGE,
-            options: { key, storageType: STORAGE_TYPE.PLATFORM_INTERNAL },
-        })
-        return Promise.resolve()
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        return Promise.all(keys.map((key) => {
+            this.#sendMessage({
+                type: MODULE_NAME.STORAGE,
+                action: ACTION_NAME_QA.DELETE_DATA_FROM_STORAGE,
+                options: { key, storageType: QA_PLATFORM_STORAGE_TYPE },
+            })
+            return Promise.resolve()
+        })).then(() => undefined)
     }
 
     showInterstitial(placement?: unknown): void {

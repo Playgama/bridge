@@ -15,8 +15,14 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+// A value counts as "no data": null, undefined or an empty string. Reads normalize
+// these to null; writes of such values are treated as a delete.
+export function isEmpty(value: unknown): boolean {
+    return value === null || value === undefined || value === ''
+}
+
 export function parseValue(raw: unknown, tryParseJson: boolean): unknown {
-    if (raw === null || raw === undefined) {
+    if (isEmpty(raw)) {
         return null
     }
 

@@ -30,11 +30,6 @@ import {
     REWARDED_STATE,
     BANNER_POSITION,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
 const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
@@ -178,17 +173,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
     protected _isAdvancedBannersSupported = true
 
     #playgamaAds: PgAdsSdk | null = null
@@ -221,11 +205,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this.#updatePlayerInfo(null)
                         })
                         .finally(() => {
-                            this._setDefaultStorageType(
-                                this._isPlayerAuthorized
-                                    ? STORAGE_TYPE.PLATFORM_INTERNAL
-                                    : STORAGE_TYPE.LOCAL_STORAGE,
-                            )
+                            this._setPlatformStorageAvailable(this._isPlayerAuthorized)
 
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -275,25 +255,29 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+    getDataFromStorage(): Promise<Record<string, unknown>> {
         return (this._platformSdk as MsnSdk).cloudSave
             .getDataAsync({ gameId: this._options.gameId }) as Promise<Record<string, unknown>>
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>): Promise<void> {
-        return (this._platformSdk as MsnSdk).cloudSave.saveDataAsync({
+    async setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        const snapshot = await (this._platformSdk as MsnSdk).cloudSave
+            .getDataAsync({ gameId: this._options.gameId }) as Record<string, unknown>
+        Object.keys(data).forEach((key) => { snapshot[key] = data[key] })
+        await (this._platformSdk as MsnSdk).cloudSave.saveDataAsync({
             data: snapshot,
             gameId: this._options.gameId,
-        }).then(() => undefined)
+        })
     }
 
-    deleteCloudKeys(snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
-        const data: Record<string, unknown> = { ...snapshot }
-        deletedKeys.forEach((k) => { data[k] = null })
-        return (this._platformSdk as MsnSdk).cloudSave.saveDataAsync({
-            data,
+    async deleteDataFromStorage(keys: string[]): Promise<void> {
+        const snapshot = await (this._platformSdk as MsnSdk).cloudSave
+            .getDataAsync({ gameId: this._options.gameId }) as Record<string, unknown>
+        keys.forEach((key) => { snapshot[key] = null })
+        await (this._platformSdk as MsnSdk).cloudSave.saveDataAsync({
+            data: snapshot,
             gameId: this._options.gameId,
-        }).then(() => undefined)
+        })
     }
 
     // social
@@ -746,6 +730,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             this._playerName = data.playerDisplayName as string
             this._playerExtra = data
             this.#isPaymentsSupported = (data.userAccountType as string).toLowerCase() === 'personal'
+            // The player may sign in after init (via authorizePlayer or implicitly through payments);
+            // enable cloud storage so the module migrates local data up and uses the cloud from now on.
+            this._setPlatformStorageAvailable(true)
         }
     }
 }

@@ -28,11 +28,6 @@ import {
     INTERSTITIAL_STATE,
     BANNER_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 
 const SDK_URL = '//api.ok.ru/js/fapi5.js'
 const AUTH_STATE = 'AUTHORIZED'
@@ -125,17 +120,6 @@ class OkPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.LAZY
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        if (!this._hasValuableAccessPermission) {
-            return Promise.reject()
-        }
-        return Promise.resolve()
-    }
-
     protected _hasValuableAccessPermission = false
 
     protected _hasValuableAccessPermissionShowed = false
@@ -212,39 +196,48 @@ class OkPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudKey(key: string): Promise<unknown> {
-        return new Promise((resolve, reject) => {
-            const params = { method: 'storage.get', keys: [key], scope: 'CUSTOM' };
-            (this._platformSdk as OkSdk).Client.call(params, (_status, data, error) => {
-                if (!data) {
-                    reject(error)
-                    return
-                }
-                const response = (data.data as AnyRecord) || {}
-                const value = response[key]
-                resolve(value === '' || value === undefined ? null : value)
+    async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {}
+        await Promise.all(keys.map(async (key) => {
+            const value = await new Promise<unknown>((resolve, reject) => {
+                const params = { method: 'storage.get', keys: [key], scope: 'CUSTOM' };
+                (this._platformSdk as OkSdk).Client.call(params, (_status, data, error) => {
+                    if (!data) {
+                        reject(error)
+                        return
+                    }
+                    const response = (data.data as AnyRecord) || {}
+                    const keyValue = response[key]
+                    resolve(keyValue === '' || keyValue === undefined ? null : keyValue)
+                })
             })
-        })
+            if (value !== null && value !== undefined && value !== '') {
+                // The SDK may hand back a deserialized object; the cache holds serialized strings.
+                result[key] = typeof value === 'string' ? value : JSON.stringify(value)
+            }
+        }))
+        return result
     }
 
-    saveCloudKey(key: string, value: unknown): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            const params = { method: 'storage.set', key, value: value as string };
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
+        return Promise.all(Object.keys(data).map((key) => new Promise<void>((resolve, reject) => {
+            const params = { method: 'storage.set', key, value: data[key] as string };
+            (this._platformSdk as OkSdk).Client.call(params, (_status, response) => {
+                if (response) resolve()
+                else reject()
+            })
+        }))).then(() => undefined)
+    }
+
+    deleteDataFromStorage(keys: string[]): Promise<void> {
+        return Promise.all(keys.map((key) => new Promise<void>((resolve, reject) => {
+            // An empty value clears the key (the module treats empty as absent either way).
+            const params = { method: 'storage.set', key, value: '' };
             (this._platformSdk as OkSdk).Client.call(params, (_status, data) => {
                 if (data) resolve()
                 else reject()
             })
-        })
-    }
-
-    deleteCloudKey(key: string): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            const params = { method: 'storage.set', key };
-            (this._platformSdk as OkSdk).Client.call(params, (_status, data) => {
-                if (data) resolve()
-                else reject()
-            })
-        })
+        }))).then(() => undefined)
     }
 
     // advertisement
@@ -412,11 +405,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
     #onHasAccessValuePermissionCompleted(result: unknown, _data: unknown): void {
         this._hasValuableAccessPermission = !!result
 
-        this._setDefaultStorageType(
-            this._hasValuableAccessPermission
-                ? STORAGE_TYPE.PLATFORM_INTERNAL
-                : STORAGE_TYPE.LOCAL_STORAGE,
-        )
+        this._setPlatformStorageAvailable(this._hasValuableAccessPermission)
 
         if (!this._hasValuableAccessPermission && !this._hasValuableAccessPermissionShowed) {
             const permissions = Object.values(PERMISSION_TYPES)

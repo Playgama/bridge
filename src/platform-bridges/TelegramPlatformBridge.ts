@@ -33,12 +33,6 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
 } from '../modules/advertisement/constants'
-import {
-    STORAGE_TYPE,
-    CLOUD_STORAGE_MODE,
-    type StorageType,
-    type CloudStorageMode,
-} from '../modules/storage/constants'
 
 const SDK_URL = 'https://telegram.org/js/telegram-web-app.js'
 const ADS_SDK_URL = 'https://sad.adsgram.ai/js/sad.min.js'
@@ -151,15 +145,7 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    get cloudStorageMode(): CloudStorageMode {
-        return CLOUD_STORAGE_MODE.EAGER
-    }
-
-    get cloudStorageReady(): Promise<void> {
-        return Promise.resolve()
-    }
-
-    protected _defaultStorageType: StorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+    protected _isPlatformStorageAvailable = true
 
     protected _isPlayerAuthorized = true
 
@@ -237,45 +223,46 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
     }
 
     // storage
-    loadCloudSnapshot(): Promise<Record<string, unknown>> {
+    getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
         return new Promise((resolve, reject) => {
+            if (!keys || keys.length === 0) {
+                resolve({})
+                return
+            }
+
             const sdk = this._platformSdk as TelegramSdk
-            sdk.CloudStorage.getKeys((keysError, keys) => {
-                if (keysError) {
-                    reject(keysError)
+            sdk.CloudStorage.getItems(keys, (itemsError, values) => {
+                if (itemsError) {
+                    reject(itemsError)
                     return
                 }
 
-                if (!keys || keys.length === 0) {
-                    resolve({})
-                    return
-                }
-
-                sdk.CloudStorage.getItems(keys, (itemsError, values) => {
-                    if (itemsError) {
-                        reject(itemsError)
-                        return
+                const result: Record<string, unknown> = {}
+                keys.forEach((key) => {
+                    const value = values ? values[key] : undefined
+                    if (value !== null && value !== undefined && value !== '') {
+                        result[key] = value
                     }
-                    resolve(values || {})
                 })
+                resolve(result)
             })
         })
     }
 
-    saveCloudSnapshot(snapshot: Record<string, unknown>, changedKeys: string[]): Promise<void> {
+    setDataToStorage(data: Record<string, unknown>): Promise<void> {
         const sdk = this._platformSdk as TelegramSdk
-        return Promise.all(changedKeys.map((k) => new Promise<void>((resolve, reject) => {
-            sdk.CloudStorage.setItem(k, snapshot[k] as string, (error) => {
+        return Promise.all(Object.keys(data).map((key) => new Promise<void>((resolve, reject) => {
+            sdk.CloudStorage.setItem(key, data[key] as string, (error) => {
                 if (error) reject(error)
                 else resolve()
             })
         }))).then(() => undefined)
     }
 
-    deleteCloudKeys(_snapshot: Record<string, unknown>, deletedKeys: string[]): Promise<void> {
+    deleteDataFromStorage(keys: string[]): Promise<void> {
         const sdk = this._platformSdk as TelegramSdk
-        return Promise.all(deletedKeys.map((k) => new Promise<void>((resolve, reject) => {
-            sdk.CloudStorage.removeItem(k, (error) => {
+        return Promise.all(keys.map((key) => new Promise<void>((resolve, reject) => {
+            sdk.CloudStorage.removeItem(key, (error) => {
                 if (error) reject(error)
                 else resolve()
             })
