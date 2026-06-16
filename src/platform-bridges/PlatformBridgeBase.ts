@@ -42,6 +42,7 @@ import {
     BANNER_STATE,
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
+import type { NormalizedAchievement } from '../modules/achievements/types'
 import { internalAnalytics } from '../modules/analytics'
 import {
     getPaymentsProductsPlatformData,
@@ -303,14 +304,6 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isGetAchievementsListSupported(): boolean {
-        return false
-    }
-
-    get isAchievementsNativePopupSupported(): boolean {
-        return false
-    }
-
     protected _options!: PlatformBridgeOptions
 
     protected _additionalData: Record<string, unknown> | null = null
@@ -510,6 +503,15 @@ class PlatformBridgeBase {
             return window.navigator.clipboard.writeText(text)
         }
 
+        return Promise.reject()
+    }
+
+    // achievements
+    achievementsUnlock(_data?: unknown): Promise<unknown> {
+        return Promise.reject()
+    }
+
+    achievementsGetList(): Promise<NormalizedAchievement[]> {
         return Promise.reject()
     }
 

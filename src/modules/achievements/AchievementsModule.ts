@@ -15,60 +15,46 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
-import type { PlatformId } from '../platform/constants'
-import { resolvePlatformOptions, type AnyRecord } from '../../utils'
-
-export type AchievementsOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
-
-export interface AchievementsBridgeContract extends PlatformBridgeLike {
-    platformId: PlatformId
-    isAchievementsSupported: boolean
-    isGetAchievementsListSupported: boolean
-    isAchievementsNativePopupSupported: boolean
-    unlockAchievement(options?: AchievementsOptions): Promise<unknown>
-    getAchievementsList(options?: AchievementsOptions): Promise<unknown>
-    showAchievementsNativePopup(options?: AchievementsOptions): Promise<unknown>
-}
+import ModuleBase from '../ModuleBase'
+import configLoader from '../../lib/bridge-config-loader'
+import { getAchievementPlatformData } from './helpers'
+import type {
+    AchievementMapping,
+    AchievementsBridgeContract,
+    NormalizedAchievement,
+} from './types'
 
 class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     get isSupported(): boolean {
         return this._platformBridge.isAchievementsSupported
     }
 
-    get isGetListSupported(): boolean {
-        return this._platformBridge.isGetAchievementsListSupported
-    }
-
-    get isNativePopupSupported(): boolean {
-        return this._platformBridge.isAchievementsNativePopupSupported
-    }
-
-    unlock(options?: AchievementsOptions): Promise<unknown> {
+    unlock(id: string): Promise<unknown> {
         if (!this._platformBridge.isAchievementsSupported) {
             return Promise.reject()
         }
 
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.unlockAchievement(resolvedOptions)
+        const platformData = getAchievementPlatformData(
+            this.#getAchievementsConfig(),
+            this._platformBridge.platformId,
+            id,
+        )
+        return this._platformBridge.achievementsUnlock(platformData)
     }
 
-    getList(options?: AchievementsOptions): Promise<unknown> {
-        if (!this._platformBridge.isGetAchievementsListSupported) {
+    // The platform bridge returns the list already normalized, with ids
+    // mapped back to the game-level ids from the config.
+    getList(): Promise<NormalizedAchievement[]> {
+        if (!this._platformBridge.isAchievementsSupported) {
             return Promise.reject()
         }
 
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.getAchievementsList(resolvedOptions)
+        return this._platformBridge.achievementsGetList()
     }
 
-    showNativePopup(options?: AchievementsOptions): Promise<unknown> {
-        if (!this._platformBridge.isAchievementsNativePopupSupported) {
-            return Promise.reject()
-        }
-
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.showAchievementsNativePopup(resolvedOptions)
+    #getAchievementsConfig(): AchievementMapping[] | undefined {
+        const options = configLoader.getPlatformOptions(this._platformBridge.platformId)
+        return options?.achievements as AchievementMapping[] | undefined
     }
 }
 

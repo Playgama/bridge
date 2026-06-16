@@ -26,6 +26,11 @@ import {
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
+import {
+    findAchievementGameId,
+    type AchievementMapping,
+    type NormalizedAchievement,
+} from '../modules/achievements'
 
 const SDK_URL = 'https://cdn.y8.com/api/sdk.js'
 const USERDATA_KEY = 'userData'
@@ -130,14 +135,6 @@ class Y8PlatformBridge extends PlatformBridgeBase {
 
     // achievements
     get isAchievementsSupported(): boolean {
-        return true
-    }
-
-    get isGetAchievementsListSupported(): boolean {
-        return true
-    }
-
-    get isAchievementsNativePopupSupported(): boolean {
         return true
     }
 
@@ -358,35 +355,45 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     }
 
     // achievements
-    unlockAchievement(options?: AnyRecord): Promise<unknown> {
+    achievementsUnlock(data?: unknown): Promise<unknown> {
         if (!this._isPlayerAuthorized) {
             return Promise.reject()
         }
 
-        if (!options || !options.achievement || !options.achievementkey) {
+        // Y8 needs an object mapping in the config: { achievement, achievementkey }
+        const options = data as AnyRecord | null | undefined
+        if (!options || typeof options !== 'object' || !options.achievement || !options.achievementkey) {
             return Promise.reject()
         }
 
         return new Promise((resolve) => {
-            (this._platformSdk as Y8Sdk).GameAPI.Achievements.save(options, (data) => {
-                resolve(data)
+            (this._platformSdk as Y8Sdk).GameAPI.Achievements.save(options, (response) => {
+                resolve(response)
             })
         })
     }
 
-    getAchievementsList(options?: AnyRecord): Promise<unknown> {
+    achievementsGetList(): Promise<NormalizedAchievement[]> {
         return new Promise((resolve, reject) => {
-            (this._platformSdk as Y8Sdk).GameAPI.Achievements.listCustom(options ?? {}, (data) => {
+            (this._platformSdk as Y8Sdk).GameAPI.Achievements.listCustom({}, (data) => {
                 if (data.success) {
-                    resolve(data.achievements.map(({ player, ...achievement }) => {
-                        const p = player as AnyRecord
+                    const achievements = this._options.achievements as AchievementMapping[] | undefined
+
+                    // listCustom returns every achievement configured for the app;
+                    // `awarded` marks the ones the logged-in player has unlocked
+                    // (false/absent when not logged in or not yet earned).
+                    resolve(data.achievements.map((item) => {
+                        const gameId = findAchievementGameId(
+                            achievements,
+                            PLATFORM_ID.Y8,
+                            (platformData) => platformData.achievementkey === item.achievementkey,
+                        )
+
                         return {
-                            ...achievement,
-                            playerid: p.playerid,
-                            playername: p.playername,
-                            lastupdated: p.lastupdated,
-                            date: p.date,
-                            rdate: p.rdate,
+                            id: gameId ?? item.achievementkey as string,
+                            name: typeof item.achievement === 'string' ? item.achievement : undefined,
+                            description: typeof item.description === 'string' ? item.description : undefined,
+                            unlocked: item.awarded === true,
                         }
                     }))
                 } else {
@@ -394,11 +401,6 @@ class Y8PlatformBridge extends PlatformBridgeBase {
                 }
             })
         })
-    }
-
-    showAchievementsNativePopup(options?: AnyRecord): Promise<unknown> {
-        (this._platformSdk as Y8Sdk).GameAPI.Achievements.list(options ?? {})
-        return Promise.resolve()
     }
 
     #ensureStorageReady(): Promise<void> {
