@@ -576,7 +576,7 @@ class PlatformBridgeBase {
     }
 
     // config
-    getRemoteConfig(_options?: unknown): Promise<unknown> {
+    getRemoteConfig(_parameters?: unknown): Promise<unknown> {
         return Promise.reject()
     }
 

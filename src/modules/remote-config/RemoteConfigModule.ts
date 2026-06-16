@@ -16,15 +16,14 @@
  */
 
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
-import type { PlatformId } from '../platform/constants'
-import { resolvePlatformOptions, type AnyRecord } from '../../utils'
 
-export type RemoteConfigOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
+// Dynamic game/player parameters set during gameplay and forwarded to the
+// platform SDK for config segmentation (e.g. Yandex clientFeatures).
+export type RemoteConfigDynamicParameters = Record<string, string | number | boolean>
 
 export interface RemoteConfigBridgeContract extends PlatformBridgeLike {
-    platformId: PlatformId
     isRemoteConfigSupported: boolean
-    getRemoteConfig(options?: RemoteConfigOptions): Promise<unknown>
+    getRemoteConfig(parameters?: RemoteConfigDynamicParameters): Promise<unknown>
 }
 
 class RemoteConfigModule extends ModuleBase<RemoteConfigBridgeContract> {
@@ -32,9 +31,18 @@ class RemoteConfigModule extends ModuleBase<RemoteConfigBridgeContract> {
         return this._platformBridge.isRemoteConfigSupported
     }
 
-    get(options?: RemoteConfigOptions): Promise<unknown> {
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.getRemoteConfig(resolvedOptions)
+    // Dynamic parameters set during gameplay, forwarded to the platform SDK on
+    // every get().
+    #dynamicParameters: RemoteConfigDynamicParameters = {}
+
+    // Sets dynamic game/player parameters used for config segmentation.
+    // Accumulates across calls; only used by platforms that support it.
+    setDynamicParameters(parameters: RemoteConfigDynamicParameters): void {
+        this.#dynamicParameters = { ...this.#dynamicParameters, ...parameters }
+    }
+
+    get(): Promise<unknown> {
+        return this._platformBridge.getRemoteConfig(this.#dynamicParameters)
     }
 }
 
