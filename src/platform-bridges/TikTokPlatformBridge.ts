@@ -370,10 +370,6 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     }
 
     addToHomeScreen(): Promise<unknown> {
-        if (!this.isAddToHomeScreenSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN);
@@ -408,10 +404,6 @@ class TikTokPlatformBridge extends PlatformBridgeBase {
     }
 
     addToFavorites(): Promise<unknown> {
-        if (!this.isAddToFavoritesSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES);

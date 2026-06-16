@@ -372,10 +372,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     authorizePlayer(options?: unknown): Promise<unknown> {
-        if (!this.isPlayerAuthorizationSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -559,10 +555,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     inviteFriends(): Promise<unknown> {
-        if (!this.isInviteFriendsSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
@@ -579,10 +571,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     joinCommunity(): Promise<unknown> {
-        if (!this.isJoinCommunitySupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
@@ -599,10 +587,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     share(): Promise<unknown> {
-        if (!this.isShareSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
@@ -619,10 +603,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     createPost(): Promise<unknown> {
-        if (!this.isCreatePostSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
@@ -639,10 +619,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     addToHomeScreen(): Promise<unknown> {
-        if (!this.isAddToHomeScreenSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
@@ -659,10 +635,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     addToFavorites(): Promise<unknown> {
-        if (!this.isAddToFavoritesSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_FAVORITES)
@@ -679,10 +651,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     rate(): Promise<unknown> {
-        if (!this.isRateSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.RATE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.RATE)
@@ -699,10 +667,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsPurchase(id: string, options?: { externalId?: string }): Promise<unknown> {
-        if (!this.isPaymentsSupported) {
-            return Promise.reject()
-        }
-
         const product = this._paymentsGetProductPlatformData(id)
         if (!product) {
             return Promise.reject()
@@ -745,10 +709,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsConsumePurchase(id: string): Promise<unknown> {
-        if (!this.isPaymentsSupported) {
-            return Promise.reject()
-        }
-
         const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
         if (purchaseIndex < 0) {
             return Promise.reject()
@@ -785,10 +745,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsGetCatalog(): Promise<unknown> {
-        if (!this.isPaymentsSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
@@ -814,10 +770,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsGetPurchases(): Promise<unknown> {
-        if (!this.isPaymentsSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
@@ -844,10 +796,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     getRemoteConfig(): Promise<unknown> {
-        if (!this.isRemoteConfigSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_REMOTE_CONFIG)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_REMOTE_CONFIG)
@@ -862,10 +810,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     clipboardWrite(text: string): Promise<void> {
-        if (!this.isClipboardSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CLIPBOARD_WRITE)
 
         if (!promiseDecorator) {
@@ -882,10 +826,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     clipboardRead(): Promise<string> {
-        if (!this.isClipboardSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME_QA.CLIPBOARD_READ)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME_QA.CLIPBOARD_READ)
@@ -902,10 +842,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     leaderboardsSetScore(id?: unknown, score?: unknown, _isMain?: unknown): Promise<unknown> {
-        if (this.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE) {
-            return Promise.reject(new Error('Leaderboards are not available'))
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
@@ -928,10 +864,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     leaderboardsGetEntries(id?: unknown): Promise<unknown> {
-        if (this.leaderboardsType !== LEADERBOARD_TYPE.IN_GAME) {
-            return Promise.reject(new Error('Leaderboards are not available'))
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
@@ -950,10 +882,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     leaderboardsShowNativePopup(id?: unknown): Promise<unknown> {
-        if (this.leaderboardsType !== LEADERBOARD_TYPE.NATIVE_POPUP) {
-            return Promise.reject(new Error('Leaderboards are not available'))
-        }
-
         this.#sendMessage({
             type: MODULE_NAME.LEADERBOARDS,
             action: ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP,
@@ -964,29 +892,18 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     unlockAchievement(options?: unknown): Promise<unknown> {
-        if (!this.isAchievementsSupported) {
-            return Promise.reject()
-        }
-
         return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.UNLOCK_ACHIEVEMENT, {
             options: options as Record<string, unknown> | undefined,
         }).then((data) => (data as { result?: unknown }).result)
     }
 
     getAchievementsList(options?: unknown): Promise<unknown> {
-        if (!this.isGetAchievementsListSupported) {
-            return Promise.reject()
-        }
         return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.GET_ACHIEVEMENTS, {
             options: options as Record<string, unknown> | undefined,
         }).then((data) => (data as { result?: unknown }).result)
     }
 
     showAchievementsNativePopup(): Promise<unknown> {
-        if (!this.isAchievementsNativePopupSupported) {
-            return Promise.reject()
-        }
-
         this.#sendMessage({
             type: MODULE_NAME.ACHIEVEMENTS,
             action: ACTION_NAME_QA.SHOW_ACHIEVEMENTS_NATIVE_POPUP,

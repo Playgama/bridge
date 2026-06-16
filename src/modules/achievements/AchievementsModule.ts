@@ -45,16 +45,28 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     }
 
     unlock(options?: AchievementsOptions): Promise<unknown> {
+        if (!this._platformBridge.isAchievementsSupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.unlockAchievement(resolvedOptions)
     }
 
     getList(options?: AchievementsOptions): Promise<unknown> {
+        if (!this._platformBridge.isGetAchievementsListSupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.getAchievementsList(resolvedOptions)
     }
 
     showNativePopup(options?: AchievementsOptions): Promise<unknown> {
+        if (!this._platformBridge.isAchievementsNativePopupSupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.showAchievementsNativePopup(resolvedOptions)
     }

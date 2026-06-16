@@ -59,6 +59,10 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
     }
 
     setScore(id: string, score: number): Promise<unknown> {
+        if (this._platformBridge.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE) {
+            return Promise.reject()
+        }
+
         if (this.#saas) {
             return this.#saas.post(`leaderboards/${id}`, { score })
         }
@@ -70,6 +74,10 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
     }
 
     getEntries(id: string): Promise<unknown> {
+        if (this._platformBridge.leaderboardsType !== LEADERBOARD_TYPE.IN_GAME) {
+            return Promise.reject()
+        }
+
         if (this.#saas) {
             return this.#saas.get(`leaderboards/${id}`)
         }
@@ -80,6 +88,10 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
     }
 
     showNativePopup(id: string): Promise<unknown> {
+        if (this._platformBridge.leaderboardsType !== LEADERBOARD_TYPE.NATIVE_POPUP) {
+            return Promise.reject()
+        }
+
         const modifiedId = this._getPlatformLeaderboardId(id)
         return this._platformBridge.leaderboardsShowNativePopup(modifiedId)
     }

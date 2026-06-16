@@ -179,10 +179,18 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
     }
 
     getAllGames(): Promise<unknown> {
+        if (!this._platformBridge.isPlatformGetAllGamesSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.getAllGames()
     }
 
     getGameById(options?: GameByIdOptions): Promise<unknown> {
+        if (!this._platformBridge.isPlatformGetGameByIdSupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.getGameById(resolvedOptions)
     }

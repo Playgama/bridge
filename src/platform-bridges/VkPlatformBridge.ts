@@ -349,10 +349,6 @@ class VkPlatformBridge extends PlatformBridgeBase {
     }
 
     addToHomeScreen(): Promise<unknown> {
-        if (!this.isAddToHomeScreenSupported) {
-            return Promise.reject()
-        }
-
         return this.#sendRequestToVKBridge(ACTION_NAME.ADD_TO_HOME_SCREEN, 'VKWebAppAddToHomeScreen')
     }
 

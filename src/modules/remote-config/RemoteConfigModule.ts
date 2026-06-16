@@ -42,6 +42,10 @@ class RemoteConfigModule extends ModuleBase<RemoteConfigBridgeContract> {
     }
 
     get(): Promise<unknown> {
+        if (!this._platformBridge.isRemoteConfigSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.getRemoteConfig(this.#dynamicParameters)
     }
 }
