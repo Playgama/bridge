@@ -86,26 +86,46 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     inviteFriends(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isInviteFriendsSupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.inviteFriends(resolvedOptions)
     }
 
     joinCommunity(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isJoinCommunitySupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.joinCommunity(resolvedOptions)
     }
 
     share(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isShareSupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.share(resolvedOptions)
     }
 
     createPost(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isCreatePostSupported) {
+            return Promise.reject()
+        }
+
         const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
         return this._platformBridge.createPost(resolvedOptions)
     }
 
     addToHomeScreen(): Promise<unknown> {
+        if (!this._platformBridge.isAddToHomeScreenSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.addToHomeScreen()
     }
 
@@ -118,6 +138,10 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     addToFavorites(): Promise<unknown> {
+        if (!this._platformBridge.isAddToFavoritesSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.addToFavorites()
     }
 
@@ -130,6 +154,10 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     rate(): Promise<unknown> {
+        if (!this._platformBridge.isRateSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.rate()
     }
 }

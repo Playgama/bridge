@@ -29,10 +29,18 @@ class ClipboardModule extends ModuleBase<ClipboardBridgeContract> {
     }
 
     read(): Promise<string> {
+        if (!this._platformBridge.isClipboardSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.clipboardRead()
     }
 
     write(text: string): Promise<void> {
+        if (!this._platformBridge.isClipboardSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.clipboardWrite(text)
     }
 }

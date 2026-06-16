@@ -391,19 +391,6 @@ class PlatformBridgeBase {
         return serverTimeCache.getServerTime()
     }
 
-    getAllGames(): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    getGameById(_options?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    // player
-    authorizePlayer(_options?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
     // cloud storage — each platform that supports it implements these three methods itself
     getDataFromStorage(_keys: string[]): Promise<Record<string, unknown>> {
         return Promise.reject(new BridgeError(ERROR_CODE.STORAGE_NOT_SUPPORTED))
@@ -477,100 +464,29 @@ class PlatformBridgeBase {
         })
     }
 
-    // social
-    inviteFriends(_options?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    joinCommunity(_options?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    share(_options?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    createPost(_options?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    addToHomeScreen(): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    getAddToHomeScreenReward(): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    addToFavorites(): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    getAddToFavoritesReward(): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    rate(): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    // leaderboards
-    leaderboardsSetScore(_id?: unknown, _score?: unknown, _isMain?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    leaderboardsGetEntries(_id?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    leaderboardsShowNativePopup(_id?: unknown): Promise<unknown> {
-        return Promise.reject()
-    }
-
     // payments
     paymentsPurchase(id: string): Promise<unknown> {
-        if (this.isPaymentsSupported) {
-            const purchase = { id }
-            this._paymentsPurchases.push(purchase)
-            return Promise.resolve(purchase)
-        }
-
-        return Promise.reject()
+        const purchase = { id }
+        this._paymentsPurchases.push(purchase)
+        return Promise.resolve(purchase)
     }
 
     paymentsConsumePurchase(id: string): Promise<unknown> {
-        if (this.isPaymentsSupported) {
-            const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
-            if (purchaseIndex < 0) {
-                return Promise.reject()
-            }
-
-            this._paymentsPurchases.splice(purchaseIndex, 1)
-            return Promise.resolve({ id })
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject()
         }
 
-        return Promise.reject()
+        this._paymentsPurchases.splice(purchaseIndex, 1)
+        return Promise.resolve({ id })
     }
 
     paymentsGetCatalog(): Promise<unknown> {
-        if (this.isPaymentsSupported) {
-            return Promise.resolve(this._paymentsGetProductsPlatformData())
-        }
-
-        return Promise.reject()
+        return Promise.resolve(this._paymentsGetProductsPlatformData())
     }
 
     paymentsGetPurchases(): Promise<unknown> {
-        if (this.isPaymentsSupported) {
-            return Promise.resolve(this._paymentsPurchases)
-        }
-
-        return Promise.reject()
-    }
-
-    // config
-    getRemoteConfig(_options?: unknown): Promise<unknown> {
-        return Promise.reject()
+        return Promise.resolve(this._paymentsPurchases)
     }
 
     // clipboard

@@ -30,6 +30,10 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     }
 
     unlock(id: string): Promise<unknown> {
+        if (!this._platformBridge.isAchievementsSupported) {
+            return Promise.reject()
+        }
+
         const platformData = getAchievementPlatformData(
             this.#getAchievementsConfig(),
             this._platformBridge.platformId,
@@ -41,6 +45,10 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     // The platform bridge returns the list already normalized, with ids
     // mapped back to the game-level ids from the config.
     getList(): Promise<NormalizedAchievement[]> {
+        if (!this._platformBridge.isAchievementsSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.achievementsGetList()
     }
 

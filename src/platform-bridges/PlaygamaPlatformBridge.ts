@@ -318,10 +318,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     authorizePlayer(options?: unknown): Promise<unknown> {
-        if (!this.#isPlayerAuthorizationSupported) {
-            return Promise.reject()
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.AUTHORIZE_PLAYER)
@@ -350,10 +346,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     // payments
     paymentsPurchase(id: string, options?: { externalId?: string }): Promise<unknown> {
-        if (!this.isPaymentsSupported) {
-            return Promise.reject()
-        }
-
         const product = this._paymentsGetProductPlatformData(id) as PlaygamaProductData | null
         if (!product) {
             return Promise.reject()
@@ -399,10 +391,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsGetPurchases(): Promise<unknown> {
-        if (!this.isPaymentsSupported) {
-            return Promise.reject()
-        }
-
         const sdk = this._platformSdk as PlaygamaSdk
         if (sdk.inGamePaymentsApi.getPurchases) {
             const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
@@ -425,10 +413,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsConsumePurchase(id: string): Promise<unknown> {
-        if (!this.isPaymentsSupported) {
-            return Promise.reject()
-        }
-
         type PurchaseRecord = AnyRecord & { id: string; orderId?: string; externalId?: string }
         const purchase = this._paymentsPurchases.find((p) => p.id === id) as PurchaseRecord | undefined
         if (!purchase) {

@@ -33,6 +33,10 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
     }
 
     purchase(id: string, options?: unknown): Promise<unknown> {
+        if (!this._platformBridge.isPaymentsSupported) {
+            return Promise.reject()
+        }
+
         internalAnalytics.send(
             `${MODULE_NAME.PAYMENTS}_purchase_started`,
             { id },
@@ -56,14 +60,26 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
     }
 
     getPurchases(): Promise<unknown> {
+        if (!this._platformBridge.isPaymentsSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.paymentsGetPurchases()
     }
 
     getCatalog(): Promise<unknown> {
+        if (!this._platformBridge.isPaymentsSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.paymentsGetCatalog()
     }
 
     consumePurchase(id: string): Promise<unknown> {
+        if (!this._platformBridge.isPaymentsSupported) {
+            return Promise.reject()
+        }
+
         internalAnalytics.send(
             `${MODULE_NAME.PAYMENTS}_consume_purchase_started`,
             { id },
