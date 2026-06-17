@@ -65,7 +65,7 @@ class PokiPlatformBridge extends PlatformBridgeBase {
     }
 
     // social
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return false
     }
 

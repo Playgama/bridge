@@ -15,34 +15,10 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
-import type { PlatformId } from '../platform/constants'
-import { resolvePlatformOptions, type AnyRecord } from '../../utils'
-
-export type SocialOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
-
-export interface SocialBridgeContract extends PlatformBridgeLike {
-    platformId: PlatformId
-    isInviteFriendsSupported: boolean
-    isJoinCommunitySupported: boolean
-    isShareSupported: boolean
-    isCreatePostSupported: boolean
-    isAddToHomeScreenSupported: boolean
-    isAddToHomeScreenRewardSupported: boolean
-    isAddToFavoritesSupported: boolean
-    isAddToFavoritesRewardSupported: boolean
-    isRateSupported: boolean
-    isExternalLinksAllowed: boolean
-    inviteFriends(options?: SocialOptions): Promise<unknown>
-    joinCommunity(options?: SocialOptions): Promise<unknown>
-    share(options?: SocialOptions): Promise<unknown>
-    createPost(options?: SocialOptions): Promise<unknown>
-    addToHomeScreen(): Promise<unknown>
-    getAddToHomeScreenReward(): Promise<unknown>
-    addToFavorites(): Promise<unknown>
-    getAddToFavoritesReward(): Promise<unknown>
-    rate(): Promise<unknown>
-}
+import ModuleBase from '../ModuleBase'
+import type { AnyRecord } from '../../utils'
+import { getSocialPlatformData } from './helpers'
+import type { SocialBridgeContract, SocialMethod, SocialOptions } from './types'
 
 class SocialModule extends ModuleBase<SocialBridgeContract> {
     get isInviteFriendsSupported(): boolean {
@@ -81,51 +57,23 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.isRateSupported
     }
 
-    get isExternalLinksAllowed(): boolean {
-        return this._platformBridge.isExternalLinksAllowed
-    }
-
     inviteFriends(options?: SocialOptions): Promise<unknown> {
-        if (!this._platformBridge.isInviteFriendsSupported) {
-            return Promise.reject()
-        }
-
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.inviteFriends(resolvedOptions)
+        return this._platformBridge.inviteFriends(this.#resolve('inviteFriends', options))
     }
 
     joinCommunity(options?: SocialOptions): Promise<unknown> {
-        if (!this._platformBridge.isJoinCommunitySupported) {
-            return Promise.reject()
-        }
-
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.joinCommunity(resolvedOptions)
+        return this._platformBridge.joinCommunity(this.#resolve('joinCommunity', options))
     }
 
     share(options?: SocialOptions): Promise<unknown> {
-        if (!this._platformBridge.isShareSupported) {
-            return Promise.reject()
-        }
-
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.share(resolvedOptions)
+        return this._platformBridge.share(this.#resolve('share', options))
     }
 
     createPost(options?: SocialOptions): Promise<unknown> {
-        if (!this._platformBridge.isCreatePostSupported) {
-            return Promise.reject()
-        }
-
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.createPost(resolvedOptions)
+        return this._platformBridge.createPost(this.#resolve('createPost', options))
     }
 
     addToHomeScreen(): Promise<unknown> {
-        if (!this._platformBridge.isAddToHomeScreenSupported) {
-            return Promise.reject()
-        }
-
         return this._platformBridge.addToHomeScreen()
     }
 
@@ -138,10 +86,6 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     addToFavorites(): Promise<unknown> {
-        if (!this._platformBridge.isAddToFavoritesSupported) {
-            return Promise.reject()
-        }
-
         return this._platformBridge.addToFavorites()
     }
 
@@ -154,11 +98,21 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     rate(): Promise<unknown> {
-        if (!this._platformBridge.isRateSupported) {
-            return Promise.reject()
-        }
-
         return this._platformBridge.rate()
+    }
+
+    // Resolves the platform data for a method: static config (community ids,
+    // page flags, default content) merged with the game's runtime options.
+    // A future SaaS social backend would branch here, mirroring LeaderboardsModule
+    // (initialize() sets up the SaaS client when `_isSaas('social')`, and each
+    // method routes through it before falling back to the platform bridge).
+    #resolve(method: SocialMethod, options?: SocialOptions): AnyRecord {
+        return getSocialPlatformData(
+            this._platformBridge.options?.social,
+            method,
+            this._platformBridge.platformId,
+            options,
+        )
     }
 }
 

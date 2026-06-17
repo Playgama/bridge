@@ -87,7 +87,7 @@ class JioGamesPlatformBridge extends PlatformBridgeBase {
         return LEADERBOARD_TYPE.NATIVE
     }
 
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return false
     }
 

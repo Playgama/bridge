@@ -73,7 +73,7 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
     }
 
     // social
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return false
     }
 

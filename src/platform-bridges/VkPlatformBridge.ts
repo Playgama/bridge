@@ -339,10 +339,10 @@ class VkPlatformBridge extends PlatformBridgeBase {
             })
     }
 
-    share(options?: { link?: string }): Promise<unknown> {
+    share(options?: { url?: string }): Promise<unknown> {
         const parameters: AnyRecord = { }
-        if (options && options.link) {
-            parameters.link = options.link
+        if (options && options.url) {
+            parameters.link = options.url
         }
 
         return this.#sendRequestToVKBridge(ACTION_NAME.SHARE, 'VKWebAppShare', parameters, 'type')

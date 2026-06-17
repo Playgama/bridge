@@ -358,8 +358,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     }
 
     share(options?: unknown): Promise<unknown> {
-        const opts = (options ?? {}) as { mediaUrl?: string }
-        if (!opts.mediaUrl) {
+        // Discord shares media by URL: take the canonical `image` when it is an
+        // URL, otherwise fall back to the canonical `url`.
+        const opts = (options ?? {}) as { image?: string; url?: string }
+        const mediaUrl = opts.image ?? opts.url
+        if (!mediaUrl) {
             return Promise.reject()
         }
 
@@ -367,7 +370,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE);
             (this._platformSdk as DiscordSdkInstance).commands.openShareMomentDialog({
-                mediaUrl: opts.mediaUrl,
+                mediaUrl,
             })
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.SHARE)

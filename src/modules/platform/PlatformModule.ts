@@ -45,6 +45,7 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     isPlatformGetAllGamesSupported: boolean
     isPlatformGetGameByIdSupported: boolean
     isPlatformExternalCallsSupported: boolean
+    isPlatformExternalLinksAllowed: boolean
     isPlatformAudioEnabled: boolean
     isPlatformPaused: boolean
     sendMessage(message: string, options?: PlatformMessageOptions): Promise<unknown>
@@ -91,6 +92,10 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     get isExternalCallsSupported(): boolean {
         return this._platformBridge.isPlatformExternalCallsSupported
+    }
+
+    get isExternalLinksAllowed(): boolean {
+        return this._platformBridge.isPlatformExternalLinksAllowed
     }
 
     get isAudioEnabled(): boolean {

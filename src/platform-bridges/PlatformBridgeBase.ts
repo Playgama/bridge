@@ -232,7 +232,7 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return true
     }
 
