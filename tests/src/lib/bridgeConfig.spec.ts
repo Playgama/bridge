@@ -1,10 +1,22 @@
 import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
-import { ConfigLoader, LOAD_STATUS, PARSE_STATUS } from '../../../src/lib/bridge-config-loader'
+import {
+    BridgeConfig, LOAD_STATUS, PARSE_STATUS, type ConfigFileOptions,
+} from '../../../src/lib/bridge-config'
 
 function createConfigLoader() {
-    return new ConfigLoader()
+    return new BridgeConfig()
+}
+
+// Loads the given config, then resolves it for the given platform via initialize() —
+// mirroring how the SDK detects the platform after load() and reads getValues() everywhere.
+async function resolveForPlatform(configData: unknown, platformId: string) {
+    global.fetch = mockFetch({ ok: true, text: JSON.stringify(configData) })
+    const module = createConfigLoader()
+    await module.load()
+    module.initialize(platformId)
+    return module.getValues()
 }
 
 function mockFetch(response: { ok: boolean; status?: number; statusText?: string; text?: string }) {
@@ -145,10 +157,12 @@ const createFullConfig = () => ({
     },
 })
 
-describe('ConfigLoader', () => {
+describe('BridgeConfig', () => {
     beforeEach(() => {
         vi.restoreAllMocks()
         vi.spyOn(console, 'error').mockImplementation(() => {})
+        // Reset the URL so platform auto-detection starts clean for each test.
+        window.history.replaceState({}, '', '/')
     })
 
     describe('load', () => {
@@ -165,8 +179,7 @@ describe('ConfigLoader', () => {
 
             expect(module.loadStatus).toBe(LOAD_STATUS.SUCCESS)
             expect(module.parseStatus).toBe(PARSE_STATUS.SUCCESS)
-            expect(module.options).toEqual(configData)
-            expect(module.parsedContent).toEqual(configData)
+            expect(module.getValues()).toEqual(configData)
             expect(module.path).toBe('./playgama-bridge-config.json')
         })
 
@@ -205,12 +218,12 @@ describe('ConfigLoader', () => {
             await module.load(undefined, fallbackOptions)
 
             expect(module.loadStatus).toBe(LOAD_STATUS.FAILED)
-            expect(module.options).toEqual(fallbackOptions)
+            expect(module.getValues()).toEqual(fallbackOptions)
             expect(module.loadError).toBe('Network error')
         })
 
         test('should use fallback options when response is not ok', async () => {
-            const fallbackOptions = {
+            const fallbackOptions: ConfigFileOptions = {
                 disableLoadingLogo: true,
                 device: {
                     supportedOrientations: ['landscape'],
@@ -227,7 +240,7 @@ describe('ConfigLoader', () => {
             await module.load(undefined, fallbackOptions)
 
             expect(module.loadStatus).toBe(LOAD_STATUS.FAILED)
-            expect(module.options).toEqual(fallbackOptions)
+            expect(module.getValues()).toEqual(fallbackOptions)
             expect(module.loadError).toContain('404')
         })
 
@@ -249,30 +262,12 @@ describe('ConfigLoader', () => {
 
             expect(module.loadStatus).toBe(LOAD_STATUS.SUCCESS)
             expect(module.parseStatus).toBe(PARSE_STATUS.FAILED)
-            expect(module.options).toEqual(fallbackOptions)
+            expect(module.getValues()).toEqual(fallbackOptions)
             expect(module.parseError).toContain('Failed to parse bridge config')
-        })
-
-        test('should store raw content', async () => {
-            const configData = {
-                sendAnalyticsEvents: true,
-                leaderboards: [{ id: 'main', title: 'Main Leaderboard' }],
-            }
-            const rawJson = JSON.stringify(configData)
-
-            global.fetch = mockFetch({
-                ok: true,
-                text: rawJson,
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            expect(module.rawContent).toBe(rawJson)
         })
     })
 
-    describe('getPlatformOptions', () => {
+    describe('platform resolution (getValues)', () => {
         test('should return base options when platform not found', async () => {
             const configData = {
                 sendAnalyticsEvents: true,
@@ -285,15 +280,7 @@ describe('ConfigLoader', () => {
                 },
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const platformOptions = module.getPlatformOptions('unknown_platform')
+            const platformOptions = await resolveForPlatform(configData, 'unknown_platform')
 
             expect(platformOptions).toEqual(configData)
         })
@@ -304,15 +291,7 @@ describe('ConfigLoader', () => {
                 disableLoadingLogo: false,
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const platformOptions = module.getPlatformOptions('yandex')
+            const platformOptions = await resolveForPlatform(configData, 'yandex')
 
             expect(platformOptions).toEqual(configData)
         })
@@ -339,20 +318,12 @@ describe('ConfigLoader', () => {
                 },
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const platformOptions = module.getPlatformOptions('yandex')
+            const platformOptions = await resolveForPlatform(configData, 'yandex')
 
             expect(platformOptions.useSignedData).toBe(true)
             expect(platformOptions.sendAnalyticsEvents).toBe(true)
-            expect(platformOptions.advertisement.minimumDelayBetweenInterstitial).toBe(60000)
-            expect(platformOptions.advertisement.interstitial.preloadOnStart).toBe(true)
+            expect(platformOptions.advertisement!.minimumDelayBetweenInterstitial).toBe(60000)
+            expect(platformOptions.advertisement!.interstitial!.preloadOnStart).toBe(true)
         })
 
         test('should deep merge nested advertisement objects', async () => {
@@ -386,23 +357,15 @@ describe('ConfigLoader', () => {
                 },
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const platformOptions = module.getPlatformOptions('vk')
+            const platformOptions = await resolveForPlatform(configData, 'vk')
 
             // Should keep base values
-            expect(platformOptions.advertisement.useBuiltInErrorPopup).toBe(true)
-            expect(platformOptions.advertisement.interstitial.placementFallback).toBe('default')
-            expect(platformOptions.advertisement.rewarded.preloadOnStart).toBe(false)
+            expect(platformOptions.advertisement!.useBuiltInErrorPopup).toBe(true)
+            expect(platformOptions.advertisement!.interstitial!.placementFallback).toBe('default')
+            expect(platformOptions.advertisement!.rewarded!.preloadOnStart).toBe(false)
             // Should override specific values
-            expect(platformOptions.advertisement.minimumDelayBetweenInterstitial).toBe(45000)
-            expect(platformOptions.advertisement.interstitial.preloadOnStart).toBe(false)
+            expect(platformOptions.advertisement!.minimumDelayBetweenInterstitial).toBe(45000)
+            expect(platformOptions.advertisement!.interstitial!.preloadOnStart).toBe(false)
         })
 
         test('should add platform-specific options for crazy_games', async () => {
@@ -422,15 +385,7 @@ describe('ConfigLoader', () => {
                 },
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const platformOptions = module.getPlatformOptions('crazy_games')
+            const platformOptions = await resolveForPlatform(configData, 'crazy_games')
 
             expect(platformOptions.sendAnalyticsEvents).toBe(true)
             expect(platformOptions.xsollaProjectId).toBe('xsolla-project-12345')
@@ -449,31 +404,23 @@ describe('ConfigLoader', () => {
                 },
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const yandexOptions = module.getPlatformOptions('yandex')
+            const yandexOptions = await resolveForPlatform(configData, 'yandex')
             expect(yandexOptions.useSignedData).toBe(true)
             expect(yandexOptions.sendAnalyticsEvents).toBe(true)
 
-            const gdOptions = module.getPlatformOptions('game_distribution')
+            const gdOptions = await resolveForPlatform(configData, 'game_distribution')
             expect(gdOptions.gameId).toBe('gd-game-123')
             expect(gdOptions.sendAnalyticsEvents).toBe(true)
 
-            const tgOptions = module.getPlatformOptions('telegram')
+            const tgOptions = await resolveForPlatform(configData, 'telegram')
             expect(tgOptions.adsgramBlockId).toBe('tg-block-456')
 
-            const gpOptions = module.getPlatformOptions('gamepush')
+            const gpOptions = await resolveForPlatform(configData, 'gamepush')
             expect(gpOptions.projectId).toBe('gp-123')
             expect(gpOptions.publicToken).toBe('token-abc')
 
             // Unknown platform should get base options only
-            const unknownOptions = module.getPlatformOptions('unknown')
+            const unknownOptions = await resolveForPlatform(configData, 'unknown')
             expect(unknownOptions.sendAnalyticsEvents).toBe(true)
             expect(unknownOptions.useSignedData).toBeUndefined()
         })
@@ -503,22 +450,14 @@ describe('ConfigLoader', () => {
                 },
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const fbOptions = module.getPlatformOptions('facebook')
+            const fbOptions = await resolveForPlatform(configData, 'facebook')
 
             expect(fbOptions.subscribeForNotificationsOnStart).toBe(false)
             // deepMerge merges arrays by index - first element is overwritten, second remains
-            expect(fbOptions.payments[0]).toEqual({
+            expect(fbOptions.payments![0]).toEqual({
                 id: 'fb_item', title: 'FB Item', description: 'FB only', price: 2.99,
             })
-            expect(fbOptions.payments[1]).toEqual({
+            expect(fbOptions.payments![1]).toEqual({
                 id: 'base_item_2', title: 'Base Item 2', description: 'Base 2', price: 3.99,
             })
             // Base leaderboards should still be present
@@ -543,21 +482,13 @@ describe('ConfigLoader', () => {
                 },
             }
 
-            global.fetch = mockFetch({
-                ok: true,
-                text: JSON.stringify(configData),
-            })
-
-            const module = createConfigLoader()
-            await module.load()
-
-            const jioOptions = module.getPlatformOptions('jio_games')
+            const jioOptions = await resolveForPlatform(configData, 'jio_games')
 
             expect(jioOptions.adTestMode).toBe(true)
             // Platform device settings override base
-            expect(jioOptions.device.useBuiltInOrientationPopup).toBe(false)
+            expect(jioOptions.device!.useBuiltInOrientationPopup).toBe(false)
             // Base orientations preserved when not overridden
-            expect(jioOptions.device.supportedOrientations).toEqual(['landscape', 'portrait'])
+            expect(jioOptions.device!.supportedOrientations).toEqual(['landscape', 'portrait'])
         })
     })
 
@@ -567,9 +498,8 @@ describe('ConfigLoader', () => {
 
             expect(module.loadStatus).toBe(LOAD_STATUS.PENDING)
             expect(module.parseStatus).toBe(PARSE_STATUS.PENDING)
-            expect(module.options).toEqual({})
+            expect(module.getValues()).toEqual({})
             expect(module.path).toBe('')
-            expect(module.rawContent).toBe('')
             expect(module.loadError).toBe('')
             expect(module.parseError).toBe('')
         })
@@ -590,7 +520,7 @@ describe('ConfigLoader', () => {
             const module = createConfigLoader()
             await module.load()
 
-            expect((module.options as { forciblySetPlatformId?: string }).forciblySetPlatformId).toBe('qa_tool')
+            expect((module.getValues() as { forciblySetPlatformId?: string }).forciblySetPlatformId).toBe('qa_tool')
         })
     })
 })

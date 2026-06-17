@@ -16,6 +16,7 @@
  */
 
 import eventBus from '../../lib/EventBus'
+import bridgeConfig from '../../lib/bridge-config'
 import { EVENT_NAME, MODULE_NAME } from '../../constants'
 import {
     BANNER_POSITION,
@@ -28,7 +29,7 @@ import type { AdvertisementBridgeContract, AnalyticsSender } from './types'
 
 class BannerController {
     get isSupported(): boolean {
-        const disable = this.#bridge.options?.advertisement?.banner?.disable
+        const disable = bridgeConfig.getValues().advertisement?.banner?.disable
         if (disable === true) {
             return false
         }
@@ -73,7 +74,7 @@ class BannerController {
 
         let modifiedPlacement = placement
         if (!modifiedPlacement) {
-            const fallback = this.#bridge.options?.advertisement?.banner?.placementFallback
+            const fallback = bridgeConfig.getValues().advertisement?.banner?.placementFallback
             if (fallback) {
                 modifiedPlacement = fallback
             }
@@ -86,7 +87,7 @@ class BannerController {
             return
         }
 
-        const placements = this.#bridge.options?.advertisement?.banner?.placements
+        const placements = bridgeConfig.getValues().advertisement?.banner?.placements
         const platformPlacement = getPlatformPlacement(modifiedPlacement, placements, this.#bridge.platformId)
         this.#bridge.showBanner(validPosition, platformPlacement)
     }

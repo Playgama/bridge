@@ -15,16 +15,22 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import configLoader from './ConfigLoader'
+import bridgeConfig from './BridgeConfig'
 
 export {
-    ConfigLoader,
+    BridgeConfig,
     LOAD_STATUS,
     PARSE_STATUS,
     type LoadStatus,
     type ParseStatus,
-    type ConfigFileOptions,
-} from './ConfigLoader'
+} from './BridgeConfig'
+
+export type {
+    ConfigFileOptions,
+    SaasConfig,
+    SaasFeatureConfig,
+    GameConfig,
+} from './types'
 
 export {
     default as RemoteConfigLoader,
@@ -43,4 +49,4 @@ export {
     LOCAL_ONLY_CONFIG_FIELDS,
 } from './constants'
 
-export default configLoader
+export default bridgeConfig

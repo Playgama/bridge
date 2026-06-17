@@ -19,6 +19,7 @@ import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import { MODULE_NAME } from '../../constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from './constants'
+import bridgeConfig from '../../lib/bridge-config'
 import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
 
 export interface LeaderboardMapping {
@@ -101,7 +102,7 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
             return id
         }
 
-        const leaderboards = this._platformBridge.options?.leaderboards
+        const { leaderboards } = bridgeConfig.getValues()
         if (!leaderboards) {
             return id
         }
@@ -120,7 +121,7 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
     }
 
     #getIsMain(id: string): boolean {
-        const leaderboards = this._platformBridge.options?.leaderboards
+        const { leaderboards } = bridgeConfig.getValues()
         if (!leaderboards) {
             return false
         }

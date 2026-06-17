@@ -27,15 +27,18 @@ import {
 } from './constants'
 import { createOrientationOverlay } from './orientationOverlay'
 import { detectOrientation } from './orientation'
+import bridgeConfig from '../../lib/bridge-config'
 import { SafeArea, type SafeAreaInsets } from '../../lib/safe-area'
 import type { EventEmitter } from '../../lib/EventBus'
 
+export interface DeviceConfig {
+    useBuiltInOrientationPopup?: boolean
+    supportedOrientations?: DeviceOrientation[]
+    [key: string]: unknown
+}
+
 export interface DeviceBridgeOptions {
-    device?: {
-        useBuiltInOrientationPopup?: boolean
-        supportedOrientations?: DeviceOrientation[]
-        [key: string]: unknown
-    }
+    device?: DeviceConfig
     [key: string]: unknown
 }
 
@@ -107,7 +110,7 @@ class DeviceModule extends ModuleBase<DeviceBridgeContract> {
             return
         }
 
-        const deviceConfig = this._platformBridge.options?.device
+        const deviceConfig = bridgeConfig.getValues().device
         this.#useBuiltInOverlay = deviceConfig?.useBuiltInOrientationPopup ?? false
         this.#supportedOrientations = deviceConfig?.supportedOrientations ?? [
             DEVICE_ORIENTATION.PORTRAIT,

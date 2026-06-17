@@ -17,10 +17,10 @@
 
 import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
+import bridgeConfig from '../../lib/bridge-config'
 import storageModule from '../storage'
 import { DAILY_REWARDS_STORAGE_KEY, MS_PER_DAY } from './constants'
 import type {
-    DailyRewardsConfig,
     DailyRewardsState,
     DailyRewardsBridgeContract,
 } from './types'
@@ -46,7 +46,7 @@ class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
     initialize(platformBridge: DailyRewardsBridgeContract): this {
         super.initialize(platformBridge)
 
-        const config = platformBridge.options?.dailyRewards as DailyRewardsConfig | undefined
+        const config = bridgeConfig.getValues().dailyRewards
         this.#rewards = Array.isArray(config?.rewards) ? config!.rewards : []
         this.#cycle = typeof config?.cycle === 'boolean' ? config.cycle : true
         this.#resetOnMiss = typeof config?.resetOnMiss === 'boolean' ? config.resetOnMiss : true

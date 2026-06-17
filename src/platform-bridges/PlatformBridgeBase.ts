@@ -54,26 +54,15 @@ import StateAggregator from '../lib/StateAggregator'
 import type { AnyRecord } from '../utils'
 import { showInfoPopup, showAdFailurePopup } from '../modules/advertisement'
 import { getGuestUser } from '../modules/player'
-import configLoader from '../lib/bridge-config-loader'
+import bridgeConfig, { type ConfigFileOptions } from '../lib/bridge-config'
 import type { EventEmitter } from '../lib/EventBus'
 
 type AggregationStateKey = 'interstitial' | 'rewarded' | 'visibility' | 'platform' | 'rate'
 
-export interface PlatformBridgeOptions {
-    payments?: Array<AnyRecord & { id: string }>
-    advertisement?: {
-        useBuiltInErrorPopup?: boolean
-        useAdvertisementErrorPopup?: boolean
-        builtInErrorPopupCooldown?: number
-        [key: string]: unknown
-    }
-    [key: string]: unknown
-}
-
 interface PlatformBridgeBase extends EventEmitter {}
 
 class PlatformBridgeBase {
-    get options(): PlatformBridgeOptions {
+    get options(): ConfigFileOptions {
         return this._options
     }
 
@@ -304,7 +293,7 @@ class PlatformBridgeBase {
         return false
     }
 
-    protected _options!: PlatformBridgeOptions
+    protected _options!: ConfigFileOptions
 
     protected _additionalData: Record<string, unknown> | null = null
 
@@ -371,7 +360,7 @@ class PlatformBridgeBase {
             this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
         })
 
-        this._options = (configLoader.getPlatformOptions(this.platformId) ?? {}) as PlatformBridgeOptions
+        this._options = bridgeConfig.getValues()
     }
 
     initialize(): Promise<unknown> {

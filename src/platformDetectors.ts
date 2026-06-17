@@ -116,3 +116,36 @@ export const PLATFORM_DETECTORS: PlatformDetector[] = [
         predicate: ({ win }: PlatformDetectorContext) => typeof win.GSInstant !== 'undefined',
     }] : []),
 ]
+
+// Returns the value only if it is a known platform id, otherwise the mock fallback.
+function normalizePlatformId(value: string): PlatformId {
+    return (Object.values(PLATFORM_ID) as string[]).includes(value)
+        ? value as PlatformId
+        : PLATFORM_ID.MOCK
+}
+
+// Resolves the active platform id from (in priority order) the forciblySetPlatformId
+// config value, the platform_id URL parameter, then the auto-detectors. Falls back
+// to the mock platform when nothing matches.
+export function detectPlatformId(forciblySetPlatformId?: string): PlatformId {
+    const url = new URL(window.location.href)
+
+    if (forciblySetPlatformId) {
+        return normalizePlatformId(String(forciblySetPlatformId).toLowerCase())
+    }
+
+    if (url.searchParams.has('platform_id')) {
+        return normalizePlatformId((url.searchParams.get('platform_id') ?? '').toLowerCase())
+    }
+
+    const ctx: PlatformDetectorContext = {
+        url,
+        hostname: url.hostname,
+        hash: url.hash,
+        searchParams: url.searchParams,
+        referrer: document.referrer,
+        win: window,
+    }
+    const detected = PLATFORM_DETECTORS.find(({ predicate }) => predicate(ctx))
+    return detected ? detected.platformId : PLATFORM_ID.MOCK
+}

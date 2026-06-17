@@ -39,7 +39,7 @@ import { applyEventBusMixin } from './lib/EventBus'
 import Deferred from './lib/Deferred'
 import { LoadingScreen } from './lib/loading-screen'
 import { SafeArea } from './lib/safe-area'
-import configLoader from './lib/bridge-config-loader'
+import bridgeConfig from './lib/bridge-config'
 import logger, { createModuleLoggerProxy, DEBUG_QUERY_PARAM } from './lib/logger'
 import platformModule from './modules/platform'
 import playerModule from './modules/player'
@@ -57,7 +57,7 @@ import crossPromoModule from './modules/cross-promo'
 import analyticsModule, { internalAnalytics } from './modules/analytics'
 import { applyBrowserDefaultsProtection } from './utils'
 import { fetchPlatformBridge } from './platformImports'
-import { PLATFORM_DETECTORS, type PlatformDetectorContext } from './platformDetectors'
+import { detectPlatformId } from './platformDetectors'
 import type PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
 import type { EventEmitter } from './lib/EventBus'
 
@@ -201,17 +201,20 @@ class PlaygamaBridge {
 
             const startTime = performance.now()
             const configFilePath = options?.configFilePath
-            await configLoader.load(configFilePath, options)
+            await bridgeConfig.load(configFilePath, options)
+
+            const platformId = detectPlatformId(bridgeConfig.getRawValues().forciblySetPlatformId)
+            bridgeConfig.initialize(platformId)
 
             if (!debugParamPresent) {
-                logger.enabled = configLoader.options.debug === true
+                logger.enabled = bridgeConfig.getValues().debug === true
             }
 
             logger.info('Config loaded')
 
             applyBrowserDefaultsProtection()
 
-            await this.#createPlatformBridge()
+            await this.#createPlatformBridge(platformId)
 
             const bridge = this.#platformBridge as PlatformBridgeBase & { engine?: string }
             bridge.engine = this.engine
@@ -252,12 +255,7 @@ class PlaygamaBridge {
                         this.#initializationPromiseDecorator = null
                     }
 
-                    const adOptions = (bridge.options as {
-                        advertisement?: {
-                            interstitial?: { preloadOnStart?: string }
-                            rewarded?: { preloadOnStart?: string }
-                        }
-                    })?.advertisement
+                    const adOptions = bridgeConfig.getValues().advertisement
                     const adModule = this.#modules[MODULE_NAME.ADVERTISEMENT] as typeof advertisementModule
 
                     if (adOptions?.interstitial?.preloadOnStart) {
@@ -297,30 +295,7 @@ class PlaygamaBridge {
         this.#loadingScreen?.setProgress(percent)
     }
 
-    async #createPlatformBridge(): Promise<void> {
-        let platformId: PlatformId = PLATFORM_ID.MOCK
-
-        const url = new URL(window.location.href)
-
-        if (configLoader.options.forciblySetPlatformId) {
-            platformId = this.#getPlatformId(String(configLoader.options.forciblySetPlatformId).toLowerCase())
-        } else if (url.searchParams.has('platform_id')) {
-            platformId = this.#getPlatformId((url.searchParams.get('platform_id') ?? '').toLowerCase())
-        } else {
-            const ctx: PlatformDetectorContext = {
-                url,
-                hostname: url.hostname,
-                hash: url.hash,
-                searchParams: url.searchParams,
-                referrer: document.referrer,
-                win: window,
-            }
-            const detected = PLATFORM_DETECTORS.find(({ predicate }) => predicate(ctx))
-            if (detected) {
-                platformId = detected.platformId
-            }
-        }
-
+    async #createPlatformBridge(platformId: PlatformId): Promise<void> {
         logger.info(`Platform detected: ${platformId}`)
 
         const PlatformBridge = await fetchPlatformBridge(platformId)
@@ -328,12 +303,7 @@ class PlaygamaBridge {
     }
 
     #setupLoadingVisuals(bridge: PlatformBridgeBase): void {
-        const options = (bridge.options ?? {}) as {
-            disableLoadingLogo?: boolean
-            showFullLoadingLogo?: boolean
-            showLoadingText?: boolean
-            game?: { adaptToSafeArea?: boolean }
-        }
+        const options = bridgeConfig.getValues()
 
         if (!options.disableLoadingLogo) {
             const showFullLogo = bridge.platformId === PLATFORM_ID.YANDEX
@@ -349,17 +319,6 @@ class PlaygamaBridge {
         if (options.game?.adaptToSafeArea) {
             SafeArea.applyStyles()
         }
-    }
-
-    #getPlatformId(value: string): PlatformId {
-        const platformIds = Object.values(PLATFORM_ID) as string[]
-        for (let i = 0; i < platformIds.length; i++) {
-            if (value === platformIds[i]) {
-                return value as PlatformId
-            }
-        }
-
-        return PLATFORM_ID.MOCK
     }
 
     #getModule(id: string): unknown {

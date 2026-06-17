@@ -16,6 +16,7 @@
  */
 
 import eventBus from '../../lib/EventBus'
+import bridgeConfig from '../../lib/bridge-config'
 import { EVENT_NAME, MODULE_NAME } from '../../constants'
 import { REWARDED_STATE, type RewardedState } from './constants'
 import { getPlatformPlacement } from './helpers'
@@ -23,7 +24,7 @@ import type { AdvertisementBridgeContract, AnalyticsSender } from './types'
 
 class RewardedController {
     get isSupported(): boolean {
-        const disable = this.#bridge.options?.advertisement?.rewarded?.disable
+        const disable = bridgeConfig.getValues().advertisement?.rewarded?.disable
         if (disable === true) {
             return false
         }
@@ -79,13 +80,13 @@ class RewardedController {
 
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
-            const fallback = this.#bridge.options?.advertisement?.rewarded?.placementFallback
+            const fallback = bridgeConfig.getValues().advertisement?.rewarded?.placementFallback
             if (fallback) {
                 modifiedPlacement = fallback
             }
         }
 
-        const placements = this.#bridge.options?.advertisement?.rewarded?.placements
+        const placements = bridgeConfig.getValues().advertisement?.rewarded?.placements
         const platformPlacement = getPlatformPlacement(modifiedPlacement, placements, this.#bridge.platformId)
         this.#bridge.preloadRewarded(platformPlacement)
     }
@@ -93,13 +94,13 @@ class RewardedController {
     show(placement: string | null = null): void {
         this.#placement = placement
         if (!this.#placement) {
-            const fallback = this.#bridge.options?.advertisement?.rewarded?.placementFallback
+            const fallback = bridgeConfig.getValues().advertisement?.rewarded?.placementFallback
             if (fallback) {
                 this.#placement = fallback
             }
         }
 
-        const placements = this.#bridge.options?.advertisement?.rewarded?.placements
+        const placements = bridgeConfig.getValues().advertisement?.rewarded?.placements
         const platformPlacement = getPlatformPlacement(this.#placement, placements, this.#bridge.platformId)
 
         this.#setState(REWARDED_STATE.LOADING)

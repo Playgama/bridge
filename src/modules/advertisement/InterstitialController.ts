@@ -17,6 +17,7 @@
 
 import eventBus from '../../lib/EventBus'
 import Timer, { STATE as TIMER_STATE } from '../../lib/Timer'
+import bridgeConfig from '../../lib/bridge-config'
 import { EVENT_NAME, MODULE_NAME } from '../../constants'
 import { PLATFORM_MESSAGE } from '../platform/constants'
 import {
@@ -29,7 +30,7 @@ import type { AdvertisementBridgeContract, AnalyticsSender } from './types'
 
 class InterstitialController {
     get isSupported(): boolean {
-        const disable = this.#bridge.options?.advertisement?.interstitial?.disable
+        const disable = bridgeConfig.getValues().advertisement?.interstitial?.disable
         if (disable === true) {
             return false
         }
@@ -102,13 +103,13 @@ class InterstitialController {
 
         let modifiedPlacement = placement
         if (!modifiedPlacement || typeof modifiedPlacement !== 'string') {
-            const fallback = this.#bridge.options?.advertisement?.interstitial?.placementFallback
+            const fallback = bridgeConfig.getValues().advertisement?.interstitial?.placementFallback
             if (fallback) {
                 modifiedPlacement = fallback
             }
         }
 
-        const placements = this.#bridge.options?.advertisement?.interstitial?.placements
+        const placements = bridgeConfig.getValues().advertisement?.interstitial?.placements
         const platformPlacement = getPlatformPlacement(modifiedPlacement, placements, this.#bridge.platformId)
         this.#bridge.preloadInterstitial(platformPlacement)
     }
@@ -116,7 +117,7 @@ class InterstitialController {
     show(placement: string | null = null): void {
         let modifiedPlacement = placement
         if (!modifiedPlacement) {
-            const fallback = this.#bridge.options?.advertisement?.interstitial?.placementFallback
+            const fallback = bridgeConfig.getValues().advertisement?.interstitial?.placementFallback
             if (fallback) {
                 modifiedPlacement = fallback
             }
@@ -145,7 +146,7 @@ class InterstitialController {
             }
         }
 
-        const placements = this.#bridge.options?.advertisement?.interstitial?.placements
+        const placements = bridgeConfig.getValues().advertisement?.interstitial?.placements
         const platformPlacement = getPlatformPlacement(modifiedPlacement, placements, this.#bridge.platformId)
         this.#bridge.showInterstitial(platformPlacement)
     }
@@ -205,11 +206,11 @@ class InterstitialController {
     }
 
     #getConfigMinimumDelay(): number | string | undefined {
-        return this.#bridge.options?.advertisement?.minimumDelayBetweenInterstitial
+        return bridgeConfig.getValues().advertisement?.minimumDelayBetweenInterstitial
     }
 
     #getInitialDelay(): number {
-        const configDelay = this.#bridge.options?.advertisement?.initialInterstitialDelay
+        const configDelay = bridgeConfig.getValues().advertisement?.initialInterstitialDelay
         const delay = parseDelay(configDelay)
         if (delay !== null) {
             return delay

@@ -16,19 +16,13 @@
  */
 
 import type { JsonValue } from '../utils'
+import bridgeConfig from './bridge-config'
 
 const SAAS_URL = 'https://api.playgama.com/api/bridge/v1'
 
 export interface SaasBridgeLike {
     playerId?: string | null
     platformId: string
-    options: {
-        saas?: {
-            baseUrl?: string
-            publicToken?: string
-        }
-        [key: string]: unknown
-    }
 }
 
 export interface SaasRequestApi {
@@ -38,14 +32,14 @@ export interface SaasRequestApi {
 
 export default class SaasRequest {
     get baseUrl(): string {
-        return this.#bridge.options.saas?.baseUrl || SAAS_URL
+        return bridgeConfig.getValues().saas?.baseUrl || SAAS_URL
     }
 
     get xHeaders(): Record<string, string> {
         return {
             'x-player-id': this.#bridge.playerId || '',
             'x-platform-id': this.#bridge.platformId,
-            'x-public-token': this.#bridge.options.saas?.publicToken || '',
+            'x-public-token': bridgeConfig.getValues().saas?.publicToken || '',
         }
     }
 

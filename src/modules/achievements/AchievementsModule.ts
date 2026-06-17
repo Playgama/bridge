@@ -16,7 +16,7 @@
  */
 
 import ModuleBase from '../ModuleBase'
-import configLoader from '../../lib/bridge-config-loader'
+import bridgeConfig from '../../lib/bridge-config'
 import { getAchievementPlatformData } from './helpers'
 import type {
     AchievementMapping,
@@ -53,7 +53,7 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     }
 
     #getAchievementsConfig(): AchievementMapping[] | undefined {
-        const options = configLoader.getPlatformOptions(this._platformBridge.platformId)
+        const options = bridgeConfig.getValues()
         return options?.achievements as AchievementMapping[] | undefined
     }
 }

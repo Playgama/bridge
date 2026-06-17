@@ -16,6 +16,7 @@
  */
 
 import eventBus, { type EventEmitter } from '../lib/EventBus'
+import bridgeConfig, { type SaasFeatureConfig } from '../lib/bridge-config'
 import { PLATFORM_ID } from './platform/constants'
 
 // Platform bridge contract used by modules. Until PlatformBridgeBase is migrated,
@@ -41,12 +42,9 @@ class ModuleBase<TPlatformBridge extends PlatformBridgeLike = PlatformBridgeLike
     // given feature. Reusable across modules: a module that supports a SaaS
     // variant calls this in initialize() to pick its implementation.
     protected _isSaas(feature: string): boolean {
-        const { options, platformId } = this._platformBridge as {
-            options?: { saas?: { publicToken?: string; [key: string]: unknown } }
-            platformId?: string
-        }
-        const saas = options?.saas
-        const config = saas?.[feature] as { platforms?: string[] } | undefined
+        const platformId = this._platformBridge.platformId as string | undefined
+        const { saas } = bridgeConfig.getValues()
+        const config = saas?.[feature] as SaasFeatureConfig | undefined
         if (!config) {
             return false
         }

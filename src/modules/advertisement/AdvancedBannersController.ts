@@ -16,6 +16,7 @@
  */
 
 import eventBus from '../../lib/EventBus'
+import bridgeConfig from '../../lib/bridge-config'
 import { detectOrientation } from '../device/orientation'
 import { findGameCanvas } from './dom'
 import { EVENT_NAME, MODULE_NAME } from '../../constants'
@@ -199,7 +200,7 @@ class AdvancedBannersController {
     }
 
     get #options(): AdvertisementOptions['advancedBanners'] {
-        return this.#bridge.options?.advertisement?.advancedBanners
+        return bridgeConfig.getValues().advertisement?.advancedBanners
     }
 
     #setState(state: BannerState): void {

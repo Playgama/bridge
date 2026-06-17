@@ -2,16 +2,16 @@ import {
     describe, test, expect, vi,
 } from 'vitest'
 import AchievementsModule from '../../../src/modules/achievements/AchievementsModule'
-import configLoader from '../../../src/lib/bridge-config-loader'
+import bridgeConfig from '../../../src/lib/bridge-config'
 import type {
     AchievementsBridgeContract,
     AchievementMapping,
     NormalizedAchievement,
 } from '../../../src/modules/achievements/types'
 
-vi.mock('../../../src/lib/bridge-config-loader', () => ({
+vi.mock('../../../src/lib/bridge-config', () => ({
     default: {
-        getPlatformOptions: vi.fn(() => ({})),
+        getValues: vi.fn(() => ({})),
     },
 }))
 
@@ -28,7 +28,7 @@ const ACHIEVEMENTS_CONFIG: AchievementMapping[] = [
 ]
 
 function mockConfig(achievements?: AchievementMapping[]) {
-    vi.mocked(configLoader.getPlatformOptions).mockReturnValue(
+    vi.mocked(bridgeConfig.getValues).mockReturnValue(
         achievements ? { achievements } : {},
     )
 }
@@ -89,7 +89,7 @@ describe('AchievementsModule', () => {
             const bridge = createBridge('lagged')
             await createModule(bridge).unlock('first_win')
 
-            expect(configLoader.getPlatformOptions).toHaveBeenCalledWith('lagged')
+            expect(bridgeConfig.getValues).toHaveBeenCalled()
             expect(bridge.achievementsUnlock).toHaveBeenCalledWith({ id: 'win_1' })
         })
     })

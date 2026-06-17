@@ -22,6 +22,7 @@ import packageJson from '../../../package.json'
 import { generateRandomId } from '../../utils'
 import { getGuestUser } from '../player'
 import ModuleBase from '../ModuleBase'
+import bridgeConfig from '../../lib/bridge-config'
 import {
     API_URL,
     DISCORD_API_URL,
@@ -72,7 +73,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         super.initialize(platformBridge)
 
         const isPlaygama = this._platformBridge.platformId === PLATFORM_ID.PLAYGAMA
-        if (!isPlaygama && this._platformBridge.options?.sendAnalyticsEvents === false) {
+        if (!isPlaygama && bridgeConfig.getValues().sendAnalyticsEvents === false) {
             this.#isDisabled = true
         }
 
@@ -149,7 +150,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             launch_source: this._platformBridge.launchSource,
         }
 
-        const publicToken = this._platformBridge.options?.saas?.publicToken
+        const publicToken = bridgeConfig.getValues().saas?.publicToken
         if (publicToken) {
             meta.public_token = publicToken
         }
@@ -294,7 +295,8 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 
     #extractGameId(): string | null {
-        const { options, platformId } = this._platformBridge
+        const { platformId } = this._platformBridge
+        const options = bridgeConfig.getValues()
 
         const optionKeyMap: Partial<Record<PlatformId, string>> = {
             [PLATFORM_ID.GAME_DISTRIBUTION]: 'gameId',

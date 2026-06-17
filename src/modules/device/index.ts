@@ -17,6 +17,6 @@
 
 import DeviceModule from './DeviceModule'
 
-export type { DeviceBridgeContract, DeviceBridgeOptions } from './DeviceModule'
+export type { DeviceBridgeContract, DeviceBridgeOptions, DeviceConfig } from './DeviceModule'
 export { detectOrientation } from './orientation'
 export default new DeviceModule()

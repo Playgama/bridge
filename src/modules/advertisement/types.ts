@@ -41,11 +41,13 @@ export interface AdvertisementOptions {
         disable?: boolean
         placementFallback?: string
         placements?: PlacementMapping[]
+        preloadOnStart?: string
     }
     rewarded?: {
         disable?: boolean
         placementFallback?: string
         placements?: PlacementMapping[]
+        preloadOnStart?: string
     }
     advancedBanners?: {
         disable?: boolean
@@ -54,6 +56,9 @@ export interface AdvertisementOptions {
     }
     minimumDelayBetweenInterstitial?: number | string
     initialInterstitialDelay?: number | string
+    useBuiltInErrorPopup?: boolean
+    useAdvertisementErrorPopup?: boolean
+    builtInErrorPopupCooldown?: number
 }
 
 export interface AdvertisementBridgeOptions {

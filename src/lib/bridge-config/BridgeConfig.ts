@@ -18,6 +18,7 @@
 import { deepMerge, type AnyRecord } from '../../utils'
 import { ERROR_CODE, BridgeError } from '../../constants'
 import logger from '../logger'
+import type { ConfigFileOptions } from './types'
 import { LOCAL_ONLY_CONFIG_FIELDS } from './constants'
 import RemoteConfigLoader, {
     REMOTE_LOAD_STATUS,
@@ -42,20 +43,8 @@ export const PARSE_STATUS = {
 
 export type ParseStatus = typeof PARSE_STATUS[keyof typeof PARSE_STATUS]
 
-export interface ConfigFileOptions extends AnyRecord {
-    platforms?: Record<string, AnyRecord>
-    remoteConfigUrl?: string
-    remoteConfigTimeout?: number
-    remoteConfigTtl?: number
-    debug?: boolean
-}
-
-class ConfigLoader {
+class BridgeConfig {
     // public getters
-    get options(): ConfigFileOptions {
-        return this.#options
-    }
-
     get loadStatus(): LoadStatus {
         return this.#loadStatus
     }
@@ -66,14 +55,6 @@ class ConfigLoader {
 
     get path(): string {
         return this.#path
-    }
-
-    get rawContent(): string {
-        return this.#rawContent
-    }
-
-    get parsedContent(): AnyRecord {
-        return this.#parsedContent
     }
 
     get loadError(): string {
@@ -105,24 +86,25 @@ class ConfigLoader {
 
     #path = ''
 
-    #rawContent = ''
-
-    #parsedContent: AnyRecord = {}
-
     #loadError = ''
 
     #parseError = ''
 
-    #options: ConfigFileOptions = {}
+    // Raw config as loaded; what getRawValues() returns.
+    #rawValues: ConfigFileOptions = {}
 
-    #fallbackOptions: ConfigFileOptions = {}
+    // Config resolved for the active platform; what getValues() returns.
+    // Mirrors #rawValues until initialize() merges in the platform overrides.
+    #values: ConfigFileOptions = {}
+
+    #fallbackValues: ConfigFileOptions = {}
 
     #remoteLoader: RemoteConfigLoader | null = null
 
     // public methods
-    async load(configFilePath?: string, fallbackOptions: ConfigFileOptions = {}): Promise<void> {
+    async load(configFilePath?: string, fallbackValues: ConfigFileOptions = {}): Promise<void> {
         this.#path = configFilePath || this.#defaultConfigFilePath
-        this.#fallbackOptions = fallbackOptions
+        this.#fallbackValues = fallbackValues
 
         try {
             this.#loadStatus = LOAD_STATUS.LOADING
@@ -133,55 +115,68 @@ class ConfigLoader {
             }
 
             const text = await response.text()
-            this.#rawContent = text
             this.#loadStatus = LOAD_STATUS.SUCCESS
-            this.#parseContent(text)
+            this.#parse(text)
             await this.#applyRemoteConfig()
         } catch (error) {
-            this.#setOptions(this.#fallbackOptions)
+            this.#setValues(this.#fallbackValues)
             this.#loadStatus = LOAD_STATUS.FAILED
             this.#loadError = (error as Error).message || String(error)
             logger.error(new BridgeError(ERROR_CODE.CONFIG_LOAD_FAILED, error).message, error)
         }
     }
 
-    getPlatformOptions(platformId: string): ConfigFileOptions {
-        const currentPlatformOptions = this.options.platforms?.[platformId]
-        if (currentPlatformOptions) {
-            return deepMerge(this.options, currentPlatformOptions) as ConfigFileOptions
-        }
-        return this.options
+    // Resolves the loaded config for the given platform, merging its platform-specific
+    // overrides into the base values. The platform id is detected by the caller, so the
+    // config stays decoupled from platform-detection logic. Must run after load();
+    // afterwards getValues() returns the platform-resolved values.
+    initialize(platformId: string): void {
+        const platformOverrides = this.#rawValues.platforms?.[platformId]
+        this.#values = platformOverrides
+            ? deepMerge(this.#rawValues, platformOverrides) as ConfigFileOptions
+            : this.#rawValues
+    }
+
+    // Config resolved for the active platform. Mirrors the raw values until initialize() runs.
+    getValues(): ConfigFileOptions {
+        return this.#values
+    }
+
+    // Raw config as loaded, without any platform-specific resolution.
+    getRawValues(): ConfigFileOptions {
+        return this.#rawValues
     }
 
     // private methods
-    #parseContent(text: string): void {
+    #parse(text: string): void {
         try {
-            const data = JSON.parse(text) as AnyRecord
-            this.#parsedContent = data
+            const data = JSON.parse(text) as ConfigFileOptions
             this.#parseStatus = PARSE_STATUS.SUCCESS
-            this.#setOptions(data as ConfigFileOptions)
+            this.#setValues(data)
         } catch (parseError) {
-            this.#setOptions(this.#fallbackOptions)
+            this.#setValues(this.#fallbackValues)
             this.#parseStatus = PARSE_STATUS.FAILED
             this.#parseError = `Failed to parse bridge config: ${(parseError as Error).message || String(parseError)}`
             logger.error(new BridgeError(ERROR_CODE.CONFIG_PARSE_FAILED, parseError).message, parseError)
         }
     }
 
-    #setOptions(options: ConfigFileOptions): void {
-        this.#options = { ...options }
+    #setValues(values: ConfigFileOptions): void {
+        this.#rawValues = { ...values }
+        // Keep resolved values usable before initialize() applies platform overrides.
+        this.#values = this.#rawValues
     }
 
     async #applyRemoteConfig(): Promise<void> {
-        const url = this.#options.remoteConfigUrl
+        const url = this.#rawValues.remoteConfigUrl
         if (!url) {
             return
         }
 
         const loader = new RemoteConfigLoader({
             url,
-            timeoutMs: this.#options.remoteConfigTimeout,
-            ttlMs: this.#options.remoteConfigTtl,
+            timeoutMs: this.#rawValues.remoteConfigTimeout,
+            ttlMs: this.#rawValues.remoteConfigTtl,
         })
 
         this.#remoteLoader = loader
@@ -193,14 +188,14 @@ class ConfigLoader {
 
         const localOnly: AnyRecord = {}
         LOCAL_ONLY_CONFIG_FIELDS.forEach((key) => {
-            if (key in this.#options) {
-                localOnly[key] = this.#options[key]
+            if (key in this.#rawValues) {
+                localOnly[key] = this.#rawValues[key]
             }
         })
 
-        this.#setOptions({ ...result.options, ...localOnly } as ConfigFileOptions)
+        this.#setValues({ ...result.options, ...localOnly } as ConfigFileOptions)
     }
 }
 
-export { ConfigLoader }
-export default new ConfigLoader()
+export { BridgeConfig }
+export default new BridgeConfig()

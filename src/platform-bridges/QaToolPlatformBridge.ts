@@ -18,7 +18,7 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import ServerTimeCache from '../lib/ServerTimeCache'
 import MessageBroker from '../lib/MessageBroker'
-import configLoader from '../lib/bridge-config-loader'
+import bridgeConfig from '../lib/bridge-config'
 import Recorder from '../lib/Recorder'
 
 import {
@@ -337,16 +337,15 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     engine: this.engine,
                     version: PLUGIN_VERSION,
                     configFile: {
-                        loadingStatus: configLoader.loadStatus,
-                        parsingStatus: configLoader.parseStatus,
-                        loadError: configLoader.loadError,
-                        parseError: configLoader.parseError,
-                        options: configLoader.options,
-                        path: configLoader.path,
-                        rawContent: configLoader.rawContent,
-                        remoteLoadStatus: configLoader.remoteLoadStatus,
-                        remoteLoadError: configLoader.remoteLoadError,
-                        remoteAppliedSource: configLoader.remoteAppliedSource,
+                        loadingStatus: bridgeConfig.loadStatus,
+                        parsingStatus: bridgeConfig.parseStatus,
+                        loadError: bridgeConfig.loadError,
+                        parseError: bridgeConfig.parseError,
+                        options: bridgeConfig.getRawValues(),
+                        path: bridgeConfig.path,
+                        remoteLoadStatus: bridgeConfig.remoteLoadStatus,
+                        remoteLoadError: bridgeConfig.remoteLoadError,
+                        remoteAppliedSource: bridgeConfig.remoteAppliedSource,
                     },
                 },
             })

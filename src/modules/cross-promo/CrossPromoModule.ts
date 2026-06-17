@@ -17,6 +17,7 @@
 
 import ModuleBase from '../ModuleBase'
 import eventBus from '../../lib/EventBus'
+import bridgeConfig from '../../lib/bridge-config'
 import { EVENT_NAME } from '../../constants'
 import { INTERSTITIAL_STATE, REWARDED_STATE } from '../advertisement/constants'
 import {
@@ -87,7 +88,7 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
     }
 
     #getConfig(): CrossPromoConfig {
-        return this._platformBridge?.options?.crossPromo ?? {}
+        return bridgeConfig.getValues().crossPromo ?? {}
     }
 
     #getGames(config: CrossPromoConfig): CrossPromoGame[] {
