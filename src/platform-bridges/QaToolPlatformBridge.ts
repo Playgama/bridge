@@ -650,22 +650,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsPurchase(id: string, options?: { externalId?: string }): Promise<unknown> {
-        const product = this._paymentsGetProductPlatformData(id)
-        if (!product) {
-            return Promise.reject()
-        }
-
-        if (options && options.externalId) {
-            product.externalId = options.externalId
-        }
-
-        if (!product.externalId) {
-            product.externalId = this._paymentsGenerateTransactionId(id)
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            const externalId = options?.externalId || this._paymentsGenerateTransactionId(id)
+            const product = { id, externalId }
 
             this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.PURCHASE, {
                 options: { product },
@@ -732,17 +722,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
-            const products = this._paymentsGetProductsPlatformData()
-
-            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.GET_CATALOG, {
-                options: { products },
-            }).then(() => {
-                const mergedProducts = products.map((product) => ({
+            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.GET_CATALOG).then((data) => {
+                const { payload } = (data as { payload: { products: AnyRecord[] } })
+                const mergedProducts = payload.products.map((product) => ({
                     id: product.id,
-                    price: `${product.amount} Gam`,
-                    priceCurrencyCode: 'Gam',
-                    priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
-                    priceValue: product.amount,
+                    price: `${product.price} ${product.currency}`,
+                    priceCurrencyCode: product.currency,
+                    priceCurrencyImage: product.priceCurrencyImage,
+                    priceValue: product.price,
                 }))
 
                 this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
@@ -757,19 +744,12 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.GET_PURCHASES, {
-                options: { products: this._paymentsGetProductsPlatformData() },
-            }).then((data) => {
+            this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.GET_PURCHASES).then((data) => {
                 const { purchases } = (data as { purchases: AnyRecord[] })
-                const products = this._paymentsGetProductsPlatformData()
 
-                this._paymentsPurchases = purchases.map((purchase) => {
-                    const product = products.find((p) => p.id === purchase.id)
-                    return {
-                        id: product!.id as string,
-                        ...(purchase.purchaseData as AnyRecord),
-                    }
-                })
+                this._paymentsPurchases = purchases.map(
+                    (purchase) => purchase.purchaseData as AnyRecord & { id: string },
+                )
 
                 this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
             })
@@ -891,35 +871,6 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this.#requestMessage(MODULE_NAME.ACHIEVEMENTS, ACTION_NAME_QA.GET_ACHIEVEMENTS, {
             options: {},
         }).then((data) => (data as { result?: NormalizedAchievement[] }).result ?? [])
-    }
-
-    protected _paymentsGetProductsPlatformData(): AnyRecord[] {
-        if (!this._options.payments) {
-            return []
-        }
-
-        return this._options.payments
-            .map((product) => ({
-                id: product.id,
-                ...(product.playgama as AnyRecord | undefined),
-            }))
-    }
-
-    protected _paymentsGetProductPlatformData(id: string): AnyRecord | null {
-        const products = this._options.payments
-        if (!products) {
-            return null
-        }
-
-        const product = products.find((p) => p.id === id)
-        if (!product) {
-            return null
-        }
-
-        return {
-            id: product.id,
-            ...(product.playgama as AnyRecord | undefined),
-        }
     }
 
     #handleInitializeResponse(data: QaToolMessage): void {
