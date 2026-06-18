@@ -58,22 +58,42 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     inviteFriends(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isInviteFriendsSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.inviteFriends(this.#resolve('inviteFriends', options))
     }
 
     joinCommunity(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isJoinCommunitySupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.joinCommunity(this.#resolve('joinCommunity', options))
     }
 
     share(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isShareSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.share(this.#resolve('share', options))
     }
 
     createPost(options?: SocialOptions): Promise<unknown> {
+        if (!this._platformBridge.isCreatePostSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.createPost(this.#resolve('createPost', options))
     }
 
     addToHomeScreen(): Promise<unknown> {
+        if (!this._platformBridge.isAddToHomeScreenSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.addToHomeScreen()
     }
 
@@ -86,6 +106,10 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     addToFavorites(): Promise<unknown> {
+        if (!this._platformBridge.isAddToFavoritesSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.addToFavorites()
     }
 
@@ -98,6 +122,10 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     }
 
     rate(): Promise<unknown> {
+        if (!this._platformBridge.isRateSupported) {
+            return Promise.reject()
+        }
+
         return this._platformBridge.rate()
     }
 
