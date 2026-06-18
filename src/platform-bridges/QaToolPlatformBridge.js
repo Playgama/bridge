@@ -849,10 +849,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
             this.#requestMessage(MODULE_NAME.PAYMENTS, ACTION_NAME.GET_PURCHASES).then(({ purchases }) => {
-                // const products = this._paymentsGetProductsPlatformData()
-
                 this._paymentsPurchases = purchases.map((purchase) => purchase.purchaseData)
-
                 this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
             })
         }
