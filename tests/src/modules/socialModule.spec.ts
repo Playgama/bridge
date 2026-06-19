@@ -94,4 +94,23 @@ describe('SocialModule', () => {
         await expect(createModule(bridge).getAddToHomeScreenReward()).rejects.toBeUndefined()
         expect(bridge.getAddToHomeScreenReward).not.toHaveBeenCalled()
     })
+
+    // Guard regression: an unsupported action must reject instead of forwarding to
+    // the bridge. Bridges only implement the methods they support, so forwarding an
+    // unsupported call would hit an undefined method and throw synchronously.
+    test.each([
+        ['inviteFriends', 'isInviteFriendsSupported'],
+        ['joinCommunity', 'isJoinCommunitySupported'],
+        ['share', 'isShareSupported'],
+        ['createPost', 'isCreatePostSupported'],
+        ['addToHomeScreen', 'isAddToHomeScreenSupported'],
+        ['addToFavorites', 'isAddToFavoritesSupported'],
+        ['rate', 'isRateSupported'],
+    ] as const)('%s rejects and does not call the bridge when %s is false', async (method, flag) => {
+        const bridge = createBridge('vk', { [flag]: false })
+        const module = createModule(bridge)
+
+        await expect((module[method] as () => Promise<unknown>)()).rejects.toBeUndefined()
+        expect(bridge[method]).not.toHaveBeenCalled()
+    })
 })
