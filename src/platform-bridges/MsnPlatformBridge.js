@@ -40,6 +40,20 @@ const AUTO_NOTIFICATIONS = [
         minDelayInSeconds: 86400,
         payload: 'msn_auto_24h',
     },
+    {
+        title: 'Missing your moves',
+        description: "It's perfect time to come back",
+        type: 9,
+        minDelayInSeconds: 259200,
+        payload: 'msn_auto_3d',
+    },
+    {
+        title: 'We miss you',
+        description: 'Seriously. Come play.',
+        type: 10,
+        minDelayInSeconds: 604800,
+        payload: 'msn_auto_7d',
+    },
 ]
 
 const MSN_SIZES_BY_POSITION = {
