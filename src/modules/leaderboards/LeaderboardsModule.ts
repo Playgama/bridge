@@ -60,7 +60,7 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
     }
 
     setScore(id: string, score: number): Promise<unknown> {
-        if (this._platformBridge.leaderboardsType === LEADERBOARD_TYPE.NOT_AVAILABLE) {
+        if (this.type === LEADERBOARD_TYPE.NOT_AVAILABLE) {
             return Promise.reject()
         }
 
@@ -75,7 +75,7 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
     }
 
     getEntries(id: string): Promise<unknown> {
-        if (this._platformBridge.leaderboardsType !== LEADERBOARD_TYPE.IN_GAME) {
+        if (this.type !== LEADERBOARD_TYPE.IN_GAME) {
             return Promise.reject()
         }
 
