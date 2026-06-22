@@ -16,18 +16,38 @@
  */
 
 import type { PlatformBridgeLike } from '../ModuleBase'
+import type { CrossPromoSource } from './constants'
 
+// A game entry in the static config list (crossPromo.games).
 export interface CrossPromoGame {
     url: string
     icon?: string
     name?: string
 }
 
+// Unified, normalized game shape returned by getGamesList() and consumed by the
+// promo renderer, regardless of the configured data source. Carries full info
+// per game so no follow-up lookup is needed.
+export interface Game {
+    id?: string
+    name?: string
+    url: string
+    iconUrl?: string
+    coverUrl?: string
+    // Raw source object (platform SDK game / config entry), kept so integrators
+    // can read platform-specific fields the normalizer does not surface.
+    payload?: unknown
+}
+
 export interface CrossPromoConfig {
     title?: string
+    // Where the games list comes from: the static `games` list ('config') or the
+    // platform SDK catalog ('platform'). Defaults to 'config'.
+    source?: CrossPromoSource
     games?: CrossPromoGame[]
 }
 
 export interface CrossPromoBridgeContract extends PlatformBridgeLike {
-    options?: { crossPromo?: CrossPromoConfig } & Record<string, unknown>
+    isPlatformGamesListSupported: boolean
+    getGamesList(): Promise<unknown[]>
 }

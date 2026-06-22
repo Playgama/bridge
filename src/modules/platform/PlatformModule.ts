@@ -24,7 +24,6 @@ import {
     type PlatformMessage,
 } from './constants'
 import { internalAnalytics } from '../analytics'
-import { resolvePlatformOptions } from '../../utils'
 import type { EventEmitter } from '../../lib/EventBus'
 
 export interface PlatformMessageOptions {
@@ -33,8 +32,6 @@ export interface PlatformMessageOptions {
     [key: string]: unknown
 }
 
-export type GameByIdOptions = Record<string, unknown> & Partial<Record<PlatformId, unknown>>
-
 export interface PlatformBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
     platformSdk: unknown
@@ -42,16 +39,12 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     platformPayload: string | null
     platformTld: string | null
     launchSource: LaunchSource | null
-    isPlatformGetAllGamesSupported: boolean
-    isPlatformGetGameByIdSupported: boolean
     isPlatformExternalCallsSupported: boolean
     isPlatformAudioEnabled: boolean
     isPlatformPaused: boolean
     sendMessage(message: string, options?: PlatformMessageOptions): Promise<unknown>
     sendCustomMessage(id: string, options?: unknown): Promise<unknown>
     getServerTime(): Promise<unknown>
-    getAllGames(): Promise<unknown>
-    getGameById(options?: unknown): Promise<unknown>
 }
 
 interface PlatformModule extends EventEmitter {}
@@ -79,14 +72,6 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     get launchSource(): LaunchSource | null {
         return this._platformBridge.launchSource
-    }
-
-    get isGetAllGamesSupported(): boolean {
-        return this._platformBridge.isPlatformGetAllGamesSupported
-    }
-
-    get isGetGameByIdSupported(): boolean {
-        return this._platformBridge.isPlatformGetGameByIdSupported
     }
 
     get isExternalCallsSupported(): boolean {
@@ -176,23 +161,6 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     getServerTime(): Promise<unknown> {
         return this._platformBridge.getServerTime()
-    }
-
-    getAllGames(): Promise<unknown> {
-        if (!this._platformBridge.isPlatformGetAllGamesSupported) {
-            return Promise.reject()
-        }
-
-        return this._platformBridge.getAllGames()
-    }
-
-    getGameById(options?: GameByIdOptions): Promise<unknown> {
-        if (!this._platformBridge.isPlatformGetGameByIdSupported) {
-            return Promise.reject()
-        }
-
-        const resolvedOptions = resolvePlatformOptions(options, this._platformBridge.platformId)
-        return this._platformBridge.getGameById(resolvedOptions)
     }
 }
 
