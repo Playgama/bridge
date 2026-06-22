@@ -15,22 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const MODULE_NAME = {
-    CORE: 'core',
-    PLATFORM: 'platform',
-    PLAYER: 'player',
-    STORAGE: 'storage',
-    ADVERTISEMENT: 'advertisement',
-    SOCIAL: 'social',
-    DEVICE: 'device',
-    LEADERBOARDS: 'leaderboards',
-    PAYMENTS: 'payments',
-    REMOTE_CONFIG: 'remote_config',
-    CLIPBOARD: 'clipboard',
-    ACHIEVEMENTS: 'achievements',
-    ANALYTICS: 'analytics',
-    DAILY_REWARDS: 'daily_rewards',
-    DAILY_CHALLENGE: 'daily_challenge',
-    CROSS_PROMO: 'cross_promo',
+export const DAILY_CHALLENGE_STORAGE_KEY = 'bridge-daily-challenge-state'
+
+export const MS_PER_DAY = 86400000
+
+export const SELECTION_MODE = {
+    RANDOM: 'random',
+    SEQUENTIAL: 'sequential',
 } as const
-export type ModuleName = typeof MODULE_NAME[keyof typeof MODULE_NAME]
