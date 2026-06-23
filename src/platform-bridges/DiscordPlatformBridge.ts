@@ -48,7 +48,7 @@ interface DiscordSdkInstance {
         getSkus(): Promise<{ skus: DiscordSku[] }>
         getEntitlements(): Promise<{ entitlements: DiscordPurchase[] }>
         openInviteDialog(): Promise<unknown>
-        openShareMomentDialog(options: { mediaUrl: string }): Promise<unknown>
+        openShareMomentDialog(options: AnyRecord & { mediaUrl: string }): Promise<unknown>
     }
 }
 
@@ -360,8 +360,8 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     share(options?: unknown): Promise<unknown> {
         // Discord shares media by URL: take the canonical `image` when it is an
         // URL, otherwise fall back to the canonical `url`.
-        const opts = (options ?? {}) as { image?: string; url?: string }
-        const mediaUrl = opts.image && !isBase64Image(opts.image) ? opts.image : opts.url
+        const { image, url, ...rest } = (options ?? {}) as AnyRecord & { image?: string; url?: string }
+        const mediaUrl = image && !isBase64Image(image) ? image : url
         if (!mediaUrl) {
             return Promise.reject()
         }
@@ -370,6 +370,7 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE);
             (this._platformSdk as DiscordSdkInstance).commands.openShareMomentDialog({
+                ...rest,
                 mediaUrl,
             })
                 .then(() => {

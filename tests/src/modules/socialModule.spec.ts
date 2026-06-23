@@ -4,17 +4,11 @@ import {
 import SocialModule from '../../../src/modules/social/SocialModule'
 import type { SocialBridgeContract, SocialConfig } from '../../../src/modules/social/types'
 
+// Already platform-resolved by the config loader, so the blocks have no platform key.
 const SOCIAL_CONFIG: SocialConfig = {
-    share: {
-        vk: { url: 'https://mygame.com' },
-        facebook: { image: 'https://cdn.mygame.com/share.png', text: 'Play my game!' },
-    },
-    joinCommunity: {
-        vk: { groupId: 12345 },
-    },
-    createPost: {
-        ok: { status: false },
-    },
+    share: { image: 'https://cdn.mygame.com/share.png', text: 'Play my game!' },
+    joinCommunity: { groupId: 12345 },
+    createPost: { status: false },
 }
 
 function createBridge(platformId: string, overrides: Record<string, unknown> = {}) {

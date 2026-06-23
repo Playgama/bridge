@@ -306,14 +306,20 @@ class OkPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    createPost(options?: { text?: string; url?: string; status?: boolean }): Promise<unknown> {
-        const { text, url, status } = options ?? {}
-        if (!text && !url) {
+    createPost(options?: AnyRecord & {
+        text?: string; url?: string; status?: boolean
+    }): Promise<unknown> {
+        const {
+            text, url, status, ...rest
+        } = options ?? {}
+        if (!text && !url && !rest.media) {
             return Promise.reject()
         }
 
         // Build OK's postMediatopic attachment from the canonical content fields.
         // `status` (publish to the player's profile status) comes from the config.
+        // Any extra field (e.g. a raw `media` poll) is forwarded to the SDK as-is and
+        // overrides the built attachment.
         const media: AnyRecord[] = []
         if (text) {
             media.push({ type: 'text', text })
@@ -325,7 +331,7 @@ class OkPlatformBridge extends PlatformBridgeBase {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST);
-            (this._platformSdk as OkSdk).UI.postMediatopic({ media }, status ?? false)
+            (this._platformSdk as OkSdk).UI.postMediatopic({ media, ...rest }, status ?? false)
         }
 
         return promiseDecorator.promise

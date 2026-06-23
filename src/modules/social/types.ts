@@ -22,22 +22,25 @@ import type { AnyRecord } from '../../utils'
 // Social methods that resolve their data from the config mapping.
 export type SocialMethod = 'share' | 'inviteFriends' | 'joinCommunity' | 'createPost'
 
-// Canonical, platform-agnostic content the game passes at call time. Each
-// platform bridge takes the subset it supports and maps the field to the
-// native one (e.g. VK share `url` -> `link`, Discord share `image` -> `mediaUrl`).
-// `image` accepts a base64 data-URI or an URL; the bridge converts to whatever
-// form its platform needs. Extra platform-native keys are tolerated so config
-// settings (groupId, isPage, status, ...) flow through the merge untouched.
+// Content the game passes at call time. `text`/`image`/`url` are the canonical,
+// platform-agnostic fields each bridge maps to its native one (e.g. VK `url` ->
+// `link`, Discord `image` -> `mediaUrl`); `image` accepts a base64 data-URI or an
+// URL and the bridge converts as needed. Any OTHER key is forwarded verbatim to the
+// platform SDK call, so games/config can pass raw platform-specific fields
+// (VK `attachments`, OK `media` polls, Facebook `intent`, ...) without an SDK change.
 export interface SocialOptions extends AnyRecord {
     text?: string
     image?: string
     url?: string
 }
 
-// Per-method config block: platform-id -> static platform data. Holds publisher
-// settings (community ids, page flags) and optional defaults for the canonical
-// content fields, which the game can override at call time.
-export type SocialMethodConfig = Partial<Record<string, AnyRecord>>
+// Per-method config block: the social data for one method (publisher settings like
+// community ids/page flags, optional defaults for the canonical content fields, and
+// `native`). It is platform-resolved before the module reads it: put common values
+// in the top-level `social[method]` block and platform-specific overrides in
+// `platforms[id].social[method]` — the config loader deep-merges them. So there is
+// no platform key here; the game can still override any of it at call time.
+export type SocialMethodConfig = SocialOptions
 
 export interface SocialConfig {
     share?: SocialMethodConfig

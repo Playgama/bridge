@@ -138,7 +138,6 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return getSocialPlatformData(
             this._platformBridge.options?.social,
             method,
-            this._platformBridge.platformId,
             options,
         )
     }

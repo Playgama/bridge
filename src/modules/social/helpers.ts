@@ -18,17 +18,19 @@
 import { deepMerge, type AnyRecord } from '../../utils'
 import type { SocialConfig, SocialMethod, SocialOptions } from './types'
 
-// Builds the platform data a social method receives: the static per-platform
-// block from the config (community ids, page flags, default text/image/url) with
-// the game's runtime options merged on top. Runtime values win, so the game can
+// Builds the data a social method receives: the static config block for the method
+// merged with the game's runtime options on top. The config block is already
+// platform-resolved by the config loader — common values live in the top-level
+// `social[method]` block and platform-specific overrides in the active platform's
+// `platforms[id].social[method]`, which the loader deep-merges before the module
+// reads it. So there is no platform key here. Runtime values win, so the game can
 // override config defaults with dynamic content (a result screenshot, a score).
 export function getSocialPlatformData(
     social: SocialConfig | undefined,
     method: SocialMethod,
-    platformId: string,
     runtimeOptions?: SocialOptions,
 ): AnyRecord {
-    const configData = social?.[method]?.[platformId]
+    const configData = social?.[method]
     const base: AnyRecord = configData && typeof configData === 'object' ? configData : {}
     const runtime: AnyRecord = runtimeOptions ?? {}
     return deepMerge(base, runtime)

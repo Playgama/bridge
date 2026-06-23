@@ -282,6 +282,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     // social
     share(options?: unknown): Promise<unknown> {
+        // MSN forwards the whole options object to shareAsync as-is.
         return new Promise((resolve, reject) => {
             (this._platformSdk as MsnSdk).shareAsync(options)
                 .then(resolve)
