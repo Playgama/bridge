@@ -95,7 +95,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         return this.#canCreateShortCut
     }
 
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return false
     }
 

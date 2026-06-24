@@ -319,12 +319,13 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return this.#sendRequestToVKBridge(ACTION_NAME.INVITE_FRIENDS, 'VKWebAppShowInviteBox', { }, 'success')
     }
 
-    joinCommunity(options?: { groupId?: string | number }): Promise<unknown> {
+    joinCommunity(options?: AnyRecord & { groupId?: string | number }): Promise<unknown> {
         if (!options || !options.groupId) {
             return Promise.reject()
         }
 
-        let { groupId } = options
+        const { groupId: rawGroupId, ...rest } = options
+        let groupId = rawGroupId
 
         if (typeof groupId === 'string') {
             groupId = parseInt(groupId, 10)
@@ -333,16 +334,17 @@ class VkPlatformBridge extends PlatformBridgeBase {
             }
         }
 
-        return this.#sendRequestToVKBridge(ACTION_NAME.JOIN_COMMUNITY, 'VKWebAppJoinGroup', { group_id: groupId })
+        return this.#sendRequestToVKBridge(ACTION_NAME.JOIN_COMMUNITY, 'VKWebAppJoinGroup', { ...rest, group_id: groupId })
             .then(() => {
                 window.open(`https://vk.com/public${groupId}`)
             })
     }
 
-    share(options?: { link?: string }): Promise<unknown> {
-        const parameters: AnyRecord = { }
-        if (options && options.link) {
-            parameters.link = options.link
+    share(options?: AnyRecord & { url?: string }): Promise<unknown> {
+        const { url, ...rest } = options ?? {}
+        const parameters: AnyRecord = { ...rest }
+        if (url) {
+            parameters.link = url
         }
 
         return this.#sendRequestToVKBridge(ACTION_NAME.SHARE, 'VKWebAppShare', parameters, 'type')

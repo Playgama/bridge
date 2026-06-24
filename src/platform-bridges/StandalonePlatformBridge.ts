@@ -31,7 +31,7 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
         return 'PLAYGAMA_WRAP'
     }
 
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return true
     }
 

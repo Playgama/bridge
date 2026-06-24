@@ -18,7 +18,7 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import {
     addJavaScript,
-    isBase64Image,
+    toBase64Image,
     waitFor,
     type AnyRecord,
 } from '../utils'
@@ -615,19 +615,17 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // social
     inviteFriends(options?: unknown): Promise<unknown> {
-        const opts = (options ?? {}) as { image?: string; text?: string }
+        const opts = (options ?? {}) as AnyRecord & { image?: string; text?: string }
         if (!opts.image || !opts.text) {
             return Promise.reject()
         }
 
-        if (!isBase64Image(opts.image)) {
-            return Promise.reject(new Error('Image is not base64'))
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS);
-            (this._platformSdk as FacebookSdk).inviteAsync(opts as AnyRecord)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
+            // Facebook requires a base64 image; a config-supplied URL is fetched and encoded.
+            toBase64Image(opts.image)
+                .then((image) => (this._platformSdk as FacebookSdk).inviteAsync({ ...opts, image }))
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
                 })
@@ -666,17 +664,16 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        if (!isBase64Image(opts.image)) {
-            return Promise.reject(new Error('Image is not base64'))
-        }
-
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE);
-            (this._platformSdk as FacebookSdk).shareAsync({
-                intent: 'REQUEST',
-                ...opts,
-            })
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+            // Facebook requires a base64 image; a config-supplied URL is fetched and encoded.
+            toBase64Image(opts.image)
+                .then((image) => (this._platformSdk as FacebookSdk).shareAsync({
+                    intent: 'REQUEST',
+                    ...opts,
+                    image,
+                }))
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.SHARE)
                 })
