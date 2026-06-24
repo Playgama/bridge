@@ -15,11 +15,18 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const DAILY_CHALLENGE_STORAGE_KEY = 'bridge-daily-challenge-state'
+import QuestsModule from './QuestsModule'
 
-export const MS_PER_DAY = 86400000
-
-export const SELECTION_MODE = {
-    RANDOM: 'random',
-    SEQUENTIAL: 'sequential',
-} as const
+export type {
+    QuestsConfig,
+    QuestsBridgeContract,
+    QuestGroupConfig,
+    QuestTemplate,
+    QuestCondition,
+    QuestConditions,
+    PlayerContext,
+    Cadence,
+    Anchor,
+    Quest,
+} from './types'
+export default new QuestsModule()
