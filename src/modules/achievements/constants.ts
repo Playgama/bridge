@@ -15,15 +15,4 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import AchievementsModule from './AchievementsModule'
-
-export type {
-    AchievementsBridgeContract,
-    AchievementMapping,
-    AchievementPlatformData,
-    LocalAchievementsState,
-    NormalizedAchievement,
-} from './types'
-export { getAchievementPlatformData, findAchievementGameId } from './helpers'
-
-export default new AchievementsModule()
+export const ACHIEVEMENTS_STORAGE_KEY = 'bridge-achievements-state'

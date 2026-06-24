@@ -18,6 +18,7 @@
 import ModuleBase from '../ModuleBase'
 import bridgeConfig from '../../lib/bridge-config'
 import { getAchievementPlatformData } from './helpers'
+import LocalAchievements from './LocalAchievements'
 import type {
     AchievementMapping,
     AchievementsBridgeContract,
@@ -25,31 +26,41 @@ import type {
 } from './types'
 
 class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
-    get isSupported(): boolean {
-        return this._platformBridge.isAchievementsSupported
+    // SDK-managed fallback for platforms without native achievements support.
+    // Achievements are always available: handled natively when the platform
+    // supports them, otherwise managed locally by the SDK.
+    #local!: LocalAchievements
+
+    initialize(platformBridge: AchievementsBridgeContract): this {
+        super.initialize(platformBridge)
+
+        this.#local = new LocalAchievements(this.#getAchievementsConfig() ?? [])
+        return this
     }
 
     unlock(id: string): Promise<unknown> {
-        if (!this._platformBridge.isAchievementsSupported) {
-            return Promise.reject()
+        if (this._platformBridge.isAchievementsSupported) {
+            const platformData = getAchievementPlatformData(
+                this.#getAchievementsConfig(),
+                this._platformBridge.platformId,
+                id,
+            )
+            return this._platformBridge.achievementsUnlock(platformData)
         }
 
-        const platformData = getAchievementPlatformData(
-            this.#getAchievementsConfig(),
-            this._platformBridge.platformId,
-            id,
-        )
-        return this._platformBridge.achievementsUnlock(platformData)
+        return this.#local.unlock(id)
     }
 
-    // The platform bridge returns the list already normalized, with ids
-    // mapped back to the game-level ids from the config.
+    // On native platforms the bridge returns the list already normalized, with
+    // ids mapped back to the game-level ids from the config. Otherwise the SDK
+    // returns the configured list with the locally tracked unlocked state (an
+    // empty array when nothing is configured).
     getList(): Promise<NormalizedAchievement[]> {
-        if (!this._platformBridge.isAchievementsSupported) {
-            return Promise.reject()
+        if (this._platformBridge.isAchievementsSupported) {
+            return this._platformBridge.achievementsGetList()
         }
 
-        return this._platformBridge.achievementsGetList()
+        return this.#local.getList()
     }
 
     #getAchievementsConfig(): AchievementMapping[] | undefined {
