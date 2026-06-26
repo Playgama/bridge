@@ -18,41 +18,41 @@
 import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { AnyRecord } from '../../utils'
-import type { QUEST_TYPE } from './constants'
+import type { TASK_TYPE } from './constants'
 
-export type QuestType = typeof QUEST_TYPE[keyof typeof QUEST_TYPE]
+export type TaskType = typeof TASK_TYPE[keyof typeof TASK_TYPE]
 
-// One objective of a quest. `id` is the gameplay metric the game reports via
+// One objective of a task. `id` is the gameplay metric the game reports via
 // addProgress(); `amount` is the value that completes this target.
-export interface QuestTargetConfig {
+export interface TaskTargetConfig {
     id: string
     amount: number
 }
 
-// One reward granted when a quest completes. Data-only: `id`/`amount` are opaque
+// One reward granted when a task completes. Data-only: `id`/`amount` are opaque
 // to the module — the game decides what they mean and grants them.
-export interface QuestRewardConfig {
+export interface TaskRewardConfig {
     id: string
     amount: number
 }
 
-// A single quest definition. Completes when ALL of its targets reach their amount.
-export interface QuestItemConfig {
+// A single task definition. Completes when ALL of its targets reach their amount.
+export interface TaskItemConfig {
     id: string
-    targets: QuestTargetConfig[]
-    rewards: QuestRewardConfig[]
+    targets: TaskTargetConfig[]
+    rewards: TaskRewardConfig[]
 }
 
-// A group of quests sharing a type. Every item is active for the period (no
+// A group of tasks sharing a type. Every item is active for the period (no
 // selection). `id` is the stable storage key.
-export interface QuestGroupConfig {
+export interface TaskGroupConfig {
     id: string
-    type: QuestType
-    items: QuestItemConfig[]
+    type: TaskType
+    items: TaskItemConfig[]
 }
 
-// The whole quests config: a list of groups.
-export type QuestsConfig = QuestGroupConfig[]
+// The whole tasks config: a list of groups.
+export type TasksConfig = TaskGroupConfig[]
 
 // Persisted progress for one target.
 export interface TargetProgress {
@@ -60,51 +60,51 @@ export interface TargetProgress {
     progress: number
 }
 
-// Persisted progress for one quest within the active period.
-export interface QuestProgress {
+// Persisted progress for one task within the active period.
+export interface TaskProgress {
     id: string
     targets: TargetProgress[]
     claimed: boolean
 }
 
 // Persisted state for one group: the period its progress belongs to (a roll-over
-// trigger) and the per-quest progress.
+// trigger) and the per-task progress.
 export interface GroupState {
     periodKey: number
-    quests: QuestProgress[]
+    tasks: TaskProgress[]
 }
 
-export interface QuestsState {
+export interface TasksState {
     // Keyed by group id.
     groups: Record<string, GroupState>
 }
 
 // A target as returned to the game: its goal, current (clamped) progress, and
 // whether it is met.
-export interface QuestTarget {
+export interface TaskTarget {
     id: string
     amount: number
     progress: number
     completed: boolean
 }
 
-export interface QuestReward {
+export interface TaskReward {
     id: string
     amount: number
 }
 
-// What getQuests()/addProgress() return: a quest joined with live progress,
+// What getTasks()/addProgress() return: a task joined with live progress,
 // tagged with its group type. `completed` is true once every target is met.
-export interface Quest {
+export interface Task {
     id: string
-    type: QuestType
-    targets: QuestTarget[]
-    rewards: QuestReward[]
+    type: TaskType
+    targets: TaskTarget[]
+    rewards: TaskReward[]
     completed: boolean
     claimed: boolean
 }
 
-export interface QuestsBridgeContract extends PlatformBridgeLike {
+export interface TasksBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
     options?: AnyRecord
     getServerTime(): Promise<number>

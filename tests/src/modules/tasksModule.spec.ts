@@ -1,13 +1,13 @@
 import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
-import QuestsModule from '../../../src/modules/quests/QuestsModule'
+import TasksModule from '../../../src/modules/tasks/TasksModule'
 import bridgeConfig from '../../../src/lib/bridge-config'
-import { MS_PER_DAY, MS_PER_WEEK } from '../../../src/modules/quests/constants'
+import { MS_PER_DAY, MS_PER_WEEK } from '../../../src/modules/tasks/constants'
 import type {
-    QuestsBridgeContract,
-    QuestsConfig,
-} from '../../../src/modules/quests/types'
+    TasksBridgeContract,
+    TasksConfig,
+} from '../../../src/modules/tasks/types'
 
 // In-memory storage backing the mocked storage module. Cloned on read/write to
 // mimic the JSON round-trip of real persistence (no shared references between
@@ -35,8 +35,8 @@ vi.mock('../../../src/lib/bridge-config', () => ({
 // Day 100, comfortably mid-week (week 14 spans days 98..104).
 const BASE_MS = 100 * MS_PER_DAY
 
-function mockConfig(quests?: QuestsConfig) {
-    vi.mocked(bridgeConfig.getValues).mockReturnValue(quests ? { quests } : {})
+function mockConfig(tasks?: TasksConfig) {
+    vi.mocked(bridgeConfig.getValues).mockReturnValue(tasks ? { tasks } : {})
 }
 
 // A bridge whose server time can be moved to drive roll-over.
@@ -51,11 +51,11 @@ function createBridge(ms = BASE_MS) {
 }
 
 function createModule(bridge: ReturnType<typeof createBridge>) {
-    return new QuestsModule().initialize(bridge as unknown as QuestsBridgeContract)
+    return new TasksModule().initialize(bridge as unknown as TasksBridgeContract)
 }
 
-// One daily group: a single-target quest and a two-target quest.
-const DAILY_CONFIG: QuestsConfig = [{
+// One daily group: a single-target task and a two-target task.
+const DAILY_CONFIG: TasksConfig = [{
     id: 'daily',
     type: 'daily',
     items: [
@@ -72,27 +72,27 @@ const DAILY_CONFIG: QuestsConfig = [{
     ],
 }]
 
-function find(quests: Awaited<ReturnType<QuestsModule['getQuests']>>, id: string) {
-    return quests.find((q) => q.id === id)!
+function find(tasks: Awaited<ReturnType<TasksModule['getTasks']>>, id: string) {
+    return tasks.find((t) => t.id === id)!
 }
 
-describe('QuestsModule', () => {
+describe('TasksModule', () => {
     beforeEach(() => {
         store.clear()
         mockConfig(undefined)
     })
 
-    describe('getQuests', () => {
+    describe('getTasks', () => {
         test('returns all items in a group (no selection), tagged with the group type', async () => {
             mockConfig(DAILY_CONFIG)
-            const quests = await createModule(createBridge()).getQuests()
-            expect(quests.map((q) => q.id)).toEqual(['kills', 'combo'])
-            expect(quests.every((q) => q.type === 'daily')).toBe(true)
+            const tasks = await createModule(createBridge()).getTasks()
+            expect(tasks.map((t) => t.id)).toEqual(['kills', 'combo'])
+            expect(tasks.every((t) => t.type === 'daily')).toBe(true)
         })
 
         test('exposes targets with amount, zeroed progress, and rewards', async () => {
             mockConfig(DAILY_CONFIG)
-            const kills = find(await createModule(createBridge()).getQuests(), 'kills')
+            const kills = find(await createModule(createBridge()).getTasks(), 'kills')
             expect(kills.targets).toEqual([
                 {
                     id: 'enemy_killed', amount: 20, progress: 0, completed: false,
@@ -109,7 +109,7 @@ describe('QuestsModule', () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
             await module.addProgress('enemy_killed', 999)
-            const kills = find(await module.getQuests(), 'kills')
+            const kills = find(await module.getTasks(), 'kills')
             expect(kills.targets[0].progress).toBe(20)
             expect(kills.completed).toBe(true)
         })
@@ -118,12 +118,12 @@ describe('QuestsModule', () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
             await module.addProgress('kill', 2)
-            const combo = find(await module.getQuests(), 'combo')
+            const combo = find(await module.getTasks(), 'combo')
             expect(combo.targets.find((t) => t.id === 'kill')!.progress).toBe(2)
             expect(combo.targets.find((t) => t.id === 'coin')!.progress).toBe(0)
         })
 
-        test('multi-target quest completes only when ALL targets are met (AND)', async () => {
+        test('multi-target task completes only when ALL targets are met (AND)', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
 
@@ -131,8 +131,8 @@ describe('QuestsModule', () => {
             expect(afterKills).toEqual([]) // combo not complete yet (coin still 0)
 
             const afterCoins = await module.addProgress('coin', 100) // second target met
-            expect(afterCoins.map((q) => q.id)).toEqual(['combo']) // now complete
-            expect(find(await module.getQuests(), 'combo').completed).toBe(true)
+            expect(afterCoins.map((t) => t.id)).toEqual(['combo']) // now complete
+            expect(find(await module.getTasks(), 'combo').completed).toBe(true)
         })
 
         test('is a no-op for an unwatched metric', async () => {
@@ -140,21 +140,21 @@ describe('QuestsModule', () => {
             expect(await createModule(createBridge()).addProgress('unknown', 5)).toEqual([])
         })
 
-        test('one report fans out across all active quest types', async () => {
+        test('one report fans out across all active task types', async () => {
             mockConfig([
                 { id: 'daily', type: 'daily', items: [{ id: 'qd', targets: [{ id: 'm', amount: 5 }], rewards: [] }] },
                 { id: 'weekly', type: 'weekly', items: [{ id: 'qw', targets: [{ id: 'm', amount: 5 }], rewards: [] }] },
             ])
             const module = createModule(createBridge())
             await module.addProgress('m', 1)
-            const quests = await module.getQuests()
-            expect(find(quests, 'qd').targets[0].progress).toBe(1)
-            expect(find(quests, 'qw').targets[0].progress).toBe(1)
+            const tasks = await module.getTasks()
+            expect(find(tasks, 'qd').targets[0].progress).toBe(1)
+            expect(find(tasks, 'qw').targets[0].progress).toBe(1)
         })
     })
 
     describe('claimReward', () => {
-        test('returns the rewards once the quest is complete', async () => {
+        test('returns the rewards once the task is complete', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
             await module.addProgress('kill', 3)
@@ -166,7 +166,7 @@ describe('QuestsModule', () => {
             ])
         })
 
-        test('returns null while the quest is incomplete', async () => {
+        test('returns null while the task is incomplete', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
             await module.addProgress('kill', 3) // combo still missing the coin target
@@ -182,7 +182,7 @@ describe('QuestsModule', () => {
             expect(await module.claimReward('kills')).toBeNull()
         })
 
-        test('returns null for an unknown quest id', async () => {
+        test('returns null for an unknown task id', async () => {
             mockConfig(DAILY_CONFIG)
             expect(await createModule(createBridge()).claimReward('nope')).toBeNull()
         })
@@ -196,10 +196,10 @@ describe('QuestsModule', () => {
 
             await module.addProgress('m', 2)
             bridge.clock.ms += MS_PER_DAY // same week
-            expect(find(await module.getQuests(), 'wk').targets[0].progress).toBe(2)
+            expect(find(await module.getTasks(), 'wk').targets[0].progress).toBe(2)
 
             bridge.clock.ms += MS_PER_WEEK // next week
-            expect(find(await module.getQuests(), 'wk').targets[0].progress).toBe(0)
+            expect(find(await module.getTasks(), 'wk').targets[0].progress).toBe(0)
         })
 
         test('permanent never resets', async () => {
@@ -209,7 +209,7 @@ describe('QuestsModule', () => {
 
             await module.addProgress('m', 3)
             bridge.clock.ms += 30 * MS_PER_DAY
-            expect(find(await module.getQuests(), 'pm').targets[0].progress).toBe(3)
+            expect(find(await module.getTasks(), 'pm').targets[0].progress).toBe(3)
         })
     })
 
@@ -223,7 +223,7 @@ describe('QuestsModule', () => {
             await module.claimReward('kills')
 
             bridge.clock.ms += MS_PER_DAY
-            const kills = find(await module.getQuests(), 'kills')
+            const kills = find(await module.getTasks(), 'kills')
             expect(kills.targets[0].progress).toBe(0)
             expect(kills.claimed).toBe(false)
         })
@@ -232,20 +232,20 @@ describe('QuestsModule', () => {
             mockConfig(DAILY_CONFIG)
             await createModule(createBridge()).addProgress('enemy_killed', 7) // does not complete
 
-            const kills = find(await createModule(createBridge()).getQuests(), 'kills')
+            const kills = find(await createModule(createBridge()).getTasks(), 'kills')
             expect(kills.targets[0].progress).toBe(7)
         })
     })
 
     describe('empty / malformed config', () => {
-        test('returns no quests when config is missing', async () => {
+        test('returns no tasks when config is missing', async () => {
             mockConfig(undefined)
-            expect(await createModule(createBridge()).getQuests()).toEqual([])
+            expect(await createModule(createBridge()).getTasks()).toEqual([])
         })
 
         test('ignores groups with an unknown type', async () => {
             mockConfig([{ id: 'm', type: 'monthly' as never, items: [{ id: 'x', targets: [{ id: 'm', amount: 1 }], rewards: [] }] }])
-            expect(await createModule(createBridge()).getQuests()).toEqual([])
+            expect(await createModule(createBridge()).getTasks()).toEqual([])
         })
     })
 })

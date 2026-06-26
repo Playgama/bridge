@@ -15,18 +15,17 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import QuestsModule from './QuestsModule'
+export const TASKS_STORAGE_KEY = 'bridge-tasks-state'
 
-export type {
-    QuestsConfig,
-    QuestsBridgeContract,
-    QuestGroupConfig,
-    QuestItemConfig,
-    QuestTargetConfig,
-    QuestRewardConfig,
-    QuestType,
-    Quest,
-    QuestTarget,
-    QuestReward,
-} from './types'
-export default new QuestsModule()
+export const MS_PER_DAY = 86400000
+
+export const MS_PER_WEEK = 604800000
+
+export const TASK_TYPE = {
+    DAILY: 'daily',
+    WEEKLY: 'weekly',
+    PERMANENT: 'permanent',
+} as const
+
+// The constant period a 'permanent' group always reports; it never rolls over.
+export const PERMANENT_PERIOD = 0

@@ -20,73 +20,73 @@ import type { AnyRecord } from '../../utils'
 import bridgeConfig from '../../lib/bridge-config'
 import storageModule from '../storage'
 import {
-    QUESTS_STORAGE_KEY,
+    TASKS_STORAGE_KEY,
     MS_PER_DAY,
     MS_PER_WEEK,
-    QUEST_TYPE,
+    TASK_TYPE,
     PERMANENT_PERIOD,
 } from './constants'
 import type {
-    QuestsState,
+    TasksState,
     GroupState,
-    QuestsBridgeContract,
-    Quest,
-    QuestReward,
-    QuestProgress,
+    TasksBridgeContract,
+    Task,
+    TaskReward,
+    TaskProgress,
     TargetProgress,
-    QuestItemConfig,
-    QuestGroupConfig,
+    TaskItemConfig,
+    TaskGroupConfig,
 } from './types'
 
 /**
- * Quests module. The game configures one or more quest groups, each with a
+ * Tasks module. The game configures one or more task groups, each with a
  * type — 'daily' / 'weekly' (reset every UTC day/week) or 'permanent'
- * (never resets). Every quest in a group's `items` is active for the period.
- * A quest has one or more `targets` (each a gameplay metric + amount) and
+ * (never resets). Every task in a group's `items` is active for the period.
+ * A task has one or more `targets` (each a gameplay metric + amount) and
  * completes when ALL of its targets are met; it then grants its `rewards`.
  *
  * The game reports gameplay via addProgress(metric); the module advances every
- * matching target across all active quests/types, persists through the storage
+ * matching target across all active tasks/types, persists through the storage
  * module, and exposes claim state.
  *
  * The module is data-only: it tracks numbers, not meaning. Display text, player
  * segmentation, and what a reward grants are owned by the game, keyed off the
- * target/reward ids. getQuests() always returns the full active list.
+ * target/reward ids. getTasks() always returns the full active list.
  */
-class QuestsModule extends ModuleBase<QuestsBridgeContract> {
-    #groups: QuestGroupConfig[] = []
+class TasksModule extends ModuleBase<TasksBridgeContract> {
+    #groups: TaskGroupConfig[] = []
 
-    #state: QuestsState | null = null
+    #state: TasksState | null = null
 
-    #loadPromise: Promise<QuestsState> | null = null
+    #loadPromise: Promise<TasksState> | null = null
 
-    initialize(platformBridge: QuestsBridgeContract): this {
+    initialize(platformBridge: TasksBridgeContract): this {
         super.initialize(platformBridge)
 
         // SaaS hook point. To add a server-authoritative (cheat-resistant) backend
         // later, follow the LeaderboardsModule pattern: when this._isSaas(MODULE_NAME.
-        // QUESTS) is true, create a SaasRequest client here and branch each public
-        // method to relay through it (getQuests -> GET, addProgress/claimReward
+        // TASKS) is true, create a SaasRequest client here and branch each public
+        // method to relay through it (getTasks -> GET, addProgress/claimReward
         // -> POST). The server then owns progress and claim validation, so the local
         // config below stays dormant as the no-SaaS fallback. The public API and
-        // Quest shape are unchanged.
+        // Task shape are unchanged.
 
-        const config = bridgeConfig.getValues().quests
+        const config = bridgeConfig.getValues().tasks
         this.#groups = Array.isArray(config)
             ? config.filter((group) => this.#isValidGroup(group))
             : []
         return this
     }
 
-    // Every active quest across all groups, joined with live progress.
-    async getQuests(): Promise<Quest[]> {
+    // Every active task across all groups, joined with live progress.
+    async getTasks(): Promise<Task[]> {
         const { state, active } = await this.#sync()
-        const result: Quest[] = []
+        const result: Task[] = []
         active.forEach(({ group, key }) => {
-            state.groups[key].quests.forEach((quest) => {
-                const item = this.#findItem(group, quest.id)
+            state.groups[key].tasks.forEach((task) => {
+                const item = this.#findItem(group, task.id)
                 if (item) {
-                    result.push(this.#buildQuest(group, quest, item))
+                    result.push(this.#buildTask(group, task, item))
                 }
             })
         })
@@ -94,28 +94,28 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
     }
 
     // Increments every active target watching `metric` by `amount` (clamped to its
-    // target amount), across all types. Returns the quests that became fully
+    // target amount), across all types. Returns the tasks that became fully
     // complete on this call. No-op metrics return [].
-    async addProgress(metric: string, amount = 1): Promise<Quest[]> {
+    async addProgress(metric: string, amount = 1): Promise<Task[]> {
         const { state, active } = await this.#sync()
-        const justCompleted: Quest[] = []
+        const justCompleted: Task[] = []
         let changed = false
 
         active.forEach(({ group, key }) => {
-            state.groups[key].quests.forEach((quest) => {
-                const item = this.#findItem(group, quest.id)
+            state.groups[key].tasks.forEach((task) => {
+                const item = this.#findItem(group, task.id)
                 if (!item) {
                     return
                 }
 
-                const wasCompleted = this.#isQuestComplete(item, quest)
+                const wasCompleted = this.#isTaskComplete(item, task)
                 let touched = false
 
                 item.targets.forEach((targetConfig) => {
                     if (targetConfig.id !== metric) {
                         return
                     }
-                    const target = this.#ensureTarget(quest, targetConfig.id)
+                    const target = this.#ensureTarget(task, targetConfig.id)
                     const previous = target.progress
                     target.progress = Math.min(Math.max(0, previous + amount), targetConfig.amount)
                     if (target.progress !== previous) {
@@ -124,8 +124,8 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
                     }
                 })
 
-                if (touched && !wasCompleted && this.#isQuestComplete(item, quest)) {
-                    justCompleted.push(this.#buildQuest(group, quest, item))
+                if (touched && !wasCompleted && this.#isTaskComplete(item, task)) {
+                    justCompleted.push(this.#buildTask(group, task, item))
                 }
             })
         })
@@ -136,32 +136,32 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
         return justCompleted
     }
 
-    // Marks a completed quest's rewards as claimed and returns them for the game to
-    // grant. Returns null when the quest is not currently active, not complete, or
+    // Marks a completed task's rewards as claimed and returns them for the game to
+    // grant. Returns null when the task is not currently active, not complete, or
     // already claimed.
-    async claimReward(questId: string): Promise<QuestReward[] | null> {
+    async claimReward(taskId: string): Promise<TaskReward[] | null> {
         const { state, active } = await this.#sync()
-        const found = this.#findQuestEntry(active, state, questId)
-        if (!found || found.quest.claimed) {
+        const found = this.#findTaskEntry(active, state, taskId)
+        if (!found || found.task.claimed) {
             return null
         }
-        const item = this.#findItem(found.group, found.quest.id)
-        if (!item || !this.#isQuestComplete(item, found.quest)) {
+        const item = this.#findItem(found.group, found.task.id)
+        if (!item || !this.#isTaskComplete(item, found.task)) {
             return null
         }
 
-        found.quest.claimed = true
+        found.task.claimed = true
         await this.#persist()
         return item.rewards.map((reward) => ({ id: reward.id, amount: reward.amount }))
     }
 
-    // Loads state, then for every group rolls over to fresh, zeroed quests when its
+    // Loads state, then for every group rolls over to fresh, zeroed tasks when its
     // period changed. Returns the state and the active groups so callers only ever
-    // touch live quests.
-    async #sync(): Promise<{ state: QuestsState, active: { group: QuestGroupConfig, key: string }[] }> {
+    // touch live tasks.
+    async #sync(): Promise<{ state: TasksState, active: { group: TaskGroupConfig, key: string }[] }> {
         const state = await this.#load()
         const now = await this.#getNow()
-        const active: { group: QuestGroupConfig, key: string }[] = []
+        const active: { group: TaskGroupConfig, key: string }[] = []
         let dirty = false
 
         this.#groups.forEach((group) => {
@@ -169,7 +169,7 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
             const period = this.#periodKey(group, now)
             const current = state.groups[key]
             if (!current || current.periodKey !== period) {
-                state.groups[key] = { periodKey: period, quests: this.#buildInitialQuests(group) }
+                state.groups[key] = { periodKey: period, tasks: this.#buildInitialTasks(group) }
                 dirty = true
             }
             active.push({ group, key })
@@ -181,18 +181,18 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
         return { state, active }
     }
 
-    #periodKey(group: QuestGroupConfig, now: number): number {
+    #periodKey(group: TaskGroupConfig, now: number): number {
         switch (group.type) {
-            case QUEST_TYPE.DAILY:
+            case TASK_TYPE.DAILY:
                 return Math.floor(now / MS_PER_DAY)
-            case QUEST_TYPE.WEEKLY:
+            case TASK_TYPE.WEEKLY:
                 return Math.floor(now / MS_PER_WEEK)
             default:
                 return PERMANENT_PERIOD
         }
     }
 
-    #buildInitialQuests(group: QuestGroupConfig): QuestProgress[] {
+    #buildInitialTasks(group: TaskGroupConfig): TaskProgress[] {
         return group.items.map((item) => ({
             id: item.id,
             targets: item.targets.map((target) => ({ id: target.id, progress: 0 })),
@@ -200,33 +200,33 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
         }))
     }
 
-    #ensureTarget(quest: QuestProgress, targetId: string): TargetProgress {
-        let target = quest.targets.find((item) => item.id === targetId)
+    #ensureTarget(task: TaskProgress, targetId: string): TargetProgress {
+        let target = task.targets.find((item) => item.id === targetId)
         if (!target) {
             target = { id: targetId, progress: 0 }
-            quest.targets.push(target)
+            task.targets.push(target)
         }
         return target
     }
 
-    // A quest is complete when every configured target has reached its amount.
-    #isQuestComplete(item: QuestItemConfig, quest: QuestProgress): boolean {
+    // A task is complete when every configured target has reached its amount.
+    #isTaskComplete(item: TaskItemConfig, task: TaskProgress): boolean {
         return item.targets.every((targetConfig) => {
-            const target = quest.targets.find((entry) => entry.id === targetConfig.id)
+            const target = task.targets.find((entry) => entry.id === targetConfig.id)
             return target != null && target.progress >= targetConfig.amount
         })
     }
 
-    #findQuestEntry(
-        active: { group: QuestGroupConfig, key: string }[],
-        state: QuestsState,
-        questId: string,
-    ): { group: QuestGroupConfig, quest: QuestProgress } | null {
-        let found: { group: QuestGroupConfig, quest: QuestProgress } | null = null
+    #findTaskEntry(
+        active: { group: TaskGroupConfig, key: string }[],
+        state: TasksState,
+        taskId: string,
+    ): { group: TaskGroupConfig, task: TaskProgress } | null {
+        let found: { group: TaskGroupConfig, task: TaskProgress } | null = null
         active.some(({ group, key }) => {
-            const quest = state.groups[key].quests.find((item) => item.id === questId)
-            if (quest) {
-                found = { group, quest }
+            const task = state.groups[key].tasks.find((item) => item.id === taskId)
+            if (task) {
+                found = { group, task }
                 return true
             }
             return false
@@ -234,13 +234,13 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
         return found
     }
 
-    #findItem(group: QuestGroupConfig, id: string): QuestItemConfig | undefined {
+    #findItem(group: TaskGroupConfig, id: string): TaskItemConfig | undefined {
         return group.items.find((item) => item.id === id)
     }
 
-    #buildQuest(group: QuestGroupConfig, quest: QuestProgress, item: QuestItemConfig): Quest {
+    #buildTask(group: TaskGroupConfig, task: TaskProgress, item: TaskItemConfig): Task {
         const targets = item.targets.map((targetConfig) => {
-            const stored = quest.targets.find((entry) => entry.id === targetConfig.id)
+            const stored = task.targets.find((entry) => entry.id === targetConfig.id)
             const progress = Math.min(stored ? stored.progress : 0, targetConfig.amount)
             return {
                 id: targetConfig.id,
@@ -255,16 +255,16 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
             targets,
             rewards: item.rewards.map((reward) => ({ id: reward.id, amount: reward.amount })),
             completed: targets.every((target) => target.completed),
-            claimed: quest.claimed,
+            claimed: task.claimed,
         }
     }
 
-    #isValidGroup(group: unknown): group is QuestGroupConfig {
+    #isValidGroup(group: unknown): group is TaskGroupConfig {
         if (!group || typeof group !== 'object') {
             return false
         }
         const data = group as AnyRecord
-        const typeValues = Object.values(QUEST_TYPE) as string[]
+        const typeValues = Object.values(TASK_TYPE) as string[]
         return typeof data.id === 'string'
             && typeof data.type === 'string'
             && typeValues.includes(data.type)
@@ -284,14 +284,14 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
         return time
     }
 
-    #load(): Promise<QuestsState> {
+    #load(): Promise<TasksState> {
         if (this.#state) {
             return Promise.resolve(this.#state)
         }
         if (this.#loadPromise) {
             return this.#loadPromise
         }
-        this.#loadPromise = storageModule.get(QUESTS_STORAGE_KEY, true)
+        this.#loadPromise = storageModule.get(TASKS_STORAGE_KEY, true)
             .then((raw) => {
                 this.#state = this.#normalizeState(raw)
                 this.#loadPromise = null
@@ -309,14 +309,14 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
         if (!this.#state) {
             return Promise.resolve()
         }
-        return storageModule.set(QUESTS_STORAGE_KEY, this.#state)
+        return storageModule.set(TASKS_STORAGE_KEY, this.#state)
     }
 
-    #defaultState(): QuestsState {
+    #defaultState(): TasksState {
         return { groups: {} }
     }
 
-    #normalizeState(raw: unknown): QuestsState {
+    #normalizeState(raw: unknown): TasksState {
         if (!raw || typeof raw !== 'object') {
             return this.#defaultState()
         }
@@ -343,15 +343,15 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
         if (typeof data.periodKey !== 'number') {
             return null
         }
-        const quests = Array.isArray(data.quests)
-            ? data.quests
-                .map((item) => this.#normalizeQuest(item))
-                .filter((item): item is QuestProgress => item !== null)
+        const tasks = Array.isArray(data.tasks)
+            ? data.tasks
+                .map((item) => this.#normalizeTask(item))
+                .filter((item): item is TaskProgress => item !== null)
             : []
-        return { periodKey: Math.floor(data.periodKey), quests }
+        return { periodKey: Math.floor(data.periodKey), tasks }
     }
 
-    #normalizeQuest(raw: unknown): QuestProgress | null {
+    #normalizeTask(raw: unknown): TaskProgress | null {
         if (!raw || typeof raw !== 'object') {
             return null
         }
@@ -382,4 +382,4 @@ class QuestsModule extends ModuleBase<QuestsBridgeContract> {
     }
 }
 
-export default QuestsModule
+export default TasksModule

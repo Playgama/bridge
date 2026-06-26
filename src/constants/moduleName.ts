@@ -30,7 +30,7 @@ export const MODULE_NAME = {
     ACHIEVEMENTS: 'achievements',
     ANALYTICS: 'analytics',
     DAILY_REWARDS: 'daily_rewards',
-    QUESTS: 'quests',
+    TASKS: 'tasks',
     CROSS_PROMO: 'cross_promo',
 } as const
 export type ModuleName = typeof MODULE_NAME[keyof typeof MODULE_NAME]
