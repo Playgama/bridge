@@ -54,21 +54,26 @@ function createModule(bridge: ReturnType<typeof createBridge>) {
     return new QuestsModule().initialize(bridge as unknown as QuestsBridgeContract)
 }
 
-const DAILY_CONFIG: QuestsConfig = {
-    groups: [{
-        cadence: 'daily',
-        pool: [
-            {
-                id: 'd1', metric: 'm1', target: 3, reward: 'r_d1',
-            },
-            {
-                id: 'd2', metric: 'm1', target: 2, reward: 'r_d2',
-            },
-            {
-                id: 'd3', metric: 'm2', target: 5, reward: 'r_d3',
-            },
-        ],
-    }],
+// One daily group: a single-target quest and a two-target quest.
+const DAILY_CONFIG: QuestsConfig = [{
+    id: 'daily',
+    type: 'daily',
+    items: [
+        {
+            id: 'kills',
+            targets: [{ id: 'enemy_killed', amount: 20 }],
+            rewards: [{ id: 'gold', amount: 500 }],
+        },
+        {
+            id: 'combo',
+            targets: [{ id: 'kill', amount: 3 }, { id: 'coin', amount: 100 }],
+            rewards: [{ id: 'gem', amount: 1 }, { id: 'gold', amount: 50 }],
+        },
+    ],
+}]
+
+function find(quests: Awaited<ReturnType<QuestsModule['getQuests']>>, id: string) {
+    return quests.find((q) => q.id === id)!
 }
 
 describe('QuestsModule', () => {
@@ -77,356 +82,134 @@ describe('QuestsModule', () => {
         mockConfig(undefined)
     })
 
-    describe('selection', () => {
-        test('returns active quests tagged with their cadence and zeroed progress', async () => {
+    describe('getQuests', () => {
+        test('returns all items in a group (no selection), tagged with the group type', async () => {
             mockConfig(DAILY_CONFIG)
             const quests = await createModule(createBridge()).getQuests()
-            const d1 = quests.find((q) => q.id === 'd1')!
-            expect(d1).toMatchObject({
-                cadence: 'daily', metric: 'm1', target: 3, progress: 0, completed: false, claimed: false,
-            })
+            expect(quests.map((q) => q.id)).toEqual(['kills', 'combo'])
+            expect(quests.every((q) => q.type === 'daily')).toBe(true)
         })
 
-        test('limits a group to its count', async () => {
-            mockConfig({ groups: [{ cadence: 'daily', count: 2, pool: DAILY_CONFIG.groups[0].pool }] })
-            expect(await createModule(createBridge()).getQuests()).toHaveLength(2)
-        })
-
-        test('random selection is deterministic for a period (stable across instances)', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'daily', count: 2, selection: 'random', pool: DAILY_CONFIG.groups[0].pool,
-                }],
-            })
-
-            const first = (await createModule(createBridge()).getQuests()).map((q) => q.id)
-            store.clear()
-            const second = (await createModule(createBridge()).getQuests()).map((q) => q.id)
-
-            expect(second).toEqual(first)
-        })
-
-        test('sequential selection walks the pool across days', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'daily', count: 2, selection: 'sequential', pool: DAILY_CONFIG.groups[0].pool,
-                }],
-            })
-            const bridge = createBridge()
-            const module = createModule(bridge)
-
-            const day100 = (await module.getQuests()).map((q) => q.id)
-            bridge.clock.ms += MS_PER_DAY
-            const day101 = (await module.getQuests()).map((q) => q.id)
-
-            expect(day100).toEqual(['d1', 'd2'])
-            expect(day101).toEqual(['d3', 'd1']) // wraps
+        test('exposes targets with amount, zeroed progress, and rewards', async () => {
+            mockConfig(DAILY_CONFIG)
+            const kills = find(await createModule(createBridge()).getQuests(), 'kills')
+            expect(kills.targets).toEqual([
+                {
+                    id: 'enemy_killed', amount: 20, progress: 0, completed: false,
+                },
+            ])
+            expect(kills.rewards).toEqual([{ id: 'gold', amount: 500 }])
+            expect(kills.completed).toBe(false)
+            expect(kills.claimed).toBe(false)
         })
     })
 
-    describe('cadences', () => {
-        test('weekly does not reset within the same week but does across weeks', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'weekly',
-                    pool: [{
-                        id: 'wk', metric: 'm', target: 5, reward: 'rwk',
-                    }],
-                }],
-            })
-            const bridge = createBridge()
-            const module = createModule(bridge)
-
-            await module.reportProgress('m', 2)
-            bridge.clock.ms += MS_PER_DAY // same week
-            expect((await module.getQuests()).find((q) => q.id === 'wk')!.progress).toBe(2)
-
-            bridge.clock.ms += MS_PER_WEEK // next week
-            expect((await module.getQuests()).find((q) => q.id === 'wk')!.progress).toBe(0)
-        })
-
-        test('permanent never resets', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'permanent',
-                    pool: [{
-                        id: 'pm', metric: 'm', target: 5, reward: 'rpm',
-                    }],
-                }],
-            })
-            const bridge = createBridge()
-            const module = createModule(bridge)
-
-            await module.reportProgress('m', 3)
-            bridge.clock.ms += 30 * MS_PER_DAY
-            expect((await module.getQuests()).find((q) => q.id === 'pm')!.progress).toBe(3)
-        })
-
-        test('event quests are present only inside the window', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'event',
-                    window: { start: BASE_MS - MS_PER_DAY, end: BASE_MS + MS_PER_DAY },
-                    pool: [{
-                        id: 'ev', metric: 'm', target: 2, reward: 'rev',
-                    }],
-                }],
-            })
-            const bridge = createBridge()
-            const module = createModule(bridge)
-
-            expect((await module.getQuests()).map((q) => q.id)).toEqual(['ev']) // inside
-
-            bridge.clock.ms = BASE_MS + 2 * MS_PER_DAY // past the end
-            expect(await module.getQuests()).toEqual([])
-        })
-
-        test('a completed event reward cannot be claimed after the window ends', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'event',
-                    window: { start: BASE_MS - MS_PER_DAY, end: BASE_MS + MS_PER_DAY },
-                    pool: [{
-                        id: 'ev', metric: 'm', target: 1, reward: 'rev',
-                    }],
-                }],
-            })
-            const bridge = createBridge()
-            const module = createModule(bridge)
-
-            await module.reportProgress('m', 1) // ev complete, unclaimed
-            bridge.clock.ms = BASE_MS + 2 * MS_PER_DAY
-            expect(await module.claimReward('ev')).toBe(false)
-        })
-
-        test('one reportProgress fans out across all active cadences', async () => {
-            mockConfig({
-                groups: [
-                    {
-                        cadence: 'daily',
-                        id: 'd',
-                        pool: [{
-                            id: 'qd', metric: 'm', target: 5, reward: 'rd',
-                        }],
-                    },
-                    {
-                        cadence: 'weekly',
-                        id: 'w',
-                        pool: [{
-                            id: 'qw', metric: 'm', target: 5, reward: 'rw',
-                        }],
-                    },
-                ],
-            })
-            const module = createModule(createBridge())
-
-            await module.reportProgress('m', 1)
-            const quests = await module.getQuests()
-
-            expect(quests.find((q) => q.id === 'qd')!.progress).toBe(1)
-            expect(quests.find((q) => q.id === 'qw')!.progress).toBe(1)
-        })
-    })
-
-    describe('anchor', () => {
-        const HOUR = MS_PER_DAY / 24
-
-        test('player anchor keeps a full day from first play while calendar resets at the UTC boundary', async () => {
-            mockConfig({
-                groups: [
-                    {
-                        cadence: 'daily',
-                        id: 'cal',
-                        pool: [{
-                            id: 'c', metric: 'm', target: 5, reward: 'rc',
-                        }],
-                    },
-                    {
-                        cadence: 'daily',
-                        id: 'plr',
-                        anchor: 'player',
-                        pool: [{
-                            id: 'p', metric: 'm', target: 5, reward: 'rp',
-                        }],
-                    },
-                ],
-            })
-            // First play at 12:00 UTC; the player anchor is captured here.
-            const bridge = createBridge(BASE_MS + 12 * HOUR)
-            const module = createModule(bridge)
-
-            await module.reportProgress('m', 2)
-
-            // 13h later we have crossed the next UTC midnight, but only 13h of the
-            // player's 24h window have elapsed.
-            bridge.clock.ms = BASE_MS + 25 * HOUR
-            const quests = await module.getQuests()
-
-            expect(quests.find((q) => q.id === 'c')!.progress).toBe(0) // calendar reset
-            expect(quests.find((q) => q.id === 'p')!.progress).toBe(2) // player window intact
-        })
-
-        test('player anchor resets a full day after first play', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'daily',
-                    id: 'plr',
-                    anchor: 'player',
-                    pool: [{
-                        id: 'p', metric: 'm', target: 5, reward: 'rp',
-                    }],
-                }],
-            })
-            const bridge = createBridge(BASE_MS + 12 * HOUR)
-            const module = createModule(bridge)
-
-            await module.reportProgress('m', 2)
-            bridge.clock.ms = BASE_MS + 12 * HOUR + MS_PER_DAY // exactly 24h after first play
-            expect((await module.getQuests()).find((q) => q.id === 'p')!.progress).toBe(0)
-        })
-
-        test('the captured anchor persists across module instances', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'daily',
-                    id: 'plr',
-                    anchor: 'player',
-                    pool: [{
-                        id: 'p', metric: 'm', target: 5, reward: 'rp',
-                    }],
-                }],
-            })
-            // First instance captures the anchor at 12:00 UTC and makes progress.
-            await createModule(createBridge(BASE_MS + 12 * HOUR)).reportProgress('m', 2)
-
-            // A later instance, past the next UTC midnight but inside the player's
-            // first 24h, must reuse the stored anchor and keep progress.
-            const quests = await createModule(createBridge(BASE_MS + 25 * HOUR)).getQuests()
-            expect(quests.find((q) => q.id === 'p')!.progress).toBe(2)
-        })
-    })
-
-    describe('segmentation (Pattern A)', () => {
-        const SEG_CONFIG: QuestsConfig = {
-            groups: [{
-                cadence: 'daily',
-                pool: [
-                    {
-                        id: 'easy', metric: 'coin', target: 10, reward: 'r_easy', conditions: { level: { max: 9 } },
-                    },
-                    {
-                        id: 'hard', metric: 'coin', target: 1000, reward: 'r_hard', conditions: { level: { min: 10 } },
-                    },
-                ],
-            }],
-        }
-
-        test('selects the high-level quest for an experienced player', async () => {
-            mockConfig(SEG_CONFIG)
-            const module = createModule(createBridge())
-            module.setPlayerContext({ level: 12 })
-            expect((await module.getQuests()).map((q) => q.id)).toEqual(['hard'])
-        })
-
-        test('selects the low-level quest for a new player', async () => {
-            mockConfig(SEG_CONFIG)
-            const module = createModule(createBridge())
-            module.setPlayerContext({ level: 5 })
-            expect((await module.getQuests()).map((q) => q.id)).toEqual(['easy'])
-        })
-
-        test('fails closed: a conditioned quest is excluded when context is missing', async () => {
-            mockConfig(SEG_CONFIG)
-            const module = createModule(createBridge())
-            expect(await module.getQuests()).toEqual([]) // no setPlayerContext call
-        })
-
-        test('supports eq / in conditions', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'daily',
-                    pool: [
-                        {
-                            id: 'us', metric: 'm', target: 1, reward: 'r', conditions: { region: { eq: 'US' } },
-                        },
-                        {
-                            id: 'eu', metric: 'm', target: 1, reward: 'r', conditions: { region: { in: ['DE', 'FR'] } },
-                        },
-                    ],
-                }],
-            })
-            const module = createModule(createBridge())
-            module.setPlayerContext({ region: 'FR' })
-            expect((await module.getQuests()).map((q) => q.id)).toEqual(['eu'])
-        })
-
-        test('locks the selected set for the period even if context changes mid-period', async () => {
-            mockConfig(SEG_CONFIG)
-            const module = createModule(createBridge())
-            module.setPlayerContext({ level: 5 })
-            await module.getQuests() // rolls over -> 'easy' locked for the day
-
-            module.setPlayerContext({ level: 50 })
-            expect((await module.getQuests()).map((q) => q.id)).toEqual(['easy']) // unchanged this period
-        })
-    })
-
-    describe('reportProgress', () => {
-        test('clamps progress to the target', async () => {
+    describe('addProgress', () => {
+        test('advances the matching target and clamps to its amount', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
-            await module.reportProgress('m1', 100)
-            expect((await module.getQuests()).find((q) => q.id === 'd1')!.progress).toBe(3)
+            await module.addProgress('enemy_killed', 999)
+            const kills = find(await module.getQuests(), 'kills')
+            expect(kills.targets[0].progress).toBe(20)
+            expect(kills.completed).toBe(true)
         })
 
-        test('returns the quests that became complete on this call', async () => {
+        test('only touches targets watching the reported metric', async () => {
+            mockConfig(DAILY_CONFIG)
+            const module = createModule(createBridge())
+            await module.addProgress('kill', 2)
+            const combo = find(await module.getQuests(), 'combo')
+            expect(combo.targets.find((t) => t.id === 'kill')!.progress).toBe(2)
+            expect(combo.targets.find((t) => t.id === 'coin')!.progress).toBe(0)
+        })
+
+        test('multi-target quest completes only when ALL targets are met (AND)', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
 
-            expect((await module.reportProgress('m1', 2)).map((q) => q.id)).toEqual(['d2']) // target 2
-            expect((await module.reportProgress('m1', 1)).map((q) => q.id)).toEqual(['d1']) // target 3
+            const afterKills = await module.addProgress('kill', 3) // one target met
+            expect(afterKills).toEqual([]) // combo not complete yet (coin still 0)
+
+            const afterCoins = await module.addProgress('coin', 100) // second target met
+            expect(afterCoins.map((q) => q.id)).toEqual(['combo']) // now complete
+            expect(find(await module.getQuests(), 'combo').completed).toBe(true)
         })
 
         test('is a no-op for an unwatched metric', async () => {
             mockConfig(DAILY_CONFIG)
-            expect(await createModule(createBridge()).reportProgress('unknown', 5)).toEqual([])
+            expect(await createModule(createBridge()).addProgress('unknown', 5)).toEqual([])
         })
 
-        test('setProgress sets an absolute value, clamped', async () => {
-            mockConfig(DAILY_CONFIG)
+        test('one report fans out across all active quest types', async () => {
+            mockConfig([
+                { id: 'daily', type: 'daily', items: [{ id: 'qd', targets: [{ id: 'm', amount: 5 }], rewards: [] }] },
+                { id: 'weekly', type: 'weekly', items: [{ id: 'qw', targets: [{ id: 'm', amount: 5 }], rewards: [] }] },
+            ])
             const module = createModule(createBridge())
-            expect((await module.setProgress('m2', 999)).map((q) => q.id)).toEqual(['d3'])
-            expect((await module.getQuests()).find((q) => q.id === 'd3')!.progress).toBe(5)
+            await module.addProgress('m', 1)
+            const quests = await module.getQuests()
+            expect(find(quests, 'qd').targets[0].progress).toBe(1)
+            expect(find(quests, 'qw').targets[0].progress).toBe(1)
         })
     })
 
-    describe('claim guards', () => {
-        test('claimReward fails until complete, succeeds once, then fails again', async () => {
+    describe('claimReward', () => {
+        test('returns the rewards once the quest is complete', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
+            await module.addProgress('kill', 3)
+            await module.addProgress('coin', 100)
 
-            await module.reportProgress('m1', 1) // d1 at 1/3
-            expect(await module.claimReward('d1')).toBe(false)
-
-            await module.reportProgress('m1', 2) // d1 complete
-            expect(await module.claimReward('d1')).toBe(true)
-            expect(await module.claimReward('d1')).toBe(false)
+            expect(await module.claimReward('combo')).toEqual([
+                { id: 'gem', amount: 1 },
+                { id: 'gold', amount: 50 },
+            ])
         })
 
-        test('claimReward fails for an unknown quest id', async () => {
-            mockConfig(DAILY_CONFIG)
-            expect(await createModule(createBridge()).claimReward('nope')).toBe(false)
-        })
-
-        test('getCurrentReward returns the reward only while completed and unclaimed', async () => {
+        test('returns null while the quest is incomplete', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
+            await module.addProgress('kill', 3) // combo still missing the coin target
+            expect(await module.claimReward('combo')).toBeNull()
+        })
 
-            expect(await module.getCurrentReward('d1')).toBeNull()
-            await module.reportProgress('m1', 3)
-            expect(await module.getCurrentReward('d1')).toBe('r_d1')
-            await module.claimReward('d1')
-            expect(await module.getCurrentReward('d1')).toBeNull()
+        test('cannot be claimed twice', async () => {
+            mockConfig(DAILY_CONFIG)
+            const module = createModule(createBridge())
+            await module.addProgress('enemy_killed', 20)
+
+            expect(await module.claimReward('kills')).toEqual([{ id: 'gold', amount: 500 }])
+            expect(await module.claimReward('kills')).toBeNull()
+        })
+
+        test('returns null for an unknown quest id', async () => {
+            mockConfig(DAILY_CONFIG)
+            expect(await createModule(createBridge()).claimReward('nope')).toBeNull()
+        })
+    })
+
+    describe('types', () => {
+        test('weekly does not reset within the same week but does across weeks', async () => {
+            mockConfig([{ id: 'weekly', type: 'weekly', items: [{ id: 'wk', targets: [{ id: 'm', amount: 5 }], rewards: [] }] }])
+            const bridge = createBridge()
+            const module = createModule(bridge)
+
+            await module.addProgress('m', 2)
+            bridge.clock.ms += MS_PER_DAY // same week
+            expect(find(await module.getQuests(), 'wk').targets[0].progress).toBe(2)
+
+            bridge.clock.ms += MS_PER_WEEK // next week
+            expect(find(await module.getQuests(), 'wk').targets[0].progress).toBe(0)
+        })
+
+        test('permanent never resets', async () => {
+            mockConfig([{ id: 'perm', type: 'permanent', items: [{ id: 'pm', targets: [{ id: 'm', amount: 5 }], rewards: [] }] }])
+            const bridge = createBridge()
+            const module = createModule(bridge)
+
+            await module.addProgress('m', 3)
+            bridge.clock.ms += 30 * MS_PER_DAY
+            expect(find(await module.getQuests(), 'pm').targets[0].progress).toBe(3)
         })
     })
 
@@ -436,39 +219,32 @@ describe('QuestsModule', () => {
             const bridge = createBridge()
             const module = createModule(bridge)
 
-            await module.reportProgress('m1', 3)
-            await module.claimReward('d1')
+            await module.addProgress('enemy_killed', 20)
+            await module.claimReward('kills')
 
             bridge.clock.ms += MS_PER_DAY
-            const d1 = (await module.getQuests()).find((q) => q.id === 'd1')!
-            expect(d1.progress).toBe(0)
-            expect(d1.claimed).toBe(false)
+            const kills = find(await module.getQuests(), 'kills')
+            expect(kills.targets[0].progress).toBe(0)
+            expect(kills.claimed).toBe(false)
         })
 
-        test('progress persists across module instances in the same period', async () => {
+        test('partial progress persists across module instances in the same period', async () => {
             mockConfig(DAILY_CONFIG)
-            await createModule(createBridge()).reportProgress('m1', 2)
+            await createModule(createBridge()).addProgress('enemy_killed', 7) // does not complete
 
-            const quests = await createModule(createBridge()).getQuests()
-            expect(quests.find((q) => q.id === 'd1')!.progress).toBe(2)
+            const kills = find(await createModule(createBridge()).getQuests(), 'kills')
+            expect(kills.targets[0].progress).toBe(7)
         })
     })
 
     describe('empty / malformed config', () => {
-        test('returns no quests when there are no groups', async () => {
+        test('returns no quests when config is missing', async () => {
             mockConfig(undefined)
             expect(await createModule(createBridge()).getQuests()).toEqual([])
         })
 
-        test('ignores groups with an unknown cadence', async () => {
-            mockConfig({
-                groups: [{
-                    cadence: 'monthly' as never,
-                    pool: [{
-                        id: 'x', metric: 'm', target: 1, reward: 'r',
-                    }],
-                }],
-            })
+        test('ignores groups with an unknown type', async () => {
+            mockConfig([{ id: 'm', type: 'monthly' as never, items: [{ id: 'x', targets: [{ id: 'm', amount: 1 }], rewards: [] }] }])
             expect(await createModule(createBridge()).getQuests()).toEqual([])
         })
     })

@@ -21,34 +21,11 @@ export const MS_PER_DAY = 86400000
 
 export const MS_PER_WEEK = 604800000
 
-export const CADENCE = {
+export const QUEST_TYPE = {
     DAILY: 'daily',
     WEEKLY: 'weekly',
     PERMANENT: 'permanent',
-    EVENT: 'event',
 } as const
-
-export const SELECTION_MODE = {
-    RANDOM: 'random',
-    SEQUENTIAL: 'sequential',
-} as const
-
-// How a daily/weekly period is anchored. 'calendar' resets on the shared UTC
-// boundary (same for all players); 'player' resets relative to the player's first
-// play, giving every player a full period from when they started.
-export const ANCHOR = {
-    CALENDAR: 'calendar',
-    PLAYER: 'player',
-} as const
-
-// Per-cadence salt so two groups that share a period number do not shuffle
-// in lockstep; combined with the period to seed the deterministic selection.
-export const CADENCE_SEED_SALT: Record<string, number> = {
-    daily: 1,
-    weekly: 2,
-    permanent: 3,
-    event: 4,
-}
 
 // The constant period a 'permanent' group always reports; it never rolls over.
 export const PERMANENT_PERIOD = 0

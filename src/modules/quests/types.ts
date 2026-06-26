@@ -18,104 +18,88 @@
 import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { AnyRecord } from '../../utils'
-import type { CADENCE, SELECTION_MODE, ANCHOR } from './constants'
+import type { QUEST_TYPE } from './constants'
 
-export type Cadence = typeof CADENCE[keyof typeof CADENCE]
+export type QuestType = typeof QUEST_TYPE[keyof typeof QUEST_TYPE]
 
-export type SelectionMode = typeof SELECTION_MODE[keyof typeof SELECTION_MODE]
-
-export type Anchor = typeof ANCHOR[keyof typeof ANCHOR]
-
-// Attribute values the game knows about the player. Supplied via setPlayerContext()
-// and matched against quest conditions to decide eligibility (Pattern A segmentation).
-export type PlayerContext = Record<string, number | string | boolean>
-
-// A single eligibility constraint on one player attribute. All provided checks
-// must pass. `min`/`max` apply to numbers; `eq`/`in` to any value.
-export interface QuestCondition {
-    min?: number
-    max?: number
-    eq?: number | string | boolean
-    in?: (number | string | boolean)[]
-}
-
-// Conditions keyed by player-attribute name (e.g. { level: { min: 10 } }). A quest
-// is eligible only if every referenced attribute is present in the context AND
-// satisfies its constraint (fail-closed on missing attributes).
-export type QuestConditions = Record<string, QuestCondition>
-
-// A single quest definition from a group's pool. Data-only: `metric` is the join
-// key with gameplay, `target` the amount needed, `reward` an opaque id the game
-// redeems. Display text is owned by the game. Ids must be unique across all groups.
-export interface QuestTemplate {
+// One objective of a quest. `id` is the gameplay metric the game reports via
+// addProgress(); `amount` is the value that completes this target.
+export interface QuestTargetConfig {
     id: string
-    metric: string
-    target: number
-    reward: string
-    conditions?: QuestConditions
+    amount: number
 }
 
-// The active window for an 'event' cadence group, as epoch-ms bounds (inclusive).
-export interface EventWindow {
-    start: number
-    end: number
+// One reward granted when a quest completes. Data-only: `id`/`amount` are opaque
+// to the module — the game decides what they mean and grants them.
+export interface QuestRewardConfig {
+    id: string
+    amount: number
 }
 
-// A group of quests sharing a cadence and selection policy.
+// A single quest definition. Completes when ALL of its targets reach their amount.
+export interface QuestItemConfig {
+    id: string
+    targets: QuestTargetConfig[]
+    rewards: QuestRewardConfig[]
+}
+
+// A group of quests sharing a type. Every item is active for the period (no
+// selection). `id` is the stable storage key.
 export interface QuestGroupConfig {
-    cadence: Cadence
-    // Optional stable key; defaults to `${cadence}:${index}`. Set it when you have
-    // multiple groups of the same cadence so their stored state stays distinct.
-    id?: string
-    // How many quests are active per period. Defaults to all eligible quests.
-    count?: number
-    selection?: SelectionMode
-    // Daily/weekly period anchoring; defaults to 'calendar'. 'player' makes the
-    // period roll over relative to the player's first play. Ignored for
-    // 'permanent' and 'event' cadences.
-    anchor?: Anchor
-    // Required for the 'event' cadence; ignored otherwise.
-    window?: EventWindow
-    pool: QuestTemplate[]
+    id: string
+    type: QuestType
+    items: QuestItemConfig[]
 }
 
-export interface QuestsConfig {
-    groups: QuestGroupConfig[]
-}
+// The whole quests config: a list of groups.
+export type QuestsConfig = QuestGroupConfig[]
 
-// Per-quest progress for the active period, persisted through the storage module.
-export interface QuestProgress {
+// Persisted progress for one target.
+export interface TargetProgress {
     id: string
     progress: number
+}
+
+// Persisted progress for one quest within the active period.
+export interface QuestProgress {
+    id: string
+    targets: TargetProgress[]
     claimed: boolean
 }
 
-// Persisted state for one group: the period its quests belong to (a roll-over
-// trigger), the chosen quests, and the sequential-selection cursor.
+// Persisted state for one group: the period its progress belongs to (a roll-over
+// trigger) and the per-quest progress.
 export interface GroupState {
     periodKey: number
     quests: QuestProgress[]
-    poolCursor: number
 }
 
 export interface QuestsState {
-    // Keyed by group key (QuestGroupConfig.id ?? `${cadence}:${index}`).
+    // Keyed by group id.
     groups: Record<string, GroupState>
-    // First-play timestamp (epoch ms) per player-anchored group key, captured once.
-    anchors: Record<string, number>
 }
 
-// What getQuests()/reportProgress() return: a template joined with live progress
-// and tagged with its cadence so the game can group quests in the UI.
+// A target as returned to the game: its goal, current (clamped) progress, and
+// whether it is met.
+export interface QuestTarget {
+    id: string
+    amount: number
+    progress: number
+    completed: boolean
+}
+
+export interface QuestReward {
+    id: string
+    amount: number
+}
+
+// What getQuests()/addProgress() return: a quest joined with live progress,
+// tagged with its group type. `completed` is true once every target is met.
 export interface Quest {
     id: string
-    cadence: Cadence
-    metric: string
-    reward: string
-    // Current amount, clamped to target.
-    progress: number
-    // Needed amount.
-    target: number
+    type: QuestType
+    targets: QuestTarget[]
+    rewards: QuestReward[]
     completed: boolean
     claimed: boolean
 }

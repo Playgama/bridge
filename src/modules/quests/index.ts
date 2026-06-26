@@ -21,12 +21,12 @@ export type {
     QuestsConfig,
     QuestsBridgeContract,
     QuestGroupConfig,
-    QuestTemplate,
-    QuestCondition,
-    QuestConditions,
-    PlayerContext,
-    Cadence,
-    Anchor,
+    QuestItemConfig,
+    QuestTargetConfig,
+    QuestRewardConfig,
+    QuestType,
     Quest,
+    QuestTarget,
+    QuestReward,
 } from './types'
 export default new QuestsModule()
