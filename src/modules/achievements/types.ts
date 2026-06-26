@@ -25,9 +25,20 @@ import type { AnyRecord } from '../../utils'
 export type AchievementPlatformData = string | AnyRecord
 
 // Config mapping entry: a game-level id plus a data object per platform.
+// `name` and `description` are optional game-level metadata used by the
+// SDK-managed local fallback (see LocalAchievements) on platforms without
+// native achievements support.
 export interface AchievementMapping {
     id: string
+    name?: string
+    description?: string
     [platform: string]: string | AnyRecord | undefined
+}
+
+// State persisted by the SDK-managed local fallback: the game-level ids the
+// player has unlocked so far.
+export interface LocalAchievementsState {
+    unlocked: string[]
 }
 
 // Platform-agnostic achievement shape returned by achievementsGetList().

@@ -16,3 +16,7 @@
  */
 
 export const GUEST_ID_STORAGE_KEY = 'bridge-player-guest-id'
+
+// Key used by SDK v1 (main). Read once on upgrade so existing guest players keep
+// their stable identity, then re-persisted under GUEST_ID_STORAGE_KEY.
+export const LEGACY_GUEST_ID_STORAGE_KEY = 'bridge_player_guest_id'

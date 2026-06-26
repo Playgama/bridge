@@ -21,5 +21,7 @@ export type {
     CrossPromoConfig,
     CrossPromoGame,
     CrossPromoBridgeContract,
+    Game,
 } from './types'
+export { CROSS_PROMO_SOURCE, type CrossPromoSource } from './constants'
 export default new CrossPromoModule()

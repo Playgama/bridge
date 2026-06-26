@@ -17,5 +17,12 @@
 
 import SocialModule from './SocialModule'
 
-export type { SocialBridgeContract, SocialOptions } from './SocialModule'
+export type {
+    SocialBridgeContract,
+    SocialOptions,
+    SocialConfig,
+    SocialMethod,
+} from './types'
+export { getSocialPlatformData } from './helpers'
+
 export default new SocialModule()

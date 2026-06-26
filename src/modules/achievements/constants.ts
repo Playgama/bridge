@@ -15,12 +15,4 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export * from './script'
-export * from './dom'
-export * from './messaging'
-export * from './async'
-export * from './object'
-export * from './string'
-export * from './image'
-export * from './random'
-export * from './json'
+export const ACHIEVEMENTS_STORAGE_KEY = 'bridge-achievements-state'

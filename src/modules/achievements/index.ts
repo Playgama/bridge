@@ -21,6 +21,7 @@ export type {
     AchievementsBridgeContract,
     AchievementMapping,
     AchievementPlatformData,
+    LocalAchievementsState,
     NormalizedAchievement,
 } from './types'
 export { getAchievementPlatformData, findAchievementGameId } from './helpers'

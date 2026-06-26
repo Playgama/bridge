@@ -33,6 +33,7 @@ export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     deviceOs: DeviceOs
     options: AnalyticsBridgeOptions
     launchSource: LaunchSource | null
+    isPlatformExternalCallsSupported: boolean
     additionalData?: { clid?: string } & Record<string, unknown>
 }
 

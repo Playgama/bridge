@@ -17,7 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import {
-    addJavaScript, deformatPrice, waitFor, type AnyRecord,
+    addJavaScript, deformatPrice, isBase64Image, waitFor, type AnyRecord,
 } from '../utils'
 import { ACTION_NAME, ERROR } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
@@ -48,7 +48,7 @@ interface DiscordSdkInstance {
         getSkus(): Promise<{ skus: DiscordSku[] }>
         getEntitlements(): Promise<{ entitlements: DiscordPurchase[] }>
         openInviteDialog(): Promise<unknown>
-        openShareMomentDialog(options: { mediaUrl: string }): Promise<unknown>
+        openShareMomentDialog(options: AnyRecord & { mediaUrl: string }): Promise<unknown>
     }
 }
 
@@ -69,10 +69,6 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId(): PlatformId {
         return PLATFORM_ID.DISCORD
-    }
-
-    get isPlatformExternalCallsSupported(): boolean {
-        return false
     }
 
     // player
@@ -358,8 +354,11 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
     }
 
     share(options?: unknown): Promise<unknown> {
-        const opts = (options ?? {}) as { mediaUrl?: string }
-        if (!opts.mediaUrl) {
+        // Discord shares media by URL: take the canonical `image` when it is an
+        // URL, otherwise fall back to the canonical `url`.
+        const { image, url, ...rest } = (options ?? {}) as AnyRecord & { image?: string; url?: string }
+        const mediaUrl = image && !isBase64Image(image) ? image : url
+        if (!mediaUrl) {
             return Promise.reject()
         }
 
@@ -367,7 +366,8 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE);
             (this._platformSdk as DiscordSdkInstance).commands.openShareMomentDialog({
-                mediaUrl: opts.mediaUrl,
+                ...rest,
+                mediaUrl,
             })
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.SHARE)

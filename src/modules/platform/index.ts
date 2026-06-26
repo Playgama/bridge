@@ -20,6 +20,5 @@ import PlatformModule from './PlatformModule'
 export type {
     PlatformBridgeContract,
     PlatformMessageOptions,
-    GameByIdOptions,
 } from './PlatformModule'
 export default new PlatformModule()

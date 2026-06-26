@@ -150,16 +150,8 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return super.platformTld
     }
 
-    get isPlatformGetAllGamesSupported(): boolean {
+    get isPlatformGamesListSupported(): boolean {
         return true
-    }
-
-    get isPlatformGetGameByIdSupported(): boolean {
-        return true
-    }
-
-    get isPlatformExternalCallsSupported(): boolean {
-        return false
     }
 
     // advertisement
@@ -206,7 +198,7 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return false
     }
 
@@ -352,27 +344,21 @@ class YandexPlatformBridge extends PlatformBridgeBase {
         return this.#serverTimeCache.getServerTime()
     }
 
-    getAllGames(): Promise<unknown> {
-        return new Promise((resolve, reject) => {
-            (this._platformSdk as YandexSdk).features.GamesAPI.getAllGames()
-                .then(({ games }) => {
-                    resolve(games)
-                })
-                .catch(reject)
-        })
-    }
-
-    getGameById(options?: { gameId?: string | number }): Promise<unknown> {
-        if (!options?.gameId) {
-            return Promise.reject(new Error('Provide gameId'))
-        }
-
-        return new Promise((resolve, reject) => {
-            (this._platformSdk as YandexSdk).features.GamesAPI.getGameByID(options.gameId!)
-                .then(({ game, isAvailable }) => {
-                    resolve({ ...game, isAvailable })
-                })
-                .catch(reject)
+    // Builds the catalog: fetches the list, enriches each entry with its detailed
+    // info, and merges both into a single flat object per game.
+    getGamesList(): Promise<unknown[]> {
+        const { GamesAPI } = (this._platformSdk as YandexSdk).features
+        return GamesAPI.getAllGames().then(({ games }) => {
+            const list = Array.isArray(games) ? games : []
+            return Promise.all(list.map((game) => {
+                const gameId = (game.appID ?? game.id) as string | number | undefined
+                if (gameId === undefined) {
+                    return game
+                }
+                return GamesAPI.getGameByID(gameId)
+                    .then(({ game: details, isAvailable }) => ({ ...game, ...details, isAvailable }))
+                    .catch(() => game)
+            }))
         })
     }
 

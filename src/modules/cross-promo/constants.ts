@@ -21,6 +21,12 @@ export const DEFAULT_TITLE = 'More games'
 export const GAMES_PER_SHOW = 4
 export const ICON_ASPECT_RATIO = '183 / 256'
 
+export const CROSS_PROMO_SOURCE = {
+    CONFIG: 'config',
+    PLATFORM: 'platform',
+} as const
+export type CrossPromoSource = typeof CROSS_PROMO_SOURCE[keyof typeof CROSS_PROMO_SOURCE]
+
 export const STYLES = `
     #${CONTAINER_ID} {
         position: fixed;

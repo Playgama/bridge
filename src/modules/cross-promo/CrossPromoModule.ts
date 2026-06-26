@@ -18,6 +18,7 @@
 import ModuleBase from '../ModuleBase'
 import eventBus from '../../lib/EventBus'
 import bridgeConfig from '../../lib/bridge-config'
+import type { AnyRecord } from '../../utils'
 import { EVENT_NAME } from '../../constants'
 import { INTERSTITIAL_STATE, REWARDED_STATE } from '../advertisement/constants'
 import {
@@ -26,10 +27,17 @@ import {
     DEFAULT_TITLE,
     GAMES_PER_SHOW,
     STYLES,
+    CROSS_PROMO_SOURCE,
+    type CrossPromoSource,
 } from './constants'
+import {
+    normalizeConfigGame,
+    normalizePlatformGame,
+    pickRandomGames,
+} from './helpers'
 import type {
     CrossPromoConfig,
-    CrossPromoGame,
+    Game,
     CrossPromoBridgeContract,
 } from './types'
 
@@ -40,27 +48,47 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
 
     #container: HTMLDivElement | null = null
 
+    #source: CrossPromoSource = CROSS_PROMO_SOURCE.CONFIG
+
     initialize(platformBridge: CrossPromoBridgeContract): this {
         super.initialize(platformBridge)
+        this.#source = this.#resolveSource()
         this.#subscribeToAdEvents()
         return this
     }
 
-    show(): void {
+    // Public API: the full games list from the configured source, normalized to
+    // Game[] with complete info per game. Resolves to an empty array when the
+    // source is unsupported, errors, or has no games.
+    getGamesList(): Promise<Game[]> {
+        if (this.#source === CROSS_PROMO_SOURCE.PLATFORM) {
+            return this.#getPlatformGames()
+        }
+
+        return Promise.resolve(this.#getConfigGames())
+    }
+
+    async show(): Promise<void> {
         if (this.#container) {
             return
         }
 
-        const config = this.#getConfig()
-        const games = this.#getGames(config)
-        if (games.length === 0) {
+        const games = await this.getGamesList()
+
+        // A concurrent show()/hide() may have changed state while we awaited.
+        if (this.#container) {
             return
         }
 
-        const selectedGames = this.#pickRandomGames(games, GAMES_PER_SHOW)
+        const renderable = games.filter((game) => game && game.url)
+        if (renderable.length === 0) {
+            return
+        }
+
+        const selectedGames = pickRandomGames(renderable, GAMES_PER_SHOW)
 
         this.#injectStyles()
-        this.#container = this.#createContainer(selectedGames, config.title)
+        this.#container = this.#createContainer(selectedGames, this.#getConfig().title)
         document.body.appendChild(this.#container)
     }
 
@@ -71,6 +99,14 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
 
         this.#container.remove()
         this.#container = null
+    }
+
+    #resolveSource(): CrossPromoSource {
+        const { source } = this.#getConfig()
+        if (source === CROSS_PROMO_SOURCE.PLATFORM || source === CROSS_PROMO_SOURCE.CONFIG) {
+            return source
+        }
+        return CROSS_PROMO_SOURCE.CONFIG
     }
 
     #subscribeToAdEvents(): void {
@@ -91,27 +127,25 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
         return bridgeConfig.getValues().crossPromo ?? {}
     }
 
-    #getGames(config: CrossPromoConfig): CrossPromoGame[] {
-        const games = config?.games
+    #getConfigGames(): Game[] {
+        const { games } = this.#getConfig()
         if (!Array.isArray(games)) {
             return []
         }
-        return games.filter((game) => game && game.url)
+        return games
+            .filter((game) => game && game.url)
+            .map(normalizeConfigGame)
     }
 
-    #pickRandomGames(games: CrossPromoGame[], count: number): CrossPromoGame[] {
-        if (games.length <= count) {
-            return games.slice()
+    // Reads the catalog from the platform SDK on platforms that support it;
+    // resolves to an empty array elsewhere or on error.
+    #getPlatformGames(): Promise<Game[]> {
+        if (!this._platformBridge.isPlatformGamesListSupported) {
+            return Promise.resolve([])
         }
-
-        const pool = games.slice()
-        for (let i = pool.length - 1; i > 0; i -= 1) {
-            const j = Math.floor(Math.random() * (i + 1))
-            const temp = pool[i]
-            pool[i] = pool[j]
-            pool[j] = temp
-        }
-        return pool.slice(0, count)
+        return this._platformBridge.getGamesList()
+            .then((games) => (Array.isArray(games) ? (games as AnyRecord[]).map(normalizePlatformGame) : []))
+            .catch(() => [])
     }
 
     #injectStyles(): void {
@@ -125,7 +159,7 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
         document.head.appendChild(style)
     }
 
-    #createContainer(games: CrossPromoGame[], title?: string): HTMLDivElement {
+    #createContainer(games: Game[], title?: string): HTMLDivElement {
         const container = document.createElement('div')
         container.id = CONTAINER_ID
 
@@ -185,7 +219,7 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
         return container
     }
 
-    #createTile(game: CrossPromoGame): HTMLAnchorElement {
+    #createTile(game: Game): HTMLAnchorElement {
         const tile = document.createElement('a')
         tile.className = 'bridge-cp-tile'
         tile.href = game.url
@@ -194,8 +228,8 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
 
         const thumb = document.createElement('div')
         thumb.className = 'bridge-cp-thumb'
-        if (game.icon) {
-            thumb.style.backgroundImage = `url('${game.icon.replace(/'/g, "\\'")}')`
+        if (game.iconUrl) {
+            thumb.style.backgroundImage = `url('${game.iconUrl.replace(/'/g, "\\'")}')`
         }
         tile.appendChild(thumb)
 

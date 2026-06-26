@@ -108,11 +108,4 @@ describe('AchievementsModule', () => {
             expect(list).toEqual(platformList)
         })
     })
-
-    describe('isSupported', () => {
-        test('proxies the platform bridge getter', () => {
-            expect(createModule(createBridge('y8', { isAchievementsSupported: true })).isSupported).toBe(true)
-            expect(createModule(createBridge('y8', { isAchievementsSupported: false })).isSupported).toBe(false)
-        })
-    })
 })

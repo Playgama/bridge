@@ -92,7 +92,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return false
     }
 

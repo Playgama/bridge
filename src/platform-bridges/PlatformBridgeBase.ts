@@ -101,11 +101,7 @@ class PlatformBridgeBase {
         return null
     }
 
-    get isPlatformGetAllGamesSupported(): boolean {
-        return false
-    }
-
-    get isPlatformGetGameByIdSupported(): boolean {
+    get isPlatformGamesListSupported(): boolean {
         return false
     }
 
@@ -221,7 +217,7 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isExternalLinksAllowed(): boolean {
+    get isPlatformExternalLinksAllowed(): boolean {
         return true
     }
 
@@ -378,6 +374,12 @@ class PlatformBridgeBase {
 
     getServerTime(): Promise<number> {
         return serverTimeCache.getServerTime()
+    }
+
+    // Returns the platform games catalog as a flat array of detailed games.
+    // Platforms that expose a catalog (isPlatformGamesListSupported) override this.
+    getGamesList(): Promise<unknown[]> {
+        return Promise.resolve([])
     }
 
     // cloud storage — each platform that supports it implements these three methods itself
