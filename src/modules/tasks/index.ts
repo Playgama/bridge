@@ -15,22 +15,18 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const MODULE_NAME = {
-    CORE: 'core',
-    PLATFORM: 'platform',
-    PLAYER: 'player',
-    STORAGE: 'storage',
-    ADVERTISEMENT: 'advertisement',
-    SOCIAL: 'social',
-    DEVICE: 'device',
-    LEADERBOARDS: 'leaderboards',
-    PAYMENTS: 'payments',
-    REMOTE_CONFIG: 'remote_config',
-    CLIPBOARD: 'clipboard',
-    ACHIEVEMENTS: 'achievements',
-    ANALYTICS: 'analytics',
-    DAILY_REWARDS: 'daily_rewards',
-    TASKS: 'tasks',
-    CROSS_PROMO: 'cross_promo',
-} as const
-export type ModuleName = typeof MODULE_NAME[keyof typeof MODULE_NAME]
+import TasksModule from './TasksModule'
+
+export type {
+    TasksConfig,
+    TasksBridgeContract,
+    TaskGroupConfig,
+    TaskItemConfig,
+    TaskTargetConfig,
+    TaskRewardConfig,
+    TaskType,
+    Task,
+    TaskTarget,
+    TaskReward,
+} from './types'
+export default new TasksModule()

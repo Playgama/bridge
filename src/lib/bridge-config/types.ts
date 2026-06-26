@@ -18,6 +18,7 @@
 import type { AnyRecord } from '../../utils'
 import type { AdvertisementOptions } from '../../modules/advertisement/types'
 import type { DailyRewardsConfig } from '../../modules/daily-rewards/types'
+import type { TasksConfig } from '../../modules/tasks/types'
 import type { AchievementMapping } from '../../modules/achievements/types'
 import type { CrossPromoConfig } from '../../modules/cross-promo/types'
 import type { LeaderboardMapping } from '../../modules/leaderboards'
@@ -57,6 +58,7 @@ export interface ConfigFileOptions extends AnyRecord {
     game?: GameConfig
     advertisement?: AdvertisementOptions
     dailyRewards?: DailyRewardsConfig
+    tasks?: TasksConfig
     achievements?: AchievementMapping[]
     leaderboards?: LeaderboardMapping[]
     device?: DeviceConfig

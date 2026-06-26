@@ -53,6 +53,7 @@ import remoteConfigModule from './modules/remote-config'
 import clipboardModule from './modules/clipboard'
 import achievementsModule from './modules/achievements'
 import dailyRewardsModule from './modules/daily-rewards'
+import tasksModule from './modules/tasks'
 import crossPromoModule from './modules/cross-promo'
 import analyticsModule, { internalAnalytics } from './modules/analytics'
 import { applyBrowserDefaultsProtection } from './utils'
@@ -142,6 +143,10 @@ class PlaygamaBridge {
 
     get dailyRewards(): unknown {
         return this.#getModule(MODULE_NAME.DAILY_REWARDS)
+    }
+
+    get tasks(): unknown {
+        return this.#getModule(MODULE_NAME.TASKS)
     }
 
     get crossPromo(): unknown {
@@ -235,6 +240,7 @@ class PlaygamaBridge {
                 { name: MODULE_NAME.ACHIEVEMENTS, module: achievementsModule },
                 { name: MODULE_NAME.ANALYTICS, module: analyticsModule },
                 { name: MODULE_NAME.DAILY_REWARDS, module: dailyRewardsModule },
+                { name: MODULE_NAME.TASKS, module: tasksModule },
                 { name: MODULE_NAME.CROSS_PROMO, module: crossPromoModule },
             ]
 
