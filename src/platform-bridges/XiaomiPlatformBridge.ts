@@ -68,6 +68,11 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // social
+    get isPlatformExternalLinksAllowed(): boolean {
+        return false
+    }
+
     #showAd: ShowAdFn | null = null
 
     #bannerContainer: HTMLDivElement | null = null

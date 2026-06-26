@@ -123,6 +123,11 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // social
+    get isPlatformExternalLinksAllowed(): boolean {
+        return false
+    }
+
     // player
     get isPlayerAuthorizationSupported(): boolean {
         return true
