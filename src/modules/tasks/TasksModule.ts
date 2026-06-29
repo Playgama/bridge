@@ -31,7 +31,6 @@ import type {
     GroupState,
     TasksBridgeContract,
     Task,
-    TaskReward,
     TaskProgress,
     TargetProgress,
     TaskItemConfig,
@@ -94,11 +93,10 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
     }
 
     // Increments every active target watching `metric` by `amount` (clamped to its
-    // target amount), across all types. Returns the tasks that became fully
-    // complete on this call. No-op metrics return [].
-    async addProgress(metric: string, amount = 1): Promise<Task[]> {
+    // target amount), across all types. The game reads updated state via getTasks();
+    // a target's rewards are available on its Task once it is completed.
+    async addProgress(metric: string, amount = 1): Promise<void> {
         const { state, active } = await this.#sync()
-        const justCompleted: Task[] = []
         let changed = false
 
         active.forEach(({ group, key }) => {
@@ -107,9 +105,6 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
                 if (!item) {
                     return
                 }
-
-                const wasCompleted = this.#isTaskComplete(item, task)
-                let touched = false
 
                 item.targets.forEach((targetConfig) => {
                     if (targetConfig.id !== metric) {
@@ -120,39 +115,33 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
                     target.progress = Math.min(Math.max(0, previous + amount), targetConfig.amount)
                     if (target.progress !== previous) {
                         changed = true
-                        touched = true
                     }
                 })
-
-                if (touched && !wasCompleted && this.#isTaskComplete(item, task)) {
-                    justCompleted.push(this.#buildTask(group, task, item))
-                }
             })
         })
 
         if (changed) {
             await this.#persist()
         }
-        return justCompleted
     }
 
-    // Marks a completed task's rewards as claimed and returns them for the game to
-    // grant. Returns null when the task is not currently active, not complete, or
-    // already claimed.
-    async claimReward(taskId: string): Promise<TaskReward[] | null> {
+    // Claims a completed task's rewards. Returns true when the claim succeeded, or
+    // false when the task is not currently active, not complete, or already claimed.
+    // The rewards to grant are available on the Task (Task.rewards) via getTasks().
+    async claimReward(taskId: string): Promise<boolean> {
         const { state, active } = await this.#sync()
         const found = this.#findTaskEntry(active, state, taskId)
         if (!found || found.task.claimed) {
-            return null
+            return false
         }
         const item = this.#findItem(found.group, found.task.id)
         if (!item || !this.#isTaskComplete(item, found.task)) {
-            return null
+            return false
         }
 
         found.task.claimed = true
         await this.#persist()
-        return item.rewards.map((reward) => ({ id: reward.id, amount: reward.amount }))
+        return true
     }
 
     // Loads state, then for every group rolls over to fresh, zeroed tasks when its
