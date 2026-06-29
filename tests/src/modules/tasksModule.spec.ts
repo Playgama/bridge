@@ -127,17 +127,18 @@ describe('TasksModule', () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
 
-            const afterKills = await module.addProgress('kill', 3) // one target met
-            expect(afterKills).toEqual([]) // combo not complete yet (coin still 0)
+            await module.addProgress('kill', 3) // one target met
+            expect(find(await module.getTasks(), 'combo').completed).toBe(false) // coin still 0
 
-            const afterCoins = await module.addProgress('coin', 100) // second target met
-            expect(afterCoins.map((t) => t.id)).toEqual(['combo']) // now complete
-            expect(find(await module.getTasks(), 'combo').completed).toBe(true)
+            await module.addProgress('coin', 100) // second target met
+            expect(find(await module.getTasks(), 'combo').completed).toBe(true) // now complete
         })
 
         test('is a no-op for an unwatched metric', async () => {
             mockConfig(DAILY_CONFIG)
-            expect(await createModule(createBridge()).addProgress('unknown', 5)).toEqual([])
+            const module = createModule(createBridge())
+            await module.addProgress('unknown', 5)
+            expect(find(await module.getTasks(), 'kills').targets[0].progress).toBe(0)
         })
 
         test('one report fans out across all active task types', async () => {
@@ -154,23 +155,20 @@ describe('TasksModule', () => {
     })
 
     describe('claimReward', () => {
-        test('returns the rewards once the task is complete', async () => {
+        test('returns true once the task is complete', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
             await module.addProgress('kill', 3)
             await module.addProgress('coin', 100)
 
-            expect(await module.claimReward('combo')).toEqual([
-                { id: 'gem', amount: 1 },
-                { id: 'gold', amount: 50 },
-            ])
+            expect(await module.claimReward('combo')).toBe(true)
         })
 
-        test('returns null while the task is incomplete', async () => {
+        test('returns false while the task is incomplete', async () => {
             mockConfig(DAILY_CONFIG)
             const module = createModule(createBridge())
             await module.addProgress('kill', 3) // combo still missing the coin target
-            expect(await module.claimReward('combo')).toBeNull()
+            expect(await module.claimReward('combo')).toBe(false)
         })
 
         test('cannot be claimed twice', async () => {
@@ -178,13 +176,13 @@ describe('TasksModule', () => {
             const module = createModule(createBridge())
             await module.addProgress('enemy_killed', 20)
 
-            expect(await module.claimReward('kills')).toEqual([{ id: 'gold', amount: 500 }])
-            expect(await module.claimReward('kills')).toBeNull()
+            expect(await module.claimReward('kills')).toBe(true)
+            expect(await module.claimReward('kills')).toBe(false)
         })
 
-        test('returns null for an unknown task id', async () => {
+        test('returns false for an unknown task id', async () => {
             mockConfig(DAILY_CONFIG)
-            expect(await createModule(createBridge()).claimReward('nope')).toBeNull()
+            expect(await createModule(createBridge()).claimReward('nope')).toBe(false)
         })
     })
 
