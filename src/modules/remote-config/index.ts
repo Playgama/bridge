@@ -19,6 +19,6 @@ import RemoteConfigModule from './RemoteConfigModule'
 
 export type {
     RemoteConfigBridgeContract,
-    RemoteConfigDynamicParameters,
+    RemoteConfigContext,
 } from './RemoteConfigModule'
 export default new RemoteConfigModule()

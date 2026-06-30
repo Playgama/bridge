@@ -55,7 +55,7 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     // ids mapped back to the game-level ids from the config. Otherwise the SDK
     // returns the configured list with the locally tracked unlocked state (an
     // empty array when nothing is configured).
-    getList(): Promise<NormalizedAchievement[]> {
+    getAchievements(): Promise<NormalizedAchievement[]> {
         if (this._platformBridge.isAchievementsSupported) {
             return this._platformBridge.achievementsGetList()
         }

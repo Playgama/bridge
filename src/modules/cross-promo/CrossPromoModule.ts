@@ -60,7 +60,7 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
     // Public API: the full games list from the configured source, normalized to
     // Game[] with complete info per game. Resolves to an empty array when the
     // source is unsupported, errors, or has no games.
-    getGamesList(): Promise<Game[]> {
+    getGames(): Promise<Game[]> {
         if (this.#source === CROSS_PROMO_SOURCE.PLATFORM) {
             return this.#getPlatformGames()
         }
@@ -73,7 +73,7 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
             return
         }
 
-        const games = await this.getGamesList()
+        const games = await this.getGames()
 
         // A concurrent show()/hide() may have changed state while we awaited.
         if (this.#container) {

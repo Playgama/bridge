@@ -94,7 +94,7 @@ describe('AchievementsModule', () => {
         })
     })
 
-    describe('getList', () => {
+    describe('getAchievements', () => {
         test('returns the normalized list from the platform bridge as is', async () => {
             const platformList: NormalizedAchievement[] = [
                 { id: 'first_win', name: 'First Win', unlocked: true },
@@ -103,7 +103,7 @@ describe('AchievementsModule', () => {
                 achievementsGetList: vi.fn().mockResolvedValue(platformList),
             })
 
-            const list = await createModule(bridge).getList()
+            const list = await createModule(bridge).getAchievements()
 
             expect(list).toEqual(platformList)
         })

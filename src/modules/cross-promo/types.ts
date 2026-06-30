@@ -25,7 +25,7 @@ export interface CrossPromoGame {
     name?: string
 }
 
-// Unified, normalized game shape returned by getGamesList() and consumed by the
+// Unified, normalized game shape returned by getGames() and consumed by the
 // promo renderer, regardless of the configured data source. Carries full info
 // per game so no follow-up lookup is needed.
 export interface Game {
