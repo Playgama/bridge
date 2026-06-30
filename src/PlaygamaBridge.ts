@@ -113,10 +113,6 @@ class PlaygamaBridge {
         return this.#getModule(MODULE_NAME.DEVICE)
     }
 
-    get leaderboard(): unknown {
-        return this.#getModule(MODULE_NAME.LEADERBOARDS)
-    }
-
     get leaderboards(): unknown {
         return this.#getModule(MODULE_NAME.LEADERBOARDS)
     }
