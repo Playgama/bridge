@@ -40,6 +40,7 @@ import Deferred from './lib/Deferred'
 import { LoadingScreen } from './lib/loading-screen'
 import { SafeArea } from './lib/safe-area'
 import bridgeConfig from './lib/bridge-config'
+import { initApiOrigin } from './lib/apiOrigin'
 import logger, { createModuleLoggerProxy, DEBUG_QUERY_PARAM } from './lib/logger'
 import platformModule from './modules/platform'
 import playerModule from './modules/player'
@@ -206,6 +207,7 @@ class PlaygamaBridge {
 
             const platformId = detectPlatformId(bridgeConfig.getRawValues().forciblySetPlatformId)
             bridgeConfig.initialize(platformId)
+            initApiOrigin(platformId)
 
             if (!debugParamPresent) {
                 logger.enabled = bridgeConfig.getValues().debug === true

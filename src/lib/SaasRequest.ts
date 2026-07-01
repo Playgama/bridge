@@ -17,8 +17,9 @@
 
 import type { JsonValue } from '../utils'
 import bridgeConfig from './bridge-config'
+import { getApiOrigin } from './apiOrigin'
 
-const SAAS_URL = 'https://api.playgama.com/api/bridge/v1'
+const SAAS_PATH = '/api/bridge/v1'
 
 export interface SaasBridgeLike {
     playerId?: string | null
@@ -32,7 +33,7 @@ export interface SaasRequestApi {
 
 export default class SaasRequest {
     get baseUrl(): string {
-        return bridgeConfig.getValues().saas?.baseUrl || SAAS_URL
+        return bridgeConfig.getValues().saas?.baseUrl || `${getApiOrigin()}${SAAS_PATH}`
     }
 
     get xHeaders(): Record<string, string> {

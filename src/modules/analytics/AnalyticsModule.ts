@@ -23,9 +23,9 @@ import { generateRandomId } from '../../utils'
 import { getGuestUser } from '../player'
 import ModuleBase from '../ModuleBase'
 import bridgeConfig from '../../lib/bridge-config'
+import { getApiOrigin } from '../../lib/apiOrigin'
 import {
-    API_URL,
-    DISCORD_API_URL,
+    ANALYTICS_PATH,
     FLUSH_INTERVAL,
 } from './constants'
 import type {
@@ -170,10 +170,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 
     #getApiUrl(): string {
-        if (this._platformBridge.platformId === PLATFORM_ID.DISCORD) {
-            return DISCORD_API_URL
-        }
-        return API_URL
+        return `${getApiOrigin()}${ANALYTICS_PATH}`
     }
 
     #createPayload(events: AnalyticsEvent[]): AnalyticsPayload {
