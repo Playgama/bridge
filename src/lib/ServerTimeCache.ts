@@ -26,23 +26,20 @@ class ServerTimeCache {
 
     #pending: Promise<number> | null = null
 
-    #retrieve: (origin?: string) => Promise<number>
+    #retrieve: () => Promise<number>
 
-    constructor(retrieve: (origin?: string) => Promise<number>) {
+    constructor(retrieve: () => Promise<number>) {
         this.#retrieve = retrieve
     }
 
-    // `origin` is forwarded to the retrieve function so callers can target the
-    // right backend host (e.g. a proxied origin on Discord). It only matters on
-    // the first, uncached retrieval; later calls resolve from the cached offset.
-    getServerTime(origin?: string): Promise<number> {
+    getServerTime(): Promise<number> {
         if (this.#timeDiff !== null) {
             return Promise.resolve(Date.now() + this.#timeDiff)
         }
 
         if (!this.#pending) {
             this.#pending = Promise.resolve()
-                .then(() => this.#retrieve(origin))
+                .then(() => this.#retrieve())
                 .then((serverTime) => {
                     this.#timeDiff = serverTime - Date.now()
                     this.#pending = null

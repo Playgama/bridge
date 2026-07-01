@@ -28,7 +28,6 @@ export interface AnalyticsBridgeOptions {
 
 export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
-    apiOrigin: string
     playerId: string | null
     deviceType: DeviceType
     deviceOs: DeviceOs

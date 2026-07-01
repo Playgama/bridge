@@ -23,6 +23,7 @@ import { generateRandomId } from '../../utils'
 import { getGuestUser } from '../player'
 import ModuleBase from '../ModuleBase'
 import bridgeConfig from '../../lib/bridge-config'
+import { getApiOrigin } from '../../lib/apiOrigin'
 import {
     ANALYTICS_PATH,
     FLUSH_INTERVAL,
@@ -118,7 +119,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     async #fetchTimeDiff(): Promise<void> {
         try {
-            const serverTime = await serverTimeCache.getServerTime(this._platformBridge.apiOrigin)
+            const serverTime = await serverTimeCache.getServerTime()
             this.#timeDiff = serverTime - Date.now()
 
             for (let i = 0; i < this.#eventQueue.length; i++) {
@@ -169,7 +170,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 
     #getApiUrl(): string {
-        return `${this._platformBridge.apiOrigin}${ANALYTICS_PATH}`
+        return `${getApiOrigin()}${ANALYTICS_PATH}`
     }
 
     #createPayload(events: AnalyticsEvent[]): AnalyticsPayload {

@@ -17,13 +17,13 @@
 
 import type { JsonValue } from '../utils'
 import bridgeConfig from './bridge-config'
+import { getApiOrigin } from './apiOrigin'
 
 const SAAS_PATH = '/api/bridge/v1'
 
 export interface SaasBridgeLike {
     playerId?: string | null
     platformId: string
-    apiOrigin: string
 }
 
 export interface SaasRequestApi {
@@ -33,7 +33,7 @@ export interface SaasRequestApi {
 
 export default class SaasRequest {
     get baseUrl(): string {
-        return bridgeConfig.getValues().saas?.baseUrl || `${this.#bridge.apiOrigin}${SAAS_PATH}`
+        return bridgeConfig.getValues().saas?.baseUrl || `${getApiOrigin()}${SAAS_PATH}`
     }
 
     get xHeaders(): Record<string, string> {

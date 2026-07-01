@@ -22,14 +22,22 @@ export const API_ORIGIN = 'https://api.playgama.com'
 
 // Discord Activities run in a sandboxed iframe where direct requests to
 // external origins are blocked by CSP. All backend calls must instead go
-// through Discord's URL-mapping proxy, which is configured under the
-// `/playgama` prefix in the Discord Developer Portal. Using a relative origin
-// makes the browser hit `<activity-host>/playgama/...`, which Discord proxies
-// to `api.playgama.com/...`.
+// through Discord's URL-mapping proxy, configured under the `/playgama`
+// prefix in the Discord Developer Portal. A relative origin makes the browser
+// hit `<activity-host>/playgama/...`, which Discord proxies to `api.playgama.com/...`.
 export const DISCORD_API_ORIGIN = '/playgama'
 
-// Single source of truth for the API origin of the active platform. Every
-// backend URL is built as `${resolveApiOrigin(platformId)}${path}`.
-export function resolveApiOrigin(platformId: string): string {
-    return platformId === PLATFORM_ID.DISCORD ? DISCORD_API_ORIGIN : API_ORIGIN
+// Resolved once during bridge initialization (initApiOrigin) and read
+// everywhere via getApiOrigin(). Kept as a session-wide singleton — like
+// bridgeConfig/logger — so the origin never has to be threaded through calls.
+let apiOrigin = API_ORIGIN
+
+export function initApiOrigin(platformId: string): void {
+    apiOrigin = platformId === PLATFORM_ID.DISCORD ? DISCORD_API_ORIGIN : API_ORIGIN
+}
+
+// Origin of the Playgama backend for the active platform. Backend URLs are
+// built as `${getApiOrigin()}${path}`.
+export function getApiOrigin(): string {
+    return apiOrigin
 }
