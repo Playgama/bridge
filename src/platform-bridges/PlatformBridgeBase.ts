@@ -24,6 +24,7 @@ import {
     type LaunchSource,
 } from '../constants'
 import { serverTimeCache } from '../lib/serverTime'
+import { resolveApiOrigin } from '../lib/apiOrigin'
 import {
     PLATFORM_ID,
     VISIBILITY_STATE,
@@ -69,6 +70,13 @@ class PlatformBridgeBase {
     // platform
     get platformId(): PlatformId {
         return PLATFORM_ID.MOCK
+    }
+
+    // Origin of the Playgama backend for this platform. Defaults to the public
+    // API host; platforms served through a proxy (e.g. Discord's URL mapping)
+    // resolve to a relative prefix. Consumers build URLs as `${apiOrigin}${path}`.
+    get apiOrigin(): string {
+        return resolveApiOrigin(this.platformId)
     }
 
     get platformSdk(): unknown {
@@ -373,7 +381,7 @@ class PlatformBridgeBase {
     }
 
     getServerTime(): Promise<number> {
-        return serverTimeCache.getServerTime()
+        return serverTimeCache.getServerTime(this.apiOrigin)
     }
 
     // Returns the platform games catalog as a flat array of detailed games.

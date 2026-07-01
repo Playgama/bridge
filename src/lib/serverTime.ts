@@ -16,11 +16,12 @@
  */
 
 import ServerTimeCache from './ServerTimeCache'
+import { API_ORIGIN } from './apiOrigin'
 
-export const TIMESTAMP_URL = 'https://api.playgama.com/api/bridge/v1/timestamp/now'
+export const TIMESTAMP_PATH = '/api/bridge/v1/timestamp/now'
 
-async function fetchServerTimestamp(): Promise<number> {
-    const response = await fetch(TIMESTAMP_URL)
+async function fetchServerTimestamp(origin: string = API_ORIGIN): Promise<number> {
+    const response = await fetch(`${origin}${TIMESTAMP_PATH}`)
     if (!response.ok) {
         throw new Error('Network response was not ok')
     }
