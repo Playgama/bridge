@@ -1,0 +1,37 @@
+name: Release to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Where to publish
+        type: choice
+        default: stable
+        options:
+          - stable
+          - latest
+      scope:
+        description: What to build & publish
+        type: choice
+        default: all
+        options:
+          - all
+          - base
+          - platforms
+      platform:
+        description: Single platform id (optional, only with scope=platforms/all)
+        type: string
+        required: false
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish.yml
+    with:
+      environment: production
+      channel: ${{ inputs.channel }}
+      scope: ${{ inputs.scope }}
+      platform: ${{ inputs.platform }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET_PRODUCTION }}
