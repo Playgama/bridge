@@ -241,6 +241,12 @@ class AnalyticsModule extends ModuleBase {
     }
 
     #setupPageUnloadHandler() {
+        // GameSnacks forbids the Page Visibility API (and similar unload APIs). Skip the
+        // handlers there; session_end still gets flushed by the periodic flush interval.
+        if (this._platformBridge.platformId === PLATFORM_ID.GAMESNACKS) {
+            return
+        }
+
         this.#pagehideHandler = () => {
             this.#sendSessionEnd()
         }

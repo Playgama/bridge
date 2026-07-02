@@ -321,8 +321,6 @@ class PlatformBridgeBase {
             // Nothing we can do with it
         }
 
-        this._visibilityState = document.visibilityState
-
         const aggregationStates = ['interstitial', 'rewarded', 'visibility', 'platform', 'rate']
         this._pauseStateAggregator = new StateAggregator(
             aggregationStates,
@@ -334,17 +332,23 @@ class PlatformBridgeBase {
             (isDisabled) => this.emit(EVENT_NAME.AUDIO_STATE_CHANGED, !isDisabled),
         )
 
-        document.addEventListener('visibilitychange', () => {
-            this._setVisibilityState(document.visibilityState)
-        })
+        // Platforms that forbid the Page Visibility API (e.g. GameSnacks) drive visibility
+        // from their own SDK instead. See `_isPageVisibilityApiAllowed`.
+        if (this._isPageVisibilityApiAllowed) {
+            this._visibilityState = document.visibilityState
 
-        window.addEventListener('blur', () => {
-            this._setVisibilityState(VISIBILITY_STATE.HIDDEN)
-        })
+            document.addEventListener('visibilitychange', () => {
+                this._setVisibilityState(document.visibilityState)
+            })
 
-        window.addEventListener('focus', () => {
-            this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
-        })
+            window.addEventListener('blur', () => {
+                this._setVisibilityState(VISIBILITY_STATE.HIDDEN)
+            })
+
+            window.addEventListener('focus', () => {
+                this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
+            })
+        }
 
         this._options = configFileModule.getPlatformOptions(this.platformId)
     }
@@ -698,6 +702,13 @@ class PlatformBridgeBase {
 
     _deleteDataFromLocalStorage(key) {
         this._localStorage.removeItem(key)
+    }
+
+    // Whether the platform permits use of the browser Page Visibility API.
+    // Platforms that forbid it (e.g. GameSnacks) override this to return false
+    // and instead drive visibility/pause/audio from their own SDK callbacks.
+    get _isPageVisibilityApiAllowed() {
+        return true
     }
 
     _setVisibilityState(state) {
