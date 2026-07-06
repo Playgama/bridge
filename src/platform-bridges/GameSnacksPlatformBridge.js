@@ -33,6 +33,10 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.GAMESNACKS
     }
 
+    get isPlatformExternalCallsSupported() {
+        return false
+    }
+
     // advertisement
     get isInterstitialSupported() {
         return true
@@ -62,6 +66,9 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk = window.GameSnacks
                 this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
+                // Pause comes from the SDK lifecycle instead of the Page Visibility API.
+                // Audio is handled separately by the platform via `audio.subscribe` below,
+                // and the game mutes on pause itself — so we only emit the pause state here.
                 this._platformSdk.game.onPause(() => {
                     this._setPauseState(true)
                 })
@@ -97,12 +104,10 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 return Promise.resolve()
             }
             case PLATFORM_MESSAGE.LEVEL_COMPLETED: {
+                // GameSnacks requires a numeric level; 0 is its documented value for unordered levels,
+                // so fall back to it when the game passes no level or a non-numeric one
                 const level = Number(options.level)
-                if (!Number.isFinite(level)) {
-                    return Promise.reject(new Error('Level is required for level_completed message'))
-                }
-
-                this._platformSdk.game.levelComplete(level)
+                this._platformSdk.game.levelComplete(Number.isFinite(level) ? level : 0)
                 return Promise.resolve()
             }
             default: {
@@ -235,6 +240,12 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
     // leaderboards
     leaderboardsSetScore(_, score) {
         return this._platformSdk.score.update(score)
+    }
+
+    // GameSnacks forbids the Page Visibility API — visibility is derived from the
+    // SDK's game.onPause/onResume callbacks instead (see `initialize`).
+    get _isPageVisibilityApiAllowed() {
+        return false
     }
 
     #toStorageString(value) {

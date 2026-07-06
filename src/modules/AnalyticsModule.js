@@ -23,7 +23,6 @@ import ModuleBase from './ModuleBase'
 const API_URL = 'https://api.playgama.com/api/events/v3/bridge/analytics'
 const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
 const FLUSH_INTERVAL = 30000
-const SEND_ATTEMPTS = 2
 
 class AnalyticsModule extends ModuleBase {
     #eventQueue = []
@@ -35,8 +34,6 @@ class AnalyticsModule extends ModuleBase {
     #playerGuestId = null
 
     #sessionId = null
-
-    #failedAttempts = 0
 
     #isDisabled = false
 
@@ -68,13 +65,20 @@ class AnalyticsModule extends ModuleBase {
             this.#isDisabled = true
         }
 
-        if (!this.#isDisabled) {
-            this.#fetchTimeDiff()
+        // Without external calls the events can never reach the backend, so
+        // turn analytics off entirely instead of retrying forever.
+        if (!this._platformBridge.isPlatformExternalCallsSupported) {
+            this.#isDisabled = true
         }
 
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
 
+        if (this.#isDisabled) {
+            return this
+        }
+
+        this.#fetchTimeDiff()
         this.send(`${MODULE_NAME.CORE}_initialization_started`)
         this.#startFlushInterval()
         this.#setupPageUnloadHandler()
@@ -205,19 +209,15 @@ class AnalyticsModule extends ModuleBase {
                 method: 'POST',
                 headers,
                 body,
+                keepalive: true,
             })
 
             if (!response.ok) {
                 throw new Error(`Network response was not ok: ${response.status}`)
             }
 
-            this.#failedAttempts = 0
             return true
         } catch {
-            this.#failedAttempts += 1
-            if (this.#failedAttempts >= SEND_ATTEMPTS) {
-                this.#disable()
-            }
             return false
         }
     }
@@ -241,18 +241,45 @@ class AnalyticsModule extends ModuleBase {
     }
 
     #setupPageUnloadHandler() {
-        this.#pagehideHandler = () => {
+        // GameSnacks forbids the Page Visibility API (and similar unload APIs). Skip the
+        // handlers there; session_end still gets flushed by the periodic flush interval.
+        if (this._platformBridge.platformId === PLATFORM_ID.GAMESNACKS) {
+            return
+        }
+
+        this.#pagehideHandler = (event) => {
             this.#sendSessionEnd()
+
+            // The page is entering the back/forward cache and may be restored
+            // later — allow a new session_end to be sent on the next exit.
+            if (event.persisted) {
+                this.#resumeSession()
+            }
         }
 
         this.#visibilityHandler = () => {
             if (document.visibilityState === 'hidden') {
+                // The last reliable moment on mobile: stop pinging and flush.
+                this.#stopFlushInterval()
                 this.#sendSessionEnd()
+            } else {
+                // The page is visible again — resume the session so the next
+                // hide/exit reports session_end instead of being swallowed.
+                this.#resumeSession()
             }
         }
 
         document.addEventListener('visibilitychange', this.#visibilityHandler)
         window.addEventListener('pagehide', this.#pagehideHandler)
+    }
+
+    #resumeSession() {
+        if (this.#isDisabled) {
+            return
+        }
+
+        this.#isSessionEndSent = false
+        this.#startFlushInterval()
     }
 
     #sendSessionEnd() {
@@ -263,26 +290,6 @@ class AnalyticsModule extends ModuleBase {
         this.#isSessionEndSent = true
         this.send(`${MODULE_NAME.CORE}_session_end`)
         this.#flushSync()
-    }
-
-    #disable() {
-        this.#isDisabled = true
-        this.#eventQueue = []
-
-        if (this.#flushTimer) {
-            clearInterval(this.#flushTimer)
-            this.#flushTimer = null
-        }
-
-        if (this.#visibilityHandler) {
-            document.removeEventListener('visibilitychange', this.#visibilityHandler)
-            this.#visibilityHandler = null
-        }
-
-        if (this.#pagehideHandler) {
-            window.removeEventListener('pagehide', this.#pagehideHandler)
-            this.#pagehideHandler = null
-        }
     }
 
     #extractGameId() {
@@ -358,6 +365,13 @@ class AnalyticsModule extends ModuleBase {
             this.send(`${MODULE_NAME.CORE}_ping`)
             this.#flush()
         }, FLUSH_INTERVAL)
+    }
+
+    #stopFlushInterval() {
+        if (this.#flushTimer) {
+            clearInterval(this.#flushTimer)
+            this.#flushTimer = null
+        }
     }
 }
 
