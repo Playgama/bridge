@@ -1,0 +1,103 @@
+name: Publish (reusable)
+
+# Reusable workflow: verify -> build -> upload to an S3 bucket.
+# Not triggered directly. Called by staging.yml / production.yml.
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: staging | production (drives the main-branch guard)
+        type: string
+        required: true
+      channel:
+        description: stable | latest | dev (S3 folder v<major>/<channel>/)
+        type: string
+        required: true
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      S3_BUCKET:
+        required: true
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard production to main branch
+        if: ${{ inputs.environment == 'production' && github.ref_name != 'main' }}
+        run: |
+          echo "::error::production is only allowed from the 'main' branch (got '${{ github.ref_name }}')."
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build artifacts
+        env:
+          BUCKET: ${{ secrets.S3_BUCKET }}
+        run: |
+          if [ -z "${BUCKET}" ]; then
+            echo "::error::S3_BUCKET secret is empty."
+            exit 1
+          fi
+          MAJOR="$(node -p "require('./package.json').version.split('.')[0]")"
+          PUBLIC_PATH="https://${BUCKET}/v${MAJOR}/${{ inputs.channel }}/"
+          node scripts/build-dist.js --type=both --public-path="$PUBLIC_PATH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-publish
+          path: dist/publish/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-publish
+          path: dist/publish
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload to S3
+        env:
+          BUCKET: ${{ secrets.S3_BUCKET }}
+        run: |
+          if [ -z "${BUCKET}" ]; then
+            echo "::error::S3_BUCKET secret is empty."
+            exit 1
+          fi
+          MAJOR="$(node -p "require('./package.json').version.split('.')[0]")"
+          DEST="v${MAJOR}/${{ inputs.channel }}"
+          echo "Publishing ${{ inputs.environment }}/${{ inputs.channel }} -> s3://***/${DEST}/"
+          aws s3 cp dist/publish/ "s3://${BUCKET}/${DEST}/" \
+            --recursive \
+            --content-type application/javascript \
+            --no-progress
+      # CDN cache purge is intentionally omitted for now.

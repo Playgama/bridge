@@ -7,7 +7,6 @@ const packageJson = require('./package.json')
 const { ALL_PLATFORM_IDS } = require('./scripts/platforms')
 
 const platformDirName = 'platform-bridges'
-const CDN_BASE_URL = `https://bridge.playgama.com/v${packageJson.version.split('.')[0]}/stable/`
 
 class CleanPlatformsPlugin {
     apply(compiler) {
@@ -22,11 +21,12 @@ class CleanPlatformsPlugin {
 
 const createPlatformDefines = (targetPlatforms) => {
     const includeAll = targetPlatforms.length === 0
-    const defines = {}
-    for (const id of ALL_PLATFORM_IDS) {
-        defines[`__INCLUDE_${id.toUpperCase()}__`] = includeAll || targetPlatforms.includes(id)
-    }
-    return defines
+    return Object.fromEntries(
+        ALL_PLATFORM_IDS.map((id) => [
+            `__INCLUDE_${id.toUpperCase()}__`,
+            includeAll || targetPlatforms.includes(id),
+        ]),
+    )
 }
 
 const createConfig = (targetPlatforms = [], { noLint = false } = {}) => ({
@@ -112,7 +112,7 @@ module.exports = (env = {}, argv = {}) => {
             name: 'platform',
             output: {
                 filename: 'playgama-bridge.js',
-                path: path.resolve(__dirname, `dist`),
+                path: path.resolve(__dirname, 'dist'),
                 publicPath: 'auto',
             },
             plugins: [
@@ -131,7 +131,7 @@ module.exports = (env = {}, argv = {}) => {
         name: 'dynamic',
         output: {
             ...baseConfig.output,
-            publicPath: isDevelopment ? 'auto' : CDN_BASE_URL,
+            publicPath: isDevelopment ? 'auto' : env.publicPath,
         },
         plugins: [
             ...baseConfig.plugins,
