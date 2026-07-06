@@ -4,24 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       channel:
-        description: Where to publish
+        description: Target channel (S3 folder v<major>/<channel>/)
         type: choice
         default: stable
         options:
           - stable
           - latest
-      scope:
-        description: What to build & publish
-        type: choice
-        default: all
-        options:
-          - all
-          - base
-          - platforms
-      platform:
-        description: Single platform id (optional, only with scope=platforms/all)
-        type: string
-        required: false
+          - dev
 
 jobs:
   publish:
@@ -29,8 +18,6 @@ jobs:
     with:
       environment: production
       channel: ${{ inputs.channel }}
-      scope: ${{ inputs.scope }}
-      platform: ${{ inputs.platform }}
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}

@@ -1,36 +1,27 @@
 name: Release to Staging
 
 on:
+  # TEMP: verify this branch by auto-deploying to the dev channel on push. Remove before merge.
+  push:
+    branches: [ci-cd]
   workflow_dispatch:
     inputs:
       channel:
-        description: Where to publish
+        description: Target channel (S3 folder v<major>/<channel>/)
         type: choice
-        default: stable
+        default: dev
         options:
+          - dev
           - stable
           - latest
-      scope:
-        description: What to build & publish
-        type: choice
-        default: all
-        options:
-          - all
-          - base
-          - platforms
-      platform:
-        description: Single platform id (optional, only with scope=platforms/all)
-        type: string
-        required: false
 
 jobs:
   publish:
     uses: ./.github/workflows/publish.yml
     with:
       environment: staging
-      channel: ${{ inputs.channel }}
-      scope: ${{ inputs.scope }}
-      platform: ${{ inputs.platform }}
+      # Falls back to 'dev' on push (workflow_dispatch inputs are empty then).
+      channel: ${{ inputs.channel || 'dev' }}
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}

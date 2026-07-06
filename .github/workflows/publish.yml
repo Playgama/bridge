@@ -11,18 +11,9 @@ on:
         type: string
         required: true
       channel:
-        description: stable (v<major>/stable) | latest (root latest)
+        description: stable | latest | dev (S3 folder v<major>/<channel>/)
         type: string
         required: true
-      scope:
-        description: all | base | platforms
-        type: string
-        required: true
-      platform:
-        description: single platform id (optional)
-        type: string
-        required: false
-        default: ''
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -63,12 +54,16 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build artifacts
+        env:
+          BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
-          PLATFORM_ARG=""
-          if [ -n "${{ inputs.platform }}" ]; then
-            PLATFORM_ARG="--platform=${{ inputs.platform }}"
+          if [ -z "${BUCKET}" ]; then
+            echo "::error::S3_BUCKET secret is empty."
+            exit 1
           fi
-          node scripts/build-dist.js --scope=${{ inputs.scope }} $PLATFORM_ARG
+          MAJOR="$(node -p "require('./package.json').version.split('.')[0]")"
+          PUBLIC_PATH="https://${BUCKET}/v${MAJOR}/${{ inputs.channel }}/"
+          node scripts/build-dist.js --type=both --public-path="$PUBLIC_PATH"
       - uses: actions/upload-artifact@v4
         with:
           name: dist-publish
@@ -98,13 +93,8 @@ jobs:
             echo "::error::S3_BUCKET secret is empty."
             exit 1
           fi
-          if [ "${{ inputs.channel }}" = "latest" ]; then
-            # Root rolling alias, not version-scoped.
-            DEST="latest"
-          else
-            MAJOR="$(node -p "require('./package.json').version.split('.')[0]")"
-            DEST="v${MAJOR}/stable"
-          fi
+          MAJOR="$(node -p "require('./package.json').version.split('.')[0]")"
+          DEST="v${MAJOR}/${{ inputs.channel }}"
           echo "Publishing ${{ inputs.environment }}/${{ inputs.channel }} -> s3://***/${DEST}/"
           aws s3 cp dist/publish/ "s3://${BUCKET}/${DEST}/" \
             --recursive \
