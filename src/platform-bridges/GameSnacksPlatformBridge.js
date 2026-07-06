@@ -97,12 +97,10 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 return Promise.resolve()
             }
             case PLATFORM_MESSAGE.LEVEL_COMPLETED: {
+                // GameSnacks requires a numeric level; 0 is its documented value for unordered levels,
+                // so fall back to it when the game passes no level or a non-numeric one
                 const level = Number(options.level)
-                if (!Number.isFinite(level)) {
-                    return Promise.reject(new Error('Level is required for level_completed message'))
-                }
-
-                this._platformSdk.game.levelComplete(level)
+                this._platformSdk.game.levelComplete(Number.isFinite(level) ? level : 0)
                 return Promise.resolve()
             }
             default: {
