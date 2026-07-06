@@ -85,6 +85,10 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isPlatformExternalCallsSupported() {
+        return true
+    }
+
     get isPlatformAudioEnabled() {
         if (this._audioStateAggregator) {
             return !this._audioStateAggregator.getAggregatedState()

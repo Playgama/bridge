@@ -62,6 +62,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return this._platformLanguage || super.platformLanguage
     }
 
+    get isPlatformExternalCallsSupported() {
+        return false
+    }
+
     // advertisement
     get isInterstitialSupported() {
         return true

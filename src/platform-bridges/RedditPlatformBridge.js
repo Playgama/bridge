@@ -24,6 +24,10 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.REDDIT
     }
 
+    get isPlatformExternalCallsSupported() {
+        return false
+    }
+
     // social
     get isJoinCommunitySupported() {
         return true
