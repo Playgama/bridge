@@ -66,6 +66,9 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk = window.GameSnacks
                 this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
+                // Pause comes from the SDK lifecycle instead of the Page Visibility API.
+                // Audio is handled separately by the platform via `audio.subscribe` below,
+                // and the game mutes on pause itself — so we only emit the pause state here.
                 this._platformSdk.game.onPause(() => {
                     this._setPauseState(true)
                 })
@@ -237,6 +240,12 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
     // leaderboards
     leaderboardsSetScore(_, score) {
         return this._platformSdk.score.update(score)
+    }
+
+    // GameSnacks forbids the Page Visibility API — visibility is derived from the
+    // SDK's game.onPause/onResume callbacks instead (see `initialize`).
+    get _isPageVisibilityApiAllowed() {
+        return false
     }
 
     #toStorageString(value) {
