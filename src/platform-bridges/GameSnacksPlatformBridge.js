@@ -25,7 +25,6 @@ import {
     REWARDED_STATE,
     STORAGE_TYPE,
     LEADERBOARD_TYPE,
-    VISIBILITY_STATE,
 } from '../constants'
 
 class GameSnacksPlatformBridge extends PlatformBridgeBase {
@@ -63,15 +62,15 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 this._platformSdk = window.GameSnacks
                 this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
 
-                // Drive visibility from the SDK lifecycle instead of the Page Visibility API.
-                // `_setVisibilityState` feeds the pause and audio aggregators, mirroring how
-                // browser visibility changes behave on other platforms.
+                // Pause comes from the SDK lifecycle instead of the Page Visibility API.
+                // Audio is handled separately by the platform via `audio.subscribe` below,
+                // and the game mutes on pause itself — so we only emit the pause state here.
                 this._platformSdk.game.onPause(() => {
-                    this._setVisibilityState(VISIBILITY_STATE.HIDDEN)
+                    this._setPauseState(true)
                 })
 
                 this._platformSdk.game.onResume(() => {
-                    this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
+                    this._setPauseState(false)
                 })
 
                 this._platformSdk.audio.subscribe((isEnabled) => {
@@ -80,7 +79,6 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
 
                 this._platformSdk.game.firstFrameReady()
                 this._setAudioState(this._platformSdk.audio.isEnabled)
-                this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
 
                 this._isInitialized = true
                 this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
