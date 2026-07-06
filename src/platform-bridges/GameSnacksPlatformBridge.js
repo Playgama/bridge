@@ -33,6 +33,10 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.GAMESNACKS
     }
 
+    get isPlatformExternalCallsSupported() {
+        return false
+    }
+
     // advertisement
     get isInterstitialSupported() {
         return true
