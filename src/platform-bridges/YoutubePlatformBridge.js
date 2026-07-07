@@ -27,6 +27,7 @@ import {
     REWARDED_STATE,
     INTERSTITIAL_STATE,
     DEVICE_TYPE,
+    VISIBILITY_STATE,
 } from '../constants'
 
 class YoutubePlatformBridge extends PlatformBridgeBase {
@@ -102,6 +103,21 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                     this._setAudioState(isEnabled)
                 })
 
+                this.#syncAudioState()
+
+                // onAudioEnabledChange is not delivered on some Android devices when the toggle
+                // happens while the game iframe is paused or frozen, so re-read the actual state
+                // every time the game comes back to the foreground
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === VISIBILITY_STATE.VISIBLE) {
+                        this.#syncAudioState()
+                    }
+                })
+
+                window.addEventListener('pageshow', () => {
+                    this.#syncAudioState()
+                })
+
                 this._platformSdk.system.onPause(() => {
                     this._setPauseState(true)
                     this.#tryShowCrossPromo()
@@ -110,6 +126,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 this._platformSdk.system.onResume(() => {
                     this._setPauseState(false)
                     crossPromoModule.hide()
+                    this.#syncAudioState()
                 })
 
                 Promise.all([getLanguagePromise, getDataPromise])
@@ -322,6 +339,26 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #syncAudioState() {
+        if (typeof this._platformSdk?.system?.isAudioEnabled !== 'function') {
+            return
+        }
+
+        try {
+            Promise.resolve(this._platformSdk.system.isAudioEnabled())
+                .then((isEnabled) => {
+                    if (typeof isEnabled === 'boolean') {
+                        this._setAudioState(isEnabled)
+                    }
+                })
+                .catch(() => {
+                    // keep the last known state
+                })
+        } catch (e) {
+            // keep the last known state
+        }
     }
 
     #tryShowCrossPromo() {
