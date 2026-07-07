@@ -221,6 +221,10 @@ class PlatformBridgeBase {
         return true
     }
 
+    get isPlatformPageVisibilityApiAllowed(): boolean {
+        return true
+    }
+
     // device
     get deviceType(): DeviceType {
         if (navigator && navigator.userAgent) {
@@ -331,8 +335,6 @@ class PlatformBridgeBase {
     constructor() {
         this._playerApplyGuestData()
 
-        this._visibilityState = document.visibilityState
-
         const aggregationStates: AggregationStateKey[] = ['interstitial', 'rewarded', 'visibility', 'platform', 'rate']
         this._pauseStateAggregator = new StateAggregator<AggregationStateKey>(
             aggregationStates,
@@ -344,17 +346,21 @@ class PlatformBridgeBase {
             (isDisabled) => this.emit(EVENT_NAME.AUDIO_STATE_CHANGED, !isDisabled),
         )
 
-        document.addEventListener('visibilitychange', () => {
-            this._setVisibilityState(document.visibilityState as VisibilityState)
-        })
+        if (this.isPlatformPageVisibilityApiAllowed) {
+            this._visibilityState = document.visibilityState
 
-        window.addEventListener('blur', () => {
-            this._setVisibilityState(VISIBILITY_STATE.HIDDEN)
-        })
+            document.addEventListener('visibilitychange', () => {
+                this._setVisibilityState(document.visibilityState as VisibilityState)
+            })
 
-        window.addEventListener('focus', () => {
-            this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
-        })
+            window.addEventListener('blur', () => {
+                this._setVisibilityState(VISIBILITY_STATE.HIDDEN)
+            })
+
+            window.addEventListener('focus', () => {
+                this._setVisibilityState(VISIBILITY_STATE.VISIBLE)
+            })
+        }
 
         this._options = bridgeConfig.getValues()
     }

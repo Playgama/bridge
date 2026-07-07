@@ -91,6 +91,10 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isPlatformPageVisibilityApiAllowed(): boolean {
+        return false
+    }
+
     // leaderboards
     get leaderboardsType(): LeaderboardType {
         return LEADERBOARD_TYPE.NATIVE
