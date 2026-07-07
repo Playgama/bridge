@@ -22,6 +22,7 @@ import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
     PLATFORM_MESSAGE,
+    VISIBILITY_STATE,
     type PlatformId,
 } from '../modules/platform/constants'
 import { DEVICE_TYPE } from '../modules/device/constants'
@@ -33,6 +34,7 @@ import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/
 
 interface YtgameSystem {
     getLanguage(): Promise<string>
+    isAudioEnabled(): boolean
     onAudioEnabledChange(callback: (isEnabled: boolean) => void): void
     onPause(callback: () => void): void
     onResume(callback: () => void): void
@@ -130,6 +132,21 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                     this._setAudioState(isEnabled)
                 })
 
+                this.#syncAudioState()
+
+                // onAudioEnabledChange is not delivered on some Android devices when the toggle
+                // happens while the game iframe is paused or frozen, so re-read the actual state
+                // every time the game comes back to the foreground
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === VISIBILITY_STATE.VISIBLE) {
+                        this.#syncAudioState()
+                    }
+                })
+
+                window.addEventListener('pageshow', () => {
+                    this.#syncAudioState()
+                })
+
                 sdk.system.onPause(() => {
                     this._setPauseState(true)
                     this.#tryShowCrossPromo()
@@ -138,6 +155,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 sdk.system.onResume(() => {
                     this._setPauseState(false)
                     crossPromoModule.hide()
+                    this.#syncAudioState()
                 })
 
                 Promise.all([getLanguagePromise])
@@ -245,6 +263,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #syncAudioState(): void {
+        this._setAudioState((this._platformSdk as YtgameSdk).system.isAudioEnabled())
     }
 
     #tryShowCrossPromo(): void {
