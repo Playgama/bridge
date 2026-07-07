@@ -342,23 +342,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
     }
 
     #syncAudioState() {
-        if (typeof this._platformSdk?.system?.isAudioEnabled !== 'function') {
-            return
-        }
-
-        try {
-            Promise.resolve(this._platformSdk.system.isAudioEnabled())
-                .then((isEnabled) => {
-                    if (typeof isEnabled === 'boolean') {
-                        this._setAudioState(isEnabled)
-                    }
-                })
-                .catch(() => {
-                    // keep the last known state
-                })
-        } catch (e) {
-            // keep the last known state
-        }
+        this._setAudioState(this._platformSdk.system.isAudioEnabled())
     }
 
     #tryShowCrossPromo() {
