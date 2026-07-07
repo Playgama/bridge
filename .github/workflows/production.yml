@@ -1,0 +1,24 @@
+name: Release to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Target channel (S3 folder v<major>/<channel>/)
+        type: choice
+        default: stable
+        options:
+          - stable
+          - latest
+          - dev
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish.yml
+    with:
+      environment: production
+      channel: ${{ inputs.channel }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET_PRODUCTION }}

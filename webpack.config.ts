@@ -8,7 +8,6 @@ import packageJson from './package.json'
 import { ALL_PLATFORM_IDS } from './scripts/platforms'
 
 const platformDirName = 'platform-bridges'
-const CDN_BASE_URL = `https://bridge.playgama.com/v${packageJson.version.split('.')[0]}/stable/`
 
 class CleanPlatformsPlugin {
     apply(compiler: Compiler): void {
@@ -121,6 +120,9 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
 interface WebpackEnv {
     platform?: string
     noLint?: boolean
+    // Absolute URL the dynamic bundle uses to fetch its platform-bridges/ chunks.
+    // Should match the deploy location, e.g. https://<domain>/v<major>/<channel>/
+    publicPath?: string
 }
 
 interface WebpackArgv {
@@ -159,7 +161,7 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
         name: 'dynamic',
         output: {
             ...baseConfig.output,
-            publicPath: isDevelopment ? 'auto' : CDN_BASE_URL,
+            publicPath: isDevelopment ? 'auto' : env.publicPath,
         },
         plugins: [
             ...(baseConfig.plugins ?? []),
