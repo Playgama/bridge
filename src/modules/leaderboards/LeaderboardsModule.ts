@@ -35,6 +35,7 @@ export interface LeaderboardsBridgeOptions {
 
 export interface LeaderboardsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
+    playerId: string | null
     leaderboardsType: LeaderboardType
     options: LeaderboardsBridgeOptions
     leaderboardsSetScore(id: string | null | undefined, score: number, isMain: boolean): Promise<unknown>
@@ -65,6 +66,11 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
         }
 
         if (this.#saas) {
+            // Skip the SaaS request when there is no player identity to attribute the score to.
+            if (!this._platformBridge.playerId) {
+                return Promise.reject()
+            }
+
             return this.#saas.post(`leaderboards/${id}`, { score })
         }
 
