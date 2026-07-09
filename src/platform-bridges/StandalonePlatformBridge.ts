@@ -35,7 +35,7 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
         return true
     }
 
-    protected _isAdvancedBannersSupported = false
+    protected _isAdvancedBannersSupported = true
 }
 
 export default StandalonePlatformBridge
