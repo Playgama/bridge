@@ -30,9 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard production to release branches
-        if: ${{ inputs.environment == 'production' && github.ref_name != 'main' && github.ref_name != 'develop-v2' }}
+        if: ${{ inputs.environment == 'production' && github.ref_name != 'main' }}
         run: |
-          echo "::error::production is only allowed from 'main' or 'develop-v2' (got '${{ github.ref_name }}')."
+          echo "::error::production is only allowed from 'main' (got '${{ github.ref_name }}')."
           exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
