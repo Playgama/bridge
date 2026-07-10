@@ -1,9 +1,6 @@
 name: Release to Staging
 
 on:
-  # TEMP: verify this branch by auto-deploying to the dev channel on push. Remove before merge.
-  push:
-    branches: [ci-cd]
   workflow_dispatch:
     inputs:
       channel:
@@ -20,8 +17,7 @@ jobs:
     uses: ./.github/workflows/publish.yml
     with:
       environment: staging
-      # Falls back to 'dev' on push (workflow_dispatch inputs are empty then).
-      channel: ${{ inputs.channel || 'dev' }}
+      channel: ${{ inputs.channel }}
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}

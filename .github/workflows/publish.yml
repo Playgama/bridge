@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: staging | production (drives the main-branch guard)
+        description: staging | production (drives the release-branch guard)
         type: string
         required: true
       channel:
@@ -29,10 +29,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Guard production to main branch
-        if: ${{ inputs.environment == 'production' && github.ref_name != 'main' }}
+      - name: Guard production to release branches
+        if: ${{ inputs.environment == 'production' && github.ref_name != 'main' && github.ref_name != 'develop-v2' }}
         run: |
-          echo "::error::production is only allowed from the 'main' branch (got '${{ github.ref_name }}')."
+          echo "::error::production is only allowed from 'main' or 'develop-v2' (got '${{ github.ref_name }}')."
           exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,7 +63,7 @@ jobs:
           fi
           MAJOR="$(node -p "require('./package.json').version.split('.')[0]")"
           PUBLIC_PATH="https://${BUCKET}/v${MAJOR}/${{ inputs.channel }}/"
-          node scripts/build-dist.js --type=both --public-path="$PUBLIC_PATH"
+          npm run build:dist -- --type=both --public-path="$PUBLIC_PATH"
       - uses: actions/upload-artifact@v4
         with:
           name: dist-publish
