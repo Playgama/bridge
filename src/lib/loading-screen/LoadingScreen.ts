@@ -101,7 +101,7 @@ class LoadingScreen {
 
             #${LOADING_SCREEN_OVERLAY_ID} {
                 font-size: 20px;
-                z-index: 1;
+                z-index: 9999999;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
