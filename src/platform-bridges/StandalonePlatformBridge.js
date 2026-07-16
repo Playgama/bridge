@@ -16,7 +16,7 @@
  */
 
 import PlaygamaPlatformBridge from './PlaygamaPlatformBridge'
-import { PLATFORM_ID } from '../constants'
+import { DEFAULT_PRICE_CURRENCY_CODE, GAM_PER_USD, PLATFORM_ID } from '../constants'
 
 class StandalonePlatformBridge extends PlaygamaPlatformBridge {
     get platformId() {
@@ -36,6 +36,74 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
     }
 
     _isAdvancedBannersSupported = true
+
+    // payments
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        const updatedProducts = products.map((product) => {
+            const { price, currency } = this.#resolveProductPrice(product)
+            return {
+                id: product.id,
+                price: price !== null ? `${price} ${currency}` : null,
+                priceCurrencyCode: price !== null ? currency : null,
+                priceValue: price,
+            }
+        })
+
+        return Promise.resolve(updatedProducts)
+    }
+
+    #resolveProductPrice(product) {
+        const price = this.#parsePrice(product.amount)
+        if (price !== null) {
+            const currency = typeof product.currency === 'string' && product.currency !== ''
+                ? product.currency
+                : DEFAULT_PRICE_CURRENCY_CODE
+            return { price, currency }
+        }
+
+        const playgamaProduct = this.#getPlaygamaProductPlatformData(product.id)
+
+        const playgamaAmount = this.#parsePrice(playgamaProduct?.amount)
+        if (playgamaAmount !== null) {
+            return { price: playgamaAmount / GAM_PER_USD, currency: DEFAULT_PRICE_CURRENCY_CODE }
+        }
+
+        return { price: null, currency: DEFAULT_PRICE_CURRENCY_CODE }
+    }
+
+    #getPlaygamaProductPlatformData(id) {
+        const products = this._options.payments
+        if (!products) {
+            return null
+        }
+
+        const product = products.find((p) => p.id === id)
+        if (!product) {
+            return null
+        }
+
+        return { ...product[PLATFORM_ID.PLAYGAMA], id: product.id }
+    }
+
+    #parsePrice(value) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value
+        }
+
+        if (typeof value === 'string' && value !== '') {
+            const parsed = Number(value)
+            if (Number.isFinite(parsed)) {
+                return parsed
+            }
+        }
+
+        return null
+    }
 }
 
 export default StandalonePlatformBridge

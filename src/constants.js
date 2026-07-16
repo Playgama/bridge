@@ -166,6 +166,9 @@ export const PLATFORM_MESSAGE = {
     PLAYER_GOT_ACHIEVEMENT: 'player_got_achievement',
 }
 
+export const DEFAULT_PRICE_CURRENCY_CODE = 'USD'
+export const GAM_PER_USD = 10
+
 export const LEADERBOARD_TYPE = {
     NOT_AVAILABLE: 'not_available',
     IN_GAME: 'in_game',

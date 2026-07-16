@@ -532,7 +532,7 @@ export function createProgressLogo(showFullLoadingLogo, showLoadingText = false)
 
         #loading-overlay {
             font-size: 20px;
-            z-index: 1;
+            z-index: 9999999;
             display: flex;
             flex-direction: column;
             justify-content: center;
