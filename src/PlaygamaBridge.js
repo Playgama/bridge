@@ -133,6 +133,10 @@ class PlaygamaBridge {
         this.#engine = value
     }
 
+    set gameVersion(value) {
+        analyticsModule.gameVersion = value
+    }
+
     get PLATFORM_ID() {
         return PLATFORM_ID
     }

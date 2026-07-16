@@ -25,6 +25,10 @@ const DISCORD_API_URL = '/playgama/api/events/v3/bridge/analytics'
 const FLUSH_INTERVAL = 30000
 
 class AnalyticsModule extends ModuleBase {
+    set gameVersion(value) {
+        this.#gameVersion = value
+    }
+
     #eventQueue = []
 
     #flushTimer = null
@@ -32,6 +36,8 @@ class AnalyticsModule extends ModuleBase {
     #gameId = null
 
     #playerGuestId = null
+
+    #gameVersion = null
 
     #sessionId = null
 
@@ -136,6 +142,7 @@ class AnalyticsModule extends ModuleBase {
             bridge_version: packageJson.version,
             platform_id: this._platformBridge.platformId,
             game_id: this.#gameId,
+            game_version: this.#gameVersion,
             session_id: this.#sessionId,
             player_id: this._platformBridge.playerId,
             player_guest_id: this.#playerGuestId,
