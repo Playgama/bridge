@@ -158,6 +158,10 @@ class PlaygamaBridge {
         this.#engine = value
     }
 
+    set gameVersion(value: string | null) {
+        analyticsModule.gameVersion = value
+    }
+
     // Constants are exposed on the prototype below the class declaration
     /* eslint-disable lines-between-class-members */
     declare readonly PLATFORM_ID: typeof PLATFORM_ID

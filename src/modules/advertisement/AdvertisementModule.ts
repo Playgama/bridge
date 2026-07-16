@@ -16,6 +16,7 @@
  */
 
 import eventBus, { applyEventBusMixin } from '../../lib/EventBus'
+import bridgeConfig from '../../lib/bridge-config'
 import ModuleBase from '../ModuleBase'
 import { internalAnalytics } from '../analytics'
 import { EVENT_NAME } from '../../constants'
@@ -111,7 +112,10 @@ class AdvertisementModule extends ModuleBase<AdvertisementBridgeContract> {
 
         eventBus.on(
             EVENT_NAME.PLATFORM_MESSAGE_SENT,
-            (message: unknown) => this.#advancedBanners.tryShow(message as string),
+            (message: unknown) => {
+                this.#advancedBanners.tryShow(message as string)
+                this.#tryShowInterstitial(message as string)
+            },
         )
         return this
     }
@@ -160,6 +164,15 @@ class AdvertisementModule extends ModuleBase<AdvertisementBridgeContract> {
 
     checkAdBlock(): Promise<unknown> {
         return this._platformBridge.checkAdBlock()
+    }
+
+    #tryShowInterstitial(message: string): void {
+        const events = bridgeConfig.getValues().advertisement?.interstitial?.autoShow
+        if (!Array.isArray(events) || !events.includes(message)) {
+            return
+        }
+
+        this.showInterstitial(message)
     }
 
     #hasAdvertisementInProgress(): boolean {

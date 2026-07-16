@@ -17,6 +17,9 @@
 
 import PlaygamaPlatformBridge from './PlaygamaPlatformBridge'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+import { getPaymentsProductPlatformData } from '../modules/payments'
+import { DEFAULT_PRICE_CURRENCY_CODE, GAM_PER_USD } from '../modules/payments/constants'
+import type { AnyRecord } from '../utils'
 
 class StandalonePlatformBridge extends PlaygamaPlatformBridge {
     get platformId(): PlatformId {
@@ -36,6 +39,64 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
     }
 
     protected _isAdvancedBannersSupported = true
+
+    // payments
+    paymentsGetCatalog(): Promise<unknown> {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject()
+        }
+
+        const updatedProducts = products.map((product) => {
+            const { price, currency } = this.#resolveProductPrice(product)
+            return {
+                id: product.id,
+                price: price !== null ? `${price} ${currency}` : null,
+                priceCurrencyCode: price !== null ? currency : null,
+                priceValue: price,
+            }
+        })
+
+        return Promise.resolve(updatedProducts)
+    }
+
+    #resolveProductPrice(product: AnyRecord): { price: number | null; currency: string } {
+        const price = this.#parsePrice(product.amount)
+        if (price !== null) {
+            const currency = typeof product.currency === 'string' && product.currency !== ''
+                ? product.currency
+                : DEFAULT_PRICE_CURRENCY_CODE
+            return { price, currency }
+        }
+
+        const playgamaProduct = getPaymentsProductPlatformData(
+            this._options.payments,
+            PLATFORM_ID.PLAYGAMA,
+            product.id as string,
+        )
+
+        const playgamaAmount = this.#parsePrice(playgamaProduct?.amount)
+        if (playgamaAmount !== null) {
+            return { price: playgamaAmount / GAM_PER_USD, currency: DEFAULT_PRICE_CURRENCY_CODE }
+        }
+
+        return { price: null, currency: DEFAULT_PRICE_CURRENCY_CODE }
+    }
+
+    #parsePrice(value: unknown): number | null {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value
+        }
+
+        if (typeof value === 'string' && value !== '') {
+            const parsed = Number(value)
+            if (Number.isFinite(parsed)) {
+                return parsed
+            }
+        }
+
+        return null
+    }
 }
 
 export default StandalonePlatformBridge

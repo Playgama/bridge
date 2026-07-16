@@ -50,7 +50,7 @@ interface GameSnacksSdk {
         onResume(callback: () => void): void
     }
     audio: {
-        isEnabled: boolean
+        isEnabled(): boolean
         subscribe(callback: (isEnabled: boolean) => void): void
     }
     ad: {
@@ -130,7 +130,7 @@ class GameSnacksPlatformBridge extends PlatformBridgeBase {
                 })
 
                 sdk.game.firstFrameReady()
-                this._setAudioState(sdk.audio.isEnabled)
+                this._setAudioState(sdk.audio.isEnabled())
 
                 this._isInitialized = true
                 this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)

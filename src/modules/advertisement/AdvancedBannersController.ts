@@ -337,7 +337,10 @@ class AdvancedBannersController {
                 }
                 score += ADVANCED_BANNERS_SCORE.DEVICE_TYPE
             } else if (ORIENTATIONS_SET.has(segment)) {
-                if (segment !== orientation) {
+                // A square (1:1) viewport must not match any orientation, so a landscape-only
+                // banner is not shown at 1:1 scale. detectOrientation buckets square as landscape,
+                // hence the explicit square guard here.
+                if (segment !== orientation || window.innerWidth === window.innerHeight) {
                     return false
                 }
                 score += ADVANCED_BANNERS_SCORE.ORIENTATION
