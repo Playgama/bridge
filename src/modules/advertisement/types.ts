@@ -42,6 +42,7 @@ export interface AdvertisementOptions {
         placementFallback?: string
         placements?: PlacementMapping[]
         preloadOnStart?: string
+        autoShow?: string[]
     }
     rewarded?: {
         disable?: boolean
