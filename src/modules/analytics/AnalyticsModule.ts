@@ -37,6 +37,10 @@ import type {
 } from './types'
 
 class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
+    set gameVersion(value: string | null) {
+        this.#gameVersion = value
+    }
+
     #eventQueue: AnalyticsEvent[] = []
 
     #flushTimer: ReturnType<typeof setInterval> | null = null
@@ -44,6 +48,8 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     #gameId: string | null = null
 
     #playerGuestId: string | null = null
+
+    #gameVersion: string | null = null
 
     #sessionId: string
 
@@ -145,6 +151,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             bridge_version: packageJson.version,
             platform_id: this._platformBridge.platformId,
             game_id: this.#gameId,
+            game_version: this.#gameVersion,
             session_id: this.#sessionId,
             player_id: this._platformBridge.playerId,
             player_guest_id: this.#playerGuestId,

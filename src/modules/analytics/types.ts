@@ -51,6 +51,7 @@ export interface AnalyticsMeta {
     bridge_version: string
     platform_id: PlatformId
     game_id: string | null
+    game_version: string | null
     session_id: string
     player_id: string | null
     player_guest_id: string | null
