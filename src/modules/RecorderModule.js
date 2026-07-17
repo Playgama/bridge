@@ -16,6 +16,8 @@
  */
 
 class RecorderModule {
+    #captureGeneration = 0
+
     #pc = null
 
     #stream = null
@@ -79,27 +81,46 @@ class RecorderModule {
 
         const canvas = this.#getCanvas()
 
-        this.#stream = canvas.captureStream(options.fps || 30)
+        this.#captureGeneration += 1
+        const generation = this.#captureGeneration
+        this.#clearCaptureResources()
+        const stream = canvas.captureStream(options.fps || 30)
+        this.#stream = stream
+        let peerConnection
+        try {
+            peerConnection = new RTCPeerConnection()
+        } catch (error) {
+            this.#clearCaptureResources()
+            throw error
+        }
+        this.#pc = peerConnection
 
         if (options.contentHint) {
-            const track = this.#stream.getVideoTracks()[0]
+            const track = stream.getVideoTracks()[0]
             if (track) track.contentHint = options.contentHint
         }
 
-        this.#pc = new RTCPeerConnection()
+        stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
 
-        this.#stream.getTracks().forEach((t) => this.#pc.addTrack(t, this.#stream))
-
-        this.#pc.onicecandidate = (e) => {
-            if (e.candidate) {
+        peerConnection.onicecandidate = (e) => {
+            if (e.candidate && this.#isCurrentCapture(generation, peerConnection)) {
                 this.#onIceCandidate?.(e.candidate.toJSON())
             }
         }
 
-        const offer = await this.#pc.createOffer()
-        await this.#pc.setLocalDescription(offer)
+        let offer
+        try {
+            offer = await peerConnection.createOffer()
+            if (!this.#isCurrentCapture(generation, peerConnection)) return
+            await peerConnection.setLocalDescription(offer)
+            if (!this.#isCurrentCapture(generation, peerConnection)) return
+        } catch (error) {
+            if (!this.#isCurrentCapture(generation, peerConnection)) return
+            this.#clearCaptureResources()
+            throw error
+        }
 
-        this.#applyEncodingParams(options)
+        this.#applyEncodingParams(peerConnection, options)
 
         this.#onOffer?.(offer.sdp)
         this.#onStarted?.()
@@ -146,13 +167,18 @@ class RecorderModule {
 
     /** Stops the capture, closes the peer connection and releases all tracks. */
     stopCapture() {
+        this.#captureGeneration += 1
+        this.#clearCaptureResources()
+    }
+
+    #clearCaptureResources() {
         this.#stream?.getTracks().forEach((t) => t.stop())
         this.#pc?.close()
         this.#pc = null
         this.#stream = null
     }
 
-    #applyEncodingParams({
+    #applyEncodingParams(peerConnection, {
         maxBitrate,
         minBitrate,
         maxFramerate,
@@ -161,7 +187,7 @@ class RecorderModule {
         networkPriority,
         scalabilityMode,
     }) {
-        this.#pc.getSenders().forEach((sender) => {
+        peerConnection.getSenders().forEach((sender) => {
             if (sender.track?.kind !== 'video') return
             const params = sender.getParameters()
             if (!params.encodings?.length) {
@@ -190,6 +216,10 @@ class RecorderModule {
             }
             sender.setParameters(params)
         })
+    }
+
+    #isCurrentCapture(generation, peerConnection) {
+        return generation === this.#captureGeneration && peerConnection === this.#pc
     }
 
     #getCanvas() {
