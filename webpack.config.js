@@ -131,7 +131,9 @@ module.exports = (env = {}, argv = {}) => {
         name: 'dynamic',
         output: {
             ...baseConfig.output,
-            publicPath: isDevelopment ? 'auto' : CDN_BASE_URL,
+            // env.publicPath: absolute URL the dynamic bundle uses to fetch its
+            // platform-bridges/ chunks, e.g. https://<domain>/v<major>/<channel>/
+            publicPath: isDevelopment ? 'auto' : (env.publicPath || CDN_BASE_URL),
         },
         plugins: [
             ...baseConfig.plugins,
