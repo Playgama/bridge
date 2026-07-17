@@ -20,6 +20,8 @@ class RecorderModule {
 
     #pc = null
 
+    #pendingIceCandidates = []
+
     #stream = null
 
     #onOffer = null
@@ -132,11 +134,19 @@ class RecorderModule {
      * @param {string} params.sdp - Remote SDP answer string
      */
     async handleAnswer({ sdp }) {
-        if (this.#pc) {
-            await this.#pc.setRemoteDescription(
-                new RTCSessionDescription({ type: 'answer', sdp }),
-            )
-        }
+        const peerConnection = this.#pc
+        if (!peerConnection) return
+
+        await peerConnection.setRemoteDescription(
+            new RTCSessionDescription({ type: 'answer', sdp }),
+        )
+        if (peerConnection !== this.#pc) return
+
+        const pendingCandidates = this.#pendingIceCandidates
+        this.#pendingIceCandidates = []
+        await Promise.all(pendingCandidates.map((candidate) => (
+            peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
+        )))
     }
 
     /**
@@ -144,9 +154,15 @@ class RecorderModule {
      * @param {RTCIceCandidateInit | null} candidate
      */
     async handleIce(candidate) {
-        if (this.#pc && candidate) {
-            await this.#pc.addIceCandidate(new RTCIceCandidate(candidate))
+        const peerConnection = this.#pc
+        if (!peerConnection || !candidate) return
+
+        if (!peerConnection.remoteDescription) {
+            this.#pendingIceCandidates.push(candidate)
+            return
         }
+
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
     }
 
     /**
@@ -175,6 +191,7 @@ class RecorderModule {
         this.#stream?.getTracks().forEach((t) => t.stop())
         this.#pc?.close()
         this.#pc = null
+        this.#pendingIceCandidates = []
         this.#stream = null
     }
 

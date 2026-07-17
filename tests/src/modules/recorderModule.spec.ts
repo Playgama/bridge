@@ -26,12 +26,16 @@ function createMockRTCPeerConnection() {
         addTrack: vi.fn(),
         createOffer: vi.fn().mockResolvedValue({ sdp: 'mock-offer-sdp', type: 'offer' }),
         setLocalDescription: vi.fn().mockResolvedValue(undefined),
-        setRemoteDescription: vi.fn().mockResolvedValue(undefined),
+        setRemoteDescription: vi.fn(),
+        remoteDescription: null as RTCSessionDescriptionInit | null,
         addIceCandidate: vi.fn().mockResolvedValue(undefined),
         getSenders: vi.fn().mockReturnValue([mockSender]),
         close: vi.fn(),
         onicecandidate: null as ((e: { candidate: unknown }) => void) | null,
     }
+    mockPc.setRemoteDescription.mockImplementation(async (description) => {
+        mockPc.remoteDescription = description
+    })
 
     global.RTCPeerConnection = vi.fn().mockImplementation(() => mockPc) as unknown as typeof RTCPeerConnection
     return mockPc
@@ -348,16 +352,61 @@ describe('RecorderModule', () => {
     })
 
     describe('handleIce', () => {
-        test('should add ice candidate after startCapture', async () => {
+        test('should add ice candidate after remote answer is set', async () => {
             canvas = createMockCanvas()
             const mockPc = createMockRTCPeerConnection()
 
             const candidate = { candidate: 'mock', sdpMid: '0', sdpMLineIndex: 0 }
             const module = createRecorderModule()
             await module.startCapture()
+            await module.handleAnswer({ sdp: 'mock-answer-sdp' })
             await module.handleIce(candidate)
 
             expect(mockPc.addIceCandidate).toHaveBeenCalled()
+        })
+
+        test('should queue ice candidate while remote answer is being set', async () => {
+            canvas = createMockCanvas()
+            const mockPc = createMockRTCPeerConnection()
+            let resolveRemoteDescription!: () => void
+            mockPc.setRemoteDescription.mockImplementation((description) => new Promise<void>((resolve) => {
+                resolveRemoteDescription = () => {
+                    mockPc.remoteDescription = description
+                    resolve()
+                }
+            }))
+
+            const candidate = { candidate: 'early', sdpMid: '0', sdpMLineIndex: 0 }
+            const module = createRecorderModule()
+            await module.startCapture()
+            const answerPromise = module.handleAnswer({ sdp: 'mock-answer-sdp' })
+            await vi.waitFor(() => expect(mockPc.setRemoteDescription).toHaveBeenCalled())
+
+            await module.handleIce(candidate)
+            expect(mockPc.addIceCandidate).not.toHaveBeenCalled()
+
+            resolveRemoteDescription()
+            await answerPromise
+            expect(mockPc.addIceCandidate).toHaveBeenCalledWith(candidate)
+        })
+
+        test('should discard queued ice candidates when capture stops', async () => {
+            canvas = createMockCanvas()
+            const firstPc = createMockRTCPeerConnection()
+            const secondPc = createMockRTCPeerConnection()
+            global.RTCPeerConnection = vi.fn()
+                .mockImplementationOnce(() => firstPc)
+                .mockImplementationOnce(() => secondPc) as unknown as typeof RTCPeerConnection
+
+            const module = createRecorderModule()
+            await module.startCapture()
+            await module.handleIce({ candidate: 'stale', sdpMid: '0', sdpMLineIndex: 0 })
+            module.stopCapture()
+            await module.startCapture()
+            await module.handleAnswer({ sdp: 'fresh-answer-sdp' })
+
+            expect(firstPc.addIceCandidate).not.toHaveBeenCalled()
+            expect(secondPc.addIceCandidate).not.toHaveBeenCalled()
         })
 
         test('should do nothing when peer connection does not exist', async () => {
