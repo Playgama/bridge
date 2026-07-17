@@ -155,6 +155,38 @@ describe('Recorder', () => {
             expect(canvas.captureStream).toHaveBeenCalledWith(30)
         })
 
+        test('should stop the stream when peer connection creation fails', async () => {
+            const stop = vi.fn()
+            canvas = createMockCanvas()
+            canvas.captureStream = vi.fn().mockReturnValue({
+                getTracks: () => [{ stop }],
+            })
+            global.RTCPeerConnection = vi.fn().mockImplementation(() => {
+                throw new Error('Peer connection creation failed')
+            }) as unknown as typeof RTCPeerConnection
+
+            const module = createRecorder()
+
+            await expect(module.startCapture()).rejects.toThrow('Peer connection creation failed')
+            expect(stop).toHaveBeenCalledOnce()
+        })
+
+        test('should release capture resources when offer creation fails', async () => {
+            const stop = vi.fn()
+            canvas = createMockCanvas()
+            canvas.captureStream = vi.fn().mockReturnValue({
+                getTracks: () => [{ stop }],
+            })
+            const mockPc = createMockRTCPeerConnection()
+            mockPc.createOffer = vi.fn().mockRejectedValue(new Error('Offer creation failed'))
+
+            const module = createRecorder()
+
+            await expect(module.startCapture()).rejects.toThrow('Offer creation failed')
+            expect(stop).toHaveBeenCalledOnce()
+            expect(mockPc.close).toHaveBeenCalledOnce()
+        })
+
         test('should apply maxBitrate to video sender', async () => {
             canvas = createMockCanvas()
             const mockPc = createMockRTCPeerConnection()
@@ -251,6 +283,50 @@ describe('Recorder', () => {
 
             const module = createRecorder()
             await expect(module.startCapture()).resolves.toBeUndefined()
+        })
+
+        test('should not emit an old offer after a newer capture starts', async () => {
+            canvas = createMockCanvas()
+            const firstPc = createMockRTCPeerConnection()
+            const secondPc = createMockRTCPeerConnection()
+            let resolveFirstOffer!: (offer: RTCSessionDescriptionInit) => void
+            firstPc.createOffer = vi.fn(() => new Promise((resolve) => {
+                resolveFirstOffer = resolve
+            }))
+            secondPc.createOffer = vi.fn().mockResolvedValue({
+                sdp: 'fresh-offer-sdp',
+                type: 'offer',
+            })
+            global.RTCPeerConnection = vi.fn()
+                .mockImplementationOnce(() => firstPc)
+                .mockImplementationOnce(() => secondPc) as unknown as typeof RTCPeerConnection
+            const onOffer = vi.fn()
+            const onIceCandidate = vi.fn()
+            const onStarted = vi.fn()
+            const module = createRecorder()
+            module.onOffer = onOffer
+            module.onIceCandidate = onIceCandidate
+            module.onStarted = onStarted
+
+            const firstStart = module.startCapture()
+            await vi.waitFor(() => expect(firstPc.createOffer).toHaveBeenCalled())
+            module.stopCapture()
+            await module.startCapture()
+            resolveFirstOffer({ sdp: 'stale-offer-sdp', type: 'offer' })
+            await firstStart
+            firstPc.onicecandidate?.({
+                candidate: { toJSON: () => ({ candidate: 'stale-candidate' }) },
+            })
+            secondPc.onicecandidate?.({
+                candidate: { toJSON: () => ({ candidate: 'fresh-candidate' }) },
+            })
+
+            expect(onOffer).toHaveBeenCalledOnce()
+            expect(onOffer).toHaveBeenCalledWith('fresh-offer-sdp')
+            expect(onIceCandidate).toHaveBeenCalledOnce()
+            expect(onIceCandidate).toHaveBeenCalledWith({ candidate: 'fresh-candidate' })
+            expect(onStarted).toHaveBeenCalledOnce()
+            expect(firstPc.setLocalDescription).not.toHaveBeenCalled()
         })
     })
 

@@ -40,6 +40,8 @@ export type RecorderStartedCallback = () => void
 export type RecorderErrorCallback = (reason: string | null) => void
 
 class Recorder {
+    #captureGeneration = 0
+
     #pc: RTCPeerConnection | null = null
 
     #stream: MediaStream | null = null
@@ -85,27 +87,46 @@ class Recorder {
             return
         }
 
-        this.#stream = canvas.captureStream(options.fps || 30)
+        this.#captureGeneration += 1
+        const generation = this.#captureGeneration
+        this.#clearCaptureResources()
+        const stream = canvas.captureStream(options.fps || 30)
+        this.#stream = stream
+        let peerConnection: RTCPeerConnection
+        try {
+            peerConnection = new RTCPeerConnection()
+        } catch (error) {
+            this.#clearCaptureResources()
+            throw error
+        }
+        this.#pc = peerConnection
 
         if (options.contentHint) {
-            const track = this.#stream.getVideoTracks()[0]
+            const track = stream.getVideoTracks()[0]
             if (track) track.contentHint = options.contentHint
         }
 
-        this.#pc = new RTCPeerConnection()
+        stream.getTracks().forEach((track) => peerConnection.addTrack(track, stream))
 
-        this.#stream.getTracks().forEach((t) => this.#pc!.addTrack(t, this.#stream!))
-
-        this.#pc.onicecandidate = (e) => {
-            if (e.candidate) {
+        peerConnection.onicecandidate = (e) => {
+            if (e.candidate && this.#isCurrentCapture(generation, peerConnection)) {
                 this.#onIceCandidate?.(e.candidate.toJSON())
             }
         }
 
-        const offer = await this.#pc.createOffer()
-        await this.#pc.setLocalDescription(offer)
+        let offer: RTCSessionDescriptionInit
+        try {
+            offer = await peerConnection.createOffer()
+            if (!this.#isCurrentCapture(generation, peerConnection)) return
+            await peerConnection.setLocalDescription(offer)
+            if (!this.#isCurrentCapture(generation, peerConnection)) return
+        } catch (error) {
+            if (!this.#isCurrentCapture(generation, peerConnection)) return
+            this.#clearCaptureResources()
+            throw error
+        }
 
-        this.#applyEncodingParams(options)
+        this.#applyEncodingParams(peerConnection, options)
 
         this.#onOffer?.(offer.sdp)
         this.#onStarted?.()
@@ -126,22 +147,30 @@ class Recorder {
     }
 
     stopCapture(): void {
+        this.#captureGeneration += 1
+        this.#clearCaptureResources()
+    }
+
+    #clearCaptureResources(): void {
         this.#stream?.getTracks().forEach((t) => t.stop())
         this.#pc?.close()
         this.#pc = null
         this.#stream = null
     }
 
-    #applyEncodingParams({
-        maxBitrate,
-        minBitrate,
-        maxFramerate,
-        scaleResolutionDownBy,
-        priority,
-        networkPriority,
-        scalabilityMode,
-    }: RecorderStartOptions): void {
-        this.#pc?.getSenders().forEach((sender) => {
+    #applyEncodingParams(
+        peerConnection: RTCPeerConnection,
+        {
+            maxBitrate,
+            minBitrate,
+            maxFramerate,
+            scaleResolutionDownBy,
+            priority,
+            networkPriority,
+            scalabilityMode,
+        }: RecorderStartOptions,
+    ): void {
+        peerConnection.getSenders().forEach((sender) => {
             if (sender.track?.kind !== 'video') return
             const params = sender.getParameters()
             if (!params.encodings?.length) {
@@ -171,6 +200,13 @@ class Recorder {
             }
             sender.setParameters(params)
         })
+    }
+
+    #isCurrentCapture(
+        generation: number,
+        peerConnection: RTCPeerConnection,
+    ): boolean {
+        return generation === this.#captureGeneration && peerConnection === this.#pc
     }
 
     #getCanvas(): HTMLCanvasElement | null {
