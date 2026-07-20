@@ -15,13 +15,13 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import LeaderboardsModule from './LeaderboardsModule'
-
-export type {
-    LeaderboardsBridgeContract,
-    LeaderboardsBridgeOptions,
-    LeaderboardMapping,
-} from './LeaderboardsModule'
-export type { LeaderboardEntry } from './types'
-
-export default new LeaderboardsModule()
+// Unified leaderboard entry shape. Platforms that expose entries (Yandex, Y8,
+// in-game/SaaS) normalize to these fields; `photo` may be null when the
+// platform provides no avatar.
+export interface LeaderboardEntry {
+    id: string
+    name: string
+    score: number
+    rank: number
+    photo: string | null
+}

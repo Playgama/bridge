@@ -108,7 +108,10 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
         ...noLint ? [] : [new ESLintPlugin({ extensions: ['js', 'ts', 'tsx'] })],
         new webpack.DefinePlugin({
             PLUGIN_VERSION: JSON.stringify(packageJson.version),
-            PLUGIN_NAME: JSON.stringify(packageJson.name),
+            // Kept as the historical, unscoped plugin name so it stays stable
+            // regardless of the npm package name (which is scoped: @playgama/bridge).
+            // This value is reported to platform SDKs (e.g. Yandex telemetry).
+            PLUGIN_NAME: JSON.stringify('playgama-bridge'),
             ...createPlatformDefines(targetPlatforms),
         }),
     ],
@@ -120,6 +123,8 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
 interface WebpackEnv {
     platform?: string
     noLint?: boolean
+    // Build the npm-consumable bundles (ESM + UMD) instead of the CDN builds.
+    npm?: boolean
     // Absolute URL the dynamic bundle uses to fetch its platform-bridges/ chunks.
     // Should match the deploy location, e.g. https://<domain>/v<major>/<channel>/
     publicPath?: string
@@ -177,6 +182,41 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
                 maxChunks: 1,
             }),
         ],
+    }
+
+    // npm-consumable bundles. Same source, but with a real module export
+    // (src/npm.ts) so `import bridge from '@playgama/bridge'` works. Everything
+    // is inlined into a single file (no platform-bridges/ chunks to fetch).
+    if (env.npm) {
+        const singleChunk = new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
+
+        const npmEsmConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-esm',
+            entry: './src/npm',
+            experiments: { outputModule: true },
+            output: {
+                filename: 'playgama-bridge.esm.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'module' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        const npmUmdConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-umd',
+            entry: './src/npm',
+            output: {
+                filename: 'playgama-bridge.umd.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { name: 'bridge', type: 'umd' },
+                globalObject: 'this',
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        return [npmEsmConfig, npmUmdConfig]
     }
 
     return [dynamicConfig, bundledConfig]
