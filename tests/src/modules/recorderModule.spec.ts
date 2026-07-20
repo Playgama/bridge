@@ -21,6 +21,51 @@ function createMockCanvas(options: {
     return canvas
 }
 
+function mockCapturedScreenshotFrame(
+    sourceCanvas: HTMLCanvasElement,
+    data = 'data:image/jpeg;base64,capturedFrame',
+) {
+    const track = {
+        kind: 'video',
+        readyState: 'live',
+        stop: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+    }
+    const stream = {
+        getVideoTracks: () => [track],
+        getTracks: () => [track],
+    }
+    sourceCanvas.captureStream = vi.fn().mockReturnValue(stream)
+
+    const video = document.createElement('video')
+    Object.defineProperties(video, {
+        videoWidth: { value: sourceCanvas.width },
+        videoHeight: { value: sourceCanvas.height },
+        requestVideoFrameCallback: {
+            value: vi.fn((callback: VideoFrameRequestCallback) => {
+                queueMicrotask(() => callback(0, {} as VideoFrameCallbackMetadata))
+                return 1
+            }),
+        },
+        cancelVideoFrameCallback: { value: vi.fn() },
+    })
+    vi.spyOn(video, 'play').mockResolvedValue(undefined)
+    vi.spyOn(video, 'pause').mockImplementation(() => {})
+
+    const outputCanvas = document.createElement('canvas')
+    const drawImage = vi.fn()
+    vi.spyOn(outputCanvas, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D)
+    vi.spyOn(outputCanvas, 'toDataURL').mockReturnValue(data)
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        if (tagName === 'video') return video
+        if (tagName === 'canvas') return outputCanvas
+        throw new Error(`Unexpected element: ${tagName}`)
+    })
+
+    return { stream, track, video, outputCanvas, drawImage }
+}
+
 function createMockRTCPeerConnection() {
     const setParameters = vi.fn().mockResolvedValue(undefined)
     const mockSender = {
@@ -441,22 +486,50 @@ describe('RecorderModule', () => {
             expect(result).toEqual({ success: false, reason: 'Canvas not found', data: null })
         })
 
-        test('should wait for paint and return base64 data from canvas', async () => {
-            canvas = createMockCanvas({ toDataURL: 'data:image/png;base64,screenshotData' })
-            vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-                callback(0)
-                return 1
-            })
-            vi.stubGlobal('cancelAnimationFrame', vi.fn())
+        test('should capture the painted surface without reading the source drawing buffer', async () => {
+            canvas = createMockCanvas()
+            const sourceToDataURL = canvas.toDataURL
+            const { track, video, outputCanvas, drawImage } = mockCapturedScreenshotFrame(canvas)
 
             const module = createRecorderModule()
-            const result = await module.takeScreenshotAfterPaint()
+            const result = await module.takeScreenshotFromSurface({
+                type: 'image/jpeg',
+                quality: 0.85,
+            })
 
+            expect(sourceToDataURL).not.toHaveBeenCalled()
+            expect(canvas.captureStream).toHaveBeenCalledWith(30)
+            expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720)
+            expect(outputCanvas.toDataURL).toHaveBeenCalledWith('image/jpeg', 0.85)
+            expect(track.stop).toHaveBeenCalledOnce()
             expect(result).toEqual({
                 success: true,
                 reason: null,
-                data: 'data:image/png;base64,screenshotData',
+                data: 'data:image/jpeg;base64,capturedFrame',
             })
+        })
+
+        test('should stop only the screenshot track while recording capture is active', async () => {
+            canvas = createMockCanvas()
+            const recordingTrack = { kind: 'video', stop: vi.fn() }
+            const recordingStream = {
+                getVideoTracks: () => [recordingTrack],
+                getTracks: () => [recordingTrack],
+            }
+            const { stream, track } = mockCapturedScreenshotFrame(canvas)
+            vi.mocked(canvas.captureStream)
+                .mockReset()
+                .mockReturnValueOnce(recordingStream as unknown as MediaStream)
+                .mockReturnValueOnce(stream as unknown as MediaStream)
+            const peerConnection = createMockRTCPeerConnection()
+            const module = createRecorderModule()
+
+            await module.startCapture()
+            await module.takeScreenshotFromSurface()
+
+            expect(recordingTrack.stop).not.toHaveBeenCalled()
+            expect(track.stop).toHaveBeenCalledOnce()
+            expect(peerConnection.close).not.toHaveBeenCalled()
         })
 
         test('should use default type and quality', () => {
