@@ -34,6 +34,19 @@ export interface RecorderAvailability {
     reason: string | null
 }
 
+export interface RecorderScreenshotOptions {
+    type?: string
+    quality?: number
+    maxWidth?: number
+    maxHeight?: number
+}
+
+export interface RecorderScreenshotResult {
+    success: boolean
+    reason: string | null
+    data: string | null
+}
+
 export type RecorderOfferCallback = (sdp: string | undefined) => void
 export type RecorderIceCandidateCallback = (candidate: RTCIceCandidateInit) => void
 export type RecorderStartedCallback = () => void
@@ -162,6 +175,51 @@ class Recorder {
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
     }
 
+    takeScreenshot({
+        type = 'image/png',
+        quality = 0.92,
+        maxWidth,
+        maxHeight,
+    }: RecorderScreenshotOptions = {}): RecorderScreenshotResult {
+        const sourceCanvas = this.#getCanvas()
+        if (!sourceCanvas) {
+            return { success: false, reason: 'Canvas not found', data: null }
+        }
+        if (sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+            return { success: false, reason: 'Canvas has no drawable area', data: null }
+        }
+
+        try {
+            const canvas = this.#fitScreenshotCanvas(sourceCanvas, maxWidth, maxHeight)
+            if (!canvas) {
+                return { success: false, reason: 'Canvas context is not available', data: null }
+            }
+            const normalizedQuality = Number.isFinite(quality)
+                ? Math.min(1, Math.max(0, quality))
+                : 0.92
+            const data = canvas.toDataURL(type, normalizedQuality)
+            if (data === 'data:,') {
+                return { success: false, reason: 'Canvas produced an empty screenshot', data: null }
+            }
+            return { success: true, reason: null, data }
+        } catch (error) {
+            return {
+                success: false,
+                reason: error && typeof error === 'object' && 'message' in error
+                    ? String(error.message)
+                    : 'Screenshot capture failed',
+                data: null,
+            }
+        }
+    }
+
+    async takeScreenshotAfterPaint(
+        options: RecorderScreenshotOptions = {},
+    ): Promise<RecorderScreenshotResult> {
+        await this.#waitForPaint()
+        return this.takeScreenshot(options)
+    }
+
     stopCapture(): void {
         this.#captureGeneration += 1
         this.#clearCaptureResources()
@@ -173,6 +231,35 @@ class Recorder {
         this.#pc = null
         this.#pendingIceCandidates = []
         this.#stream = null
+    }
+
+    #fitScreenshotCanvas(
+        sourceCanvas: HTMLCanvasElement,
+        maxWidth: number | undefined,
+        maxHeight: number | undefined,
+    ): HTMLCanvasElement | null {
+        const widthLimit = typeof maxWidth === 'number'
+            && Number.isFinite(maxWidth) && maxWidth > 0
+            ? maxWidth
+            : sourceCanvas.width
+        const heightLimit = typeof maxHeight === 'number'
+            && Number.isFinite(maxHeight) && maxHeight > 0
+            ? maxHeight
+            : sourceCanvas.height
+        const scale = Math.min(
+            1,
+            widthLimit / sourceCanvas.width,
+            heightLimit / sourceCanvas.height,
+        )
+        if (scale === 1) return sourceCanvas
+
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(sourceCanvas.width * scale))
+        canvas.height = Math.max(1, Math.round(sourceCanvas.height * scale))
+        const context = canvas.getContext('2d')
+        if (!context) return null
+        context.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height)
+        return canvas
     }
 
     #applyEncodingParams(
@@ -236,6 +323,25 @@ class Recorder {
 
     #isCaptureStreamSupported(): boolean {
         return typeof HTMLCanvasElement.prototype.captureStream === 'function'
+    }
+
+    #waitForPaint(): Promise<void> {
+        if (typeof requestAnimationFrame !== 'function') return Promise.resolve()
+
+        return new Promise((resolve) => {
+            let completed = false
+            let frameId = 0
+            let timeoutId: ReturnType<typeof setTimeout>
+            const finish = (): void => {
+                if (completed) return
+                completed = true
+                clearTimeout(timeoutId)
+                if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frameId)
+                resolve()
+            }
+            timeoutId = setTimeout(finish, 100)
+            frameId = requestAnimationFrame(finish)
+        })
     }
 }
 

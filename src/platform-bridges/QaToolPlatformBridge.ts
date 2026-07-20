@@ -88,6 +88,8 @@ const RECORDER_ACTION = {
     RTC_ICE: 'rtc_ice',
     CAPTURE_STARTED: 'capture_started',
     CAPTURE_ERROR: 'capture_error',
+    TAKE_SCREENSHOT: 'take_screenshot',
+    SCREENSHOT_RESULT: 'screenshot_result',
 } as const
 
 const INTERSTITIAL_STATUS = {
@@ -1099,6 +1101,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 break
             case RECORDER_ACTION.RTC_ICE:
                 this.#recorder.handleIce(data.options as RTCIceCandidateInit)
+                break
+            case RECORDER_ACTION.TAKE_SCREENSHOT:
+                this.#recorder.takeScreenshotAfterPaint(data.options).then((result) => {
+                    this.#sendMessage({
+                        type: MODULE_NAME_QA.RECORDER,
+                        action: RECORDER_ACTION.SCREENSHOT_RESULT,
+                        id: data.id,
+                        payload: result as unknown as Record<string, unknown>,
+                    })
+                })
                 break
             default:
                 break
