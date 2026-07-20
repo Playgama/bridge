@@ -15,6 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+const SCREENSHOT_CAPTURE_FPS = 30
+const SCREENSHOT_FRAME_TIMEOUT_MS = 1000
+
 class RecorderModule {
     #captureGeneration = 0
 
@@ -170,15 +173,70 @@ class RecorderModule {
      * @param {Object} [options]
      * @param {string} [options.type='image/png'] - Image MIME type
      * @param {number} [options.quality=0.92] - Image quality (0–1)
+     * @param {number} [options.maxWidth] - Maximum screenshot width
+     * @param {number} [options.maxHeight] - Maximum screenshot height
      * @returns {{ success: boolean, reason: string | null, data: string | null }}
      */
-    takeScreenshot({ type = 'image/png', quality = 0.92 } = {}) {
-        const canvas = this.#getCanvas()
-        if (!canvas) {
+    takeScreenshot(options = {}) {
+        const sourceCanvas = this.#getCanvas()
+        if (!sourceCanvas) {
             return { success: false, reason: 'Canvas not found', data: null }
         }
-        const data = canvas.toDataURL(type, quality)
-        return { success: true, reason: null, data }
+        return this.#serializeScreenshot(
+            sourceCanvas,
+            sourceCanvas.width,
+            sourceCanvas.height,
+            options,
+            sourceCanvas,
+        )
+    }
+
+    /** @returns {Promise<{ success: boolean, reason: string | null, data: string | null }>} */
+    async takeScreenshotFromSurface(options = {}) {
+        const sourceCanvas = this.#getCanvas()
+        if (!sourceCanvas) {
+            return { success: false, reason: 'Canvas not found', data: null }
+        }
+        if (sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+            return { success: false, reason: 'Canvas has no drawable area', data: null }
+        }
+        if (typeof sourceCanvas.captureStream !== 'function') {
+            return this.takeScreenshot(options)
+        }
+
+        let stream = null
+        let video = null
+        try {
+            stream = sourceCanvas.captureStream(SCREENSHOT_CAPTURE_FPS)
+            const track = stream.getVideoTracks()[0]
+            if (!track) {
+                return { success: false, reason: 'Canvas capture has no video track', data: null }
+            }
+
+            video = document.createElement('video')
+            video.srcObject = stream
+            video.muted = true
+            video.playsInline = true
+            await this.#waitForVideoFrame(video, track)
+            return this.#serializeScreenshot(
+                video,
+                video.videoWidth,
+                video.videoHeight,
+                options,
+            )
+        } catch (error) {
+            return {
+                success: false,
+                reason: error && typeof error === 'object' && 'message' in error
+                    ? String(error.message)
+                    : 'Screenshot capture failed',
+                data: null,
+            }
+        } finally {
+            video?.pause()
+            if (video) video.srcObject = null
+            stream?.getTracks().forEach((track) => track.stop())
+        }
     }
 
     /** Stops the capture, closes the peer connection and releases all tracks. */
@@ -193,6 +251,72 @@ class RecorderModule {
         this.#pc = null
         this.#pendingIceCandidates = []
         this.#stream = null
+    }
+
+    #serializeScreenshot(source, sourceWidth, sourceHeight, {
+        type = 'image/png',
+        quality = 0.92,
+        maxWidth,
+        maxHeight,
+    } = {}, reusableCanvas = null) {
+        if (sourceWidth === 0 || sourceHeight === 0) {
+            return { success: false, reason: 'Screenshot source has no drawable area', data: null }
+        }
+
+        try {
+            const canvas = this.#fitScreenshotSource(
+                source,
+                sourceWidth,
+                sourceHeight,
+                maxWidth,
+                maxHeight,
+                reusableCanvas,
+            )
+            if (!canvas) {
+                return { success: false, reason: 'Canvas context is not available', data: null }
+            }
+            const normalizedQuality = Number.isFinite(quality)
+                ? Math.min(1, Math.max(0, quality))
+                : 0.92
+            const data = canvas.toDataURL(type, normalizedQuality)
+            if (data === 'data:,') {
+                return { success: false, reason: 'Canvas produced an empty screenshot', data: null }
+            }
+            return { success: true, reason: null, data }
+        } catch (error) {
+            return {
+                success: false,
+                reason: error && typeof error === 'object' && 'message' in error
+                    ? String(error.message)
+                    : 'Screenshot capture failed',
+                data: null,
+            }
+        }
+    }
+
+    #fitScreenshotSource(source, sourceWidth, sourceHeight, maxWidth, maxHeight, reusableCanvas) {
+        const widthLimit = typeof maxWidth === 'number'
+            && Number.isFinite(maxWidth) && maxWidth > 0
+            ? maxWidth
+            : sourceWidth
+        const heightLimit = typeof maxHeight === 'number'
+            && Number.isFinite(maxHeight) && maxHeight > 0
+            ? maxHeight
+            : sourceHeight
+        const scale = Math.min(
+            1,
+            widthLimit / sourceWidth,
+            heightLimit / sourceHeight,
+        )
+        if (scale === 1 && reusableCanvas) return reusableCanvas
+
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(sourceWidth * scale))
+        canvas.height = Math.max(1, Math.round(sourceHeight * scale))
+        const context = canvas.getContext('2d')
+        if (!context) return null
+        context.drawImage(source, 0, 0, canvas.width, canvas.height)
+        return canvas
     }
 
     #applyEncodingParams(peerConnection, {
@@ -249,6 +373,50 @@ class RecorderModule {
 
     #isCaptureStreamSupported() {
         return typeof HTMLCanvasElement.prototype.captureStream === 'function'
+    }
+
+    #waitForVideoFrame(video, track) {
+        return new Promise((resolve, reject) => {
+            const cleanups = []
+            let frameCallbackId = null
+            let settled = false
+            const settle = (complete) => {
+                if (settled) return
+                settled = true
+                cleanups.forEach((cleanup) => cleanup())
+                complete()
+            }
+            const onEnded = () => settle(
+                () => reject(new Error('Canvas capture ended before its first frame')),
+            )
+            const onLoadedData = () => settle(resolve)
+            const timeoutId = setTimeout(() => settle(
+                () => reject(new Error('Canvas capture produced no video frames')),
+            ), SCREENSHOT_FRAME_TIMEOUT_MS)
+            cleanups.push(() => clearTimeout(timeoutId))
+            track.addEventListener('ended', onEnded, { once: true })
+            cleanups.push(() => track.removeEventListener('ended', onEnded))
+
+            if (typeof video.requestVideoFrameCallback === 'function') {
+                frameCallbackId = video.requestVideoFrameCallback(() => settle(resolve))
+                cleanups.push(() => {
+                    if (frameCallbackId !== null
+                        && typeof video.cancelVideoFrameCallback === 'function') {
+                        video.cancelVideoFrameCallback(frameCallbackId)
+                    }
+                })
+            } else {
+                video.addEventListener('loadeddata', onLoadedData, { once: true })
+                cleanups.push(() => video.removeEventListener('loadeddata', onLoadedData))
+            }
+
+            Promise.resolve(video.play()).then(() => {
+                if (typeof video.requestVideoFrameCallback !== 'function'
+                    && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                    settle(resolve)
+                }
+            }).catch((error) => settle(() => reject(error)))
+        })
     }
 }
 
