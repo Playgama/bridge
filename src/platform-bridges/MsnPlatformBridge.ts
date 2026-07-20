@@ -112,6 +112,7 @@ interface MsnSdk {
         getDataAsync(params: { gameId: unknown }): Promise<AnyRecord>
     }
     shareAsync(options: unknown): Promise<unknown>
+    promptInstallAsync(): Promise<string>
     submitGameResultsAsync(score: unknown): Promise<unknown>
     showDisplayAdsAsync(placements: string[]): Promise<unknown>
     hideDisplayAdsAsync(): Promise<unknown>
@@ -169,6 +170,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     // social
     get isShareSupported(): boolean {
         return true
+    }
+
+    get isAddToHomeScreenSupported(): boolean {
+        const sdk = this._platformSdk as MsnSdk | null
+        return typeof sdk?.promptInstallAsync === 'function'
     }
 
     // leaderboards
@@ -302,6 +308,27 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then(resolve)
                 .catch(reject)
         })
+    }
+
+    addToHomeScreen(): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN);
+            (this._platformSdk as MsnSdk).promptInstallAsync()
+                .then((outcome) => {
+                    if (outcome === 'accepted') {
+                        this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+                        return
+                    }
+
+                    this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 
     // leaderboards
@@ -741,7 +768,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     #updatePlayerInfo(data: AnyRecord | null): void {
         if (data) {
             this._isPlayerAuthorized = true
-            this._playerId = data.playerId as string
+            this._playerId = (data.playerId ?? data.publisherPlayerId) as string
             this._playerName = data.playerDisplayName as string
             this._playerExtra = data
             this.#isPaymentsSupported = (data.userAccountType as string).toLowerCase() === 'personal'
