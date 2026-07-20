@@ -1221,11 +1221,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 recorderModule.handleIce(data.options)
                 break
             case RECORDER_ACTION.TAKE_SCREENSHOT: {
-                const result = recorderModule.takeScreenshot(data.options || {})
-                this.#sendMessage({
-                    type: MODULE_NAME.RECORDER,
-                    action: RECORDER_ACTION.SCREENSHOT_RESULT,
-                    payload: result,
+                recorderModule.takeScreenshotAfterPaint(data.options || {}).then((result) => {
+                    this.#sendMessage({
+                        type: MODULE_NAME.RECORDER,
+                        action: RECORDER_ACTION.SCREENSHOT_RESULT,
+                        id: data.id,
+                        payload: result,
+                    })
                 })
                 break
             }
