@@ -7,13 +7,67 @@ function createRecorder() {
     return new Recorder()
 }
 
-function createMockCanvas() {
+function createMockCanvas(options: {
+    width?: number
+    height?: number
+    toDataURL?: string
+} = {}) {
     const canvas = document.createElement('canvas')
+    canvas.width = options.width ?? 1280
+    canvas.height = options.height ?? 720
+    vi.spyOn(canvas, 'toDataURL').mockReturnValue(
+        options.toDataURL || 'data:image/png;base64,mockData',
+    )
     canvas.captureStream = vi.fn().mockReturnValue({
         getTracks: () => [{ stop: vi.fn() }],
     })
     document.body.appendChild(canvas)
     return canvas
+}
+
+function mockCapturedScreenshotFrame(
+    sourceCanvas: HTMLCanvasElement,
+    data = 'data:image/jpeg;base64,capturedFrame',
+) {
+    const track = {
+        kind: 'video',
+        readyState: 'live',
+        stop: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+    }
+    const stream = {
+        getVideoTracks: () => [track],
+        getTracks: () => [track],
+    }
+    sourceCanvas.captureStream = vi.fn().mockReturnValue(stream)
+
+    const video = document.createElement('video')
+    Object.defineProperties(video, {
+        videoWidth: { value: sourceCanvas.width },
+        videoHeight: { value: sourceCanvas.height },
+        requestVideoFrameCallback: {
+            value: vi.fn((callback: VideoFrameRequestCallback) => {
+                queueMicrotask(() => callback(0, {} as VideoFrameCallbackMetadata))
+                return 1
+            }),
+        },
+        cancelVideoFrameCallback: { value: vi.fn() },
+    })
+    vi.spyOn(video, 'play').mockResolvedValue(undefined)
+    vi.spyOn(video, 'pause').mockImplementation(() => {})
+
+    const outputCanvas = document.createElement('canvas')
+    const drawImage = vi.fn()
+    vi.spyOn(outputCanvas, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D)
+    vi.spyOn(outputCanvas, 'toDataURL').mockReturnValue(data)
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        if (tagName === 'video') return video
+        if (tagName === 'canvas') return outputCanvas
+        throw new Error(`Unexpected element: ${tagName}`)
+    })
+
+    return { stream, track, video, outputCanvas, drawImage }
 }
 
 function createMockRTCPeerConnection() {
@@ -55,6 +109,7 @@ describe('Recorder', () => {
     })
 
     afterEach(() => {
+        vi.unstubAllGlobals()
         if (canvas) {
             canvas.remove()
             canvas = null
@@ -331,6 +386,99 @@ describe('Recorder', () => {
             expect(onIceCandidate).toHaveBeenCalledWith({ candidate: 'fresh-candidate' })
             expect(onStarted).toHaveBeenCalledOnce()
             expect(firstPc.setLocalDescription).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('takeScreenshot', () => {
+        test('should return an error when canvas is not found', () => {
+            const module = createRecorder()
+
+            expect(module.takeScreenshot()).toEqual({
+                success: false,
+                reason: 'Canvas not found',
+                data: null,
+            })
+        })
+
+        test('should capture the painted surface without reading the source drawing buffer', async () => {
+            canvas = createMockCanvas()
+            const sourceToDataURL = canvas.toDataURL
+            const { track, video, outputCanvas, drawImage } = mockCapturedScreenshotFrame(canvas)
+
+            const module = createRecorder()
+            const result = await module.takeScreenshotFromSurface({
+                type: 'image/jpeg',
+                quality: 0.85,
+            })
+
+            expect(sourceToDataURL).not.toHaveBeenCalled()
+            expect(canvas.captureStream).toHaveBeenCalledWith(30)
+            expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720)
+            expect(outputCanvas.toDataURL).toHaveBeenCalledWith('image/jpeg', 0.85)
+            expect(track.stop).toHaveBeenCalledOnce()
+            expect(result).toEqual({
+                success: true,
+                reason: null,
+                data: 'data:image/jpeg;base64,capturedFrame',
+            })
+        })
+
+        test('should stop only the screenshot track while recording capture is active', async () => {
+            canvas = createMockCanvas()
+            const recordingTrack = { kind: 'video', stop: vi.fn() }
+            const recordingStream = {
+                getVideoTracks: () => [recordingTrack],
+                getTracks: () => [recordingTrack],
+            }
+            const { stream, track } = mockCapturedScreenshotFrame(canvas)
+            vi.mocked(canvas.captureStream)
+                .mockReset()
+                .mockReturnValueOnce(recordingStream as unknown as MediaStream)
+                .mockReturnValueOnce(stream as unknown as MediaStream)
+            const peerConnection = createMockRTCPeerConnection()
+            const module = createRecorder()
+
+            await module.startCapture()
+            await module.takeScreenshotFromSurface()
+
+            expect(recordingTrack.stop).not.toHaveBeenCalled()
+            expect(track.stop).toHaveBeenCalledOnce()
+            expect(peerConnection.close).not.toHaveBeenCalled()
+        })
+
+        test('should return an error when canvas serialization fails', () => {
+            canvas = createMockCanvas()
+            vi.spyOn(canvas, 'toDataURL').mockImplementation(() => {
+                throw new DOMException('Canvas is tainted', 'SecurityError')
+            })
+
+            const module = createRecorder()
+
+            expect(module.takeScreenshot()).toEqual({
+                success: false,
+                reason: 'Canvas is tainted',
+                data: null,
+            })
+        })
+
+        test('should downscale oversized screenshots', () => {
+            canvas = createMockCanvas({ width: 3840, height: 2160 })
+            const resizedCanvas = document.createElement('canvas')
+            const drawImage = vi.fn()
+            vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+                if (tagName === 'canvas') return resizedCanvas
+                throw new Error(`Unexpected element: ${tagName}`)
+            })
+            vi.spyOn(resizedCanvas, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D)
+            vi.spyOn(resizedCanvas, 'toDataURL').mockReturnValue('data:image/png;base64,resized')
+
+            const module = createRecorder()
+            const result = module.takeScreenshot({ maxWidth: 1920, maxHeight: 1080 })
+
+            expect(resizedCanvas.width).toBe(1920)
+            expect(resizedCanvas.height).toBe(1080)
+            expect(drawImage).toHaveBeenCalledWith(canvas, 0, 0, 1920, 1080)
+            expect(result.data).toBe('data:image/png;base64,resized')
         })
     })
 

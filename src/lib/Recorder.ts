@@ -15,6 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+const SCREENSHOT_CAPTURE_FPS = 30
+const SCREENSHOT_FRAME_TIMEOUT_MS = 1000
+
 export type RecorderPriority = 'very-low' | 'low' | 'medium' | 'high'
 
 export interface RecorderStartOptions {
@@ -32,6 +35,19 @@ export interface RecorderStartOptions {
 export interface RecorderAvailability {
     available: boolean
     reason: string | null
+}
+
+export interface RecorderScreenshotOptions {
+    type?: string
+    quality?: number
+    maxWidth?: number
+    maxHeight?: number
+}
+
+export interface RecorderScreenshotResult {
+    success: boolean
+    reason: string | null
+    data: string | null
 }
 
 export type RecorderOfferCallback = (sdp: string | undefined) => void
@@ -162,6 +178,69 @@ class Recorder {
         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate))
     }
 
+    takeScreenshot(options: RecorderScreenshotOptions = {}): RecorderScreenshotResult {
+        const sourceCanvas = this.#getCanvas()
+        if (!sourceCanvas) {
+            return { success: false, reason: 'Canvas not found', data: null }
+        }
+        return this.#serializeScreenshot(
+            sourceCanvas,
+            sourceCanvas.width,
+            sourceCanvas.height,
+            options,
+            sourceCanvas,
+        )
+    }
+
+    async takeScreenshotFromSurface(
+        options: RecorderScreenshotOptions = {},
+    ): Promise<RecorderScreenshotResult> {
+        const sourceCanvas = this.#getCanvas()
+        if (!sourceCanvas) {
+            return { success: false, reason: 'Canvas not found', data: null }
+        }
+        if (sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+            return { success: false, reason: 'Canvas has no drawable area', data: null }
+        }
+        if (typeof sourceCanvas.captureStream !== 'function') {
+            return this.takeScreenshot(options)
+        }
+
+        let stream: MediaStream | null = null
+        let video: HTMLVideoElement | null = null
+        try {
+            stream = sourceCanvas.captureStream(SCREENSHOT_CAPTURE_FPS)
+            const track = stream.getVideoTracks()[0]
+            if (!track) {
+                return { success: false, reason: 'Canvas capture has no video track', data: null }
+            }
+
+            video = document.createElement('video')
+            video.srcObject = stream
+            video.muted = true
+            video.playsInline = true
+            await this.#waitForVideoFrame(video, track)
+            return this.#serializeScreenshot(
+                video,
+                video.videoWidth,
+                video.videoHeight,
+                options,
+            )
+        } catch (error) {
+            return {
+                success: false,
+                reason: error && typeof error === 'object' && 'message' in error
+                    ? String(error.message)
+                    : 'Screenshot capture failed',
+                data: null,
+            }
+        } finally {
+            video?.pause()
+            if (video) video.srcObject = null
+            stream?.getTracks().forEach((track) => track.stop())
+        }
+    }
+
     stopCapture(): void {
         this.#captureGeneration += 1
         this.#clearCaptureResources()
@@ -173,6 +252,85 @@ class Recorder {
         this.#pc = null
         this.#pendingIceCandidates = []
         this.#stream = null
+    }
+
+    #serializeScreenshot(
+        source: CanvasImageSource,
+        sourceWidth: number,
+        sourceHeight: number,
+        {
+            type = 'image/png',
+            quality = 0.92,
+            maxWidth,
+            maxHeight,
+        }: RecorderScreenshotOptions = {},
+        reusableCanvas: HTMLCanvasElement | null = null,
+    ): RecorderScreenshotResult {
+        if (sourceWidth === 0 || sourceHeight === 0) {
+            return { success: false, reason: 'Screenshot source has no drawable area', data: null }
+        }
+
+        try {
+            const canvas = this.#fitScreenshotSource(
+                source,
+                sourceWidth,
+                sourceHeight,
+                maxWidth,
+                maxHeight,
+                reusableCanvas,
+            )
+            if (!canvas) {
+                return { success: false, reason: 'Canvas context is not available', data: null }
+            }
+            const normalizedQuality = Number.isFinite(quality)
+                ? Math.min(1, Math.max(0, quality))
+                : 0.92
+            const data = canvas.toDataURL(type, normalizedQuality)
+            if (data === 'data:,') {
+                return { success: false, reason: 'Canvas produced an empty screenshot', data: null }
+            }
+            return { success: true, reason: null, data }
+        } catch (error) {
+            return {
+                success: false,
+                reason: error && typeof error === 'object' && 'message' in error
+                    ? String(error.message)
+                    : 'Screenshot capture failed',
+                data: null,
+            }
+        }
+    }
+
+    #fitScreenshotSource(
+        source: CanvasImageSource,
+        sourceWidth: number,
+        sourceHeight: number,
+        maxWidth: number | undefined,
+        maxHeight: number | undefined,
+        reusableCanvas: HTMLCanvasElement | null,
+    ): HTMLCanvasElement | null {
+        const widthLimit = typeof maxWidth === 'number'
+            && Number.isFinite(maxWidth) && maxWidth > 0
+            ? maxWidth
+            : sourceWidth
+        const heightLimit = typeof maxHeight === 'number'
+            && Number.isFinite(maxHeight) && maxHeight > 0
+            ? maxHeight
+            : sourceHeight
+        const scale = Math.min(
+            1,
+            widthLimit / sourceWidth,
+            heightLimit / sourceHeight,
+        )
+        if (scale === 1 && reusableCanvas) return reusableCanvas
+
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(sourceWidth * scale))
+        canvas.height = Math.max(1, Math.round(sourceHeight * scale))
+        const context = canvas.getContext('2d')
+        if (!context) return null
+        context.drawImage(source, 0, 0, canvas.width, canvas.height)
+        return canvas
     }
 
     #applyEncodingParams(
@@ -236,6 +394,50 @@ class Recorder {
 
     #isCaptureStreamSupported(): boolean {
         return typeof HTMLCanvasElement.prototype.captureStream === 'function'
+    }
+
+    #waitForVideoFrame(video: HTMLVideoElement, track: MediaStreamTrack): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const cleanups: Array<() => void> = []
+            let frameCallbackId: number | null = null
+            let settled = false
+            const settle = (complete: () => void): void => {
+                if (settled) return
+                settled = true
+                cleanups.forEach((cleanup) => cleanup())
+                complete()
+            }
+            const onEnded = (): void => settle(
+                () => reject(new Error('Canvas capture ended before its first frame')),
+            )
+            const onLoadedData = (): void => settle(resolve)
+            const timeoutId = setTimeout(() => settle(
+                () => reject(new Error('Canvas capture produced no video frames')),
+            ), SCREENSHOT_FRAME_TIMEOUT_MS)
+            cleanups.push(() => clearTimeout(timeoutId))
+            track.addEventListener('ended', onEnded, { once: true })
+            cleanups.push(() => track.removeEventListener('ended', onEnded))
+
+            if (typeof video.requestVideoFrameCallback === 'function') {
+                frameCallbackId = video.requestVideoFrameCallback(() => settle(resolve))
+                cleanups.push(() => {
+                    if (frameCallbackId !== null
+                        && typeof video.cancelVideoFrameCallback === 'function') {
+                        video.cancelVideoFrameCallback(frameCallbackId)
+                    }
+                })
+            } else {
+                video.addEventListener('loadeddata', onLoadedData, { once: true })
+                cleanups.push(() => video.removeEventListener('loadeddata', onLoadedData))
+            }
+
+            Promise.resolve(video.play()).then(() => {
+                if (typeof video.requestVideoFrameCallback !== 'function'
+                    && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                    settle(resolve)
+                }
+            }).catch((error) => settle(() => reject(error)))
+        })
     }
 }
 
