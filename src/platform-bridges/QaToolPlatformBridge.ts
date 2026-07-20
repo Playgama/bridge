@@ -1103,7 +1103,7 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 this.#recorder.handleIce(data.options as RTCIceCandidateInit)
                 break
             case RECORDER_ACTION.TAKE_SCREENSHOT:
-                this.#recorder.takeScreenshotAfterPaint(data.options).then((result) => {
+                this.#recorder.takeScreenshotFromSurface(data.options).then((result) => {
                     this.#sendMessage({
                         type: MODULE_NAME_QA.RECORDER,
                         action: RECORDER_ACTION.SCREENSHOT_RESULT,
