@@ -40,6 +40,14 @@ export interface GameConfig {
     [key: string]: unknown
 }
 
+// YouTube video preview shown in the bottom-right corner while the game is loading.
+// `image` is a path to a thumbnail bundled with the game archive,
+// `videoId` is the YouTube video id opened via ytgame.engagement.openYTContent.
+export interface VideoPreview {
+    image: string
+    videoId: string
+}
+
 // Single source of truth for the whole bridge configuration. Every config
 // section is typed here so consumers read it through the config loader without
 // per-site casts. The string index signature keeps platform-specific keys
@@ -65,4 +73,5 @@ export interface ConfigFileOptions extends AnyRecord {
     crossPromo?: CrossPromoConfig
     saas?: SaasConfig
     payments?: Array<AnyRecord & { id: string }>
+    videoPreviews?: VideoPreview[]
 }
