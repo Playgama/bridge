@@ -15,13 +15,19 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import LeaderboardsModule from './LeaderboardsModule'
+// npm entry point. Runs the same side-effect as the CDN/<script> build
+// (populates window.bridge) and additionally exposes the singleton as a
+// typed module export so games can `import bridge from '@playgama/bridge'`.
 
-export type {
-    LeaderboardsBridgeContract,
-    LeaderboardsBridgeOptions,
-    LeaderboardMapping,
-} from './LeaderboardsModule'
-export type { LeaderboardEntry } from './types'
+import './index'
+import type PlaygamaBridge from './PlaygamaBridge'
 
-export default new LeaderboardsModule()
+const bridge = window.bridge as PlaygamaBridge
+
+export default bridge
+export { bridge }
+
+// Public data-shape types so TypeScript consumers can name the values returned
+// by the SDK (e.g. the result of bridge.payments.getCatalog()).
+export type { LeaderboardEntry } from './modules/leaderboards'
+export type { CatalogProduct, Purchase } from './modules/payments'
