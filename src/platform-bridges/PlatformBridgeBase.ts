@@ -43,6 +43,7 @@ import {
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
+import type { ScheduledNotification } from '../modules/notifications/types'
 import { internalAnalytics } from '../modules/analytics'
 import {
     getPaymentsProductsPlatformData,
@@ -293,6 +294,15 @@ class PlatformBridgeBase {
         return false
     }
 
+    // notifications
+    get isNotificationsSupported(): boolean {
+        return false
+    }
+
+    get notificationsLaunchPayload(): string | null {
+        return null
+    }
+
     protected _options!: ConfigFileOptions
 
     protected _additionalData: Record<string, unknown> | null = null
@@ -510,6 +520,14 @@ class PlatformBridgeBase {
 
     achievementsGetList(): Promise<NormalizedAchievement[]> {
         return Promise.reject()
+    }
+
+    // notifications
+    notificationsSchedule(
+        _notification: ScheduledNotification,
+        _platformValue?: string | number,
+    ): Promise<unknown> {
+        return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
     }
 
     protected _setPlatformStorageAvailable(isAvailable: boolean): void {

@@ -22,7 +22,14 @@ import {
     type AnyRecord,
 } from '../utils'
 import type { AdvancedBannerConfig } from '../modules/advertisement'
-import { ACTION_NAME, LAUNCH_SOURCE, type LaunchSource } from '../constants'
+import type { ScheduledNotification } from '../modules/notifications/types'
+import {
+    ACTION_NAME,
+    LAUNCH_SOURCE,
+    BridgeError,
+    ERROR_CODE,
+    type LaunchSource,
+} from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
     BANNER_STATE,
@@ -39,9 +46,15 @@ interface MsnNotification {
     title: string
     description: string
     type: number
-    minDelayInSeconds: number
-    payload: string
+    imageData?: string
+    payload?: string
+    minDelayInSeconds?: number
+    callToAction?: string
 }
+
+const MSN_NOTIFICATION_TITLE_MAX_LENGTH = 60
+const MSN_NOTIFICATION_DESCRIPTION_MAX_LENGTH = 200
+const MSN_NOTIFICATION_MAX_DELAY_SECONDS = 604800
 
 const AUTO_NOTIFICATIONS: MsnNotification[] = [
     {
@@ -107,6 +120,7 @@ interface MsnSdk {
     getSignedInUserAsync(): Promise<AnyRecord>
     signInAsync(): Promise<AnyRecord>
     scheduleNotificationAsync(notification: MsnNotification): Promise<unknown>
+    getNotificationPayload?(): string | undefined
     cloudSave: {
         saveDataAsync(params: { data: AnyRecord; gameId: unknown }): Promise<unknown>
         getDataAsync(params: { gameId: unknown }): Promise<AnyRecord>
@@ -192,6 +206,27 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return this.#isPaymentsSupported
     }
 
+    // notifications
+    get isNotificationsSupported(): boolean {
+        return true
+    }
+
+    get notificationsLaunchPayload(): string | null {
+        const sdk = this._platformSdk as MsnSdk | null
+        if (typeof sdk?.getNotificationPayload === 'function') {
+            const raw = sdk.getNotificationPayload()
+            if (raw) {
+                try {
+                    return decodeURIComponent(raw)
+                } catch {
+                    return raw
+                }
+            }
+        }
+
+        return new URLSearchParams(window.location.search).get('notificationPayload')
+    }
+
     // storage
     protected _isAdvancedBannersSupported = true
 
@@ -213,9 +248,11 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then(() => {
                     this._platformSdk = window.$msstart as MsnSdk
 
-                    AUTO_NOTIFICATIONS.forEach((notification) => {
-                        (this._platformSdk as MsnSdk).scheduleNotificationAsync(notification).catch(() => {})
-                    });
+                    if (this._options?.disableAutoNotifications !== true) {
+                        AUTO_NOTIFICATIONS.forEach((notification) => {
+                            (this._platformSdk as MsnSdk).scheduleNotificationAsync(notification).catch(() => {})
+                        })
+                    }
 
                     (this._platformSdk as MsnSdk).getSignedInUserAsync()
                         .then((data) => {
@@ -338,6 +375,40 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then(resolve)
                 .catch(reject)
         })
+    }
+
+    // notifications
+    notificationsSchedule(
+        notification: ScheduledNotification,
+        platformValue?: string | number,
+    ): Promise<unknown> {
+        const type = typeof platformValue === 'string' ? Number(platformValue) : platformValue
+
+        const validationError = this.#validateMsnNotification(notification, type)
+        if (validationError) {
+            return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATION_INVALID_PARAMETERS, validationError))
+        }
+
+        const msnNotification: MsnNotification = {
+            title: notification.title,
+            description: notification.description,
+            type: type as number,
+        }
+
+        if (notification.image !== undefined) {
+            msnNotification.imageData = notification.image
+        }
+        if (notification.payload !== undefined) {
+            msnNotification.payload = notification.payload
+        }
+        if (notification.delaySeconds !== undefined) {
+            msnNotification.minDelayInSeconds = notification.delaySeconds
+        }
+        if (notification.callToAction !== undefined) {
+            msnNotification.callToAction = notification.callToAction
+        }
+
+        return (this._platformSdk as MsnSdk).scheduleNotificationAsync(msnNotification)
     }
 
     // advertisement
@@ -673,6 +744,32 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     })
                 })
         })
+    }
+
+    #validateMsnNotification(notification: ScheduledNotification, type?: number): string | null {
+        if (type === undefined || Number.isNaN(type) || !Number.isInteger(type) || type < 0 || type > 15) {
+            return `Notification "${notification.id}" must be mapped to an integer MSN type (0-15) in the "notifications" config section`
+        }
+
+        if (this._options?.disableAutoNotifications !== true
+            && AUTO_NOTIFICATIONS.some((autoNotification) => autoNotification.type === type)) {
+            const reservedTypes = AUTO_NOTIFICATIONS.map((autoNotification) => autoNotification.type).join(', ')
+            return `MSN types ${reservedTypes} are reserved for built-in auto notifications; set "disableAutoNotifications": true to use them`
+        }
+
+        if (notification.title.length > MSN_NOTIFICATION_TITLE_MAX_LENGTH) {
+            return `Notification "title" must be at most ${MSN_NOTIFICATION_TITLE_MAX_LENGTH} characters`
+        }
+
+        if (notification.description.length > MSN_NOTIFICATION_DESCRIPTION_MAX_LENGTH) {
+            return `Notification "description" must be at most ${MSN_NOTIFICATION_DESCRIPTION_MAX_LENGTH} characters`
+        }
+
+        if (notification.delaySeconds !== undefined && notification.delaySeconds > MSN_NOTIFICATION_MAX_DELAY_SECONDS) {
+            return `Notification "delaySeconds" must be at most ${MSN_NOTIFICATION_MAX_DELAY_SECONDS} (7 days)`
+        }
+
+        return null
     }
 
     #bannerToMsnPlacement(banner: AdvancedBannerConfig): string | null {

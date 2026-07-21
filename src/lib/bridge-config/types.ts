@@ -22,6 +22,7 @@ import type { TasksConfig } from '../../modules/tasks/types'
 import type { AchievementMapping } from '../../modules/achievements/types'
 import type { CrossPromoConfig } from '../../modules/cross-promo/types'
 import type { LeaderboardMapping } from '../../modules/leaderboards'
+import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
 
 export interface SaasFeatureConfig {
@@ -61,6 +62,8 @@ export interface ConfigFileOptions extends AnyRecord {
     tasks?: TasksConfig
     achievements?: AchievementMapping[]
     leaderboards?: LeaderboardMapping[]
+    notifications?: NotificationMapping[]
+    disableAutoNotifications?: boolean
     device?: DeviceConfig
     crossPromo?: CrossPromoConfig
     saas?: SaasConfig
