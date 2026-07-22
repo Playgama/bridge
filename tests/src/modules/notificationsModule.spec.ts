@@ -22,7 +22,6 @@ async function loadConfig(values: Record<string, unknown>, platformId = 'msn') {
 function createBridge(overrides: Record<string, unknown> = {}) {
     return {
         platformId: 'msn',
-        playerId: 'player-1',
         isNotificationsSupported: true,
         notificationsLaunchPayload: null,
         notificationsSchedule: vi.fn().mockResolvedValue('ok'),
@@ -41,7 +40,7 @@ const VALID_NOTIFICATION: ScheduledNotification = {
     description: 'Join now and win prizes',
 }
 
-describe('NotificationsModule (without SaaS)', () => {
+describe('NotificationsModule', () => {
     beforeEach(async () => {
         await loadConfig({})
     })

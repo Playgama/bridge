@@ -17,15 +17,12 @@
 
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
-import { MODULE_NAME, BridgeError, ERROR_CODE } from '../../constants'
+import { BridgeError, ERROR_CODE } from '../../constants'
 import type { ScheduledNotification } from './types'
 import bridgeConfig from '../../lib/bridge-config'
-import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
-import type { JsonValue } from '../../utils'
 
 export interface NotificationsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
-    playerId: string | null
     isNotificationsSupported: boolean
     notificationsLaunchPayload: string | null
     notificationsSchedule(
@@ -36,31 +33,13 @@ export interface NotificationsBridgeContract extends PlatformBridgeLike {
 
 class NotificationsModule extends ModuleBase<NotificationsBridgeContract> {
     get isSupported(): boolean {
-        return Boolean(this.#saas) || this._platformBridge.isNotificationsSupported
-    }
-
-    #saas: SaasRequest | null = null
-
-    initialize(platformBridge: NotificationsBridgeContract): this {
-        super.initialize(platformBridge)
-        if (this._isSaas(MODULE_NAME.NOTIFICATIONS)) {
-            this.#saas = new SaasRequest(platformBridge as unknown as SaasBridgeLike)
-        }
-        return this
+        return this._platformBridge.isNotificationsSupported
     }
 
     schedule(notification: ScheduledNotification): Promise<unknown> {
         const validationError = this.#validate(notification)
         if (validationError) {
             return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATION_INVALID_PARAMETERS, validationError))
-        }
-
-        if (this.#saas) {
-            if (!this._platformBridge.playerId) {
-                return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
-            }
-
-            return this.#saas.post('notifications/schedule', { ...notification } as JsonValue)
         }
 
         const platformValue = this.#getPlatformNotificationValue(notification.id)
