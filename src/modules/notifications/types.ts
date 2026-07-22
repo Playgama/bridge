@@ -15,23 +15,17 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const MODULE_NAME = {
-    CORE: 'core',
-    PLATFORM: 'platform',
-    PLAYER: 'player',
-    STORAGE: 'storage',
-    ADVERTISEMENT: 'advertisement',
-    SOCIAL: 'social',
-    DEVICE: 'device',
-    LEADERBOARDS: 'leaderboards',
-    PAYMENTS: 'payments',
-    REMOTE_CONFIG: 'remote_config',
-    CLIPBOARD: 'clipboard',
-    ACHIEVEMENTS: 'achievements',
-    ANALYTICS: 'analytics',
-    NOTIFICATIONS: 'notifications',
-    DAILY_REWARDS: 'daily_rewards',
-    TASKS: 'tasks',
-    CROSS_PROMO: 'cross_promo',
-} as const
-export type ModuleName = typeof MODULE_NAME[keyof typeof MODULE_NAME]
+export interface ScheduledNotification {
+    id: string
+    title: string
+    description: string
+    delaySeconds?: number
+    image?: string
+    callToAction?: string
+    payload?: string
+}
+
+export interface NotificationMapping {
+    id: string
+    [platform: string]: string | number | undefined
+}

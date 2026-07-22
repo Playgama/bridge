@@ -31,3 +31,4 @@ export { bridge }
 // by the SDK (e.g. the result of bridge.payments.getCatalog()).
 export type { LeaderboardEntry } from './modules/leaderboards'
 export type { CatalogProduct, Purchase } from './modules/payments'
+export type { ScheduledNotification, NotificationMapping } from './modules/notifications'
