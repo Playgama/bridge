@@ -5,7 +5,7 @@ import 'webpack-dev-server'
 import ESLintPlugin from 'eslint-webpack-plugin'
 import TerserPlugin from 'terser-webpack-plugin'
 import packageJson from './package.json'
-import { ALL_PLATFORM_IDS } from './scripts/platforms'
+import { ALL_PLATFORM_IDS, expandPlatforms } from './scripts/platforms'
 
 const platformDirName = 'platform-bridges'
 
@@ -136,7 +136,7 @@ interface WebpackArgv {
 
 export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | Configuration[] => {
     const targetPlatform = env.platform || ''
-    const targetPlatforms = targetPlatform ? targetPlatform.split(',') : []
+    const targetPlatforms = targetPlatform ? expandPlatforms(targetPlatform.split(',')) : []
     const noLint = Boolean(env.noLint)
     const isDevelopment = argv.mode === 'development'
 
