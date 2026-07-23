@@ -100,6 +100,10 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isAddToHomeScreenSupported() {
+        return typeof this._platformSdk?.promptInstallAsync === 'function'
+    }
+
     // leaderboards
     get leaderboardsType() {
         return LEADERBOARD_TYPE.NATIVE
@@ -293,6 +297,27 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                 .then(resolve)
                 .catch(reject)
         })
+    }
+
+    addToHomeScreen() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+            this._platformSdk.promptInstallAsync()
+                .then((outcome) => {
+                    if (outcome === 'accepted') {
+                        this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+                        return
+                    }
+
+                    this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 
     // leaderboards
@@ -725,7 +750,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     #updatePlayerInfo(data) {
         if (data) {
             this._isPlayerAuthorized = true
-            this._playerId = data.playerId
+            this._playerId = data.playerId ?? data.publisherPlayerId
             this._playerName = data.playerDisplayName
             this._playerExtra = data
             this.#isPaymentsSupported = data.userAccountType.toLowerCase() === 'personal'

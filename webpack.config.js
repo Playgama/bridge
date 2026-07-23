@@ -4,7 +4,7 @@ const webpack = require('webpack')
 const ESLintPlugin = require('eslint-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 const packageJson = require('./package.json')
-const { ALL_PLATFORM_IDS } = require('./scripts/platforms')
+const { ALL_PLATFORM_IDS, expandPlatforms } = require('./scripts/platforms')
 
 const platformDirName = 'platform-bridges'
 const CDN_BASE_URL = `https://bridge.playgama.com/v${packageJson.version.split('.')[0]}/stable/`
@@ -101,7 +101,7 @@ const createConfig = (targetPlatforms = [], { noLint = false } = {}) => ({
 
 module.exports = (env = {}, argv = {}) => {
     const targetPlatform = env.platform || ''
-    const targetPlatforms = targetPlatform ? targetPlatform.split(',') : []
+    const targetPlatforms = targetPlatform ? expandPlatforms(targetPlatform.split(',')) : []
     const noLint = Boolean(env.noLint)
     const isDevelopment = argv.mode === 'development'
 

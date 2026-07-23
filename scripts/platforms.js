@@ -16,4 +16,13 @@ while ((match = regex.exec(source)) !== null) {
     }
 }
 
-module.exports = { ALL_PLATFORM_IDS }
+// Platforms that must always be bundled together with the key platform.
+const PLATFORM_BUNDLE_EXTRAS = {
+    playgama: ['standalone'],
+}
+
+const expandPlatforms = (platforms) => Array.from(
+    new Set(platforms.flatMap((id) => [id, ...(PLATFORM_BUNDLE_EXTRAS[id] || [])])),
+)
+
+module.exports = { ALL_PLATFORM_IDS, expandPlatforms }

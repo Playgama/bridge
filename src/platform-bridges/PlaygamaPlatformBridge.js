@@ -494,7 +494,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     #getPlayer() {
-        if (!this.#isPlayerAuthorizationSupported) {
+        if (typeof this._platformSdk.userService?.getUser !== 'function') {
             this._playerApplyGuestData()
             return Promise.resolve()
         }
@@ -502,9 +502,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return new Promise((resolve) => {
             this._platformSdk.userService.getUser()
                 .then((player) => {
+                    // The SDK id is used even for unauthorized players;
+                    // without it the locally generated guest id stays in place.
+                    if (player.id) {
+                        this._playerId = player.id
+                    }
+
                     if (player.isAuthorized) {
                         this._isPlayerAuthorized = true
-                        this._playerId = player.id
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player

@@ -62,6 +62,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    get isClipboardSupported() {
+        return false
+    }
+
     // leaderboards
     get leaderboardsType() {
         return LEADERBOARD_TYPE.NATIVE
@@ -70,6 +74,8 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
     #platformLanguage
 
     #subscribeNotification = null
+
+    #videoPreview = null
 
     initialize() {
         if (this._isInitialized) {
@@ -81,6 +87,7 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
             if (this.deviceType === DEVICE_TYPE.DESKTOP) {
                 this.#subscribeNotification = this.#createSubscribeNotification()
+                this.#videoPreview = this.#createVideoPreview()
             }
 
             waitFor('ytgame').then(() => {
@@ -279,6 +286,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 if (this.#subscribeNotification) {
                     this.#subscribeNotification.remove()
                     this.#subscribeNotification = null
+                }
+                if (this.#videoPreview) {
+                    this.#videoPreview.remove()
+                    this.#videoPreview = null
                 }
                 return Promise.resolve()
             }
@@ -502,6 +513,93 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 </svg>
             </div>
         `
+
+        document.body.appendChild(container)
+        return container
+    }
+
+    #createVideoPreview() {
+        const previews = (this._options.videoPreviews ?? [])
+            .filter((preview) => Boolean(preview?.image && preview?.videoId))
+        if (previews.length === 0) {
+            return null
+        }
+
+        const { image, videoId } = previews[Math.floor(Math.random() * previews.length)]
+
+        if (!document.getElementById('bridge-youtube-video-preview-styles')) {
+            const style = document.createElement('style')
+            style.id = 'bridge-youtube-video-preview-styles'
+            style.textContent = `
+                #bridge-youtube-video-preview {
+                    position: fixed;
+                    bottom: -24px;
+                    right: 24px;
+                    width: min(256px, 40vw);
+                    border-radius: 16px;
+                    overflow: hidden;
+                    background-color: #000;
+                    box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.4);
+                    cursor: pointer;
+                    opacity: 0;
+                    z-index: 9999999;
+                    animation: bridge-yt-preview-rise 285ms ease-out 590ms forwards;
+                }
+
+                #bridge-youtube-video-preview .bridge-yt-preview-image {
+                    display: block;
+                    width: 100%;
+                    aspect-ratio: 16 / 9;
+                    object-fit: cover;
+                    user-select: none;
+                    -webkit-user-drag: none;
+                }
+
+                #bridge-youtube-video-preview .bridge-yt-preview-play {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 48px;
+                    height: 34px;
+                    transform: translate(-50%, -50%);
+                    pointer-events: none;
+                }
+
+                @keyframes bridge-yt-preview-rise {
+                    0%   { bottom: -24px;  opacity: 0; }
+                    40%  { bottom: 25.6px; opacity: 1; }
+                    48%  { bottom: 33.6px; }
+                    60%  { bottom: 32px; }
+                    70%  { bottom: 30.4px; }
+                    79%  { bottom: 28.8px; }
+                    88%  { bottom: 27.2px; }
+                    95%  { bottom: 25.6px; }
+                    100% { bottom: 24px;   opacity: 1; }
+                }
+            `
+            document.head.appendChild(style)
+        }
+
+        const container = document.createElement('div')
+        container.id = 'bridge-youtube-video-preview'
+
+        const img = document.createElement('img')
+        img.className = 'bridge-yt-preview-image'
+        img.src = image
+        img.alt = ''
+        img.draggable = false
+        container.appendChild(img)
+
+        container.insertAdjacentHTML('beforeend', `
+            <svg class="bridge-yt-preview-play" viewBox="0 0 68 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M66.52 7.74C65.74 4.81 64.03 2.33 61.1 1.55C55.79 0.13 34 0 34 0C34 0 12.21 0.13 6.9 1.55C3.97 2.33 2.27 4.81 1.48 7.74C0.06 13.05 0 24 0 24C0 24 0.06 34.95 1.48 40.26C2.27 43.19 3.97 45.67 6.9 46.45C12.21 47.87 34 48 34 48C34 48 55.79 47.87 61.1 46.45C64.03 45.67 65.74 43.19 66.52 40.26C67.94 34.95 68 24 68 24C68 24 67.94 13.05 66.52 7.74Z" fill="#FF0033"/>
+                <path d="M45 24L27 14V34L45 24Z" fill="white"/>
+            </svg>
+        `)
+
+        container.addEventListener('click', () => {
+            window.ytgame?.engagement.openYTContent({ id: videoId }).catch(() => {})
+        })
 
         document.body.appendChild(container)
         return container
