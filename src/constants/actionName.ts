@@ -28,6 +28,8 @@ export const ACTION_NAME = {
     LEADERBOARDS_SET_SCORE: 'leaderboards_set_score',
     LEADERBOARDS_GET_ENTRIES: 'leaderboards_get_entries',
     LEADERBOARDS_SHOW_NATIVE_POPUP: 'leaderboards_show_native_popup',
+    DAILY_REWARDS_CLAIM: 'daily_rewards_claim',
+    DAILY_REWARDS_RESET: 'daily_rewards_reset',
     GET_PURCHASES: 'get_purchases',
     GET_CATALOG: 'get_catalog',
     PURCHASE: 'purchase',

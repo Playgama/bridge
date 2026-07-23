@@ -409,6 +409,22 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this.#serverTimeCache.getServerTime()
     }
 
+    dailyRewardsClaimed(options: { day: number, reward: string }): void {
+        this.#sendMessage({
+            type: MODULE_NAME.DAILY_REWARDS,
+            action: ACTION_NAME.DAILY_REWARDS_CLAIM,
+            options,
+        })
+    }
+
+    dailyRewardsReset(options: { day: number }): void {
+        this.#sendMessage({
+            type: MODULE_NAME.DAILY_REWARDS,
+            action: ACTION_NAME.DAILY_REWARDS_RESET,
+            options,
+        })
+    }
+
     async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
         const result: Record<string, unknown> = {}
         await Promise.all(keys.map(async (key) => {

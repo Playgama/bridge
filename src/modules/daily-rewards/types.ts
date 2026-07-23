@@ -37,4 +37,8 @@ export interface DailyRewardsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
     options?: AnyRecord
     getServerTime(): Promise<number>
+    // Optional observability hooks; implemented by bridges that surface daily
+    // rewards activity to an external tool (e.g. QA Tool).
+    dailyRewardsClaimed?(options: { day: number, reward: string }): void
+    dailyRewardsReset?(options: { day: number }): void
 }
