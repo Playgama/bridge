@@ -54,14 +54,14 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/playgama/bridge"
+        "url": "git+https://github.com/Playgama/bridge"
     },
     "author": "Playgama",
     "license": "LGPL-3.0-or-later",
     "bugs": {
-        "url": "https://github.com/playgama/bridge/issues"
+        "url": "https://github.com/Playgama/bridge/issues"
     },
-    "homepage": "https://github.com/playgama/bridge",
+    "homepage": "https://github.com/Playgama/bridge",
     "devDependencies": {
         "@babel/core": "^7.17.8",
         "@babel/preset-env": "^7.16.11",
