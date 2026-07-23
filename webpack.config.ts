@@ -216,7 +216,35 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
             plugins: [...(baseConfig.plugins ?? []), singleChunk],
         }
 
-        return [npmEsmConfig, npmUmdConfig]
+        // Side-effect-free constants entry (`@playgama/bridge/constants`) for
+        // games that load the SDK runtime via a <script> tag and only need
+        // constant values in their own bundle.
+        const constantsEsmConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-constants-esm',
+            entry: './src/publicConstants',
+            experiments: { outputModule: true },
+            output: {
+                filename: 'constants.esm.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'module' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        const constantsCjsConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-constants-cjs',
+            entry: './src/publicConstants',
+            output: {
+                filename: 'constants.cjs.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'commonjs2' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        return [npmEsmConfig, npmUmdConfig, constantsEsmConfig, constantsCjsConfig]
     }
 
     return [dynamicConfig, bundledConfig]

@@ -10,11 +10,23 @@
             "types": "./dist/types/npm.d.ts",
             "import": "./dist/playgama-bridge.esm.js",
             "require": "./dist/playgama-bridge.umd.js"
-        }
+        },
+        "./constants": {
+            "types": "./dist/types/publicConstants.d.ts",
+            "import": "./dist/constants.esm.js",
+            "require": "./dist/constants.cjs.js"
+        },
+        "./global": {
+            "types": "./dist/types/global.d.ts"
+        },
+        "./dist/playgama-bridge.js": "./dist/playgama-bridge.js"
     },
     "files": [
+        "dist/playgama-bridge.js",
         "dist/playgama-bridge.esm.js",
         "dist/playgama-bridge.umd.js",
+        "dist/constants.esm.js",
+        "dist/constants.cjs.js",
         "dist/types",
         "README.md",
         "LICENSE"
@@ -38,7 +50,7 @@
         "test:watch": "vitest",
         "lint": "eslint src/ scripts/ webpack.config.ts vitest.config.ts --ext .ts,.tsx",
         "lint:fix": "eslint src/ scripts/ webpack.config.ts vitest.config.ts --ext .ts,.tsx --fix",
-        "prepublishOnly": "npm run lint && npm test && npm run build:package"
+        "prepublishOnly": "npm run lint && npm test && npm run build && npm run build:package"
     },
     "repository": {
         "type": "git",

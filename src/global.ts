@@ -15,22 +15,18 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// npm entry point. Runs the same side-effect as the CDN/<script> build
-// (populates window.bridge) and additionally exposes the singleton as a
-// typed module export so games can `import bridge from '@playgama/bridge'`.
+// Types the global `bridge` singleton for projects that load the SDK via a
+// <script> tag (CDN or a local copy) instead of importing it. Reaches
+// consumers through the npm/constants entry points, or explicitly via
+// `import type {} from '@playgama/bridge/global'`.
 
-import './index'
-import './global'
 import type PlaygamaBridge from './PlaygamaBridge'
 
-const bridge = window.bridge as PlaygamaBridge
+declare global {
+    /* eslint-disable no-var, vars-on-top */
+    var bridge: PlaygamaBridge
+    var playgamaBridge: PlaygamaBridge
+    /* eslint-enable no-var, vars-on-top */
+}
 
-export default bridge
-export { bridge }
-
-// Public constants and data-shape types (also available side-effect-free via
-// the `@playgama/bridge/constants` subpath).
-export * from './publicConstants'
-
-export type { default as PlaygamaBridge } from './PlaygamaBridge'
-export type { PlaygamaInitOptions } from './PlaygamaBridge'
+export {}
