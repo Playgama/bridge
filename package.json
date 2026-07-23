@@ -1,6 +1,6 @@
 {
     "name": "@playgama/bridge",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "description": "One SDK for cross-platform publishing HTML5 games",
     "main": "dist/playgama-bridge.umd.js",
     "module": "dist/playgama-bridge.esm.js",

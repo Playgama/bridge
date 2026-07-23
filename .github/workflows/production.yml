@@ -11,6 +11,10 @@ on:
           - stable
           - latest
           - dev
+      publish_npm:
+        description: Also publish the package to npm
+        type: boolean
+        default: true
 
 jobs:
   publish:
@@ -18,7 +22,9 @@ jobs:
     with:
       environment: production
       channel: ${{ inputs.channel }}
+      publish_npm: ${{ inputs.publish_npm }}
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}
       S3_BUCKET: ${{ secrets.S3_BUCKET_PRODUCTION }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
