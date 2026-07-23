@@ -38,6 +38,10 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
     mode: 'production',
     entry: './src/index',
     output: {
+        // Pinned so the chunk registration global (webpackChunkplaygama_bridge)
+        // never changes with the npm package name — a mismatch between cached
+        // main bundle and chunks breaks lazy platform loading with ChunkLoadError.
+        uniqueName: 'playgama-bridge',
         filename: 'playgama-bridge.js',
         chunkFilename: (pathData) => {
             const chunkId = String(pathData.chunk?.id || pathData.chunk?.name || '')
