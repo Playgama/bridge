@@ -1,6 +1,6 @@
 name: Publish (reusable)
 
-# Reusable workflow: verify -> build -> upload to an S3 bucket.
+# Reusable workflow: verify -> build -> upload to an S3 bucket -> (optionally) publish to npm.
 # Not triggered directly. Called by staging.yml / production.yml.
 
 on:
@@ -14,6 +14,11 @@ on:
         description: stable | latest | dev (S3 folder v<major>/<channel>/)
         type: string
         required: true
+      publish_npm:
+        description: Also publish the package to npm after the S3 upload
+        type: boolean
+        required: false
+        default: false
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -21,6 +26,8 @@ on:
         required: true
       S3_BUCKET:
         required: true
+      NPM_TOKEN:
+        required: false
 
 env:
   AWS_REGION: eu-central-1
@@ -101,3 +108,34 @@ jobs:
             --content-type application/javascript \
             --no-progress
       # CDN cache purge is intentionally omitted for now.
+
+  npm:
+    needs: publish
+    if: ${{ inputs.publish_npm }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "::error::NPM_TOKEN secret is empty."
+            exit 1
+          fi
+          PKG="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
+            echo "${PKG}@${VERSION} is already published, skipping."
+            exit 0
+          fi
+          npm publish --provenance

@@ -5,7 +5,7 @@ import 'webpack-dev-server'
 import ESLintPlugin from 'eslint-webpack-plugin'
 import TerserPlugin from 'terser-webpack-plugin'
 import packageJson from './package.json'
-import { ALL_PLATFORM_IDS } from './scripts/platforms'
+import { ALL_PLATFORM_IDS, expandPlatforms } from './scripts/platforms'
 
 const platformDirName = 'platform-bridges'
 
@@ -108,7 +108,10 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
         ...noLint ? [] : [new ESLintPlugin({ extensions: ['js', 'ts', 'tsx'] })],
         new webpack.DefinePlugin({
             PLUGIN_VERSION: JSON.stringify(packageJson.version),
-            PLUGIN_NAME: JSON.stringify(packageJson.name),
+            // Kept as the historical, unscoped plugin name so it stays stable
+            // regardless of the npm package name (which is scoped: @playgama/bridge).
+            // This value is reported to platform SDKs (e.g. Yandex telemetry).
+            PLUGIN_NAME: JSON.stringify('playgama-bridge'),
             ...createPlatformDefines(targetPlatforms),
         }),
     ],
@@ -120,6 +123,8 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
 interface WebpackEnv {
     platform?: string
     noLint?: boolean
+    // Build the npm-consumable bundles (ESM + UMD) instead of the CDN builds.
+    npm?: boolean
     // Absolute URL the dynamic bundle uses to fetch its platform-bridges/ chunks.
     // Should match the deploy location, e.g. https://<domain>/v<major>/<channel>/
     publicPath?: string
@@ -131,7 +136,7 @@ interface WebpackArgv {
 
 export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | Configuration[] => {
     const targetPlatform = env.platform || ''
-    const targetPlatforms = targetPlatform ? targetPlatform.split(',') : []
+    const targetPlatforms = targetPlatform ? expandPlatforms(targetPlatform.split(',')) : []
     const noLint = Boolean(env.noLint)
     const isDevelopment = argv.mode === 'development'
 
@@ -177,6 +182,69 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
                 maxChunks: 1,
             }),
         ],
+    }
+
+    // npm-consumable bundles. Same source, but with a real module export
+    // (src/npm.ts) so `import bridge from '@playgama/bridge'` works. Everything
+    // is inlined into a single file (no platform-bridges/ chunks to fetch).
+    if (env.npm) {
+        const singleChunk = new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
+
+        const npmEsmConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-esm',
+            entry: './src/npm',
+            experiments: { outputModule: true },
+            output: {
+                filename: 'playgama-bridge.esm.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'module' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        const npmUmdConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-umd',
+            entry: './src/npm',
+            output: {
+                filename: 'playgama-bridge.umd.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { name: 'bridge', type: 'umd' },
+                globalObject: 'this',
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        // Side-effect-free constants entry (`@playgama/bridge/constants`) for
+        // games that load the SDK runtime via a <script> tag and only need
+        // constant values in their own bundle.
+        const constantsEsmConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-constants-esm',
+            entry: './src/publicConstants',
+            experiments: { outputModule: true },
+            output: {
+                filename: 'constants.esm.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'module' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        const constantsCjsConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-constants-cjs',
+            entry: './src/publicConstants',
+            output: {
+                filename: 'constants.cjs.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'commonjs2' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        return [npmEsmConfig, npmUmdConfig, constantsEsmConfig, constantsCjsConfig]
     }
 
     return [dynamicConfig, bundledConfig]

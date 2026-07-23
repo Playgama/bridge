@@ -90,64 +90,64 @@ class PlaygamaBridge {
         return this.#platformBridge?.options
     }
 
-    get platform(): unknown {
-        return this.#getModule(MODULE_NAME.PLATFORM)
+    get platform(): typeof platformModule {
+        return this.#getModule(MODULE_NAME.PLATFORM) as typeof platformModule
     }
 
-    get player(): unknown {
-        return this.#getModule(MODULE_NAME.PLAYER)
+    get player(): typeof playerModule {
+        return this.#getModule(MODULE_NAME.PLAYER) as typeof playerModule
     }
 
-    get storage(): unknown {
-        return this.#getModule(MODULE_NAME.STORAGE)
+    get storage(): typeof storageModule {
+        return this.#getModule(MODULE_NAME.STORAGE) as typeof storageModule
     }
 
-    get advertisement(): unknown {
-        return this.#getModule(MODULE_NAME.ADVERTISEMENT)
+    get advertisement(): typeof advertisementModule {
+        return this.#getModule(MODULE_NAME.ADVERTISEMENT) as typeof advertisementModule
     }
 
-    get social(): unknown {
-        return this.#getModule(MODULE_NAME.SOCIAL)
+    get social(): typeof socialModule {
+        return this.#getModule(MODULE_NAME.SOCIAL) as typeof socialModule
     }
 
-    get device(): unknown {
-        return this.#getModule(MODULE_NAME.DEVICE)
+    get device(): typeof deviceModule {
+        return this.#getModule(MODULE_NAME.DEVICE) as typeof deviceModule
     }
 
-    get leaderboards(): unknown {
-        return this.#getModule(MODULE_NAME.LEADERBOARDS)
+    get leaderboards(): typeof leaderboardsModule {
+        return this.#getModule(MODULE_NAME.LEADERBOARDS) as typeof leaderboardsModule
     }
 
-    get payments(): unknown {
-        return this.#getModule(MODULE_NAME.PAYMENTS)
+    get payments(): typeof paymentsModule {
+        return this.#getModule(MODULE_NAME.PAYMENTS) as typeof paymentsModule
     }
 
-    get achievements(): unknown {
-        return this.#getModule(MODULE_NAME.ACHIEVEMENTS)
+    get achievements(): typeof achievementsModule {
+        return this.#getModule(MODULE_NAME.ACHIEVEMENTS) as typeof achievementsModule
     }
 
-    get remoteConfig(): unknown {
-        return this.#getModule(MODULE_NAME.REMOTE_CONFIG)
+    get remoteConfig(): typeof remoteConfigModule {
+        return this.#getModule(MODULE_NAME.REMOTE_CONFIG) as typeof remoteConfigModule
     }
 
-    get clipboard(): unknown {
-        return this.#getModule(MODULE_NAME.CLIPBOARD)
+    get clipboard(): typeof clipboardModule {
+        return this.#getModule(MODULE_NAME.CLIPBOARD) as typeof clipboardModule
     }
 
-    get analytics(): unknown {
-        return this.#getModule(MODULE_NAME.ANALYTICS)
+    get analytics(): typeof analyticsModule {
+        return this.#getModule(MODULE_NAME.ANALYTICS) as typeof analyticsModule
     }
 
-    get dailyRewards(): unknown {
-        return this.#getModule(MODULE_NAME.DAILY_REWARDS)
+    get dailyRewards(): typeof dailyRewardsModule {
+        return this.#getModule(MODULE_NAME.DAILY_REWARDS) as typeof dailyRewardsModule
     }
 
-    get tasks(): unknown {
-        return this.#getModule(MODULE_NAME.TASKS)
+    get tasks(): typeof tasksModule {
+        return this.#getModule(MODULE_NAME.TASKS) as typeof tasksModule
     }
 
-    get crossPromo(): unknown {
-        return this.#getModule(MODULE_NAME.CROSS_PROMO)
+    get crossPromo(): typeof crossPromoModule {
+        return this.#getModule(MODULE_NAME.CROSS_PROMO) as typeof crossPromoModule
     }
 
     get engine(): string {

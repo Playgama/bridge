@@ -15,13 +15,22 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import LeaderboardsModule from './LeaderboardsModule'
+// npm entry point. Runs the same side-effect as the CDN/<script> build
+// (populates window.bridge) and additionally exposes the singleton as a
+// typed module export so games can `import bridge from '@playgama/bridge'`.
 
-export type {
-    LeaderboardsBridgeContract,
-    LeaderboardsBridgeOptions,
-    LeaderboardMapping,
-} from './LeaderboardsModule'
-export type { LeaderboardEntry } from './types'
+import './index'
+import './global'
+import type PlaygamaBridge from './PlaygamaBridge'
 
-export default new LeaderboardsModule()
+const bridge = window.bridge as PlaygamaBridge
+
+export default bridge
+export { bridge }
+
+// Public constants and data-shape types (also available side-effect-free via
+// the `@playgama/bridge/constants` subpath).
+export * from './publicConstants'
+
+export type { default as PlaygamaBridge } from './PlaygamaBridge'
+export type { PlaygamaInitOptions } from './PlaygamaBridge'

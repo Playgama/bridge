@@ -18,6 +18,7 @@
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import { internalAnalytics } from '../analytics'
 import { MODULE_NAME } from '../../constants'
+import type { CatalogProduct, Purchase } from './types'
 
 export interface PaymentsBridgeContract extends PlatformBridgeLike {
     isPaymentsSupported: boolean
@@ -32,7 +33,7 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
         return this._platformBridge.isPaymentsSupported
     }
 
-    purchase(id: string, options?: unknown): Promise<unknown> {
+    purchase(id: string, options?: unknown): Promise<Purchase> {
         if (!this._platformBridge.isPaymentsSupported) {
             return Promise.reject()
         }
@@ -48,7 +49,7 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
                     `${MODULE_NAME.PAYMENTS}_purchase_completed`,
                     { id },
                 )
-                return result
+                return result as Purchase
             })
             .catch((error) => {
                 internalAnalytics.send(
@@ -59,23 +60,23 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
             })
     }
 
-    getPurchases(): Promise<unknown> {
+    getPurchases(): Promise<Purchase[]> {
         if (!this._platformBridge.isPaymentsSupported) {
             return Promise.reject()
         }
 
-        return this._platformBridge.paymentsGetPurchases()
+        return this._platformBridge.paymentsGetPurchases() as Promise<Purchase[]>
     }
 
-    getCatalog(): Promise<unknown> {
+    getCatalog(): Promise<CatalogProduct[]> {
         if (!this._platformBridge.isPaymentsSupported) {
             return Promise.reject()
         }
 
-        return this._platformBridge.paymentsGetCatalog()
+        return this._platformBridge.paymentsGetCatalog() as Promise<CatalogProduct[]>
     }
 
-    consumePurchase(id: string): Promise<unknown> {
+    consumePurchase(id: string): Promise<Purchase> {
         if (!this._platformBridge.isPaymentsSupported) {
             return Promise.reject()
         }
@@ -91,7 +92,7 @@ class PaymentsModule extends ModuleBase<PaymentsBridgeContract> {
                     `${MODULE_NAME.PAYMENTS}_consume_purchase_completed`,
                     { id },
                 )
-                return result
+                return result as Purchase
             })
             .catch((error) => {
                 internalAnalytics.send(

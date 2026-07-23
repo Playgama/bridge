@@ -7,13 +7,67 @@ function createRecorder() {
     return new Recorder()
 }
 
-function createMockCanvas() {
+function createMockCanvas(options: {
+    width?: number
+    height?: number
+    toDataURL?: string
+} = {}) {
     const canvas = document.createElement('canvas')
+    canvas.width = options.width ?? 1280
+    canvas.height = options.height ?? 720
+    vi.spyOn(canvas, 'toDataURL').mockReturnValue(
+        options.toDataURL || 'data:image/png;base64,mockData',
+    )
     canvas.captureStream = vi.fn().mockReturnValue({
         getTracks: () => [{ stop: vi.fn() }],
     })
     document.body.appendChild(canvas)
     return canvas
+}
+
+function mockCapturedScreenshotFrame(
+    sourceCanvas: HTMLCanvasElement,
+    data = 'data:image/jpeg;base64,capturedFrame',
+) {
+    const track = {
+        kind: 'video',
+        readyState: 'live',
+        stop: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+    }
+    const stream = {
+        getVideoTracks: () => [track],
+        getTracks: () => [track],
+    }
+    sourceCanvas.captureStream = vi.fn().mockReturnValue(stream)
+
+    const video = document.createElement('video')
+    Object.defineProperties(video, {
+        videoWidth: { value: sourceCanvas.width },
+        videoHeight: { value: sourceCanvas.height },
+        requestVideoFrameCallback: {
+            value: vi.fn((callback: VideoFrameRequestCallback) => {
+                queueMicrotask(() => callback(0, {} as VideoFrameCallbackMetadata))
+                return 1
+            }),
+        },
+        cancelVideoFrameCallback: { value: vi.fn() },
+    })
+    vi.spyOn(video, 'play').mockResolvedValue(undefined)
+    vi.spyOn(video, 'pause').mockImplementation(() => {})
+
+    const outputCanvas = document.createElement('canvas')
+    const drawImage = vi.fn()
+    vi.spyOn(outputCanvas, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D)
+    vi.spyOn(outputCanvas, 'toDataURL').mockReturnValue(data)
+    vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+        if (tagName === 'video') return video
+        if (tagName === 'canvas') return outputCanvas
+        throw new Error(`Unexpected element: ${tagName}`)
+    })
+
+    return { stream, track, video, outputCanvas, drawImage }
 }
 
 function createMockRTCPeerConnection() {
@@ -27,12 +81,16 @@ function createMockRTCPeerConnection() {
         addTrack: vi.fn(),
         createOffer: vi.fn().mockResolvedValue({ sdp: 'mock-offer-sdp', type: 'offer' }),
         setLocalDescription: vi.fn().mockResolvedValue(undefined),
-        setRemoteDescription: vi.fn().mockResolvedValue(undefined),
+        setRemoteDescription: vi.fn(),
+        remoteDescription: null as RTCSessionDescriptionInit | null,
         addIceCandidate: vi.fn().mockResolvedValue(undefined),
         getSenders: vi.fn().mockReturnValue([mockSender]),
         close: vi.fn(),
         onicecandidate: null as ((e: { candidate: unknown }) => void) | null,
     }
+    mockPc.setRemoteDescription.mockImplementation(async (description) => {
+        mockPc.remoteDescription = description
+    })
 
     global.RTCPeerConnection = vi.fn().mockImplementation(() => mockPc) as unknown as typeof RTCPeerConnection
     return mockPc
@@ -51,6 +109,7 @@ describe('Recorder', () => {
     })
 
     afterEach(() => {
+        vi.unstubAllGlobals()
         if (canvas) {
             canvas.remove()
             canvas = null
@@ -155,6 +214,38 @@ describe('Recorder', () => {
             expect(canvas.captureStream).toHaveBeenCalledWith(30)
         })
 
+        test('should stop the stream when peer connection creation fails', async () => {
+            const stop = vi.fn()
+            canvas = createMockCanvas()
+            canvas.captureStream = vi.fn().mockReturnValue({
+                getTracks: () => [{ stop }],
+            })
+            global.RTCPeerConnection = vi.fn().mockImplementation(() => {
+                throw new Error('Peer connection creation failed')
+            }) as unknown as typeof RTCPeerConnection
+
+            const module = createRecorder()
+
+            await expect(module.startCapture()).rejects.toThrow('Peer connection creation failed')
+            expect(stop).toHaveBeenCalledOnce()
+        })
+
+        test('should release capture resources when offer creation fails', async () => {
+            const stop = vi.fn()
+            canvas = createMockCanvas()
+            canvas.captureStream = vi.fn().mockReturnValue({
+                getTracks: () => [{ stop }],
+            })
+            const mockPc = createMockRTCPeerConnection()
+            mockPc.createOffer = vi.fn().mockRejectedValue(new Error('Offer creation failed'))
+
+            const module = createRecorder()
+
+            await expect(module.startCapture()).rejects.toThrow('Offer creation failed')
+            expect(stop).toHaveBeenCalledOnce()
+            expect(mockPc.close).toHaveBeenCalledOnce()
+        })
+
         test('should apply maxBitrate to video sender', async () => {
             canvas = createMockCanvas()
             const mockPc = createMockRTCPeerConnection()
@@ -252,6 +343,143 @@ describe('Recorder', () => {
             const module = createRecorder()
             await expect(module.startCapture()).resolves.toBeUndefined()
         })
+
+        test('should not emit an old offer after a newer capture starts', async () => {
+            canvas = createMockCanvas()
+            const firstPc = createMockRTCPeerConnection()
+            const secondPc = createMockRTCPeerConnection()
+            let resolveFirstOffer!: (offer: RTCSessionDescriptionInit) => void
+            firstPc.createOffer = vi.fn(() => new Promise((resolve) => {
+                resolveFirstOffer = resolve
+            }))
+            secondPc.createOffer = vi.fn().mockResolvedValue({
+                sdp: 'fresh-offer-sdp',
+                type: 'offer',
+            })
+            global.RTCPeerConnection = vi.fn()
+                .mockImplementationOnce(() => firstPc)
+                .mockImplementationOnce(() => secondPc) as unknown as typeof RTCPeerConnection
+            const onOffer = vi.fn()
+            const onIceCandidate = vi.fn()
+            const onStarted = vi.fn()
+            const module = createRecorder()
+            module.onOffer = onOffer
+            module.onIceCandidate = onIceCandidate
+            module.onStarted = onStarted
+
+            const firstStart = module.startCapture()
+            await vi.waitFor(() => expect(firstPc.createOffer).toHaveBeenCalled())
+            module.stopCapture()
+            await module.startCapture()
+            resolveFirstOffer({ sdp: 'stale-offer-sdp', type: 'offer' })
+            await firstStart
+            firstPc.onicecandidate?.({
+                candidate: { toJSON: () => ({ candidate: 'stale-candidate' }) },
+            })
+            secondPc.onicecandidate?.({
+                candidate: { toJSON: () => ({ candidate: 'fresh-candidate' }) },
+            })
+
+            expect(onOffer).toHaveBeenCalledOnce()
+            expect(onOffer).toHaveBeenCalledWith('fresh-offer-sdp')
+            expect(onIceCandidate).toHaveBeenCalledOnce()
+            expect(onIceCandidate).toHaveBeenCalledWith({ candidate: 'fresh-candidate' })
+            expect(onStarted).toHaveBeenCalledOnce()
+            expect(firstPc.setLocalDescription).not.toHaveBeenCalled()
+        })
+    })
+
+    describe('takeScreenshot', () => {
+        test('should return an error when canvas is not found', () => {
+            const module = createRecorder()
+
+            expect(module.takeScreenshot()).toEqual({
+                success: false,
+                reason: 'Canvas not found',
+                data: null,
+            })
+        })
+
+        test('should capture the painted surface without reading the source drawing buffer', async () => {
+            canvas = createMockCanvas()
+            const sourceToDataURL = canvas.toDataURL
+            const { track, video, outputCanvas, drawImage } = mockCapturedScreenshotFrame(canvas)
+
+            const module = createRecorder()
+            const result = await module.takeScreenshotFromSurface({
+                type: 'image/jpeg',
+                quality: 0.85,
+            })
+
+            expect(sourceToDataURL).not.toHaveBeenCalled()
+            expect(canvas.captureStream).toHaveBeenCalledWith(30)
+            expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 1280, 720)
+            expect(outputCanvas.toDataURL).toHaveBeenCalledWith('image/jpeg', 0.85)
+            expect(track.stop).toHaveBeenCalledOnce()
+            expect(result).toEqual({
+                success: true,
+                reason: null,
+                data: 'data:image/jpeg;base64,capturedFrame',
+            })
+        })
+
+        test('should stop only the screenshot track while recording capture is active', async () => {
+            canvas = createMockCanvas()
+            const recordingTrack = { kind: 'video', stop: vi.fn() }
+            const recordingStream = {
+                getVideoTracks: () => [recordingTrack],
+                getTracks: () => [recordingTrack],
+            }
+            const { stream, track } = mockCapturedScreenshotFrame(canvas)
+            vi.mocked(canvas.captureStream)
+                .mockReset()
+                .mockReturnValueOnce(recordingStream as unknown as MediaStream)
+                .mockReturnValueOnce(stream as unknown as MediaStream)
+            const peerConnection = createMockRTCPeerConnection()
+            const module = createRecorder()
+
+            await module.startCapture()
+            await module.takeScreenshotFromSurface()
+
+            expect(recordingTrack.stop).not.toHaveBeenCalled()
+            expect(track.stop).toHaveBeenCalledOnce()
+            expect(peerConnection.close).not.toHaveBeenCalled()
+        })
+
+        test('should return an error when canvas serialization fails', () => {
+            canvas = createMockCanvas()
+            vi.spyOn(canvas, 'toDataURL').mockImplementation(() => {
+                throw new DOMException('Canvas is tainted', 'SecurityError')
+            })
+
+            const module = createRecorder()
+
+            expect(module.takeScreenshot()).toEqual({
+                success: false,
+                reason: 'Canvas is tainted',
+                data: null,
+            })
+        })
+
+        test('should downscale oversized screenshots', () => {
+            canvas = createMockCanvas({ width: 3840, height: 2160 })
+            const resizedCanvas = document.createElement('canvas')
+            const drawImage = vi.fn()
+            vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+                if (tagName === 'canvas') return resizedCanvas
+                throw new Error(`Unexpected element: ${tagName}`)
+            })
+            vi.spyOn(resizedCanvas, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D)
+            vi.spyOn(resizedCanvas, 'toDataURL').mockReturnValue('data:image/png;base64,resized')
+
+            const module = createRecorder()
+            const result = module.takeScreenshot({ maxWidth: 1920, maxHeight: 1080 })
+
+            expect(resizedCanvas.width).toBe(1920)
+            expect(resizedCanvas.height).toBe(1080)
+            expect(drawImage).toHaveBeenCalledWith(canvas, 0, 0, 1920, 1080)
+            expect(result.data).toBe('data:image/png;base64,resized')
+        })
     })
 
     describe('handleAnswer', () => {
@@ -275,16 +503,61 @@ describe('Recorder', () => {
     })
 
     describe('handleIce', () => {
-        test('should add ice candidate after startCapture', async () => {
+        test('should add ice candidate after remote answer is set', async () => {
             canvas = createMockCanvas()
             const mockPc = createMockRTCPeerConnection()
 
             const candidate = { candidate: 'mock', sdpMid: '0', sdpMLineIndex: 0 }
             const module = createRecorder()
             await module.startCapture()
+            await module.handleAnswer({ sdp: 'mock-answer-sdp' })
             await module.handleIce(candidate)
 
             expect(mockPc.addIceCandidate).toHaveBeenCalled()
+        })
+
+        test('should queue ice candidate while remote answer is being set', async () => {
+            canvas = createMockCanvas()
+            const mockPc = createMockRTCPeerConnection()
+            let resolveRemoteDescription!: () => void
+            mockPc.setRemoteDescription.mockImplementation((description) => new Promise<void>((resolve) => {
+                resolveRemoteDescription = () => {
+                    mockPc.remoteDescription = description
+                    resolve()
+                }
+            }))
+
+            const candidate = { candidate: 'early', sdpMid: '0', sdpMLineIndex: 0 }
+            const module = createRecorder()
+            await module.startCapture()
+            const answerPromise = module.handleAnswer({ sdp: 'mock-answer-sdp' })
+            await vi.waitFor(() => expect(mockPc.setRemoteDescription).toHaveBeenCalled())
+
+            await module.handleIce(candidate)
+            expect(mockPc.addIceCandidate).not.toHaveBeenCalled()
+
+            resolveRemoteDescription()
+            await answerPromise
+            expect(mockPc.addIceCandidate).toHaveBeenCalledWith(candidate)
+        })
+
+        test('should discard queued ice candidates when capture stops', async () => {
+            canvas = createMockCanvas()
+            const firstPc = createMockRTCPeerConnection()
+            const secondPc = createMockRTCPeerConnection()
+            global.RTCPeerConnection = vi.fn()
+                .mockImplementationOnce(() => firstPc)
+                .mockImplementationOnce(() => secondPc) as unknown as typeof RTCPeerConnection
+
+            const module = createRecorder()
+            await module.startCapture()
+            await module.handleIce({ candidate: 'stale', sdpMid: '0', sdpMLineIndex: 0 })
+            module.stopCapture()
+            await module.startCapture()
+            await module.handleAnswer({ sdp: 'fresh-answer-sdp' })
+
+            expect(firstPc.addIceCandidate).not.toHaveBeenCalled()
+            expect(secondPc.addIceCandidate).not.toHaveBeenCalled()
         })
 
         test('should do nothing when peer connection does not exist', async () => {

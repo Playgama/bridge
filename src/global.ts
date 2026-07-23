@@ -15,13 +15,18 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import LeaderboardsModule from './LeaderboardsModule'
+// Types the global `bridge` singleton for projects that load the SDK via a
+// <script> tag (CDN or a local copy) instead of importing it. Reaches
+// consumers through the npm/constants entry points, or explicitly via
+// `import type {} from '@playgama/bridge/global'`.
 
-export type {
-    LeaderboardsBridgeContract,
-    LeaderboardsBridgeOptions,
-    LeaderboardMapping,
-} from './LeaderboardsModule'
-export type { LeaderboardEntry } from './types'
+import type PlaygamaBridge from './PlaygamaBridge'
 
-export default new LeaderboardsModule()
+declare global {
+    /* eslint-disable no-var, vars-on-top */
+    var bridge: PlaygamaBridge
+    var playgamaBridge: PlaygamaBridge
+    /* eslint-enable no-var, vars-on-top */
+}
+
+export {}
