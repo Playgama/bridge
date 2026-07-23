@@ -79,10 +79,20 @@ class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
             return false
         }
 
-        state.lastClaimEpochDay = await this.#getTodayEpochDay()
+        const claimedDay = state.day
+        const todayEpochDay = await this.#getTodayEpochDay()
+        // Re-check after await: a concurrent claim may have already stamped today
+        if (state.lastClaimEpochDay === todayEpochDay) {
+            return false
+        }
+        state.lastClaimEpochDay = todayEpochDay
         state.day = this.#cycle ? (state.day + 1) % this.#rewards.length : state.day + 1
 
         await this.#persist()
+        this._platformBridge.dailyRewardsClaimed?.({
+            day: claimedDay,
+            reward: this.#rewards[claimedDay],
+        })
         return true
     }
 
@@ -90,9 +100,12 @@ class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
         const state = await this.#load()
         if (this.#resetOnMiss && state.lastClaimEpochDay !== null && state.day > 0) {
             const todayEpochDay = await this.#getTodayEpochDay()
-            if (todayEpochDay - state.lastClaimEpochDay >= 2) {
+            // Re-check after await: a concurrent #refresh may have already reset the state
+            if (state.day > 0 && todayEpochDay - state.lastClaimEpochDay >= 2) {
+                const missedDay = state.day
                 state.day = 0
                 await this.#persist()
+                this._platformBridge.dailyRewardsReset?.({ day: missedDay })
             }
         }
         return state
