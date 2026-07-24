@@ -23,8 +23,11 @@ jobs:
       environment: production
       channel: ${{ inputs.channel }}
       publish_npm: ${{ inputs.publish_npm }}
+      purge_gcore: true
+      gcore_cdn_resource_id: ${{ vars.BRIDGE_GCORE_CDN_RESOURCE_ID_PRODUCTION }}
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}
       S3_BUCKET: ${{ secrets.S3_BUCKET_PRODUCTION }}
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      GCORE_API_KEY: ${{ secrets.BRIDGE_GCORE_API_KEY }}
