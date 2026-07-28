@@ -15,6 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import eventBus from '../../lib/EventBus'
 import ModuleBase from '../ModuleBase'
 import { BridgeError, ERROR_CODE, EVENT_NAME } from '../../constants'
 import localStorage from '../../lib/LocalStorage'
@@ -55,6 +56,8 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
     }
 
     set(key: string | string[], value: unknown | unknown[]): Promise<void> {
+        eventBus.emit(EVENT_NAME.STORAGE_SET)
+
         if (Array.isArray(key)) {
             if (!Array.isArray(value)) {
                 return Promise.reject(new Error('Value must be an array when key is an array'))

@@ -26,5 +26,7 @@ export const EVENT_NAME = {
     SCREEN_SIZE_CHANGED: 'screen_size_changed',
     PLATFORM_MESSAGE_SENT: 'platform_message_sent',
     PLATFORM_STORAGE_AVAILABILITY_CHANGED: 'platform_storage_availability_changed',
+    VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
+    STORAGE_SET: 'storage_set',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]

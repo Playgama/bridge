@@ -527,6 +527,7 @@ class PlatformBridgeBase {
         }
 
         this._visibilityState = state
+        this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, state)
 
         const isHidden = state === VISIBILITY_STATE.HIDDEN
         if (this._pauseStateAggregator) {
