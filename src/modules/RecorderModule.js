@@ -68,6 +68,7 @@ class RecorderModule {
      * Starts canvas capture and creates a WebRTC offer.
      * @param {Object} [options]
      * @param {number} [options.fps=30] - Capture frame rate passed to captureStream()
+     * @param {RTCIceServer[]} [options.iceServers] - ICE servers used by the capture peer connection
      * @param {number} [options.maxBitrate] - Maximum bitrate in bits/s
      * @param {number} [options.minBitrate] - Minimum bitrate in bits/s
      * @param {number} [options.maxFramerate] - Maximum framerate at encoding level
@@ -93,7 +94,9 @@ class RecorderModule {
         this.#stream = stream
         let peerConnection
         try {
-            peerConnection = new RTCPeerConnection()
+            peerConnection = options.iceServers?.length
+                ? new RTCPeerConnection({ iceServers: options.iceServers })
+                : new RTCPeerConnection()
         } catch (error) {
             this.#clearCaptureResources()
             throw error
