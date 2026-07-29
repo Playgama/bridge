@@ -379,6 +379,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         loadError: bridgeConfig.loadError,
                         parseError: bridgeConfig.parseError,
                         options: bridgeConfig.getRawValues(),
+                        // What modules actually consume; the QA tool reads module configs from here
+                        resolvedOptions: bridgeConfig.getValues(),
                         path: bridgeConfig.path,
                         remoteLoadStatus: bridgeConfig.remoteLoadStatus,
                         remoteLoadError: bridgeConfig.remoteLoadError,

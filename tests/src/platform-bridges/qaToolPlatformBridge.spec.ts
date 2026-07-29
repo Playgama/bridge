@@ -84,4 +84,16 @@ describe('QaToolPlatformBridge modules wire format', () => {
             options: { day: 4 },
         })
     })
+
+    test('initialize payload carries platform-resolved config options', () => {
+        createInitializedBridge()
+
+        const initializeMessage = sendSpy.mock.calls
+            .map(([message]) => message as { action?: string, payload?: Record<string, unknown> })
+            .find((message) => message.action === 'initialize')
+
+        expect(initializeMessage).toBeDefined()
+        const configFile = initializeMessage?.payload?.configFile as Record<string, unknown>
+        expect(configFile.resolvedOptions).toBeDefined()
+    })
 })
