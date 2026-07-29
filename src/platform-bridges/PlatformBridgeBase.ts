@@ -410,9 +410,13 @@ class PlatformBridgeBase {
         this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
-    showAdvancedBanners(_banners?: unknown): void { }
+    showAdvancedBanners(_banners?: unknown): void {
+        this._setAdvancedBannersState(BANNER_STATE.FAILED)
+    }
 
-    hideAdvancedBanners(): void { }
+    hideAdvancedBanners(): void {
+        this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+    }
 
     preloadInterstitial(_placement?: unknown): void { }
 
