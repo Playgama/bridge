@@ -188,10 +188,26 @@ describe('Recorder', () => {
             module.onStarted = onStarted
             await module.startCapture()
 
+            expect(global.RTCPeerConnection).toHaveBeenCalledWith()
             expect(mockPc.createOffer).toHaveBeenCalled()
             expect(mockPc.setLocalDescription).toHaveBeenCalled()
             expect(onOffer).toHaveBeenCalledWith('mock-offer-sdp')
             expect(onStarted).toHaveBeenCalled()
+        })
+
+        test('should configure the peer connection with provided ICE servers', async () => {
+            canvas = createMockCanvas()
+            createMockRTCPeerConnection()
+            const iceServers: RTCIceServer[] = [{
+                urls: 'turn:turn.example.com',
+                username: 'user',
+                credential: 'credential',
+            }]
+
+            const module = createRecorder()
+            await module.startCapture({ iceServers })
+
+            expect(global.RTCPeerConnection).toHaveBeenCalledWith({ iceServers })
         })
 
         test('should use custom fps', async () => {

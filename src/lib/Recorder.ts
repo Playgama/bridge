@@ -22,6 +22,7 @@ export type RecorderPriority = 'very-low' | 'low' | 'medium' | 'high'
 
 export interface RecorderStartOptions {
     fps?: number
+    iceServers?: RTCIceServer[]
     maxBitrate?: number
     minBitrate?: number
     maxFramerate?: number
@@ -112,7 +113,9 @@ class Recorder {
         this.#stream = stream
         let peerConnection: RTCPeerConnection
         try {
-            peerConnection = new RTCPeerConnection()
+            peerConnection = options.iceServers?.length
+                ? new RTCPeerConnection({ iceServers: options.iceServers })
+                : new RTCPeerConnection()
         } catch (error) {
             this.#clearCaptureResources()
             throw error
