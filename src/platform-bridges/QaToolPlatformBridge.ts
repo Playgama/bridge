@@ -41,6 +41,10 @@ import {
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
 import type { CrossPromoShownPayload } from '../modules/cross-promo/types'
+import type {
+    DailyRewardsClaimedPayload,
+    DailyRewardsStreakResetPayload,
+} from '../modules/daily-rewards/types'
 import type { AnyRecord } from '../utils'
 import type { SafeAreaInsets } from '../lib/safe-area'
 
@@ -80,6 +84,10 @@ export const ACTION_NAME_QA = {
     SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
     HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
     CROSS_PROMO_SHOWN: 'cross_promo_shown',
+    // Outbound notifications (events that already happened), not commands:
+    // the imperative daily_rewards_* names stay free for future QA tool commands.
+    DAILY_REWARDS_CLAIMED: 'daily_rewards_claimed',
+    DAILY_REWARDS_STREAK_RESET: 'daily_rewards_streak_reset',
 } as const
 export type ActionNameQa = typeof ACTION_NAME_QA[keyof typeof ACTION_NAME_QA]
 
@@ -310,6 +318,20 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 this.#sendMessage({
                     type: MODULE_NAME.CROSS_PROMO,
                     action: ACTION_NAME_QA.CROSS_PROMO_SHOWN,
+                    options: { ...payload },
+                })
+            })
+            this.on(EVENT_NAME.DAILY_REWARDS_CLAIMED, (payload: DailyRewardsClaimedPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.DAILY_REWARDS,
+                    action: ACTION_NAME_QA.DAILY_REWARDS_CLAIMED,
+                    options: { ...payload },
+                })
+            })
+            this.on(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, (payload: DailyRewardsStreakResetPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.DAILY_REWARDS,
+                    action: ACTION_NAME_QA.DAILY_REWARDS_STREAK_RESET,
                     options: { ...payload },
                 })
             })

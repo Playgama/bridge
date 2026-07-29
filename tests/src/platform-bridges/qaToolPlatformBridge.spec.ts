@@ -24,7 +24,7 @@ vi.stubGlobal('PLUGIN_VERSION', 'test-version')
 // Pins the outbound wire format consumed by the external QA tool. The literals
 // are intentional: renaming a constant must break this test, not silently
 // change the protocol.
-describe('QaToolPlatformBridge cross promo wire format', () => {
+describe('QaToolPlatformBridge modules wire format', () => {
     beforeEach(() => {
         sendSpy.mockClear()
         // The bus is a singleton; drop subscriptions left by bridges from
@@ -56,6 +56,32 @@ describe('QaToolPlatformBridge cross promo wire format', () => {
                 source: 'config',
                 games: [{ url: 'https://example.com/pixel-run', name: 'Pixel Run' }],
             },
+        })
+    })
+
+    test('claimed event is forwarded as a daily_rewards_claimed message', () => {
+        const bridge = createInitializedBridge()
+
+        bridge.emit(EVENT_NAME.DAILY_REWARDS_CLAIMED, { day: 2, reward: 'gem' })
+
+        expect(sendSpy).toHaveBeenLastCalledWith({
+            source: 'bridge',
+            type: 'daily_rewards',
+            action: 'daily_rewards_claimed',
+            options: { day: 2, reward: 'gem' },
+        })
+    })
+
+    test('streak reset event is forwarded as a daily_rewards_streak_reset message', () => {
+        const bridge = createInitializedBridge()
+
+        bridge.emit(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, { day: 4 })
+
+        expect(sendSpy).toHaveBeenLastCalledWith({
+            source: 'bridge',
+            type: 'daily_rewards',
+            action: 'daily_rewards_streak_reset',
+            options: { day: 4 },
         })
     })
 })

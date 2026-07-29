@@ -19,10 +19,13 @@ import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
 import bridgeConfig from '../../lib/bridge-config'
 import storageModule from '../storage'
+import { EVENT_NAME } from '../../constants'
 import { DAILY_REWARDS_STORAGE_KEY, MS_PER_DAY } from './constants'
 import type {
     DailyRewardsState,
     DailyRewardsBridgeContract,
+    DailyRewardsClaimedPayload,
+    DailyRewardsStreakResetPayload,
 } from './types'
 
 /**
@@ -31,6 +34,15 @@ import type {
  * using the platform server time (converted to a UTC epoch-day number, with a local
  * Date.now() fallback), persists progress through the storage module, and resets the
  * streak back to the first day when one or more days are missed.
+ *
+ * Claim and streak-reset activity is emitted on the platform bridge
+ * (EVENT_NAME.DAILY_REWARDS_CLAIMED / DAILY_REWARDS_STREAK_RESET); bridges that
+ * surface it to an external tool (e.g. QA Tool) subscribe to these events.
+ *
+ * Every public operation reads the clock exactly once up front and passes the
+ * epoch day down. Each state check runs in the same synchronous block as the
+ * write it guards, so concurrent operations cannot interleave between a check
+ * and its write.
  */
 class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
     #rewards: string[] = []
@@ -60,53 +72,59 @@ class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
 
     // 0-based index (into the rewards list) of the reward the player is currently on.
     async getCurrentDay(): Promise<number> {
-        const state = await this.#refresh()
+        const todayEpochDay = await this.#getTodayEpochDay()
+        const state = await this.#refresh(todayEpochDay)
         return state.day
     }
 
     // Id of the reward claimable today, or null when nothing can be claimed.
     async getCurrentReward(): Promise<string | null> {
-        const state = await this.#refresh()
-        if (!(await this.#canClaim(state))) {
+        const todayEpochDay = await this.#getTodayEpochDay()
+        const state = await this.#refresh(todayEpochDay)
+        if (!this.#canClaim(state, todayEpochDay)) {
             return null
         }
         return this.#rewards[state.day]
     }
 
     async claimCurrentReward(): Promise<boolean> {
-        const state = await this.#refresh()
-        if (!(await this.#canClaim(state))) {
+        const todayEpochDay = await this.#getTodayEpochDay()
+        const state = await this.#refresh(todayEpochDay)
+        if (!this.#canClaim(state, todayEpochDay)) {
             return false
         }
 
-        state.lastClaimEpochDay = await this.#getTodayEpochDay()
+        const claimedDay = state.day
+        state.lastClaimEpochDay = todayEpochDay
         state.day = this.#cycle ? (state.day + 1) % this.#rewards.length : state.day + 1
 
         await this.#persist()
+        const payload: DailyRewardsClaimedPayload = {
+            day: claimedDay,
+            reward: this.#rewards[claimedDay],
+        }
+        this._platformBridge.emit(EVENT_NAME.DAILY_REWARDS_CLAIMED, payload)
         return true
     }
 
-    async #refresh(): Promise<DailyRewardsState> {
+    async #refresh(todayEpochDay: number): Promise<DailyRewardsState> {
         const state = await this.#load()
-        if (this.#resetOnMiss && state.lastClaimEpochDay !== null && state.day > 0) {
-            const todayEpochDay = await this.#getTodayEpochDay()
-            if (todayEpochDay - state.lastClaimEpochDay >= 2) {
-                state.day = 0
-                await this.#persist()
-            }
+        if (this.#resetOnMiss && state.lastClaimEpochDay !== null && state.day > 0
+            && todayEpochDay - state.lastClaimEpochDay >= 2) {
+            const missedDay = state.day
+            state.day = 0
+            await this.#persist()
+            const payload: DailyRewardsStreakResetPayload = { day: missedDay }
+            this._platformBridge.emit(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, payload)
         }
         return state
     }
 
-    async #canClaim(state: DailyRewardsState): Promise<boolean> {
+    #canClaim(state: DailyRewardsState, todayEpochDay: number): boolean {
         if (state.day >= this.#rewards.length) {
             return false
         }
-        if (state.lastClaimEpochDay === null) {
-            return true
-        }
-        const todayEpochDay = await this.#getTodayEpochDay()
-        return todayEpochDay > state.lastClaimEpochDay
+        return state.lastClaimEpochDay === null || todayEpochDay > state.lastClaimEpochDay
     }
 
     async #getTodayEpochDay(): Promise<number> {
