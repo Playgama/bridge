@@ -317,7 +317,7 @@ class PlaygamaBridge {
             const showFullLogo = bridge.platformId === PLATFORM_ID.YANDEX
                 || bridge.platformId === PLATFORM_ID.Y8
                 ? false
-                : options.showFullLoadingLogo === true
+                : options.showFullLoadingLogo !== false
             const showLoadingText = bridge.platformId === PLATFORM_ID.XIAOMI
                 || options.showLoadingText === true
             this.#loadingScreen = new LoadingScreen()
