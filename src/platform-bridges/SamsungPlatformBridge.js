@@ -60,9 +60,18 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // payments
+    get isPaymentsSupported() {
+        return this.#isIapReady
+    }
+
     _platformLanguage = null
 
     #canCreateShortCut = false
+
+    #isIapReady = false
+
+    #iapSetupDone = false
 
     #isAdInitialized = false
 
@@ -74,6 +83,8 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         if (this._isInitialized) {
             return Promise.resolve()
         }
+
+        this.#setupIap()
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INITIALIZE)
         if (!promiseDecorator) {
@@ -119,6 +130,10 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                 .then((result) => {
                     if (result && result.err) {
                         throw new Error(`Samsung startGameAsync failed: ${result.err}`)
+                    }
+
+                    if (typeof this._platformSdk.setLoadingProgress === 'function') {
+                        this._platformSdk.setLoadingProgress(101)
                     }
 
                     this._isInitialized = true
@@ -259,6 +274,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
             console.warn('Samsung showAd(INTERSTITIAL) error:', result.err)
             this.#isAdShowing = false
             this._showAdFailurePopup(false)
+            this.#reloadCurrentAd()
         }
     }
 
@@ -286,6 +302,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
             console.warn('Samsung showAd(REWARD) error:', result.err)
             this.#isAdShowing = false
             this._showAdFailurePopup(true)
+            this.#reloadCurrentAd()
         }
     }
 
@@ -297,6 +314,159 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         }
 
         return Promise.resolve()
+    }
+
+    // payments
+    async paymentsPurchase(id) {
+        const product = this._paymentsGetProductPlatformData(id)
+        if (!product) {
+            return Promise.reject(new Error(`samsung_product_not_found: ${id}`))
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
+
+            try {
+                const purchase = await window.GSInstantIAP.purchaseItemAsync({
+                    itemID: product.platformProductId,
+                    passThroughParam: this._paymentsGenerateTransactionId(id),
+                })
+
+                const mergedPurchase = { id, ...purchase }
+                this._paymentsPurchases.push(mergedPurchase)
+                this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
+            } catch (error) {
+                this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+            }
+        }
+
+        return promiseDecorator.promise
+    }
+
+    async paymentsConsumePurchase(id) {
+        const purchaseIndex = this._paymentsPurchases.findIndex((p) => p.id === id)
+        if (purchaseIndex < 0) {
+            return Promise.reject(new Error(`samsung_purchase_not_found: ${id}`))
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
+
+            try {
+                const purchaseId = this._paymentsPurchases[purchaseIndex].mPurchaseId
+                const results = await window.GSInstantIAP.consumeItemAsync(purchaseId)
+                const result = Array.isArray(results)
+                    ? results.find((r) => r.mPurchaseId === purchaseId) ?? results[0]
+                    : results
+
+                if (!result || result.mStatusCode !== '0') {
+                    throw new Error(result?.mStatusString || 'samsung_consume_failed')
+                }
+
+                this._paymentsPurchases.splice(purchaseIndex, 1)
+                this._resolvePromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, { id, ...result })
+            } catch (error) {
+                this._rejectPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE, error)
+            }
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetCatalog() {
+        const products = this._paymentsGetProductsPlatformData()
+        if (!products) {
+            return Promise.reject(new Error('samsung_no_products_configured'))
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CATALOG)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
+
+            const itemIDs = products.map((p) => p.platformProductId).join(',')
+
+            window.GSInstantIAP.getProductListAsync(itemIDs)
+                .then((samsungProducts) => {
+                    const merged = products.map((product) => {
+                        const sp = samsungProducts.find((s) => s.mItemId === product.platformProductId)
+                        return {
+                            id: product.id,
+                            title: sp?.mItemName ?? null,
+                            description: sp?.mItemDesc ?? null,
+                            price: sp?.mItemPriceString ?? null,
+                            priceCurrencyCode: sp?.mCurrencyCode ?? null,
+                            priceValue: sp?.mItemPrice ?? null,
+                        }
+                    })
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, merged)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    paymentsGetPurchases() {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
+
+            const products = this._paymentsGetProductsPlatformData()
+
+            window.GSInstantIAP.getOwnedListAsync()
+                .then((ownedList) => {
+                    this._paymentsPurchases = (ownedList || []).map((purchase) => {
+                        const product = products.find((p) => p.platformProductId === purchase.mItemId)
+                        return { id: product?.id ?? purchase.mItemId, ...purchase }
+                    })
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #setupIap() {
+        if (this.#iapSetupDone || typeof window.GSInstantIAP === 'undefined') {
+            return
+        }
+        this.#iapSetupDone = true
+
+        window.addEventListener('iapReady', () => {
+            this.#isIapReady = true
+        })
+
+        try {
+            const apis = window.GSInstantIAP.getSupportedAPIs?.()
+            if (Array.isArray(apis) && apis.length > 0) {
+                this.#isIapReady = true
+            }
+        } catch {
+            this.#isIapReady = false
+        }
+    }
+
+    #loadAd(format) {
+        const ads = this._platformSdk.advertisement2
+        if (!ads) {
+            return
+        }
+
+        const result = ads.loadAd({ adFormat: format })
+        if (result && result.err) {
+            console.warn(`Samsung loadAd(${format}) error:`, result.err)
+        }
+    }
+
+    #reloadCurrentAd() {
+        this.#loadAd(this.#currentAdIsRewarded ? 'REWARD' : 'INTERSTITIAL')
     }
 
     #fetchPlayerData() {
@@ -383,6 +553,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             }
             this.#isAdShowing = false
+            this.#reloadCurrentAd()
         })
 
         ads.addEventListener('AD_SKIP', () => {
@@ -396,6 +567,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             }
             this.#isAdShowing = false
+            this.#reloadCurrentAd()
         })
 
         ads.addEventListener('AD_CLOSE', () => {
@@ -409,11 +581,10 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                 this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
             }
             this.#isAdShowing = false
+            this.#reloadCurrentAd()
         })
 
         ads.addEventListener('AD_LOAD_ERROR', () => {
-            // Preload failures fire here before any show call — stay silent.
-            // Only surface as a failure if the game already requested a show.
             if (!this.#isAdShowing) {
                 return
             }
@@ -429,6 +600,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
             this._showAdFailurePopup(this.#currentAdIsRewarded)
             this.#isAdShowing = false
+            this.#reloadCurrentAd()
         })
 
         ads.addEventListener('AD_VIDEO_ERROR', () => {
@@ -438,6 +610,7 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
             this._showAdFailurePopup(this.#currentAdIsRewarded)
             this.#isAdShowing = false
+            this.#reloadCurrentAd()
         })
     }
 
