@@ -63,7 +63,7 @@ class OkPlatformBridge extends VkPlatformBridge {
 
             if (urlAppId) {
                 this.#okAppId = urlAppId
-                return Promise.resolve()
+                return this.#ensureAuthorized()
             }
 
             return (this._platformSdk as VkBridgeLike).send('VKWebAppGetLaunchParams')
@@ -71,6 +71,7 @@ class OkPlatformBridge extends VkPlatformBridge {
                     if (data && data.vk_app_id) {
                         this.#okAppId = String(data.vk_app_id)
                     }
+                    return this.#ensureAuthorized()
                 })
                 .catch(() => {})
         })
@@ -131,6 +132,27 @@ class OkPlatformBridge extends VkPlatformBridge {
 
     protected _getCommunityUrl(groupId: number): string {
         return `https://ok.ru/group/${groupId}`
+    }
+
+    // OK carries the app id as vk_ok_app_id, so the inherited vk_app_id lookup
+    // finds nothing and the token request is never sent. Once initialize() has
+    // resolved the id (URL or launch params), reuse it.
+    protected override _getAuthAppId(): string | null {
+        const url = new URL(window.location.href)
+        return this.#okAppId
+            || url.searchParams.get('vk_ok_app_id')
+            || url.searchParams.get('vk_app_id')
+            || url.searchParams.get('api_id')
+    }
+
+    // super.initialize() runs _reAuth() before #okAppId is known, so on OK that
+    // first attempt has nothing to send. Retry now that the id is resolved.
+    #ensureAuthorized(): Promise<unknown> {
+        if (this.isPlayerAuthorized) {
+            return Promise.resolve(true)
+        }
+
+        return this._reAuth().catch(() => false)
     }
 }
 

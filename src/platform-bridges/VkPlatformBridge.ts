@@ -223,8 +223,20 @@ class VkPlatformBridge extends PlatformBridgeBase {
     }
 
     // player
+    // Rejects when the session could not be validated, like every other platform
+    // bridge does. _reAuth() resolves a boolean because storage retries need the
+    // flag rather than an exception; resolving that boolean here made a refused
+    // token look like a successful login to any caller that only awaits the
+    // promise — the Unity glue reports OnAuthorizeCompleted 'true' on exactly
+    // this path.
     authorizePlayer(): Promise<unknown> {
-        return this._reAuth()
+        return this._reAuth().then((authorized) => {
+            if (!authorized) {
+                throw new Error('VK declined the authorization request')
+            }
+
+            return authorized
+        })
     }
 
     // storage — VK stores values per key. Each operation retries once after a re-auth,
@@ -464,6 +476,14 @@ class VkPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // The app id VKWebAppGetAuthToken is asked for. Overridable: Odnoklassniki
+    // launches the mini-app with a different query parameter, and without an id
+    // the token call is skipped and the player never counts as authorized.
+    protected _getAuthAppId(): string | null {
+        const url = new URL(window.location.href)
+        return url.searchParams.get('vk_app_id') || url.searchParams.get('api_id')
+    }
+
     // Re-runs VKWebAppGetAuthToken. Used on initialize and when a storage call fails —
     // sometimes the VK session needs to be re-validated (esp. vk_is_app_user=0 contexts).
     protected _reAuth(): Promise<boolean> {
@@ -471,8 +491,7 @@ class VkPlatformBridge extends PlatformBridgeBase {
             return Promise.resolve(false)
         }
 
-        const url = new URL(window.location.href)
-        const appIdRaw = url.searchParams.get('vk_app_id') || url.searchParams.get('api_id')
+        const appIdRaw = this._getAuthAppId()
         const appId = appIdRaw ? parseInt(appIdRaw, 10) : null
         if (!appId) {
             this._isPlayerAuthorized = false
