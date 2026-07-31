@@ -118,10 +118,9 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
     }
 
     get platformLanguage(): string {
-        if (this.#isUserAccountAvailable) {
-            return (this._platformSdk as CrazyGamesSdk).user.systemInfo.countryCode.toLowerCase()
-        }
-
+        // systemInfo даёт только countryCode — это страна, а не язык: у игрока из США
+        // отдавало бы 'us', из Бразилии 'br', и игра искала бы несуществующий языковой
+        // пак. Языка в CrazyGames SDK v3 нет, поэтому берём его из браузера, как база.
         return super.platformLanguage
     }
 
@@ -170,6 +169,11 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
 
     #adCallbacks: CrazyGamesAdCallbacks = {
         adStarted: () => {
+            // CrazyGames требует, чтобы на время ролика игра встала на паузу и замолчала:
+            // их SDK сам ничего не глушит, а звук Unity/WebGL продолжает играть поверх
+            // рекламы — типовая причина отказа на ревью full launch.
+            this.#pauseGameForAd()
+
             if (this.#currentAdvertisementIsRewarded) {
                 this._setRewardedState(REWARDED_STATE.OPENED)
             } else {
@@ -177,6 +181,8 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             }
         },
         adFinished: () => {
+            this.#resumeGameAfterAd()
+
             if (this.#currentAdvertisementIsRewarded) {
                 this._setRewardedState(REWARDED_STATE.REWARDED)
                 this._setRewardedState(REWARDED_STATE.CLOSED)
@@ -185,6 +191,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
             }
         },
         adError: () => {
+            this.#resumeGameAfterAd()
             this._showAdFailurePopup(this.#currentAdvertisementIsRewarded)
         },
     }
@@ -655,6 +662,20 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #pauseGameForAd(): void {
+        this._setPauseState(true)
+        this._setAudioState(false)
+    }
+
+    #resumeGameAfterAd(): void {
+        this._setPauseState(false)
+
+        // Не просто true: игрок мог заглушить игру тумблером самого CrazyGames —
+        // после ролика надо вернуть его выбор, а не включить звук насильно.
+        const sdk = this._platformSdk as CrazyGamesSdk | undefined
+        this._setAudioState(!sdk?.game?.settings?.muteAudio)
     }
 
     #getPlayer(): Promise<void> {

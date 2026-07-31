@@ -106,7 +106,8 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
                     return
                 }
 
-                item.targets.forEach((targetConfig) => {
+                const itemTargets = item.targets ?? []
+                itemTargets.forEach((targetConfig) => {
                     if (targetConfig.id !== metric) {
                         return
                     }
@@ -184,7 +185,7 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
     #buildInitialTasks(group: TaskGroupConfig): TaskProgress[] {
         return group.items.map((item) => ({
             id: item.id,
-            targets: item.targets.map((target) => ({ id: target.id, progress: 0 })),
+            targets: (item.targets ?? []).map((target) => ({ id: target.id, progress: 0 })),
             claimed: false,
         }))
     }
@@ -198,11 +199,17 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
         return target
     }
 
-    // A task is complete when every configured target has reached its amount.
+    // A task is complete when every configured target has reached its amount. A task with no
+    // targets — or with a target whose amount is missing / not positive — can never complete:
+    // `every` on an empty list is true, which would silently hand the game a fully completed
+    // task list whenever the config lost its targets.
     #isTaskComplete(item: TaskItemConfig, task: TaskProgress): boolean {
+        if (!Array.isArray(item.targets) || item.targets.length === 0) {
+            return false
+        }
         return item.targets.every((targetConfig) => {
             const target = task.targets.find((entry) => entry.id === targetConfig.id)
-            return target != null && target.progress >= targetConfig.amount
+            return target != null && targetConfig.amount > 0 && target.progress >= targetConfig.amount
         })
     }
 
@@ -228,7 +235,7 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
     }
 
     #buildTask(group: TaskGroupConfig, task: TaskProgress, item: TaskItemConfig): Task {
-        const targets = item.targets.map((targetConfig) => {
+        const targets = (item.targets ?? []).map((targetConfig) => {
             const stored = task.targets.find((entry) => entry.id === targetConfig.id)
             const progress = Math.min(stored ? stored.progress : 0, targetConfig.amount)
             return {
@@ -242,8 +249,8 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
             id: item.id,
             type: group.type,
             targets,
-            rewards: item.rewards.map((reward) => ({ id: reward.id, amount: reward.amount })),
-            completed: targets.every((target) => target.completed),
+            rewards: (item.rewards ?? []).map((reward) => ({ id: reward.id, amount: reward.amount })),
+            completed: this.#isTaskComplete(item, task),
             claimed: task.claimed,
         }
     }
