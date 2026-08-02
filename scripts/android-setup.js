@@ -32,6 +32,7 @@ const https = require('https');
 // ─── Константы ────────────────────────────────────────────────────────────
 const BRIDGE_DIR         = path.resolve(__dirname, '..');   // корень bridge-репозитория
 const YANDEX_SDK_VERSION = '7.18.6';
+const APPMETRICA_VERSION = '7.14.3';
 
 // ─── Аргументы командной строки ───────────────────────────────────────────
 const args        = process.argv.slice(2);
@@ -269,6 +270,21 @@ function patchYandexPlugin() {
         } else {
             ok(`Yandex SDK уже ${YANDEX_SDK_VERSION}`);
         }
+
+        // AppMetrica — analytics for the native build. Declared here rather than
+        // relied upon transitively: the ads SDK may or may not pull it in
+        // depending on version, and the manager references its classes directly.
+        content = fs.readFileSync(buildGradle, 'utf8');
+        if (!content.includes('io.appmetrica.analytics:analytics')) {
+            content = content.replace(
+                /(implementation 'com\.yandex\.android:mobileads:[\d.]+')/,
+                `$1\n    implementation 'io.appmetrica.analytics:analytics:${APPMETRICA_VERSION}'`,
+            );
+            fs.writeFileSync(buildGradle, content, 'utf8');
+            ok(`AppMetrica ${APPMETRICA_VERSION} добавлена в зависимости плагина`);
+        } else {
+            ok('AppMetrica уже в зависимостях плагина');
+        }
     }
 
     // YandexMobileAdsManager.kt — баннер 10%/90%
@@ -276,10 +292,12 @@ function patchYandexPlugin() {
         pluginDir, 'src', 'main', 'java', 'com', 'playgama', 'yandexads', 'YandexMobileAdsManager.kt',
     );
     if (fs.existsSync(managerKt)) {
+        // Marker tracks the NEWEST edit in the template, so an older patched
+        // copy is still recognised as stale and gets rewritten.
         const content = fs.readFileSync(managerKt, 'utf8');
-        if (!content.includes('heightPixels * 0.10')) {
+        if (!content.includes('AppMetrica.activate')) {
             write(managerKt, YANDEX_MANAGER_KT);
-            ok('YandexMobileAdsManager.kt обновлён (баннер 10%/90%)');
+            ok('YandexMobileAdsManager.kt обновлён (баннер без серой полосы, AppMetrica)');
         } else {
             ok('YandexMobileAdsManager.kt уже обновлён');
         }
@@ -515,6 +533,8 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.getcapacitor.JSObject
+import io.appmetrica.analytics.AppMetrica
+import io.appmetrica.analytics.AppMetricaConfig
 import com.yandex.mobile.ads.banner.BannerAdEventListener
 import com.yandex.mobile.ads.banner.BannerAdSize
 import com.yandex.mobile.ads.banner.BannerAdView
@@ -540,7 +560,21 @@ class YandexMobileAdsManager(
 ) {
     private val bannerViews = mutableMapOf<String, BannerAdView>()
 
+    // AppMetrica is optional: without a key in playgama-bridge-config.json the
+    // ads still work, there is simply no analytics. Activation goes first
+    // because the ads SDK reports through AppMetrica when it is present.
     fun initialize(appMetricaKey: String?) {
+        if (!appMetricaKey.isNullOrBlank()) {
+            try {
+                val config = AppMetricaConfig.newConfigBuilder(appMetricaKey).build()
+                AppMetrica.activate(activity.applicationContext, config)
+                // Sessions are counted from activity transitions; without this
+                // every launch looks like one endless session.
+                AppMetrica.enableActivityAutoTracking(activity.application)
+            } catch (e: Exception) {
+                // Analytics must never be the reason a game fails to start.
+            }
+        }
         MobileAds.initialize(activity) {}
     }
 
@@ -627,7 +661,15 @@ class YandexMobileAdsManager(
                 val metrics = DisplayMetrics()
                 @Suppress("DEPRECATION")
                 activity.windowManager.defaultDisplay.getMetrics(metrics)
-                val screenHeightPx = metrics.heightPixels
+
+                // Measure the container the banner is actually placed in, not
+                // the display. getMetrics() reports the screen MINUS the system
+                // bars, while a fullscreen activity's content view spans the
+                // whole panel — so sizing the WebView by the former left a strip
+                // of bare activity background between the game and the banner,
+                // exactly as tall as the navigation bar that isn't there.
+                val rootView = activity.window.decorView.findViewById<ViewGroup>(android.R.id.content)
+                val screenHeightPx = if (rootView.height > 0) rootView.height else metrics.heightPixels
                 val bannerHeightPx = (screenHeightPx * 0.10).toInt()
                 val webViewHeightPx = screenHeightPx - bannerHeightPx
 
@@ -638,6 +680,10 @@ class YandexMobileAdsManager(
 
                 val widthDp = (metrics.widthPixels / metrics.density).toInt()
                 val bannerAdView = BannerAdView(activity)
+                // The ad rarely fills its slot to the pixel; a black backing
+                // keeps whatever is left over reading as part of the frame
+                // rather than as a grey seam.
+                bannerAdView.setBackgroundColor(android.graphics.Color.BLACK)
                 bannerAdView.setAdUnitId(adUnitId)
                 bannerAdView.setAdSize(BannerAdSize.stickySize(activity, widthDp))
                 bannerAdView.setBannerAdEventListener(object : BannerAdEventListener {
@@ -659,7 +705,6 @@ class YandexMobileAdsManager(
                     override fun onImpression(data: ImpressionData?) {}
                 })
 
-                val rootView = activity.window.decorView.findViewById<ViewGroup>(android.R.id.content)
                 val gravity = if (position == "top") Gravity.TOP else Gravity.BOTTOM
                 val params = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
