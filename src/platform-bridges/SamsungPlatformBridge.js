@@ -23,6 +23,7 @@ import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
     STORAGE_TYPE,
+    PLATFORM_MESSAGE,
 } from '../constants'
 
 const SDK_URL = 'https://gtg.samsungapps.com/gsinstant-sdk/gsinstant.0.45.js'
@@ -79,6 +80,8 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
     #isAdShowing = false
 
+    #loadingDone = false
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -132,10 +135,6 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                         throw new Error(`Samsung startGameAsync failed: ${result.err}`)
                     }
 
-                    if (typeof this._platformSdk.setLoadingProgress === 'function') {
-                        this._platformSdk.setLoadingProgress(101)
-                    }
-
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -145,6 +144,29 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    sendMessage(message) {
+        if (message === PLATFORM_MESSAGE.GAME_READY) {
+            this.setLoadingProgress(101)
+            return Promise.resolve()
+        }
+
+        return super.sendMessage(message)
+    }
+
+    setLoadingProgress(percent) {
+        if (this.#loadingDone) {
+            return
+        }
+
+        if (typeof this._platformSdk?.setLoadingProgress === 'function') {
+            this._platformSdk.setLoadingProgress(percent >= 100 ? 101 : percent)
+        }
+
+        if (percent >= 100) {
+            this.#loadingDone = true
+        }
     }
 
     // player
@@ -387,23 +409,26 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
             const itemIDs = products.map((p) => p.platformProductId).join(',')
 
-            window.GSInstantIAP.getProductListAsync(itemIDs)
+            Promise.resolve()
+                .then(() => window.GSInstantIAP.getProductListAsync(itemIDs))
                 .then((samsungProducts) => {
+                    const list = Array.isArray(samsungProducts) ? samsungProducts : []
                     const merged = products.map((product) => {
-                        const sp = samsungProducts.find((s) => s.mItemId === product.platformProductId)
+                        const sp = list.find((s) => s.mItemId === product.platformProductId)
                         return {
                             id: product.id,
-                            title: sp?.mItemName ?? null,
-                            description: sp?.mItemDesc ?? null,
-                            price: sp?.mItemPriceString ?? null,
-                            priceCurrencyCode: sp?.mCurrencyCode ?? null,
-                            priceValue: sp?.mItemPrice ?? null,
+                            title: sp?.mItemName ?? '',
+                            description: sp?.mItemDesc ?? '',
+                            price: sp?.mItemPriceString ?? '',
+                            priceCurrencyCode: sp?.mCurrencyCode ?? '',
+                            priceValue: sp?.mItemPrice != null ? String(sp.mItemPrice) : '',
                         }
                     })
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, merged)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                    console.warn('Samsung getProductListAsync error:', error)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, [])
                 })
         }
 
@@ -417,16 +442,20 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
             const products = this._paymentsGetProductsPlatformData()
 
-            window.GSInstantIAP.getOwnedListAsync()
+            Promise.resolve()
+                .then(() => window.GSInstantIAP.getOwnedListAsync())
                 .then((ownedList) => {
-                    this._paymentsPurchases = (ownedList || []).map((purchase) => {
+                    const list = Array.isArray(ownedList) ? ownedList : []
+                    this._paymentsPurchases = list.map((purchase) => {
                         const product = products.find((p) => p.platformProductId === purchase.mItemId)
                         return { id: product?.id ?? purchase.mItemId, ...purchase }
                     })
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                    console.warn('Samsung getOwnedListAsync error:', error)
+                    this._paymentsPurchases = []
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, [])
                 })
         }
 
