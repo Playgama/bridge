@@ -19,6 +19,7 @@ import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
 import bridgeConfig from '../../lib/bridge-config'
 import storageModule from '../storage'
+import { EVENT_NAME } from '../../constants'
 import {
     TASKS_STORAGE_KEY,
     MS_PER_DAY,
@@ -35,6 +36,8 @@ import type {
     TargetProgress,
     TaskItemConfig,
     TaskGroupConfig,
+    TasksRewardClaimedPayload,
+    TasksPeriodRolledOverPayload,
 } from './types'
 
 /**
@@ -141,16 +144,25 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
 
         found.task.claimed = true
         await this.#persist()
+        const payload: TasksRewardClaimedPayload = {
+            taskId: item.id,
+            groupId: found.group.id,
+            type: found.group.type,
+            rewards: item.rewards.map((reward) => ({ id: reward.id, amount: reward.amount })),
+        }
+        this._platformBridge.emit(EVENT_NAME.TASKS_REWARD_CLAIMED, payload)
         return true
     }
 
     // Loads state, then for every group rolls over to fresh, zeroed tasks when its
     // period changed. Returns the state and the active groups so callers only ever
-    // touch live tasks.
+    // touch live tasks. The roll-over event fires only when a stored period is
+    // replaced — the very first sync of a group is a start, not a reset.
     async #sync(): Promise<{ state: TasksState, active: { group: TaskGroupConfig, key: string }[] }> {
         const state = await this.#load()
         const now = await this.#getNow()
         const active: { group: TaskGroupConfig, key: string }[] = []
+        const rolledOver: TasksPeriodRolledOverPayload[] = []
         let dirty = false
 
         this.#groups.forEach((group) => {
@@ -158,6 +170,14 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
             const period = this.#periodKey(group, now)
             const current = state.groups[key]
             if (!current || current.periodKey !== period) {
+                if (current) {
+                    rolledOver.push({
+                        groupId: key,
+                        type: group.type,
+                        periodKey: period,
+                        previousPeriodKey: current.periodKey,
+                    })
+                }
                 state.groups[key] = { periodKey: period, tasks: this.#buildInitialTasks(group) }
                 dirty = true
             }
@@ -167,6 +187,9 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
         if (dirty) {
             await this.#persist()
         }
+        rolledOver.forEach((payload) => {
+            this._platformBridge.emit(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, payload)
+        })
         return { state, active }
     }
 

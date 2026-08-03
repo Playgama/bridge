@@ -104,6 +104,22 @@ export interface Task {
     claimed: boolean
 }
 
+// Payloads of the tasks events emitted on the platform bridge
+// (EVENT_NAME.TASKS_REWARD_CLAIMED / TASKS_PERIOD_ROLLED_OVER).
+export interface TasksRewardClaimedPayload {
+    taskId: string
+    groupId: string
+    type: TaskType
+    rewards: TaskReward[]
+}
+
+export interface TasksPeriodRolledOverPayload {
+    groupId: string
+    type: TaskType
+    periodKey: number
+    previousPeriodKey: number
+}
+
 export interface TasksBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
     options?: AnyRecord
