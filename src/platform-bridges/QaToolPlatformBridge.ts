@@ -39,6 +39,7 @@ import {
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
+import type { CrossPromoShownPayload } from '../modules/cross-promo/types'
 import type { AnyRecord } from '../utils'
 import type { SafeAreaInsets } from '../lib/safe-area'
 
@@ -77,6 +78,7 @@ export const ACTION_NAME_QA = {
     CLEAN_CACHE: 'clean_cache',
     SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
     HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
+    CROSS_PROMO_SHOWN: 'cross_promo_shown',
 } as const
 export type ActionNameQa = typeof ACTION_NAME_QA[keyof typeof ACTION_NAME_QA]
 
@@ -298,6 +300,13 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     type: MODULE_NAME.PLATFORM,
                     action: ACTION_NAME_QA.PAUSE_STATE,
                     options: { isPaused },
+                })
+            })
+            this.on(EVENT_NAME.CROSS_PROMO_SHOWN, (payload: CrossPromoShownPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.CROSS_PROMO,
+                    action: ACTION_NAME_QA.CROSS_PROMO_SHOWN,
+                    options: { ...payload },
                 })
             })
 
