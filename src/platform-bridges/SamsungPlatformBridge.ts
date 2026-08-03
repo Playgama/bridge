@@ -19,7 +19,7 @@ import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, waitFor, type AnyRecord } from '../utils'
 import logger from '../lib/logger'
 import { ACTION_NAME } from '../constants'
-import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+import { PLATFORM_ID, PLATFORM_MESSAGE, type PlatformId } from '../modules/platform/constants'
 import { INTERSTITIAL_STATE, REWARDED_STATE } from '../modules/advertisement/constants'
 
 const SDK_URL = 'https://gtg.samsungapps.com/gsinstant-sdk/gsinstant.0.45.js'
@@ -154,6 +154,8 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
     #isAdShowing = false
 
+    #loadingDone = false
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -209,11 +211,6 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
                         throw new Error(`Samsung startGameAsync failed: ${getResultError(result)}`)
                     }
 
-                    const sdk = this._platformSdk as GSInstantSdk
-                    if (typeof sdk.setLoadingProgress === 'function') {
-                        sdk.setLoadingProgress(101)
-                    }
-
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -223,6 +220,30 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    sendMessage(message?: unknown, options?: unknown): Promise<unknown> {
+        if (message === PLATFORM_MESSAGE.GAME_READY) {
+            this.setLoadingProgress(101)
+            return Promise.resolve()
+        }
+
+        return super.sendMessage(message, options)
+    }
+
+    setLoadingProgress(percent: number): void {
+        if (this.#loadingDone) {
+            return
+        }
+
+        const sdk = this._platformSdk as GSInstantSdk | null
+        if (sdk && typeof sdk.setLoadingProgress === 'function') {
+            sdk.setLoadingProgress(percent >= 100 ? 101 : percent)
+        }
+
+        if (percent >= 100) {
+            this.#loadingDone = true
+        }
     }
 
     // player
@@ -431,26 +452,28 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CATALOG)
 
-            const iap = window.GSInstantIAP as GSInstantIapSdk
             const itemIDs = products.map((p) => p.platformProductId as string).join(',')
 
-            iap.getProductListAsync(itemIDs)
+            Promise.resolve()
+                .then(() => (window.GSInstantIAP as GSInstantIapSdk).getProductListAsync(itemIDs))
                 .then((samsungProducts) => {
+                    const list = Array.isArray(samsungProducts) ? samsungProducts : []
                     const merged = products.map((product) => {
-                        const sp = samsungProducts.find((s) => s.mItemId === product.platformProductId)
+                        const sp = list.find((s) => s.mItemId === product.platformProductId)
                         return {
                             id: product.id,
-                            title: sp?.mItemName ?? null,
-                            description: sp?.mItemDesc ?? null,
-                            price: sp?.mItemPriceString ?? null,
-                            priceCurrencyCode: sp?.mCurrencyCode ?? null,
-                            priceValue: sp?.mItemPrice ?? null,
+                            title: sp?.mItemName ?? '',
+                            description: sp?.mItemDesc ?? '',
+                            price: sp?.mItemPriceString ?? '',
+                            priceCurrencyCode: sp?.mCurrencyCode ?? '',
+                            priceValue: sp?.mItemPrice != null ? String(sp.mItemPrice) : '',
                         }
                     })
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, merged)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_CATALOG, error)
+                    logger.warn('Samsung getProductListAsync error:', error)
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, [])
                 })
         }
 
@@ -462,19 +485,22 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_PURCHASES)
 
-            const iap = window.GSInstantIAP as GSInstantIapSdk
             const products = this._paymentsGetProductsPlatformData()
 
-            iap.getOwnedListAsync()
+            Promise.resolve()
+                .then(() => (window.GSInstantIAP as GSInstantIapSdk).getOwnedListAsync())
                 .then((ownedList) => {
-                    this._paymentsPurchases = (ownedList || []).map((purchase) => {
+                    const list = Array.isArray(ownedList) ? ownedList : []
+                    this._paymentsPurchases = list.map((purchase) => {
                         const product = products.find((p) => p.platformProductId === purchase.mItemId)
-                        return { id: product?.id ?? purchase.mItemId, ...purchase } as AnyRecord & { id: string }
+                        return { id: (product?.id ?? purchase.mItemId) as string, ...purchase } as AnyRecord & { id: string }
                     })
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_PURCHASES, error)
+                    logger.warn('Samsung getOwnedListAsync error:', error)
+                    this._paymentsPurchases = []
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, [])
                 })
         }
 
