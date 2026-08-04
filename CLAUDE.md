@@ -55,6 +55,7 @@ Builds also mirror `dist/` into `UnityTemplate/` (fork-only `CopyToUnityTemplate
 - **CustomLoader** — cookie-splash loading screen in `src/lib/loading-screen/LoadingScreen.ts`
 - **Config fallbacks** (`BridgeConfig.initialize`) — top-level `<platformId>` block fallback + `ok-vk` overrides merged for OK
 - **Ad failure popup** OK styling (`src/modules/advertisement/dom.ts`)
+- **Interstitial interval** — `DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 80` seconds (upstream: 60)
 - **Detection log** — `console.info('[Bridge] Platform detected: ...')` in `PlaygamaBridge.ts`
 - **UnityTemplate/**, `scripts/android-setup.js`, `scripts/deploy.js`, `bridge-deploy.config.json`, fork docs in `docs/`
 

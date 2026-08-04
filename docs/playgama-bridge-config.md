@@ -48,7 +48,7 @@ The `advertisement` object controls ad behavior across all platforms.
 | `advertisement.interstitial.disable` | boolean | `false` | Disable interstitial ads even if platform supports them |
 | `advertisement.interstitial.preloadOnStart` | boolean/string | `false` | Preload interstitial on SDK initialization. Set to `true` or placement ID |
 | `advertisement.interstitial.placementFallback` | string | `undefined` | Fallback placement if none specified in method call |
-| `advertisement.interstitial.minimumDelayBetweenInterstitial` | number | `60` | Minimum seconds between interstitial ads |
+| `advertisement.minimumDelayBetweenInterstitial` | number | `80` | Minimum seconds between interstitial ads. Read from the `advertisement` object itself, not from `interstitial` — a value nested under `interstitial` is ignored. Fork default: upstream ships `60` |
 | `advertisement.interstitial.placements` | array | `[]` | Array of placement configuration objects |
 
 ### Rewarded Ads
@@ -292,9 +292,7 @@ Use the `platforms` object to provide platform-specific configuration overrides:
         "<PLATFORM_ID>": {
             "<PLATFORM_SPECIFIC_PROPERTY>": "<PLATFORM_SPECIFIC_VALUE>",
             "advertisement": {
-                "interstitial": {
-                    "minimumDelayBetweenInterstitial": "<PLATFORM_OVERRIDEN_VALUE>"
-                }
+                "minimumDelayBetweenInterstitial": "<PLATFORM_OVERRIDEN_VALUE>"
             }
         }
     }

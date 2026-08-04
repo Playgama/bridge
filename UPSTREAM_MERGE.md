@@ -37,6 +37,7 @@ And `src/modules/platform/constants.ts` retains `OK_VK`, `GAME_MONETIZE`, `ANDRO
 `__INCLUDE_GAME_MONETIZE__` / `__INCLUDE_ANDROID__` flags.
 
 ### Other fork points
+- `src/modules/advertisement/constants.ts` — `DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 80` (upstream: 60)
 - `src/lib/bridge-config/BridgeConfig.ts` — top-level `<platformId>` config fallback + `ok-vk` merge for OK
 - `src/modules/advertisement/dom.ts` — `showAdFailurePopup(platformId)` OK styling
 - `src/PlaygamaBridge.ts` — `[Bridge] Platform detected` console.info

@@ -59,7 +59,10 @@ export const ADVANCED_BANNER_CONTAINER_ID_PREFIX = 'advanced-banner-'
 export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'
 export const REWARDED_CONTAINER_ID = 'rewarded-container'
 
-export const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
+// Seconds between two interstitials. Fork default: upstream ships 60, our games
+// run at 80 — a game may still name its own value under
+// `advertisement.minimumDelayBetweenInterstitial` in playgama-bridge-config.json.
+export const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 80
 export const ADVANCED_BANNERS_CONDITIONS_DEBOUNCE = 200
 
 export const ADVANCED_BANNERS_SCORE = {
