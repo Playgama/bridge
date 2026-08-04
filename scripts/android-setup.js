@@ -661,13 +661,28 @@ class YandexMobileAdsManager(
     private fun contentView(): ViewGroup =
         activity.window.decorView.findViewById(android.R.id.content)
 
+    // How much of the window the banner is taking. The banner view sizes itself
+    // (WRAP_CONTENT) from the ad size the SDK picked, so its measured height is
+    // the only honest answer: forcing the slot to a share of the screen made the
+    // creative render clipped against the bottom edge whenever the sticky size
+    // came out taller than that share — which on a short landscape window is
+    // most of the time, since sticky starts at 50dp and 10% of a 1080px-tall
+    // window is under 40dp. The 10% is only the guess covering the gap before
+    // the first layout pass; the cap keeps a runaway creative from swallowing
+    // the game.
+    private fun bannerHeightPx(bannerAdView: BannerAdView, screenHeightPx: Int): Int {
+        val measured = bannerAdView.height
+        val height = if (measured > 0) measured else (screenHeightPx * 0.10).toInt()
+        return height.coerceAtMost((screenHeightPx * 0.25).toInt())
+    }
+
     // Split the activity between the WebView and the banner, using the CURRENT
-    // size of the content view. Both heights are plain pixels, so they describe
-    // one screen geometry only: after a rotation the WebView keeps its old,
-    // portrait-sized height in a landscape window, its bottom rows fall past the
-    // visible area and the banner ends up drawn over them — the exit buttons
-    // among them. Hence applyBannerLayout is re-run on every layout change for
-    // as long as a banner is up, not just when it is created.
+    // size of the content view. The WebView height is plain pixels, so it
+    // describes one screen geometry only: after a rotation it would keep its
+    // old, portrait-sized value in a landscape window, its bottom rows falling
+    // past the visible area with the banner drawn over them — the exit buttons
+    // among them. Hence this is re-run on every layout change of either view for
+    // as long as a banner is up, not just when the banner is created.
     private fun applyBannerLayout(bannerAdView: BannerAdView) {
         val metrics = DisplayMetrics()
         @Suppress("DEPRECATION")
@@ -675,8 +690,7 @@ class YandexMobileAdsManager(
 
         val rootView = contentView()
         val screenHeightPx = if (rootView.height > 0) rootView.height else metrics.heightPixels
-        val bannerHeightPx = (screenHeightPx * 0.10).toInt()
-        val webViewHeightPx = screenHeightPx - bannerHeightPx
+        val webViewHeightPx = screenHeightPx - bannerHeightPx(bannerAdView, screenHeightPx)
 
         // Only touch layoutParams when something really changed: this runs from
         // a layout listener, and an unconditional requestLayout would loop.
@@ -685,12 +699,6 @@ class YandexMobileAdsManager(
         if (webViewParams.height != webViewHeightPx) {
             webViewParams.height = webViewHeightPx
             webView.layoutParams = webViewParams
-        }
-
-        val bannerParams = bannerAdView.layoutParams as? FrameLayout.LayoutParams
-        if (bannerParams != null && bannerParams.height != bannerHeightPx) {
-            bannerParams.height = bannerHeightPx
-            bannerAdView.layoutParams = bannerParams
         }
     }
 
@@ -702,7 +710,10 @@ class YandexMobileAdsManager(
     }
 
     private fun stopWatchingLayout() {
-        bannerLayoutListener?.let { contentView().removeOnLayoutChangeListener(it) }
+        bannerLayoutListener?.let { listener ->
+            contentView().removeOnLayoutChangeListener(listener)
+            bannerViews.values.forEach { it.removeOnLayoutChangeListener(listener) }
+        }
         bannerLayoutListener = null
     }
 
@@ -714,24 +725,20 @@ class YandexMobileAdsManager(
                 activity.windowManager.defaultDisplay.getMetrics(metrics)
 
                 val rootView = contentView()
-                val screenHeightPx = if (rootView.height > 0) rootView.height else metrics.heightPixels
-                val bannerHeightPx = (screenHeightPx * 0.10).toInt()
-                val webViewHeightPx = screenHeightPx - bannerHeightPx
-
-                val webView = plugin.bridge.webView
-                val webViewParams = webView.layoutParams
-                webViewParams.height = webViewHeightPx
-                webView.layoutParams = webViewParams
-
                 val widthDp = (metrics.widthPixels / metrics.density).toInt()
                 val bannerAdView = BannerAdView(activity)
                 // The ad rarely fills its slot to the pixel; a black backing
                 // keeps whatever is left over reading as part of the frame
                 // rather than as a grey seam.
                 bannerAdView.setBackgroundColor(android.graphics.Color.BLACK)
+                // WRAP_CONTENT, so the view is exactly as tall as the ad size
+                // the SDK settled on — see bannerHeightPx.
                 bannerAdView.setAdSize(BannerAdSize.sticky(activity, widthDp))
                 bannerAdView.setBannerAdEventListener(object : BannerAdEventListener {
                     override fun onAdLoaded() {
+                        // The view may not be measured yet; the layout listener
+                        // below picks up the real height when it is.
+                        bannerAdView.post { applyBannerLayout(bannerAdView) }
                         plugin.emit("bannerShown")
                         callback(null)
                     }
@@ -748,23 +755,23 @@ class YandexMobileAdsManager(
                 val gravity = if (position == "top") Gravity.TOP else Gravity.BOTTOM
                 val params = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
-                    bannerHeightPx,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
                     gravity,
                 )
                 rootView.addView(bannerAdView, params)
 
-                // Rotation, a resumed activity, an immersive-mode re-layout —
-                // anything that changes the window height invalidates the pixel
-                // split above, so redo it. Posted rather than applied inline: a
-                // requestLayout from inside a layout pass is discarded.
+                // Two things invalidate the split, and both are watched: the
+                // window changing height (rotation, a resumed activity, an
+                // immersive-mode re-layout) and the banner arriving at — or
+                // changing — its own height. Posted rather than applied inline:
+                // a requestLayout from inside a layout pass is discarded.
                 stopWatchingLayout()
                 val layoutListener = android.view.View.OnLayoutChangeListener {
-                    view, _, top, _, bottom, _, oldTop, _, oldBottom ->
-                    if (bottom - top != oldBottom - oldTop) {
-                        view.post { applyBannerLayout(bannerAdView) }
-                    }
+                    view, _, _, _, _, _, _, _, _ ->
+                    view.post { applyBannerLayout(bannerAdView) }
                 }
                 rootView.addOnLayoutChangeListener(layoutListener)
+                bannerAdView.addOnLayoutChangeListener(layoutListener)
                 bannerLayoutListener = layoutListener
 
                 // Since SDK 8 the ad unit travels in the request rather than on
