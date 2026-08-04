@@ -559,6 +559,9 @@ class YandexMobileAdsManager(
 ) {
     private val bannerViews = mutableMapOf<String, BannerAdView>()
 
+    // Set while a banner is on screen — see applyBannerLayout.
+    private var bannerLayoutListener: android.view.View.OnLayoutChangeListener? = null
+
     // AppMetrica is optional: without a key in playgama-bridge-config.json the
     // ads still work, there is simply no analytics. Activation goes first
     // because the ads SDK reports through AppMetrica when it is present.
@@ -650,6 +653,59 @@ class YandexMobileAdsManager(
         })
     }
 
+    // Measure the container the banner is actually placed in, not the display.
+    // getMetrics() reports the screen MINUS the system bars, while a fullscreen
+    // activity's content view spans the whole panel — so sizing the WebView by
+    // the former left a strip of bare activity background between the game and
+    // the banner, exactly as tall as the navigation bar that isn't there.
+    private fun contentView(): ViewGroup =
+        activity.window.decorView.findViewById(android.R.id.content)
+
+    // Split the activity between the WebView and the banner, using the CURRENT
+    // size of the content view. Both heights are plain pixels, so they describe
+    // one screen geometry only: after a rotation the WebView keeps its old,
+    // portrait-sized height in a landscape window, its bottom rows fall past the
+    // visible area and the banner ends up drawn over them — the exit buttons
+    // among them. Hence applyBannerLayout is re-run on every layout change for
+    // as long as a banner is up, not just when it is created.
+    private fun applyBannerLayout(bannerAdView: BannerAdView) {
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        activity.windowManager.defaultDisplay.getMetrics(metrics)
+
+        val rootView = contentView()
+        val screenHeightPx = if (rootView.height > 0) rootView.height else metrics.heightPixels
+        val bannerHeightPx = (screenHeightPx * 0.10).toInt()
+        val webViewHeightPx = screenHeightPx - bannerHeightPx
+
+        // Only touch layoutParams when something really changed: this runs from
+        // a layout listener, and an unconditional requestLayout would loop.
+        val webView = plugin.bridge.webView
+        val webViewParams = webView.layoutParams
+        if (webViewParams.height != webViewHeightPx) {
+            webViewParams.height = webViewHeightPx
+            webView.layoutParams = webViewParams
+        }
+
+        val bannerParams = bannerAdView.layoutParams as? FrameLayout.LayoutParams
+        if (bannerParams != null && bannerParams.height != bannerHeightPx) {
+            bannerParams.height = bannerHeightPx
+            bannerAdView.layoutParams = bannerParams
+        }
+    }
+
+    private fun restoreWebViewHeight() {
+        val webView = plugin.bridge.webView
+        val webViewParams = webView.layoutParams
+        webViewParams.height = ViewGroup.LayoutParams.MATCH_PARENT
+        webView.layoutParams = webViewParams
+    }
+
+    private fun stopWatchingLayout() {
+        bannerLayoutListener?.let { contentView().removeOnLayoutChangeListener(it) }
+        bannerLayoutListener = null
+    }
+
     fun showBanner(adUnitId: String, position: String, callback: (String?) -> Unit) {
         activity.runOnUiThread {
             try {
@@ -657,13 +713,7 @@ class YandexMobileAdsManager(
                 @Suppress("DEPRECATION")
                 activity.windowManager.defaultDisplay.getMetrics(metrics)
 
-                // Measure the container the banner is actually placed in, not
-                // the display. getMetrics() reports the screen MINUS the system
-                // bars, while a fullscreen activity's content view spans the
-                // whole panel — so sizing the WebView by the former left a strip
-                // of bare activity background between the game and the banner,
-                // exactly as tall as the navigation bar that isn't there.
-                val rootView = activity.window.decorView.findViewById<ViewGroup>(android.R.id.content)
+                val rootView = contentView()
                 val screenHeightPx = if (rootView.height > 0) rootView.height else metrics.heightPixels
                 val bannerHeightPx = (screenHeightPx * 0.10).toInt()
                 val webViewHeightPx = screenHeightPx - bannerHeightPx
@@ -686,10 +736,8 @@ class YandexMobileAdsManager(
                         callback(null)
                     }
                     override fun onAdFailedToLoad(error: AdRequestError) {
-                        val wv = plugin.bridge.webView
-                        val wvp = wv.layoutParams
-                        wvp.height = ViewGroup.LayoutParams.MATCH_PARENT
-                        wv.layoutParams = wvp
+                        stopWatchingLayout()
+                        restoreWebViewHeight()
                         plugin.emit("bannerFailed", JSObject().put("error", error.description))
                         callback(error.description)
                     }
@@ -704,6 +752,21 @@ class YandexMobileAdsManager(
                     gravity,
                 )
                 rootView.addView(bannerAdView, params)
+
+                // Rotation, a resumed activity, an immersive-mode re-layout —
+                // anything that changes the window height invalidates the pixel
+                // split above, so redo it. Posted rather than applied inline: a
+                // requestLayout from inside a layout pass is discarded.
+                stopWatchingLayout()
+                val layoutListener = android.view.View.OnLayoutChangeListener {
+                    view, _, top, _, bottom, _, oldTop, _, oldBottom ->
+                    if (bottom - top != oldBottom - oldTop) {
+                        view.post { applyBannerLayout(bannerAdView) }
+                    }
+                }
+                rootView.addOnLayoutChangeListener(layoutListener)
+                bannerLayoutListener = layoutListener
+
                 // Since SDK 8 the ad unit travels in the request rather than on
                 // the view — setAdUnitId no longer exists.
                 bannerAdView.loadAd(AdRequest.Builder(adUnitId).build())
@@ -716,15 +779,13 @@ class YandexMobileAdsManager(
 
     fun hideBanner(adUnitId: String) {
         activity.runOnUiThread {
+            stopWatchingLayout()
             bannerViews.remove(adUnitId)?.let { view ->
                 (view.parent as? ViewGroup)?.removeView(view)
                 view.destroy()
                 plugin.emit("bannerHidden")
             }
-            val webView = plugin.bridge.webView
-            val webViewParams = webView.layoutParams
-            webViewParams.height = ViewGroup.LayoutParams.MATCH_PARENT
-            webView.layoutParams = webViewParams
+            restoreWebViewHeight()
         }
     }
 }
