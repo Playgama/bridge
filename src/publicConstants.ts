@@ -130,6 +130,7 @@ export type {
     TaskTarget,
     TaskReward,
 } from './modules/tasks/types'
+export type { ScheduledNotification } from './modules/notifications/types'
 export type { SafeAreaInsets } from './lib/safe-area'
 export type { RemoteConfigContext } from './modules/remote-config/RemoteConfigModule'
 export type { PlayerAuthorizeOptions } from './modules/player/PlayerModule'

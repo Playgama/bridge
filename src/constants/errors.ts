@@ -25,6 +25,8 @@ export const ERROR_CODE = {
     STORAGE_QUOTA_EXCEEDED: 'STORAGE_QUOTA_EXCEEDED',
     GAME_PARAMS_NOT_FOUND: 'GAME_PARAMS_NOT_FOUND',
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: 'INVITE_FRIENDS_MESSAGE_LENGTH_ERROR',
+    NOTIFICATIONS_NOT_SUPPORTED: 'NOTIFICATIONS_NOT_SUPPORTED',
+    NOTIFICATION_INVALID_PARAMETERS: 'NOTIFICATION_INVALID_PARAMETERS',
 } as const
 
 export type ErrorCode = typeof ERROR_CODE[keyof typeof ERROR_CODE]
@@ -39,6 +41,8 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
     STORAGE_QUOTA_EXCEEDED: 'Storage quota exceeded',
     GAME_PARAMS_NOT_FOUND: 'Game params are not found',
     INVITE_FRIENDS_MESSAGE_LENGTH_ERROR: 'Message is too long',
+    NOTIFICATIONS_NOT_SUPPORTED: 'Notifications not supported',
+    NOTIFICATION_INVALID_PARAMETERS: 'Invalid notification parameters',
 }
 
 export class BridgeError extends Error {

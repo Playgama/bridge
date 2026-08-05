@@ -53,6 +53,7 @@ import paymentsModule from './modules/payments'
 import remoteConfigModule from './modules/remote-config'
 import clipboardModule from './modules/clipboard'
 import achievementsModule from './modules/achievements'
+import notificationsModule from './modules/notifications'
 import dailyRewardsModule from './modules/daily-rewards'
 import tasksModule from './modules/tasks'
 import crossPromoModule from './modules/cross-promo'
@@ -132,6 +133,10 @@ class PlaygamaBridge {
 
     get clipboard(): typeof clipboardModule {
         return this.#getModule(MODULE_NAME.CLIPBOARD) as typeof clipboardModule
+    }
+
+    get notifications(): typeof notificationsModule {
+        return this.#getModule(MODULE_NAME.NOTIFICATIONS) as typeof notificationsModule
     }
 
     get analytics(): typeof analyticsModule {
@@ -240,6 +245,7 @@ class PlaygamaBridge {
                 { name: MODULE_NAME.REMOTE_CONFIG, module: remoteConfigModule },
                 { name: MODULE_NAME.CLIPBOARD, module: clipboardModule },
                 { name: MODULE_NAME.ACHIEVEMENTS, module: achievementsModule },
+                { name: MODULE_NAME.NOTIFICATIONS, module: notificationsModule },
                 { name: MODULE_NAME.ANALYTICS, module: analyticsModule },
                 { name: MODULE_NAME.DAILY_REWARDS, module: dailyRewardsModule },
                 { name: MODULE_NAME.TASKS, module: tasksModule },
