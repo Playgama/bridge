@@ -93,7 +93,7 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
         document.body.appendChild(this.#container)
 
         const payload: CrossPromoShownPayload = { source: this.#source, games: selectedGames }
-        this._platformBridge.emit(EVENT_NAME.CROSS_PROMO_SHOWN, payload)
+        eventBus.emit(EVENT_NAME.CROSS_PROMO_SHOWN, payload)
     }
 
     hide(): void {

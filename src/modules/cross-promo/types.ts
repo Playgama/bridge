@@ -47,7 +47,7 @@ export interface CrossPromoConfig {
     games?: CrossPromoGame[]
 }
 
-// Payload of the cross promo event emitted on the platform bridge
+// Payload of the cross promo event emitted on the global event bus
 // (EVENT_NAME.CROSS_PROMO_SHOWN): the games actually rendered in the overlay.
 export interface CrossPromoShownPayload {
     source: CrossPromoSource

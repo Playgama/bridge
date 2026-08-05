@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import eventBus from '../lib/EventBus'
 import ServerTimeCache from '../lib/ServerTimeCache'
 import MessageBroker from '../lib/MessageBroker'
 import bridgeConfig from '../lib/bridge-config'
@@ -302,7 +303,10 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     options: { isPaused },
                 })
             })
-            this.on(EVENT_NAME.CROSS_PROMO_SHOWN, (payload: CrossPromoShownPayload) => {
+            // Module-originated events arrive on the global event bus (the bus
+            // the public bridge.on() is wired to), unlike AUDIO/PAUSE above,
+            // which this bridge emits itself.
+            eventBus.on(EVENT_NAME.CROSS_PROMO_SHOWN, (payload: CrossPromoShownPayload) => {
                 this.#sendMessage({
                     type: MODULE_NAME.CROSS_PROMO,
                     action: ACTION_NAME_QA.CROSS_PROMO_SHOWN,

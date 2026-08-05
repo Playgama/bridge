@@ -2,6 +2,7 @@ import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
 import QaToolPlatformBridge from '../../../src/platform-bridges/QaToolPlatformBridge'
+import eventBus from '../../../src/lib/EventBus'
 import { EVENT_NAME } from '../../../src/constants'
 
 const { sendSpy } = vi.hoisted(() => ({ sendSpy: vi.fn() }))
@@ -26,6 +27,9 @@ vi.stubGlobal('PLUGIN_VERSION', 'test-version')
 describe('QaToolPlatformBridge cross promo wire format', () => {
     beforeEach(() => {
         sendSpy.mockClear()
+        // The bus is a singleton; drop subscriptions left by bridges from
+        // previous tests so each test observes exactly one forwarder.
+        eventBus.off(EVENT_NAME.CROSS_PROMO_SHOWN)
     })
 
     function createInitializedBridge() {
@@ -37,9 +41,9 @@ describe('QaToolPlatformBridge cross promo wire format', () => {
     }
 
     test('shown event is forwarded as a cross_promo_shown message', () => {
-        const bridge = createInitializedBridge()
+        createInitializedBridge()
 
-        bridge.emit(EVENT_NAME.CROSS_PROMO_SHOWN, {
+        eventBus.emit(EVENT_NAME.CROSS_PROMO_SHOWN, {
             source: 'config',
             games: [{ url: 'https://example.com/pixel-run', name: 'Pixel Run' }],
         })

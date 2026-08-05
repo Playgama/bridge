@@ -2,6 +2,7 @@ import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
 import CrossPromoModule from '../../../src/modules/cross-promo/CrossPromoModule'
+import eventBus from '../../../src/lib/EventBus'
 import bridgeConfig from '../../../src/lib/bridge-config'
 import { EVENT_NAME } from '../../../src/constants'
 import { CONTAINER_ID } from '../../../src/modules/cross-promo/constants'
@@ -17,14 +18,17 @@ function mockConfig(crossPromo?: CrossPromoConfig) {
     vi.mocked(bridgeConfig.getValues).mockReturnValue(crossPromo ? { crossPromo } : {})
 }
 
+// Events are emitted on the global event bus, not on the bridge,
+// so the bus emit is spied instead.
 function createBridge() {
     return {
         platformId: 'mock',
         isPlatformGamesListSupported: false,
         getGamesList: vi.fn(() => Promise.resolve([])),
-        emit: vi.fn(),
     }
 }
+
+const busEmit = vi.spyOn(eventBus, 'emit')
 
 function createModule(bridge: ReturnType<typeof createBridge>) {
     return new CrossPromoModule().initialize(bridge as unknown as CrossPromoBridgeContract)
@@ -41,6 +45,7 @@ const CONFIG: CrossPromoConfig = {
 describe('CrossPromoModule events', () => {
     beforeEach(() => {
         mockConfig(undefined)
+        busEmit.mockClear()
         document.getElementById(CONTAINER_ID)?.remove()
     })
 
@@ -51,9 +56,12 @@ describe('CrossPromoModule events', () => {
         await createModule(bridge).show()
 
         expect(document.getElementById(CONTAINER_ID)).not.toBeNull()
-        expect(bridge.emit).toHaveBeenCalledTimes(1)
+        expect(busEmit).toHaveBeenCalledTimes(1)
 
-        const [eventName, payload] = bridge.emit.mock.calls[0]
+        const [eventName, payload] = busEmit.mock.calls[0] as [
+            string,
+            { source: string, games: { url: string }[] },
+        ]
         expect(eventName).toBe(EVENT_NAME.CROSS_PROMO_SHOWN)
         expect(payload.source).toBe('config')
         expect(payload.games.map((game: { url: string }) => game.url).sort()).toEqual([
@@ -69,7 +77,7 @@ describe('CrossPromoModule events', () => {
         await createModule(bridge).show()
 
         expect(document.getElementById(CONTAINER_ID)).toBeNull()
-        expect(bridge.emit).not.toHaveBeenCalled()
+        expect(busEmit).not.toHaveBeenCalled()
     })
 
     test('a second show while the overlay is visible emits nothing new', async () => {
@@ -80,7 +88,7 @@ describe('CrossPromoModule events', () => {
         await module.show()
         await module.show()
 
-        expect(bridge.emit).toHaveBeenCalledTimes(1)
+        expect(busEmit).toHaveBeenCalledTimes(1)
     })
 
     test('show after hide emits again', async () => {
@@ -92,6 +100,6 @@ describe('CrossPromoModule events', () => {
         module.hide()
         await module.show()
 
-        expect(bridge.emit).toHaveBeenCalledTimes(2)
+        expect(busEmit).toHaveBeenCalledTimes(2)
     })
 })
