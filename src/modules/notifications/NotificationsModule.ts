@@ -24,7 +24,6 @@ import bridgeConfig from '../../lib/bridge-config'
 export interface NotificationsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
     isNotificationsSupported: boolean
-    notificationsLaunchPayload: string | null
     notificationsSchedule(
         notification: ScheduledNotification,
         platformValue?: string | number,
@@ -36,6 +35,8 @@ class NotificationsModule extends ModuleBase<NotificationsBridgeContract> {
         return this._platformBridge.isNotificationsSupported
     }
 
+    // The payload of the notification the game was launched from is delivered
+    // through the regular platform payload — see bridge.platform.payload.
     schedule(notification: ScheduledNotification): Promise<unknown> {
         const validationError = this.#validate(notification)
         if (validationError) {
@@ -44,10 +45,6 @@ class NotificationsModule extends ModuleBase<NotificationsBridgeContract> {
 
         const platformValue = this.#getPlatformNotificationValue(notification.id)
         return this._platformBridge.notificationsSchedule(notification, platformValue)
-    }
-
-    getLaunchPayload(): string | null {
-        return this._platformBridge.notificationsLaunchPayload
     }
 
     #validate(notification: ScheduledNotification): string | null {

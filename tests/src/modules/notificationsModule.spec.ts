@@ -23,7 +23,6 @@ function createBridge(overrides: Record<string, unknown> = {}) {
     return {
         platformId: 'msn',
         isNotificationsSupported: true,
-        notificationsLaunchPayload: null,
         notificationsSchedule: vi.fn().mockResolvedValue('ok'),
         on: vi.fn(),
         ...overrides,
@@ -65,11 +64,6 @@ describe('NotificationsModule', () => {
     test('isSupported proxies the platform bridge', () => {
         expect(createModule(createBridge()).isSupported).toBe(true)
         expect(createModule(createBridge({ isNotificationsSupported: false })).isSupported).toBe(false)
-    })
-
-    test('getLaunchPayload proxies the platform bridge', () => {
-        const bridge = createBridge({ notificationsLaunchPayload: '{"quest":12}' })
-        expect(createModule(bridge).getLaunchPayload()).toBe('{"quest":12}')
     })
 
     test.each([
@@ -133,6 +127,8 @@ describe('MsnPlatformBridge notifications', () => {
 
     test.each([
         ['no mapping', VALID_NOTIFICATION, undefined],
+        ['blank mapping', VALID_NOTIFICATION, ' '],
+        ['non-numeric mapping', VALID_NOTIFICATION, 'push'],
         ['non-integer type', VALID_NOTIFICATION, 1.5],
         ['type out of range', VALID_NOTIFICATION, 16],
         ['reserved auto type', VALID_NOTIFICATION, 8],
@@ -153,6 +149,23 @@ describe('MsnPlatformBridge notifications', () => {
         await bridge.notificationsSchedule(VALID_NOTIFICATION, 8)
 
         expect(scheduleNotificationAsync).toHaveBeenCalledWith(expect.objectContaining({ type: 8 }))
+    })
+
+    test('exposes the notification payload the game was launched from as the platform payload', async () => {
+        const { bridge } = await createMsnBridge();
+        (bridge as unknown as { _platformSdk: { getNotificationPayload: () => string } })
+            ._platformSdk.getNotificationPayload = () => 'tournament=1'
+
+        expect(bridge.platformPayload).toBe('tournament=1')
+    })
+
+    test('falls back to the url payload when the game was not launched from a notification', async () => {
+        const { bridge } = await createMsnBridge()
+        window.history.replaceState({}, '', '?payload=from-url')
+
+        expect(bridge.platformPayload).toBe('from-url')
+
+        window.history.replaceState({}, '', '/')
     })
 
     test('base bridge rejects scheduling with NOTIFICATIONS_NOT_SUPPORTED', async () => {

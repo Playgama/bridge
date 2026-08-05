@@ -80,6 +80,20 @@ const AUTO_NOTIFICATIONS: MsnNotification[] = [
     },
 ]
 
+// Config maps a notification id to the MSN notification type, either as a
+// number or as a string when it comes from a text-based config field.
+function parseMsnNotificationType(value?: string | number): number | undefined {
+    if (typeof value === 'number') {
+        return value
+    }
+
+    if (typeof value === 'string' && value.trim() !== '') {
+        return Number(value)
+    }
+
+    return undefined
+}
+
 const MSN_SIZES_BY_POSITION: Record<string, [number, number][]> = {
     top: [[728, 90], [970, 250], [320, 50]],
     bottom: [[320, 50]],
@@ -211,20 +225,18 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get notificationsLaunchPayload(): string | null {
+    // When the game is launched from a notification, its payload is delivered
+    // as the regular platform payload.
+    get platformPayload(): string | null {
         const sdk = this._platformSdk as MsnSdk | null
         if (typeof sdk?.getNotificationPayload === 'function') {
-            const raw = sdk.getNotificationPayload()
-            if (raw) {
-                try {
-                    return decodeURIComponent(raw)
-                } catch {
-                    return raw
-                }
+            const payload = sdk.getNotificationPayload()
+            if (payload) {
+                return payload
             }
         }
 
-        return new URLSearchParams(window.location.search).get('notificationPayload')
+        return super.platformPayload
     }
 
     // storage
@@ -382,7 +394,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         notification: ScheduledNotification,
         platformValue?: string | number,
     ): Promise<unknown> {
-        const type = typeof platformValue === 'string' ? Number(platformValue) : platformValue
+        const type = parseMsnNotificationType(platformValue)
 
         const validationError = this.#validateMsnNotification(notification, type)
         if (validationError) {

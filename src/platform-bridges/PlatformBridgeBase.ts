@@ -299,10 +299,6 @@ class PlatformBridgeBase {
         return false
     }
 
-    get notificationsLaunchPayload(): string | null {
-        return null
-    }
-
     protected _options!: ConfigFileOptions
 
     protected _additionalData: Record<string, unknown> | null = null
