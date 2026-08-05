@@ -1,19 +1,15 @@
 {
     "targets": [
         {
-            "path": "c:\\Users\\Eduard\\Documents\\package\\HyperSDK\\UnityTemplate",
-            "description": "HyperSDK package UnityTemplate"
+            "path": "c:\\Users\\1\\Documents\\Eduard\\Program\\GasStation\\Assets\\WebGLTemplates\\HyperSDK",
+            "description": "gas station WebGLTemplates HyperSDK"
         },
         {
-            "path": "c:\\Users\\Eduard\\Tank2.0\\Assets\\WebGLTemplates\\HyperSDK",
-            "description": "Tank WebGLTemplates HyperSDK"
+            "path": "C:\\Users\\1\\Documents\\Eduard\\Web\\3dPrint\\public",
+            "description": "3d Print "
         },
         {
-            "path": "c:\\Users\\Eduard\\Tank2.0\\Assets\\WebGLTemplates\\Bridge",
-            "description": "Tank WebGLTemplates Bridge"
-        },
-        {
-            "path": "c:\\Users\\Eduard\\Documents\\web\\bridge\\UnityTemplate",
+            "path": "C:\\Users\\1\\Documents\\Eduard\\packages\\com.ChoclateGames.HyperSDK\\UnityTemplate",
             "description": "Bridge UnityTemplate"
         },
         {
