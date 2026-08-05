@@ -321,14 +321,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     options: { ...payload },
                 })
             })
-            this.on(EVENT_NAME.DAILY_REWARDS_CLAIMED, (payload: DailyRewardsClaimedPayload) => {
+            eventBus.on(EVENT_NAME.DAILY_REWARDS_CLAIMED, (payload: DailyRewardsClaimedPayload) => {
                 this.#sendMessage({
                     type: MODULE_NAME.DAILY_REWARDS,
                     action: ACTION_NAME_QA.DAILY_REWARDS_CLAIMED,
                     options: { ...payload },
                 })
             })
-            this.on(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, (payload: DailyRewardsStreakResetPayload) => {
+            eventBus.on(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, (payload: DailyRewardsStreakResetPayload) => {
                 this.#sendMessage({
                     type: MODULE_NAME.DAILY_REWARDS,
                     action: ACTION_NAME_QA.DAILY_REWARDS_STREAK_RESET,

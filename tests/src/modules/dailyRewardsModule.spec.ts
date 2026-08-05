@@ -2,6 +2,7 @@ import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
 import DailyRewardsModule from '../../../src/modules/daily-rewards/DailyRewardsModule'
+import eventBus from '../../../src/lib/EventBus'
 import bridgeConfig from '../../../src/lib/bridge-config'
 import { MS_PER_DAY } from '../../../src/modules/daily-rewards/constants'
 import { EVENT_NAME } from '../../../src/constants'
@@ -29,28 +30,31 @@ vi.mock('../../../src/lib/bridge-config', () => ({
 
 const BASE_MS = 100 * MS_PER_DAY
 
-// A bridge with a movable server clock and a spied event emitter.
+// A bridge with a movable server clock. Events are emitted on the global
+// event bus, not on the bridge, so the bus emit is spied instead.
 function createBridge() {
     const clock = { ms: BASE_MS }
     return {
         platformId: 'mock',
         getServerTime: vi.fn(() => Promise.resolve(clock.ms)),
-        emit: vi.fn(),
         clock,
     }
 }
+
+const busEmit = vi.spyOn(eventBus, 'emit')
 
 function createModule(bridge: ReturnType<typeof createBridge>) {
     return new DailyRewardsModule().initialize(bridge as unknown as DailyRewardsBridgeContract)
 }
 
-function emitted(bridge: ReturnType<typeof createBridge>, eventName: string) {
-    return bridge.emit.mock.calls.filter(([name]) => name === eventName)
+function emitted(eventName: string) {
+    return busEmit.mock.calls.filter(([name]) => name === eventName)
 }
 
 describe('DailyRewardsModule', () => {
     beforeEach(() => {
         store.clear()
+        busEmit.mockClear()
         vi.mocked(bridgeConfig.getValues).mockReturnValue({
             dailyRewards: { rewards: ['a', 'b', 'c'] },
         })
@@ -61,7 +65,7 @@ describe('DailyRewardsModule', () => {
         const module = createModule(bridge)
 
         expect(await module.claimCurrentReward()).toBe(true)
-        expect(bridge.emit).toHaveBeenCalledWith(
+        expect(busEmit).toHaveBeenCalledWith(
             EVENT_NAME.DAILY_REWARDS_CLAIMED,
             { day: 0, reward: 'a' },
         )
@@ -73,7 +77,7 @@ describe('DailyRewardsModule', () => {
 
         await module.claimCurrentReward()
         expect(await module.claimCurrentReward()).toBe(false)
-        expect(emitted(bridge, EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(1)
+        expect(emitted(EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(1)
     })
 
     test('missed-day reset emits the streak reset event', async () => {
@@ -84,7 +88,7 @@ describe('DailyRewardsModule', () => {
         const module = createModule(bridge)
 
         expect(await module.getCurrentDay()).toBe(0)
-        expect(bridge.emit).toHaveBeenCalledWith(
+        expect(busEmit).toHaveBeenCalledWith(
             EVENT_NAME.DAILY_REWARDS_STREAK_RESET,
             { day: 1 },
         )
@@ -100,7 +104,7 @@ describe('DailyRewardsModule', () => {
         ])
 
         expect(results.filter(Boolean)).toHaveLength(1)
-        expect(emitted(bridge, EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(1)
+        expect(emitted(EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(1)
         expect(await module.getCurrentDay()).toBe(1)
     })
 
@@ -112,7 +116,7 @@ describe('DailyRewardsModule', () => {
         const module = createModule(bridge)
 
         await Promise.all([module.getCurrentDay(), module.getCurrentReward()])
-        expect(emitted(bridge, EVENT_NAME.DAILY_REWARDS_STREAK_RESET)).toHaveLength(1)
+        expect(emitted(EVENT_NAME.DAILY_REWARDS_STREAK_RESET)).toHaveLength(1)
     })
 
     test('claim racing a missed-day reset claims the first day', async () => {
@@ -128,11 +132,11 @@ describe('DailyRewardsModule', () => {
         ])
 
         expect(claimed).toBe(true)
-        expect(bridge.emit).toHaveBeenCalledWith(
+        expect(busEmit).toHaveBeenCalledWith(
             EVENT_NAME.DAILY_REWARDS_CLAIMED,
             { day: 0, reward: 'a' },
         )
-        expect(emitted(bridge, EVENT_NAME.DAILY_REWARDS_STREAK_RESET)).toHaveLength(1)
+        expect(emitted(EVENT_NAME.DAILY_REWARDS_STREAK_RESET)).toHaveLength(1)
     })
 
     test('single reward with cycle relies on the claim date alone', async () => {
@@ -148,7 +152,7 @@ describe('DailyRewardsModule', () => {
 
         bridge.clock.ms += MS_PER_DAY
         expect(await createModule(bridge).claimCurrentReward()).toBe(true)
-        expect(emitted(bridge, EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(2)
+        expect(emitted(EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(2)
     })
 
     test('claiming the last reward wraps to the first day when cycle is on', async () => {
@@ -160,7 +164,7 @@ describe('DailyRewardsModule', () => {
         const module = createModule(bridge)
 
         expect(await module.claimCurrentReward()).toBe(true)
-        expect(bridge.emit).toHaveBeenLastCalledWith(
+        expect(busEmit).toHaveBeenLastCalledWith(
             EVENT_NAME.DAILY_REWARDS_CLAIMED,
             { day: 2, reward: 'c' },
         )
@@ -177,13 +181,13 @@ describe('DailyRewardsModule', () => {
         const module = createModule(bridge)
 
         expect(await module.claimCurrentReward()).toBe(true)
-        expect(bridge.emit).toHaveBeenLastCalledWith(
+        expect(busEmit).toHaveBeenLastCalledWith(
             EVENT_NAME.DAILY_REWARDS_CLAIMED,
             { day: 1, reward: 'b' },
         )
 
         bridge.clock.ms += MS_PER_DAY
         expect(await createModule(bridge).claimCurrentReward()).toBe(false)
-        expect(emitted(bridge, EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(2)
+        expect(emitted(EVENT_NAME.DAILY_REWARDS_CLAIMED)).toHaveLength(2)
     })
 })

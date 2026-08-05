@@ -17,6 +17,7 @@
 
 import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
+import eventBus from '../../lib/EventBus'
 import bridgeConfig from '../../lib/bridge-config'
 import storageModule from '../storage'
 import { EVENT_NAME } from '../../constants'
@@ -35,9 +36,11 @@ import type {
  * Date.now() fallback), persists progress through the storage module, and resets the
  * streak back to the first day when one or more days are missed.
  *
- * Claim and streak-reset activity is emitted on the platform bridge
- * (EVENT_NAME.DAILY_REWARDS_CLAIMED / DAILY_REWARDS_STREAK_RESET); bridges that
- * surface it to an external tool (e.g. QA Tool) subscribe to these events.
+ * Claim and streak-reset activity is emitted on the global event bus
+ * (EVENT_NAME.DAILY_REWARDS_CLAIMED / DAILY_REWARDS_STREAK_RESET) — the same bus
+ * the public bridge.on() is wired to, like every other module event — so both
+ * game code and bridges that surface it to an external tool (e.g. QA Tool)
+ * can subscribe.
  *
  * Every public operation reads the clock exactly once up front and passes the
  * epoch day down. Each state check runs in the same synchronous block as the
@@ -103,7 +106,7 @@ class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
             day: claimedDay,
             reward: this.#rewards[claimedDay],
         }
-        this._platformBridge.emit(EVENT_NAME.DAILY_REWARDS_CLAIMED, payload)
+        eventBus.emit(EVENT_NAME.DAILY_REWARDS_CLAIMED, payload)
         return true
     }
 
@@ -115,7 +118,7 @@ class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
             state.day = 0
             await this.#persist()
             const payload: DailyRewardsStreakResetPayload = { day: missedDay }
-            this._platformBridge.emit(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, payload)
+            eventBus.emit(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, payload)
         }
         return state
     }

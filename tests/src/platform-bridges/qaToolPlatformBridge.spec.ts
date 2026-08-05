@@ -29,6 +29,8 @@ describe('QaToolPlatformBridge modules wire format', () => {
         sendSpy.mockClear()
         // The bus is a singleton; drop subscriptions left by bridges from
         // previous tests so each test observes exactly one forwarder.
+        eventBus.off(EVENT_NAME.DAILY_REWARDS_CLAIMED)
+        eventBus.off(EVENT_NAME.DAILY_REWARDS_STREAK_RESET)
         eventBus.off(EVENT_NAME.CROSS_PROMO_SHOWN)
     })
 
@@ -60,9 +62,9 @@ describe('QaToolPlatformBridge modules wire format', () => {
     })
 
     test('claimed event is forwarded as a daily_rewards_claimed message', () => {
-        const bridge = createInitializedBridge()
+        createInitializedBridge()
 
-        bridge.emit(EVENT_NAME.DAILY_REWARDS_CLAIMED, { day: 2, reward: 'gem' })
+        eventBus.emit(EVENT_NAME.DAILY_REWARDS_CLAIMED, { day: 2, reward: 'gem' })
 
         expect(sendSpy).toHaveBeenLastCalledWith({
             source: 'bridge',
@@ -73,9 +75,9 @@ describe('QaToolPlatformBridge modules wire format', () => {
     })
 
     test('streak reset event is forwarded as a daily_rewards_streak_reset message', () => {
-        const bridge = createInitializedBridge()
+        createInitializedBridge()
 
-        bridge.emit(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, { day: 4 })
+        eventBus.emit(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, { day: 4 })
 
         expect(sendSpy).toHaveBeenLastCalledWith({
             source: 'bridge',
