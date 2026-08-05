@@ -5,7 +5,7 @@ import 'webpack-dev-server'
 import ESLintPlugin from 'eslint-webpack-plugin'
 import TerserPlugin from 'terser-webpack-plugin'
 import packageJson from './package.json'
-import { ALL_PLATFORM_IDS } from './scripts/platforms'
+import { ALL_PLATFORM_IDS, expandPlatforms } from './scripts/platforms'
 
 const platformDirName = 'platform-bridges'
 
@@ -38,6 +38,10 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
     mode: 'production',
     entry: './src/index',
     output: {
+        // Pinned so the chunk registration global (webpackChunkplaygama_bridge)
+        // never changes with the npm package name — a mismatch between cached
+        // main bundle and chunks breaks lazy platform loading with ChunkLoadError.
+        uniqueName: 'playgama-bridge',
         filename: 'playgama-bridge.js',
         chunkFilename: (pathData) => {
             const chunkId = String(pathData.chunk?.id || pathData.chunk?.name || '')
@@ -136,7 +140,7 @@ interface WebpackArgv {
 
 export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | Configuration[] => {
     const targetPlatform = env.platform || ''
-    const targetPlatforms = targetPlatform ? targetPlatform.split(',') : []
+    const targetPlatforms = targetPlatform ? expandPlatforms(targetPlatform.split(',')) : []
     const noLint = Boolean(env.noLint)
     const isDevelopment = argv.mode === 'development'
 
@@ -216,7 +220,35 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
             plugins: [...(baseConfig.plugins ?? []), singleChunk],
         }
 
-        return [npmEsmConfig, npmUmdConfig]
+        // Side-effect-free constants entry (`@playgama/bridge/constants`) for
+        // games that load the SDK runtime via a <script> tag and only need
+        // constant values in their own bundle.
+        const constantsEsmConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-constants-esm',
+            entry: './src/publicConstants',
+            experiments: { outputModule: true },
+            output: {
+                filename: 'constants.esm.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'module' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        const constantsCjsConfig: Configuration = {
+            ...baseConfig,
+            name: 'npm-constants-cjs',
+            entry: './src/publicConstants',
+            output: {
+                filename: 'constants.cjs.js',
+                path: path.resolve(__dirname, 'dist'),
+                library: { type: 'commonjs2' },
+            },
+            plugins: [...(baseConfig.plugins ?? []), singleChunk],
+        }
+
+        return [npmEsmConfig, npmUmdConfig, constantsEsmConfig, constantsCjsConfig]
     }
 
     return [dynamicConfig, bundledConfig]

@@ -17,7 +17,11 @@
 
 import logger from './logger'
 
-export type EventListener = (...args: unknown[]) => void
+// `any[]` (not `unknown[]`) so consumers can pass listeners with typed
+// parameters, e.g. `(state: BannerState) => void` — with `unknown[]` such
+// listeners fail to typecheck in strict projects.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type EventListener = (...args: any[]) => void
 
 export interface EventEmitter {
     on(eventName: string, callback: EventListener): void

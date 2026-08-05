@@ -420,9 +420,13 @@ class PlatformBridgeBase {
         this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
-    showAdvancedBanners(_banners?: unknown): void { }
+    showAdvancedBanners(_banners?: unknown): void {
+        this._setAdvancedBannersState(BANNER_STATE.FAILED)
+    }
 
-    hideAdvancedBanners(): void { }
+    hideAdvancedBanners(): void {
+        this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+    }
 
     preloadInterstitial(_placement?: unknown): void { }
 
@@ -545,6 +549,7 @@ class PlatformBridgeBase {
         }
 
         this._visibilityState = state
+        this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, state)
 
         const isHidden = state === VISIBILITY_STATE.HIDDEN
         if (this._pauseStateAggregator) {

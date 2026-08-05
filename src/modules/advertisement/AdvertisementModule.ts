@@ -20,6 +20,7 @@ import bridgeConfig from '../../lib/bridge-config'
 import ModuleBase from '../ModuleBase'
 import { internalAnalytics } from '../analytics'
 import { EVENT_NAME } from '../../constants'
+import { VISIBILITY_STATE } from '../platform/constants'
 import {
     BANNER_POSITION,
     INTERSTITIAL_STATE,
@@ -117,6 +118,16 @@ class AdvertisementModule extends ModuleBase<AdvertisementBridgeContract> {
                 this.#tryShowInterstitial(message as string)
             },
         )
+
+        eventBus.on(EVENT_NAME.STORAGE_SET, () => {
+            this.#tryShowInterstitial(EVENT_NAME.STORAGE_SET)
+        })
+
+        platformBridge.on(EVENT_NAME.VISIBILITY_STATE_CHANGED, (state: unknown) => {
+            if (state === VISIBILITY_STATE.VISIBLE) {
+                this.#tryShowInterstitial(`visibility_state_${VISIBILITY_STATE.VISIBLE}`)
+            }
+        })
         return this
     }
 

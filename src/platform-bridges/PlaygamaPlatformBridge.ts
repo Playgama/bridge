@@ -92,6 +92,12 @@ interface PlaygamaSdk {
     gameService: {
         gameReady(): void
     }
+    socialService?: {
+        getIsShareSupported?: () => boolean
+        getIsAddToHomeScreenSupported?: () => boolean
+        share?: (options?: AnyRecord) => Promise<unknown>
+        addToHomeScreen?: () => Promise<unknown>
+    }
 }
 
 declare global {
@@ -128,6 +134,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    get isShareSupported(): boolean {
+        return this.#isShareSupported
+    }
+
+    get isAddToHomeScreenSupported(): boolean {
+        return this.#isAddToHomeScreenSupported
+    }
+
     // player
     get isPlayerAuthorizationSupported(): boolean {
         return this.#isPlayerAuthorizationSupported
@@ -149,6 +163,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     #isCloudSaveSupported = true
 
     #isPlayerAuthorizationSupported = true
+
+    #isShareSupported = false
+
+    #isAddToHomeScreenSupported = false
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -458,18 +476,69 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return Promise.resolve(updatedProducts)
     }
 
+    // social
+    share(options?: AnyRecord): Promise<unknown> {
+        const socialService = (this._platformSdk as PlaygamaSdk | null)?.socialService
+        if (typeof socialService?.share !== 'function') {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+
+            socialService.share(options)
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.SHARE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    addToHomeScreen(): Promise<unknown> {
+        const socialService = (this._platformSdk as PlaygamaSdk | null)?.socialService
+        if (typeof socialService?.addToHomeScreen !== 'function') {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+
+            socialService.addToHomeScreen()
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
     #getPlayer(_options?: unknown): Promise<void> {
-        if (!this.#isPlayerAuthorizationSupported) {
+        const sdk = this._platformSdk as PlaygamaSdk
+        if (typeof sdk.userService?.getUser !== 'function') {
             this._playerApplyGuestData()
             return Promise.resolve()
         }
 
         return new Promise<void>((resolve) => {
-            (this._platformSdk as PlaygamaSdk).userService.getUser()
+            sdk.userService.getUser()
                 .then((player) => {
+                    // The SDK id is used even for unauthorized players;
+                    // without it the locally generated guest id stays in place.
+                    if (player.id) {
+                        this._playerId = player.id
+                    }
+
                     if (player.isAuthorized) {
                         this._isPlayerAuthorized = true
-                        this._playerId = player.id
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player as unknown as Record<string, unknown>
@@ -498,6 +567,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (sdk.platformService?.getIsPaymentsSupported) {
             this.#isPaymentsSupported = sdk.platformService.getIsPaymentsSupported()
         }
+
+        const { socialService } = sdk
+        this.#isShareSupported = socialService?.getIsShareSupported?.() ?? false
+        this.#isAddToHomeScreenSupported = socialService?.getIsAddToHomeScreenSupported?.() ?? false
     }
 
     #ensureStorageReady(): Promise<void> {

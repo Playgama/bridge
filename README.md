@@ -1,35 +1,6 @@
 # Playgama Bridge
 One SDK for cross-platform publishing HTML5 games.
 
-## Installation
-```bash
-npm install @playgama/bridge
-```
-
-## Usage
-The package ships as both ES module and CommonJS, with bundled TypeScript types.
-
-```js
-// ES module
-import bridge from '@playgama/bridge'
-
-await bridge.initialize()
-
-await bridge.platform.sendMessage('game_ready')
-bridge.advertisement.showInterstitial()
-```
-
-```js
-// CommonJS
-const { bridge } = require('@playgama/bridge')
-```
-
-Importing the package also exposes the same singleton on `window.bridge` (and
-`window.playgamaBridge`), so existing code that relies on the global keeps
-working. A prebuilt bundle for direct `<script>` inclusion is available as well —
-see the [documentation](https://wiki.playgama.com/?utm_source=github&utm_medium=bridge)
-for the CDN URL and the full API reference.
-
 ## Supported platforms
 + [Playgama](https://playgama.com/?utm_source=github&utm_medium=bridge)
 + [Game Distribution](https://gamedistribution.com)
