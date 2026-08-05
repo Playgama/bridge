@@ -602,7 +602,7 @@ class VkPlatformBridge extends PlatformBridgeBase {
                 .send(vkMethodName, parameters)
                 .then((data) => {
                     if (data[responseSuccessKey]) {
-                        this._resolvePromiseDecorator(actionName)
+                        this._resolvePromiseDecorator(actionName, data)
                         return
                     }
 

@@ -100,6 +100,45 @@ class OkPlatformBridge extends VkPlatformBridge {
         return promiseDecorator.promise
     }
 
+    // OK's FAPI (openVkMiniAppPayment) resolves with undefined instead of
+    // { order_id } that VK returns. The inherited paymentsPurchase asks
+    // _sendRequestToVKBridge to check data['order_id'], which is always falsy
+    // on OK and causes the promise to reject even on a successful payment.
+    // Override: treat a resolved .send() as success (the FAPI already rejects
+    // on cancel/error), and skip the order_id check entirely.
+    paymentsPurchase(id: string): Promise<unknown> {
+        const product = this._paymentsGetProductPlatformData(id)
+        let platformProductId: string | number = (product?.id as string | number) ?? id
+
+        if (typeof platformProductId === 'number') {
+            platformProductId = platformProductId.toString()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE);
+            (this._platformSdk as VkBridgeLike)
+                .send('VKWebAppShowOrderBox', { type: 'item', item: platformProductId })
+                .then((data) => {
+                    // Diagnostics: OK's ShowOrderBox response shape is undocumented and
+                    // differs from VK's { order_id }. Dump it so a successful payment can
+                    // be told apart from a cancelled/aborted one.
+                    // eslint-disable-next-line no-console
+                    console.log('[bridge:ok] ShowOrderBox resolved', JSON.stringify(data ?? null))
+                    const purchase = { id, ...(data as AnyRecord ?? {}) }
+                    this._paymentsPurchases.push(purchase)
+                    this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, purchase)
+                })
+                .catch((error) => {
+                    // eslint-disable-next-line no-console
+                    console.log('[bridge:ok] ShowOrderBox rejected', JSON.stringify(error ?? null))
+                    this._rejectPromiseDecorator(ACTION_NAME.PURCHASE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
     // joinCommunity / isMemberOfCommunity наследуются от VkPlatformBridge (с кэшем членства).
     // Дефолтный group id и URL страницы сообщества для OK переопределены ниже.
     share(options?: AnyRecord & { url?: string, link?: string }): Promise<unknown> {

@@ -212,7 +212,7 @@ class PlaygamaBridge {
             const platformId = detectPlatformId(bridgeConfig.getRawValues().forciblySetPlatformId)
             // eslint-disable-next-line no-console
             console.info(
-                `%c [Bridge] Platform detected: ${platformId} `,
+                `%c [Bridge v${this.version}] Platform detected: ${platformId} `,
                 'background: #2563eb; color: white; border-radius: 3px; padding: 1px 4px',
             )
             bridgeConfig.initialize(platformId)
