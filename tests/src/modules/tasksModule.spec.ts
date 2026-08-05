@@ -2,6 +2,7 @@ import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
 import TasksModule from '../../../src/modules/tasks/TasksModule'
+import eventBus from '../../../src/lib/EventBus'
 import bridgeConfig from '../../../src/lib/bridge-config'
 import { EVENT_NAME } from '../../../src/constants'
 import { MS_PER_DAY, MS_PER_WEEK } from '../../../src/modules/tasks/constants'
@@ -40,17 +41,19 @@ function mockConfig(tasks?: TasksConfig) {
     vi.mocked(bridgeConfig.getValues).mockReturnValue(tasks ? { tasks } : {})
 }
 
-// A bridge whose server time can be moved to drive roll-over.
+// A bridge whose server time can be moved to drive roll-over. Events are
+// emitted on the global event bus, not on the bridge, so the bus emit is spied.
 function createBridge(ms = BASE_MS) {
     const clock = { ms }
     const bridge = {
         platformId: 'mock',
         getServerTime: vi.fn(() => Promise.resolve(clock.ms)),
-        emit: vi.fn(),
         clock,
     }
     return bridge
 }
+
+const busEmit = vi.spyOn(eventBus, 'emit')
 
 function createModule(bridge: ReturnType<typeof createBridge>) {
     return new TasksModule().initialize(bridge as unknown as TasksBridgeContract)
@@ -81,6 +84,7 @@ function find(tasks: Awaited<ReturnType<TasksModule['getTasks']>>, id: string) {
 describe('TasksModule', () => {
     beforeEach(() => {
         store.clear()
+        busEmit.mockClear()
         mockConfig(undefined)
     })
 
@@ -246,7 +250,7 @@ describe('TasksModule', () => {
 
             await module.claimReward('kills')
 
-            expect(bridge.emit).toHaveBeenCalledWith(EVENT_NAME.TASKS_REWARD_CLAIMED, {
+            expect(busEmit).toHaveBeenCalledWith(EVENT_NAME.TASKS_REWARD_CLAIMED, {
                 taskId: 'kills',
                 groupId: 'daily',
                 type: 'daily',
@@ -260,13 +264,13 @@ describe('TasksModule', () => {
             const module = createModule(bridge)
 
             await module.claimReward('kills') // incomplete
-            expect(bridge.emit).not.toHaveBeenCalled()
+            expect(busEmit).not.toHaveBeenCalled()
 
             await module.addProgress('enemy_killed', 20)
             await module.claimReward('kills')
-            bridge.emit.mockClear()
+            busEmit.mockClear()
             await module.claimReward('kills') // repeated
-            expect(bridge.emit).not.toHaveBeenCalled()
+            expect(busEmit).not.toHaveBeenCalled()
         })
 
         test('the very first sync of a group is a start, not a roll-over', async () => {
@@ -275,7 +279,7 @@ describe('TasksModule', () => {
 
             await createModule(bridge).getTasks()
 
-            expect(bridge.emit).not.toHaveBeenCalled()
+            expect(busEmit).not.toHaveBeenCalled()
         })
 
         test('a daily period change emits the roll-over event with both period keys', async () => {
@@ -287,7 +291,7 @@ describe('TasksModule', () => {
             bridge.clock.ms += MS_PER_DAY
             await module.getTasks()
 
-            expect(bridge.emit).toHaveBeenCalledWith(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, {
+            expect(busEmit).toHaveBeenCalledWith(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, {
                 groupId: 'daily',
                 type: 'daily',
                 periodKey: 101,
@@ -303,11 +307,11 @@ describe('TasksModule', () => {
 
             bridge.clock.ms += MS_PER_DAY
             await module.getTasks()
-            expect(bridge.emit).not.toHaveBeenCalled()
+            expect(busEmit).not.toHaveBeenCalled()
 
             bridge.clock.ms += MS_PER_WEEK
             await module.getTasks()
-            expect(bridge.emit).toHaveBeenCalledWith(
+            expect(busEmit).toHaveBeenCalledWith(
                 EVENT_NAME.TASKS_PERIOD_ROLLED_OVER,
                 expect.objectContaining({ groupId: 'weekly', type: 'weekly' }),
             )
@@ -322,7 +326,7 @@ describe('TasksModule', () => {
             bridge.clock.ms += 30 * MS_PER_DAY
             await module.getTasks()
 
-            expect(bridge.emit).not.toHaveBeenCalled()
+            expect(busEmit).not.toHaveBeenCalled()
         })
     })
 

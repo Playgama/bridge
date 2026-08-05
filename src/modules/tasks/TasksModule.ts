@@ -17,6 +17,7 @@
 
 import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
+import eventBus from '../../lib/EventBus'
 import bridgeConfig from '../../lib/bridge-config'
 import storageModule from '../storage'
 import { EVENT_NAME } from '../../constants'
@@ -150,7 +151,7 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
             type: found.group.type,
             rewards: item.rewards.map((reward) => ({ id: reward.id, amount: reward.amount })),
         }
-        this._platformBridge.emit(EVENT_NAME.TASKS_REWARD_CLAIMED, payload)
+        eventBus.emit(EVENT_NAME.TASKS_REWARD_CLAIMED, payload)
         return true
     }
 
@@ -188,7 +189,7 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
             await this.#persist()
         }
         rolledOver.forEach((payload) => {
-            this._platformBridge.emit(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, payload)
+            eventBus.emit(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, payload)
         })
         return { state, active }
     }

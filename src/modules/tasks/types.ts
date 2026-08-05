@@ -104,7 +104,7 @@ export interface Task {
     claimed: boolean
 }
 
-// Payloads of the tasks events emitted on the platform bridge
+// Payloads of the tasks events emitted on the global event bus
 // (EVENT_NAME.TASKS_REWARD_CLAIMED / TASKS_PERIOD_ROLLED_OVER).
 export interface TasksRewardClaimedPayload {
     taskId: string

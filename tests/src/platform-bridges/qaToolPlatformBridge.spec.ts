@@ -31,6 +31,8 @@ describe('QaToolPlatformBridge modules wire format', () => {
         // previous tests so each test observes exactly one forwarder.
         eventBus.off(EVENT_NAME.DAILY_REWARDS_CLAIMED)
         eventBus.off(EVENT_NAME.DAILY_REWARDS_STREAK_RESET)
+        eventBus.off(EVENT_NAME.TASKS_REWARD_CLAIMED)
+        eventBus.off(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER)
         eventBus.off(EVENT_NAME.CROSS_PROMO_SHOWN)
     })
 
@@ -100,9 +102,9 @@ describe('QaToolPlatformBridge modules wire format', () => {
     })
 
     test('reward claimed event is forwarded as a tasks_reward_claimed message', () => {
-        const bridge = createInitializedBridge()
+        createInitializedBridge()
 
-        bridge.emit(EVENT_NAME.TASKS_REWARD_CLAIMED, {
+        eventBus.emit(EVENT_NAME.TASKS_REWARD_CLAIMED, {
             taskId: 'kills',
             groupId: 'daily',
             type: 'daily',
@@ -123,9 +125,9 @@ describe('QaToolPlatformBridge modules wire format', () => {
     })
 
     test('period roll-over event is forwarded as a tasks_period_rolled_over message', () => {
-        const bridge = createInitializedBridge()
+        createInitializedBridge()
 
-        bridge.emit(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, {
+        eventBus.emit(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, {
             groupId: 'daily',
             type: 'daily',
             periodKey: 101,

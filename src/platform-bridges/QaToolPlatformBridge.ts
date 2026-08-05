@@ -341,14 +341,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     options: { ...payload },
                 })
             })
-            this.on(EVENT_NAME.TASKS_REWARD_CLAIMED, (payload: TasksRewardClaimedPayload) => {
+            eventBus.on(EVENT_NAME.TASKS_REWARD_CLAIMED, (payload: TasksRewardClaimedPayload) => {
                 this.#sendMessage({
                     type: MODULE_NAME.TASKS,
                     action: ACTION_NAME_QA.TASKS_REWARD_CLAIMED,
                     options: { ...payload },
                 })
             })
-            this.on(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, (payload: TasksPeriodRolledOverPayload) => {
+            eventBus.on(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, (payload: TasksPeriodRolledOverPayload) => {
                 this.#sendMessage({
                     type: MODULE_NAME.TASKS,
                     action: ACTION_NAME_QA.TASKS_PERIOD_ROLLED_OVER,
