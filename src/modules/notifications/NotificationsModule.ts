@@ -28,6 +28,8 @@ export interface NotificationsBridgeContract extends PlatformBridgeLike {
         notification: ScheduledNotification,
         platformValue?: string | number,
     ): Promise<unknown>
+    notificationsCancel(id: string, platformValue?: string | number): Promise<void>
+    notificationsCancelAll(): Promise<void>
 }
 
 class NotificationsModule extends ModuleBase<NotificationsBridgeContract> {
@@ -45,6 +47,21 @@ class NotificationsModule extends ModuleBase<NotificationsBridgeContract> {
 
         const platformValue = this.#getPlatformNotificationValue(notification.id)
         return this._platformBridge.notificationsSchedule(notification, platformValue)
+    }
+
+    cancel(id: string): Promise<void> {
+        if (typeof id !== 'string' || id.length === 0) {
+            return Promise.reject(new BridgeError(
+                ERROR_CODE.NOTIFICATION_INVALID_PARAMETERS,
+                'Notification "id" must be a non-empty string',
+            ))
+        }
+
+        return this._platformBridge.notificationsCancel(id, this.#getPlatformNotificationValue(id))
+    }
+
+    cancelAll(): Promise<void> {
+        return this._platformBridge.notificationsCancelAll()
     }
 
     #validate(notification: ScheduledNotification): string | null {

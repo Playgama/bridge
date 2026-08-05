@@ -530,6 +530,14 @@ class PlatformBridgeBase {
         return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
     }
 
+    notificationsCancel(_id: string, _platformValue?: string | number): Promise<void> {
+        return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
+    }
+
+    notificationsCancelAll(): Promise<void> {
+        return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
+    }
+
     protected _setPlatformStorageAvailable(isAvailable: boolean): void {
         if (this._isPlatformStorageAvailable === isAvailable) {
             return
