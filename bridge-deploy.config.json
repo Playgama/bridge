@@ -15,6 +15,10 @@
         {
             "path": "C:\\Users\\1\\Documents\\Eduard\\Web\\sushi\\public",
             "description": "Sushi UnityTemplate"
+        },
+        {
+            "path": "C:\\Users\\1\\Documents\\Eduard\\Program\\RoomBox\\Assets\\WebGLTemplates\\HyperSDK",
+            "description": "RoomBox"
         }
     ]
 }

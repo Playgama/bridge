@@ -147,7 +147,9 @@ class DailyRewardsModule extends ModuleBase<DailyRewardsBridgeContract> {
         if (!this.#state) {
             return Promise.resolve()
         }
-        return storageModule.set(DAILY_REWARDS_STORAGE_KEY, this.#state)
+        // set() now reports whether the write reached the cloud; these internal
+        // caches do not act on it.
+        return storageModule.set(DAILY_REWARDS_STORAGE_KEY, this.#state).then(() => undefined)
     }
 
     #defaultState(): DailyRewardsState {
