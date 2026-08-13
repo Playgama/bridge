@@ -295,9 +295,9 @@ function patchYandexPlugin() {
         // Marker tracks the NEWEST edit in the template, so an older patched
         // copy is still recognised as stale and gets rewritten.
         const content = fs.readFileSync(managerKt, 'utf8');
-        if (!content.includes('YandexAds.initialize')) {
+        if (!content.includes('removeAllBanners')) {
             write(managerKt, YANDEX_MANAGER_KT);
-            ok('YandexMobileAdsManager.kt обновлён (баннер без серой полосы, AppMetrica)');
+            ok('YandexMobileAdsManager.kt обновлён (баннер не перекрывает игру, AppMetrica)');
         } else {
             ok('YandexMobileAdsManager.kt уже обновлён');
         }
@@ -562,6 +562,14 @@ class YandexMobileAdsManager(
     // Set while a banner is on screen — see applyBannerLayout.
     private var bannerLayoutListener: android.view.View.OnLayoutChangeListener? = null
 
+    // Which edge the strip sits on, remembered so the WebView gives up its space
+    // on the same side the ad is actually drawn.
+    private var bannerGravity: Int = Gravity.BOTTOM
+
+    // The ad unit whose banner has actually FILLED, as opposed to merely being
+    // requested — a repeat request may only report "shown" for the first.
+    private var loadedBannerUnitId: String? = null
+
     // AppMetrica is optional: without a key in playgama-bridge-config.json the
     // ads still work, there is simply no analytics. Activation goes first
     // because the ads SDK reports through AppMetrica when it is present.
@@ -661,6 +669,18 @@ class YandexMobileAdsManager(
     private fun contentView(): ViewGroup =
         activity.window.decorView.findViewById(android.R.id.content)
 
+    // The window height as the banner layout sees it, measured fresh on every
+    // call — the display metrics are only the fallback for the first pass, while
+    // the content view has no height yet.
+    private fun contentHeightPx(): Int {
+        val rootView = contentView()
+        if (rootView.height > 0) return rootView.height
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        activity.windowManager.defaultDisplay.getMetrics(metrics)
+        return metrics.heightPixels
+    }
+
     // How much of the window the banner is taking. The banner view sizes itself
     // (WRAP_CONTENT) from the ad size the SDK picked, so its measured height is
     // the only honest answer: forcing the slot to a share of the screen made the
@@ -670,41 +690,62 @@ class YandexMobileAdsManager(
     // window is under 40dp. The 10% is only the guess covering the gap before
     // the first layout pass; the cap keeps a runaway creative from swallowing
     // the game.
-    private fun bannerHeightPx(bannerAdView: BannerAdView, screenHeightPx: Int): Int {
+    private fun bannerHeightPx(bannerAdView: BannerAdView): Int {
+        val screenHeightPx = contentHeightPx()
         val measured = bannerAdView.height
         val height = if (measured > 0) measured else (screenHeightPx * 0.10).toInt()
         return height.coerceAtMost((screenHeightPx * 0.25).toInt())
     }
 
-    // Split the activity between the WebView and the banner, using the CURRENT
-    // size of the content view. The WebView height is plain pixels, so it
-    // describes one screen geometry only: after a rotation it would keep its
-    // old, portrait-sized value in a landscape window, its bottom rows falling
-    // past the visible area with the banner drawn over them — the exit buttons
-    // among them. Hence this is re-run on every layout change of either view for
-    // as long as a banner is up, not just when the banner is created.
+    // Keep the WebView clear of the banner. The space is given up as a MARGIN on
+    // a WebView that stays MATCH_PARENT, not as a pixel height: a height is a
+    // snapshot of one window geometry and goes stale the moment the window
+    // changes size — after a rotation the portrait-sized WebView kept its old
+    // value in a landscape window, its bottom rows (the exit buttons among them)
+    // falling past the visible area with the banner drawn over them. A margin is
+    // re-resolved against the parent on every layout pass, so the split follows
+    // the window on its own and the listener below is left with only the
+    // banner's own height to watch. It also puts the reserve on the right SIDE:
+    // a top banner used to shorten the WebView from the bottom and then cover
+    // its first rows anyway.
     private fun applyBannerLayout(bannerAdView: BannerAdView) {
-        val metrics = DisplayMetrics()
-        @Suppress("DEPRECATION")
-        activity.windowManager.defaultDisplay.getMetrics(metrics)
-
-        val rootView = contentView()
-        val screenHeightPx = if (rootView.height > 0) rootView.height else metrics.heightPixels
-        val webViewHeightPx = screenHeightPx - bannerHeightPx(bannerAdView, screenHeightPx)
+        val webView = plugin.bridge.webView
+        val webViewParams = webView.layoutParams
+        val bannerHeight = bannerHeightPx(bannerAdView)
+        val topReserve = if (bannerGravity == Gravity.TOP) bannerHeight else 0
+        val bottomReserve = if (bannerGravity == Gravity.TOP) 0 else bannerHeight
 
         // Only touch layoutParams when something really changed: this runs from
         // a layout listener, and an unconditional requestLayout would loop.
-        val webView = plugin.bridge.webView
-        val webViewParams = webView.layoutParams
+        if (webViewParams is ViewGroup.MarginLayoutParams) {
+            val stale = webViewParams.topMargin != topReserve ||
+                webViewParams.bottomMargin != bottomReserve ||
+                webViewParams.height != ViewGroup.LayoutParams.MATCH_PARENT
+            if (stale) {
+                webViewParams.topMargin = topReserve
+                webViewParams.bottomMargin = bottomReserve
+                webViewParams.height = ViewGroup.LayoutParams.MATCH_PARENT
+                webView.layoutParams = webViewParams
+            }
+            return
+        }
+
+        // A parent whose layout params carry no margins: fall back to splitting
+        // the window in pixels, re-measured on every call.
+        val webViewHeightPx = contentHeightPx() - bannerHeight
         if (webViewParams.height != webViewHeightPx) {
             webViewParams.height = webViewHeightPx
             webView.layoutParams = webViewParams
         }
     }
 
-    private fun restoreWebViewHeight() {
+    private fun restoreWebViewBounds() {
         val webView = plugin.bridge.webView
         val webViewParams = webView.layoutParams
+        if (webViewParams is ViewGroup.MarginLayoutParams) {
+            webViewParams.topMargin = 0
+            webViewParams.bottomMargin = 0
+        }
         webViewParams.height = ViewGroup.LayoutParams.MATCH_PARENT
         webView.layoutParams = webViewParams
     }
@@ -717,9 +758,53 @@ class YandexMobileAdsManager(
         bannerLayoutListener = null
     }
 
+    // Take every banner off the screen and hand the whole window back to the
+    // WebView. Everything that removes a banner goes through here: the map used
+    // to be trimmed in one place and the views detached in another, and a view
+    // that fell between the two stayed drawn over a game that had just been
+    // given its full height back. Returns whether anything was actually up.
+    private fun removeAllBanners(): Boolean {
+        stopWatchingLayout()
+        loadedBannerUnitId = null
+        val had = bannerViews.isNotEmpty()
+        bannerViews.values.forEach { view ->
+            (view.parent as? ViewGroup)?.removeView(view)
+            view.destroy()
+        }
+        bannerViews.clear()
+        restoreWebViewBounds()
+        return had
+    }
+
     fun showBanner(adUnitId: String, position: String, callback: (String?) -> Unit) {
         activity.runOnUiThread {
             try {
+                bannerGravity = if (position == "top") Gravity.TOP else Gravity.BOTTOM
+
+                // The game asks for the banner again on every screen change it
+                // counts as idle. Each request used to build a NEW BannerAdView
+                // and overwrite the map entry, so hideBanner could only ever take
+                // the last one down: every earlier ad stayed on screen — over a
+                // WebView that had just been handed its full height back — and
+                // covered the game and the buttons under it for the rest of the
+                // session. A banner that is already up is re-reported instead.
+                bannerViews[adUnitId]?.let { existing ->
+                    existing.post { applyBannerLayout(existing) }
+                    // Only a banner that has already filled may be reported as
+                    // shown; one still loading reports itself when it lands, and
+                    // saying "shown" for it would tell the game an ad is on
+                    // screen while the strip is still empty. The call itself is
+                    // answered either way — an unanswered one leaves a promise
+                    // hanging on the JS side.
+                    if (loadedBannerUnitId == adUnitId) plugin.emit("bannerShown")
+                    callback(null)
+                    return@runOnUiThread
+                }
+
+                // One strip at a time: a request for a different ad unit replaces
+                // whatever is up rather than stacking on top of it.
+                removeAllBanners()
+
                 val metrics = DisplayMetrics()
                 @Suppress("DEPRECATION")
                 activity.windowManager.defaultDisplay.getMetrics(metrics)
@@ -736,6 +821,7 @@ class YandexMobileAdsManager(
                 bannerAdView.setAdSize(BannerAdSize.sticky(activity, widthDp))
                 bannerAdView.setBannerAdEventListener(object : BannerAdEventListener {
                     override fun onAdLoaded() {
+                        loadedBannerUnitId = adUnitId
                         // The view may not be measured yet; the layout listener
                         // below picks up the real height when it is.
                         bannerAdView.post { applyBannerLayout(bannerAdView) }
@@ -743,8 +829,12 @@ class YandexMobileAdsManager(
                         callback(null)
                     }
                     override fun onAdFailedToLoad(error: AdRequestError) {
-                        stopWatchingLayout()
-                        restoreWebViewHeight()
+                        // Drop the dead view, don't just give the WebView its
+                        // height back: the view carries no ad, and left in place
+                        // it both sat over the game (a sticky banner can fail a
+                        // refresh while the previous ad is still on screen) and
+                        // made the next request believe a banner was already up.
+                        removeAllBanners()
                         plugin.emit("bannerFailed", JSObject().put("error", error.description))
                         callback(error.description)
                     }
@@ -752,20 +842,21 @@ class YandexMobileAdsManager(
                     override fun onImpression(data: ImpressionData?) {}
                 })
 
-                val gravity = if (position == "top") Gravity.TOP else Gravity.BOTTOM
                 val params = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.WRAP_CONTENT,
-                    gravity,
+                    bannerGravity,
                 )
                 rootView.addView(bannerAdView, params)
+                // In the map before the request goes out: loading is async, but
+                // a failure arriving early has to find the view it must clean up.
+                bannerViews[adUnitId] = bannerAdView
 
                 // Two things invalidate the split, and both are watched: the
                 // window changing height (rotation, a resumed activity, an
                 // immersive-mode re-layout) and the banner arriving at — or
                 // changing — its own height. Posted rather than applied inline:
                 // a requestLayout from inside a layout pass is discarded.
-                stopWatchingLayout()
                 val layoutListener = android.view.View.OnLayoutChangeListener {
                     view, _, _, _, _, _, _, _, _ ->
                     view.post { applyBannerLayout(bannerAdView) }
@@ -777,22 +868,18 @@ class YandexMobileAdsManager(
                 // Since SDK 8 the ad unit travels in the request rather than on
                 // the view — setAdUnitId no longer exists.
                 bannerAdView.loadAd(AdRequest.Builder(adUnitId).build())
-                bannerViews[adUnitId] = bannerAdView
             } catch (e: Exception) {
                 callback(e.message)
             }
         }
     }
 
+    // The ad unit is accepted for symmetry with showBanner, but everything on
+    // screen comes down: the game runs a single strip, and a view that outlived
+    // its map entry is exactly what used to be left sitting over the game.
     fun hideBanner(adUnitId: String) {
         activity.runOnUiThread {
-            stopWatchingLayout()
-            bannerViews.remove(adUnitId)?.let { view ->
-                (view.parent as? ViewGroup)?.removeView(view)
-                view.destroy()
-                plugin.emit("bannerHidden")
-            }
-            restoreWebViewHeight()
+            if (removeAllBanners()) plugin.emit("bannerHidden")
         }
     }
 }
