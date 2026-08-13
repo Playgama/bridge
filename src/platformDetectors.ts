@@ -55,10 +55,6 @@ export const PLATFORM_DETECTORS: PlatformDetector[] = [
         platformId: PLATFORM_ID.VK,
         predicate: ({ searchParams }: PlatformDetectorContext) => (searchParams.has('api_id') && searchParams.has('viewer_id') && searchParams.has('auth_key')) || searchParams.has('vk_app_id'),
     }] : []),
-    ...(__INCLUDE_PLAYDECK__ ? [{
-        platformId: PLATFORM_ID.PLAYDECK,
-        predicate: ({ searchParams }: PlatformDetectorContext) => searchParams.has('playdeck'),
-    }] : []),
     ...(__INCLUDE_TELEGRAM__ ? [{
         platformId: PLATFORM_ID.TELEGRAM,
         predicate: ({ hash }: PlatformDetectorContext) => hash.includes('tgWebAppData'),
