@@ -162,6 +162,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     #isCloudSaveSupported = true
 
+    #isAnonymousCloudSaveAllowed = false
+
     #isPlayerAuthorizationSupported = true
 
     #isShareSupported = false
@@ -241,6 +243,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                             if (sdk.platformService?.getAdditionalParams) {
                                 this._additionalData = sdk.platformService.getAdditionalParams() || {}
                             }
+
+                            this.#isAnonymousCloudSaveAllowed = this._additionalData
+                                ?.isAnonymousCloudSaveAllowed === true
 
                             return this.#getPlayer()
                         })
@@ -525,6 +530,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         const sdk = this._platformSdk as PlaygamaSdk
         if (typeof sdk.userService?.getUser !== 'function') {
             this._playerApplyGuestData()
+            this.#refreshPlatformStorageAvailability()
             return Promise.resolve()
         }
 
@@ -542,13 +548,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player as unknown as Record<string, unknown>
-                        if (this.#isCloudSaveSupported) {
-                            this._setPlatformStorageAvailable(true)
-                        }
                     }
                 })
                 .catch(() => {})
                 .finally(() => {
+                    this.#refreshPlatformStorageAvailability()
                     resolve()
                 })
         })
@@ -573,8 +577,17 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         this.#isAddToHomeScreenSupported = socialService?.getIsAddToHomeScreenSupported?.() ?? false
     }
 
+    // Anonymous players keep platform storage when the platform accepts their cloud save messages
+    #isCloudSaveAvailable(): boolean {
+        return this.#isCloudSaveSupported && (this._isPlayerAuthorized || this.#isAnonymousCloudSaveAllowed)
+    }
+
+    #refreshPlatformStorageAvailability(): void {
+        this._setPlatformStorageAvailable(this.#isCloudSaveAvailable())
+    }
+
     #ensureStorageReady(): Promise<void> {
-        if (!this.#isCloudSaveSupported || !this._isPlayerAuthorized) {
+        if (!this.#isCloudSaveAvailable()) {
             return Promise.reject()
         }
         return Promise.resolve()
