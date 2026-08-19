@@ -29,5 +29,7 @@ export const EVENT_NAME = {
     VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
     STORAGE_SET: 'storage_set',
     CROSS_PROMO_SHOWN: 'cross_promo_shown',
+    DAILY_REWARDS_CLAIMED: 'daily_rewards_claimed',
+    DAILY_REWARDS_STREAK_RESET: 'daily_rewards_streak_reset',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]

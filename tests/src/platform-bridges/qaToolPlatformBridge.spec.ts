@@ -24,11 +24,13 @@ vi.stubGlobal('PLUGIN_VERSION', 'test-version')
 // Pins the outbound wire format consumed by the external QA tool. The literals
 // are intentional: renaming a constant must break this test, not silently
 // change the protocol.
-describe('QaToolPlatformBridge cross promo wire format', () => {
+describe('QaToolPlatformBridge modules wire format', () => {
     beforeEach(() => {
         sendSpy.mockClear()
         // The bus is a singleton; drop subscriptions left by bridges from
         // previous tests so each test observes exactly one forwarder.
+        eventBus.off(EVENT_NAME.DAILY_REWARDS_CLAIMED)
+        eventBus.off(EVENT_NAME.DAILY_REWARDS_STREAK_RESET)
         eventBus.off(EVENT_NAME.CROSS_PROMO_SHOWN)
     })
 
@@ -57,5 +59,43 @@ describe('QaToolPlatformBridge cross promo wire format', () => {
                 games: [{ url: 'https://example.com/pixel-run', name: 'Pixel Run' }],
             },
         })
+    })
+
+    test('claimed event is forwarded as a daily_rewards_claimed message', () => {
+        createInitializedBridge()
+
+        eventBus.emit(EVENT_NAME.DAILY_REWARDS_CLAIMED, { day: 2, reward: 'gem' })
+
+        expect(sendSpy).toHaveBeenLastCalledWith({
+            source: 'bridge',
+            type: 'daily_rewards',
+            action: 'daily_rewards_claimed',
+            options: { day: 2, reward: 'gem' },
+        })
+    })
+
+    test('streak reset event is forwarded as a daily_rewards_streak_reset message', () => {
+        createInitializedBridge()
+
+        eventBus.emit(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, { day: 4 })
+
+        expect(sendSpy).toHaveBeenLastCalledWith({
+            source: 'bridge',
+            type: 'daily_rewards',
+            action: 'daily_rewards_streak_reset',
+            options: { day: 4 },
+        })
+    })
+
+    test('initialize payload carries platform-resolved config options', () => {
+        createInitializedBridge()
+
+        const initializeMessage = sendSpy.mock.calls
+            .map(([message]) => message as { action?: string, payload?: Record<string, unknown> })
+            .find((message) => message.action === 'initialize')
+
+        expect(initializeMessage).toBeDefined()
+        const configFile = initializeMessage?.payload?.configFile as Record<string, unknown>
+        expect(configFile.resolvedOptions).toBeDefined()
     })
 })

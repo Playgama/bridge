@@ -33,6 +33,17 @@ export interface DailyRewardsState {
     lastClaimEpochDay: number | null
 }
 
+// Payloads of the daily rewards events emitted on the global event bus
+// (EVENT_NAME.DAILY_REWARDS_CLAIMED / DAILY_REWARDS_STREAK_RESET).
+export interface DailyRewardsClaimedPayload {
+    day: number
+    reward: string
+}
+
+export interface DailyRewardsStreakResetPayload {
+    day: number
+}
+
 export interface DailyRewardsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
     options?: AnyRecord
