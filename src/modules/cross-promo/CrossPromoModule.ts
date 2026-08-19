@@ -39,6 +39,7 @@ import type {
     CrossPromoConfig,
     Game,
     CrossPromoBridgeContract,
+    CrossPromoShownPayload,
 } from './types'
 
 class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
@@ -90,6 +91,9 @@ class CrossPromoModule extends ModuleBase<CrossPromoBridgeContract> {
         this.#injectStyles()
         this.#container = this.#createContainer(selectedGames, this.#getConfig().title)
         document.body.appendChild(this.#container)
+
+        const payload: CrossPromoShownPayload = { source: this.#source, games: selectedGames }
+        eventBus.emit(EVENT_NAME.CROSS_PROMO_SHOWN, payload)
     }
 
     hide(): void {
