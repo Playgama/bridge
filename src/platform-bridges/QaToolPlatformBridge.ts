@@ -45,6 +45,10 @@ import type {
     DailyRewardsClaimedPayload,
     DailyRewardsStreakResetPayload,
 } from '../modules/daily-rewards/types'
+import type {
+    TasksRewardClaimedPayload,
+    TasksPeriodRolledOverPayload,
+} from '../modules/tasks/types'
 import type { AnyRecord } from '../utils'
 import type { SafeAreaInsets } from '../lib/safe-area'
 
@@ -88,6 +92,8 @@ export const ACTION_NAME_QA = {
     // the imperative daily_rewards_* names stay free for future QA tool commands.
     DAILY_REWARDS_CLAIMED: 'daily_rewards_claimed',
     DAILY_REWARDS_STREAK_RESET: 'daily_rewards_streak_reset',
+    TASKS_REWARD_CLAIMED: 'tasks_reward_claimed',
+    TASKS_PERIOD_ROLLED_OVER: 'tasks_period_rolled_over',
 } as const
 export type ActionNameQa = typeof ACTION_NAME_QA[keyof typeof ACTION_NAME_QA]
 
@@ -332,6 +338,20 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 this.#sendMessage({
                     type: MODULE_NAME.DAILY_REWARDS,
                     action: ACTION_NAME_QA.DAILY_REWARDS_STREAK_RESET,
+                    options: { ...payload },
+                })
+            })
+            eventBus.on(EVENT_NAME.TASKS_REWARD_CLAIMED, (payload: TasksRewardClaimedPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.TASKS,
+                    action: ACTION_NAME_QA.TASKS_REWARD_CLAIMED,
+                    options: { ...payload },
+                })
+            })
+            eventBus.on(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, (payload: TasksPeriodRolledOverPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.TASKS,
+                    action: ACTION_NAME_QA.TASKS_PERIOD_ROLLED_OVER,
                     options: { ...payload },
                 })
             })

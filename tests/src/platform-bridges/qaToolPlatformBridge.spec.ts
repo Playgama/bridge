@@ -31,6 +31,8 @@ describe('QaToolPlatformBridge modules wire format', () => {
         // previous tests so each test observes exactly one forwarder.
         eventBus.off(EVENT_NAME.DAILY_REWARDS_CLAIMED)
         eventBus.off(EVENT_NAME.DAILY_REWARDS_STREAK_RESET)
+        eventBus.off(EVENT_NAME.TASKS_REWARD_CLAIMED)
+        eventBus.off(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER)
         eventBus.off(EVENT_NAME.CROSS_PROMO_SHOWN)
     })
 
@@ -97,5 +99,51 @@ describe('QaToolPlatformBridge modules wire format', () => {
         expect(initializeMessage).toBeDefined()
         const configFile = initializeMessage?.payload?.configFile as Record<string, unknown>
         expect(configFile.resolvedOptions).toBeDefined()
+    })
+
+    test('reward claimed event is forwarded as a tasks_reward_claimed message', () => {
+        createInitializedBridge()
+
+        eventBus.emit(EVENT_NAME.TASKS_REWARD_CLAIMED, {
+            taskId: 'kills',
+            groupId: 'daily',
+            type: 'daily',
+            rewards: [{ id: 'gold', amount: 500 }],
+        })
+
+        expect(sendSpy).toHaveBeenLastCalledWith({
+            source: 'bridge',
+            type: 'tasks',
+            action: 'tasks_reward_claimed',
+            options: {
+                taskId: 'kills',
+                groupId: 'daily',
+                type: 'daily',
+                rewards: [{ id: 'gold', amount: 500 }],
+            },
+        })
+    })
+
+    test('period roll-over event is forwarded as a tasks_period_rolled_over message', () => {
+        createInitializedBridge()
+
+        eventBus.emit(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, {
+            groupId: 'daily',
+            type: 'daily',
+            periodKey: 101,
+            previousPeriodKey: 100,
+        })
+
+        expect(sendSpy).toHaveBeenLastCalledWith({
+            source: 'bridge',
+            type: 'tasks',
+            action: 'tasks_period_rolled_over',
+            options: {
+                groupId: 'daily',
+                type: 'daily',
+                periodKey: 101,
+                previousPeriodKey: 100,
+            },
+        })
     })
 })

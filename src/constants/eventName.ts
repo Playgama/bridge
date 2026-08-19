@@ -31,5 +31,7 @@ export const EVENT_NAME = {
     CROSS_PROMO_SHOWN: 'cross_promo_shown',
     DAILY_REWARDS_CLAIMED: 'daily_rewards_claimed',
     DAILY_REWARDS_STREAK_RESET: 'daily_rewards_streak_reset',
+    TASKS_REWARD_CLAIMED: 'tasks_reward_claimed',
+    TASKS_PERIOD_ROLLED_OVER: 'tasks_period_rolled_over',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]
