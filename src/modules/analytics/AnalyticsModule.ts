@@ -349,7 +349,9 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
                 }
             }
 
-            if (platformId === PLATFORM_ID.PLAYGAMA) {
+            // Standalone games are hosted outside playgama.com but still receive
+            // the game_id in the frame URL, so they resolve it the same way.
+            if (platformId === PLATFORM_ID.PLAYGAMA || platformId === PLATFORM_ID.STANDALONE) {
                 const gameIdParam = parsedUrl.searchParams.get('game_id')
                 if (gameIdParam) {
                     return gameIdParam
