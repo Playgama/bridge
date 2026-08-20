@@ -78,6 +78,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     #isCloudSaveSupported = true
 
+    #isAnonymousCloudSaveAllowed = false
+
     #isPaymentsSupported = true
 
     #isPlayerAuthorizationSupported = true
@@ -155,6 +157,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                                 this._additionalData = this._platformSdk.platformService.getAdditionalParams() || {}
                             }
 
+                            this.#isAnonymousCloudSaveAllowed = this._additionalData
+                                ?.isAnonymousCloudSaveAllowed === true
+
                             return this.#getPlayer()
                         })
                         .then(() => {
@@ -192,7 +197,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this.#isCloudSaveSupported && this._isPlayerAuthorized
+            return this.#isCloudSaveAvailable()
         }
 
         return super.isStorageAvailable(storageType)
@@ -204,7 +209,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
             }
 
-            if (!this._isPlayerAuthorized) {
+            if (!this.#isCloudSaveAvailable()) {
                 return Promise.reject()
             }
 
@@ -221,7 +226,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
                 }
 
-                if (!this._isPlayerAuthorized) {
+                if (!this.#isCloudSaveAvailable()) {
                     return Promise.reject()
                 }
 
@@ -272,6 +277,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             case STORAGE_TYPE.PLATFORM_INTERNAL: {
                 if (!this.#isCloudSaveSupported) {
                     return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+                }
+
+                if (!this.#isCloudSaveAvailable()) {
+                    return Promise.reject()
                 }
 
                 return new Promise((resolve, reject) => {
@@ -496,7 +505,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     #getPlayer() {
         if (typeof this._platformSdk.userService?.getUser !== 'function') {
             this._playerApplyGuestData()
-            return Promise.resolve()
+            return this.#initializePlatformStorage()
         }
 
         return new Promise((resolve) => {
@@ -513,24 +522,34 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player
-                        if (this.#isCloudSaveSupported) {
-                            this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
-                            return this.#getDataFromPlatformStorage([])
-                        }
-
-                        return Promise.resolve()
+                    } else {
+                        this._playerApplyGuestData()
                     }
 
-                    this._playerApplyGuestData()
-                    return Promise.resolve()
+                    return this.#initializePlatformStorage()
                 })
                 .catch(() => {
                     this._playerApplyGuestData()
+                    return this.#initializePlatformStorage()
                 })
                 .finally(() => {
                     resolve()
                 })
         })
+    }
+
+    // Anonymous players keep platform storage when the platform accepts their cloud save messages
+    #isCloudSaveAvailable() {
+        return this.#isCloudSaveSupported && (this._isPlayerAuthorized || this.#isAnonymousCloudSaveAllowed)
+    }
+
+    #initializePlatformStorage() {
+        if (!this.#isCloudSaveAvailable()) {
+            return Promise.resolve()
+        }
+
+        this._defaultStorageType = STORAGE_TYPE.PLATFORM_INTERNAL
+        return this.#getDataFromPlatformStorage([])
     }
 
     async #getDataFromPlatformStorage(key, tryParseJson = true) {
