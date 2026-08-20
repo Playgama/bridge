@@ -346,7 +346,7 @@ class AnalyticsModule extends ModuleBase {
                 }
             }
 
-            if (platformId === PLATFORM_ID.PLAYGAMA) {
+            if (platformId === PLATFORM_ID.PLAYGAMA || platformId === PLATFORM_ID.STANDALONE) {
                 if (parsedUrl.searchParams.get('game_id')) {
                     return parsedUrl.searchParams.get('game_id')
                 }
