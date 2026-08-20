@@ -525,7 +525,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         const sdk = this._platformSdk as PlaygamaSdk
         if (typeof sdk.userService?.getUser !== 'function') {
             this._playerApplyGuestData()
-            this.#refreshPlatformStorageAvailability()
             return Promise.resolve()
         }
 
@@ -543,11 +542,13 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         this._playerName = player.name
                         this._playerPhotos = player.photos
                         this._playerExtra = player as unknown as Record<string, unknown>
+                        if (this.#isCloudSaveSupported) {
+                            this._setPlatformStorageAvailable(true)
+                        }
                     }
                 })
                 .catch(() => {})
                 .finally(() => {
-                    this.#refreshPlatformStorageAvailability()
                     resolve()
                 })
         })
@@ -562,6 +563,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (sdk.platformService?.getIsCloudSaveSupported) {
             this.#isCloudSaveSupported = sdk.platformService.getIsCloudSaveSupported()
         }
+        this._setPlatformStorageAvailable(this.#isCloudSaveSupported)
 
         if (sdk.platformService?.getIsPaymentsSupported) {
             this.#isPaymentsSupported = sdk.platformService.getIsPaymentsSupported()
@@ -572,17 +574,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         this.#isAddToHomeScreenSupported = socialService?.getIsAddToHomeScreenSupported?.() ?? false
     }
 
-    // Playgama routes platform storage to the appropriate guest or authorized-player backend.
-    #isCloudSaveAvailable(): boolean {
-        return this.#isCloudSaveSupported
-    }
-
-    #refreshPlatformStorageAvailability(): void {
-        this._setPlatformStorageAvailable(this.#isCloudSaveAvailable())
-    }
-
     #ensureStorageReady(): Promise<void> {
-        if (!this.#isCloudSaveAvailable()) {
+        if (!this.#isCloudSaveSupported) {
             return Promise.reject()
         }
         return Promise.resolve()
