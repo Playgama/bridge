@@ -162,8 +162,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     #isCloudSaveSupported = true
 
-    #isAnonymousCloudSaveAllowed = false
-
     #isPlayerAuthorizationSupported = true
 
     #isShareSupported = false
@@ -243,9 +241,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                             if (sdk.platformService?.getAdditionalParams) {
                                 this._additionalData = sdk.platformService.getAdditionalParams() || {}
                             }
-
-                            this.#isAnonymousCloudSaveAllowed = this._additionalData
-                                ?.isAnonymousCloudSaveAllowed === true
 
                             return this.#getPlayer()
                         })
@@ -577,9 +572,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         this.#isAddToHomeScreenSupported = socialService?.getIsAddToHomeScreenSupported?.() ?? false
     }
 
-    // Anonymous players keep platform storage when the platform accepts their cloud save messages
+    // Playgama routes platform storage to the appropriate guest or authorized-player backend.
     #isCloudSaveAvailable(): boolean {
-        return this.#isCloudSaveSupported && (this._isPlayerAuthorized || this.#isAnonymousCloudSaveAllowed)
+        return this.#isCloudSaveSupported
     }
 
     #refreshPlatformStorageAvailability(): void {
