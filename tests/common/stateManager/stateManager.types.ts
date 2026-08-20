@@ -5,6 +5,7 @@ export interface PlayerState {
     id: string
     name?: string
     photos?: string[]
+    extra?: Record<string, unknown>
     jwt?: string
 }
 

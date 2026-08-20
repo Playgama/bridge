@@ -9,6 +9,7 @@ export function createPlaygamaSdk(
     capabilities: {
         playerAuthorization?: boolean
         cloudSave?: boolean
+        cloudSaveLoadFails?: boolean
         payments?: boolean
     } = {},
 ): Promise<void> {
@@ -18,7 +19,7 @@ export function createPlaygamaSdk(
             const player = stateManager.getPlayerState()
             if (player?.authorized) {
                 return Promise.resolve({
-                    authorized: true,
+                    isAuthorized: true,
                     id: player.id,
                     name: player.name ?? '',
                     photos: player.photos ?? [],
@@ -42,7 +43,9 @@ export function createPlaygamaSdk(
     }
 
     const cloudSaveApi = {
-        getState: vi.fn().mockResolvedValue(Promise.resolve({})),
+        getState: capabilities.cloudSaveLoadFails
+            ? vi.fn().mockRejectedValue(new Error('Cloud save load failed'))
+            : vi.fn().mockResolvedValue({}),
         setItems: vi.fn().mockResolvedValue(Promise.resolve()),
     }
 

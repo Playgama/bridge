@@ -27,6 +27,9 @@ async function createBridge(options: BridgeOptions = {}): Promise<CreateBridgeRe
     const mergedOptions = { ...defaultOptions, ...options }
     const messageBroker = new MessageBroker(testGlobal)
     const stateManager = new StateManager()
+    if (mergedOptions.initialPlayerState) {
+        stateManager.setPlayerState(mergedOptions.initialPlayerState)
+    }
     const bridge = new PlaygamaBridge()
 
     await createPlaygamaSdk(testGlobal, stateManager, mergedOptions.playgamaCapabilities)

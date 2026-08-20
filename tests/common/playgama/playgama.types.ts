@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 
 export interface PlaygamaPlayer {
-    authorized: boolean
+    isAuthorized: boolean
     id: string
     name: string
     photos: string[]
