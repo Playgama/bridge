@@ -49,6 +49,12 @@ export interface VideoPreview {
     videoId: string
 }
 
+// Branded sound played once while the loading screen is visible.
+// `url` is a path to an audio file bundled with the game archive (or a data URI).
+export interface LoadingSoundConfig {
+    url: string
+}
+
 // Single source of truth for the whole bridge configuration. Every config
 // section is typed here so consumers read it through the config loader without
 // per-site casts. The string index signature keeps platform-specific keys
@@ -64,6 +70,7 @@ export interface ConfigFileOptions extends AnyRecord {
     disableLoadingLogo?: boolean
     showFullLoadingLogo?: boolean
     showLoadingText?: boolean
+    loadingSound?: LoadingSoundConfig
     game?: GameConfig
     advertisement?: AdvertisementOptions
     dailyRewards?: DailyRewardsConfig

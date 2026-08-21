@@ -24,6 +24,7 @@ import {
     LOADING_SCREEN_FILL_RECT_ID,
     LOADING_SCREEN_GRADIENT_MOVER_ID,
     LOADING_SCREEN_HINT_ID,
+    LOADING_SCREEN_HIDE_GATE_TIMEOUT,
     type ProgressLogoPreset,
 } from './constants'
 
@@ -36,6 +37,14 @@ class LoadingScreen {
     #currentProgress: number | null = null
 
     #completed = false
+
+    #hideGate: Promise<unknown> | null = null
+
+    // Delays hiding the screen until the given promise settles. Used to keep the
+    // logo at 100% while the branded loading sound is still playing.
+    setHideGate(gate: Promise<unknown>): void {
+        this.#hideGate = gate
+    }
 
     show({ showFullLogo = false, showLoadingText = false }: LoadingScreenOptions = {}): void {
         this.#injectStyles()
@@ -75,13 +84,24 @@ class LoadingScreen {
         if (progress === 100) {
             this.#completed = true
 
-            setTimeout(() => {
-                fill.style.display = 'none'
-                gradientMover.style.display = 'block'
-                gradientMover.classList.add('gradient-mover')
-            }, 400)
-            setTimeout(() => logo.classList.add('logo-fade-out'), 900)
-            setTimeout(() => overlay.remove(), 1400)
+            const hide = (): void => {
+                setTimeout(() => {
+                    fill.style.display = 'none'
+                    gradientMover.style.display = 'block'
+                    gradientMover.classList.add('gradient-mover')
+                }, 400)
+                setTimeout(() => logo.classList.add('logo-fade-out'), 900)
+                setTimeout(() => overlay.remove(), 1400)
+            }
+
+            if (this.#hideGate) {
+                const timeout = new Promise((resolve) => {
+                    setTimeout(resolve, LOADING_SCREEN_HIDE_GATE_TIMEOUT)
+                })
+                Promise.race([this.#hideGate.catch(() => {}), timeout]).then(hide)
+            } else {
+                hide()
+            }
         } else {
             gradientMover.classList.remove('gradient-mover')
         }

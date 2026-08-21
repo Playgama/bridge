@@ -38,6 +38,7 @@ import {
 import { applyEventBusMixin } from './lib/EventBus'
 import Deferred from './lib/Deferred'
 import { LoadingScreen } from './lib/loading-screen'
+import { LoadingSound } from './lib/loading-sound'
 import { SafeArea } from './lib/safe-area'
 import bridgeConfig from './lib/bridge-config'
 import { initApiOrigin } from './lib/apiOrigin'
@@ -191,6 +192,8 @@ class PlaygamaBridge {
 
     #loadingScreen: LoadingScreen | null = null
 
+    #loadingSound: LoadingSound | null = null
+
     #engine = 'javascript'
 
     async initialize(options?: PlaygamaInitOptions): Promise<void> {
@@ -262,6 +265,8 @@ class PlaygamaBridge {
                 .then(() => {
                     this.#isInitialized = true
 
+                    this.#playLoadingSound(bridge)
+
                     logger.banner(`PlaygamaBridge v${this.version} initialized.`)
 
                     if (this.#initializationPromiseDecorator) {
@@ -281,6 +286,8 @@ class PlaygamaBridge {
                     }
                 })
                 .catch((error) => {
+                    this.#loadingSound?.cancel()
+
                     const endTime = performance.now()
                     const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
                     const errorMessage = error?.message || String(error)
@@ -328,10 +335,29 @@ class PlaygamaBridge {
                 || options.showLoadingText === true
             this.#loadingScreen = new LoadingScreen()
             this.#loadingScreen.show({ showFullLogo, showLoadingText })
+
+            if (options.loadingSound?.url) {
+                this.#loadingSound = new LoadingSound(options.loadingSound)
+                this.#loadingScreen.setHideGate(this.#loadingSound.finished)
+            }
         }
 
         if (options.game?.adaptToSafeArea) {
             SafeArea.applyStyles()
+        }
+    }
+
+    // The platform audio state is only known once its SDK is initialized, so the
+    // branded sound starts here — in parallel with the still visible loading screen.
+    #playLoadingSound(bridge: PlatformBridgeBase): void {
+        if (!this.#loadingSound) {
+            return
+        }
+
+        if (bridge.isPlatformAudioEnabled) {
+            this.#loadingSound.play()
+        } else {
+            this.#loadingSound.cancel()
         }
     }
 
