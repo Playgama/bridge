@@ -667,20 +667,33 @@ class YandexPlatformBridge extends PlatformBridgeBase {
 
             this.#yandexPayments.getCatalog()
                 .then((yandexProducts) => {
-                    const mergedProducts = products.map((product) => {
-                        const yandexProduct = yandexProducts.find((p) => p.id === product.id)!
+                    // Товар, которого нет в консоли Яндекса, раньше валил весь каталог
+                    // (TypeError на yandexProduct.title) — игра оставалась вообще без цен.
+                    // Пропускаем такие товары, остальные отдаём как есть.
+                    const mergedProducts = products
+                        .map((product) => {
+                            const platformProductId = (product.platformProductId ?? product.id) as string
+                            const yandexProduct = yandexProducts
+                                .find((p) => p.id === platformProductId || p.id === product.id)
 
-                        return {
-                            id: product.id,
-                            title: yandexProduct.title,
-                            description: yandexProduct.description,
-                            imageURI: yandexProduct.imageURI,
-                            price: yandexProduct.price,
-                            priceCurrencyCode: yandexProduct.priceCurrencyCode,
-                            priceValue: yandexProduct.priceValue,
-                            priceCurrencyImage: yandexProduct.getPriceCurrencyImage?.('medium'),
-                        }
-                    })
+                            if (!yandexProduct) {
+                                // eslint-disable-next-line no-console
+                                console.warn(`[bridge] Yandex catalog has no product '${platformProductId}' — skipped`)
+                                return null
+                            }
+
+                            return {
+                                id: product.id,
+                                title: yandexProduct.title,
+                                description: yandexProduct.description,
+                                imageURI: yandexProduct.imageURI,
+                                price: yandexProduct.price,
+                                priceCurrencyCode: yandexProduct.priceCurrencyCode,
+                                priceValue: yandexProduct.priceValue,
+                                priceCurrencyImage: yandexProduct.getPriceCurrencyImage?.('medium'),
+                            }
+                        })
+                        .filter((product) => product !== null)
 
                     this._resolvePromiseDecorator(ACTION_NAME.GET_CATALOG, mergedProducts)
                 })
