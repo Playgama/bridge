@@ -193,7 +193,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this.#isCloudSaveSupported
+            return this.#isCloudSaveSupported && this.#isPlatformStorageAllowed
         }
 
         return super.isStorageAvailable(storageType)
@@ -203,6 +203,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (!this.#isCloudSaveSupported) {
                 return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+            }
+
+            if (!this.#isPlatformStorageAllowed) {
+                return Promise.reject()
             }
 
             return this.#getDataFromPlatformStorage(key, tryParseJson)
@@ -216,6 +220,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             case STORAGE_TYPE.PLATFORM_INTERNAL: {
                 if (!this.#isCloudSaveSupported) {
                     return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
+                }
+
+                if (!this.#isPlatformStorageAllowed) {
+                    return Promise.reject()
                 }
 
                 return new Promise((resolve, reject) => {
@@ -524,6 +532,12 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                     resolve()
                 })
         })
+    }
+
+    // Cloud storage serves guests only when anonymous cloud save is enabled in the config;
+    // otherwise it stays gated behind player authorization.
+    get #isPlatformStorageAllowed() {
+        return this._options.storage?.allowAnonymousCloudSave === true || this._isPlayerAuthorized
     }
 
     async #getDataFromPlatformStorage(key, tryParseJson = true) {
