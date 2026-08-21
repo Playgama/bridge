@@ -17,5 +17,5 @@
 
 import StorageModule from './StorageModule'
 
-export type { StorageBridgeContract } from './types'
+export type { StorageBridgeContract, StorageConfig } from './types'
 export default new StorageModule()

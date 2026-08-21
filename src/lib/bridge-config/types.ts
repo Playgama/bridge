@@ -24,6 +24,7 @@ import type { CrossPromoConfig } from '../../modules/cross-promo/types'
 import type { LeaderboardMapping } from '../../modules/leaderboards'
 import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
+import type { StorageConfig } from '../../modules/storage/types'
 
 export interface SaasFeatureConfig {
     platforms?: string[]
@@ -80,6 +81,7 @@ export interface ConfigFileOptions extends AnyRecord {
     notifications?: NotificationMapping[]
     disableAutoNotifications?: boolean
     device?: DeviceConfig
+    storage?: StorageConfig
     crossPromo?: CrossPromoConfig
     saas?: SaasConfig
     payments?: Array<AnyRecord & { id: string }>

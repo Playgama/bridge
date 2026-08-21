@@ -49,3 +49,10 @@ export interface WriteBatch {
     sets: StorageEntry[]
     deletes: string[]
 }
+
+// Storage behaviour toggles read from the bridge config.
+export interface StorageConfig {
+    // Lets a platform use its cloud storage for guest (non-authorized) players.
+    // Disabled by default: cloud storage stays gated behind player authorization.
+    allowAnonymousCloudSave?: boolean
+}
