@@ -169,14 +169,15 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // platform
-    sendMessage(message) {
+    sendMessage(message, options) {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
                 this._platformSdk.gameService?.gameReady?.()
                 return Promise.resolve()
             }
             default: {
-                return super.sendMessage(message)
+                this._platformSdk.gameService?.sendMessage?.(message, options ?? {})
+                return super.sendMessage(message, options)
             }
         }
     }
