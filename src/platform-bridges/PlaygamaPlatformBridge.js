@@ -192,7 +192,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     isStorageAvailable(storageType) {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
-            return this.#isCloudSaveSupported && this._isPlayerAuthorized
+            return this.#isCloudSaveSupported
         }
 
         return super.isStorageAvailable(storageType)
@@ -202,10 +202,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (storageType === STORAGE_TYPE.PLATFORM_INTERNAL) {
             if (!this.#isCloudSaveSupported) {
                 return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-            }
-
-            if (!this._isPlayerAuthorized) {
-                return Promise.reject()
             }
 
             return this.#getDataFromPlatformStorage(key, tryParseJson)
@@ -219,10 +215,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             case STORAGE_TYPE.PLATFORM_INTERNAL: {
                 if (!this.#isCloudSaveSupported) {
                     return Promise.reject(ERROR.STORAGE_NOT_SUPPORTED)
-                }
-
-                if (!this._isPlayerAuthorized) {
-                    return Promise.reject()
                 }
 
                 return new Promise((resolve, reject) => {
