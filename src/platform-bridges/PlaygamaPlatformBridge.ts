@@ -91,6 +91,7 @@ interface PlaygamaSdk {
     }
     gameService: {
         gameReady(): void
+        sendMessage?: (message: string, options?: AnyRecord) => unknown
     }
     socialService?: {
         getIsShareSupported?: () => boolean
@@ -256,14 +257,15 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // platform
-    sendMessage(message?: unknown): Promise<unknown> {
+    sendMessage(message?: unknown, options?: unknown): Promise<unknown> {
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
                 (this._platformSdk as PlaygamaSdk).gameService?.gameReady?.()
                 return Promise.resolve()
             }
             default: {
-                return super.sendMessage(message)
+                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(String(message), (options ?? {}) as AnyRecord)
+                return super.sendMessage(message, options)
             }
         }
     }
