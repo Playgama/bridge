@@ -563,6 +563,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (sdk.platformService?.getIsCloudSaveSupported) {
             this.#isCloudSaveSupported = sdk.platformService.getIsCloudSaveSupported()
         }
+        this._setPlatformStorageAvailable(this.#isCloudSaveSupported)
 
         if (sdk.platformService?.getIsPaymentsSupported) {
             this.#isPaymentsSupported = sdk.platformService.getIsPaymentsSupported()
@@ -574,7 +575,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     #ensureStorageReady(): Promise<void> {
-        if (!this.#isCloudSaveSupported || !this._isPlayerAuthorized) {
+        if (!this.#isCloudSaveSupported) {
             return Promise.reject()
         }
         return Promise.resolve()
