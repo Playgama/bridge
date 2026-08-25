@@ -13,7 +13,14 @@ name: Release npm package
 on:
   push:
     tags: ['v*']
+  # Ручной выпуск: тег создаётся самим релизом (`gh release create --target`),
+  # поэтому выпустить можно из вкладки Actions, ничего не тегируя локально.
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза, например v2.0.2-fork.1 (по умолчанию — v<версия из package.json>)'
+        type: string
+        required: false
 
 permissions:
   contents: write
@@ -30,16 +37,24 @@ jobs:
 
       - run: npm ci
 
-      - name: Tag must match package version
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Resolve tag and check it against the package version
+        id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           VERSION="$(node -p "require('./package.json').version")"
-          TAG="${GITHUB_REF_NAME#v}"
-          if [ "$VERSION" != "$TAG" ]; then
-            echo "::error::tag '$GITHUB_REF_NAME' does not match package.json version '$VERSION'."
-            echo "::error::The tarball would be published under a name no game can predict."
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG="${INPUT_TAG:-v$VERSION}"
+          fi
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "::error::тег '$TAG' не совпадает с версией в package.json ('$VERSION')."
+            echo "::error::Тарбол уехал бы под именем, которое игры не могут предсказать."
             exit 1
           fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - run: npm run lint
       - run: npm test
@@ -53,25 +68,30 @@ jobs:
           ls -la "$FILE"
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
           FILE: ${{ steps.pack.outputs.file }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="$(node -p "require('./package.json').version")"
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "$FILE" --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" "$FILE" \
-              --title "$GITHUB_REF_NAME" \
-              --notes "npm-сборка форка Playgama Bridge $VERSION.
-
-          Установка в игру:
-
-          \`\`\`json
-          \"@playgama/bridge\": \"https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${FILE}\"
-          \`\`\`"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber
+            exit 0
           fi
+          NOTES="$(printf '%s\n' \
+            "npm-сборка форка Playgama Bridge $VERSION." \
+            "" \
+            "Установка в игру (\`package.json\`):" \
+            "" \
+            '```json' \
+            "\"@playgama/bridge\": \"https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$FILE\"" \
+            '```')"
+          # --target нужен для ручного запуска: тега ещё нет, и релиз создаёт его
+          # сам на этом коммите.
+          gh release create "$TAG" "$FILE" \
+            --title "$TAG" \
+            --target "$GITHUB_SHA" \
+            --notes "$NOTES"
 
       - uses: actions/upload-artifact@v4
         with:
