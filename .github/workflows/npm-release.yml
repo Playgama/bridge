@@ -1,0 +1,101 @@
+name: Release npm package
+
+# Publishes the npm build of the fork as a GitHub Release asset.
+#
+# Games do not install this package from the npm registry: the registry holds
+# upstream `@playgama/bridge`, and the fork must not squat on that name. They
+# pin the release tarball by URL instead, which is why the asset name has to be
+# predictable — hence the guard below that refuses a tag disagreeing with the
+# version in package.json.
+#
+#   "@playgama/bridge": "https://github.com/EdikN/bridge/releases/download/v<version>/playgama-bridge-<version>.tgz"
+
+on:
+  push:
+    tags: ['v*']
+  # Ручной выпуск: тег создаётся самим релизом (`gh release create --target`),
+  # поэтому выпустить можно из вкладки Actions, ничего не тегируя локально.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза, например v2.0.2-fork.1 (по умолчанию — v<версия из package.json>)'
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Resolve tag and check it against the package version
+        id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG="${INPUT_TAG:-v$VERSION}"
+          fi
+          if [ "v$VERSION" != "$TAG" ]; then
+            echo "::error::тег '$TAG' не совпадает с версией в package.json ('$VERSION')."
+            echo "::error::Тарбол уехал бы под именем, которое игры не могут предсказать."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build:package
+
+      - name: Pack
+        id: pack
+        run: |
+          FILE="$(npm pack --pack-destination . | tail -n 1)"
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          ls -la "$FILE"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.pack.outputs.file }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber
+            exit 0
+          fi
+          NOTES="$(printf '%s\n' \
+            "npm-сборка форка Playgama Bridge $VERSION." \
+            "" \
+            "Установка в игру (\`package.json\`):" \
+            "" \
+            '```json' \
+            "\"@playgama/bridge\": \"https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$FILE\"" \
+            '```')"
+          # --target нужен для ручного запуска: тега ещё нет, и релиз создаёт его
+          # сам на этом коммите.
+          gh release create "$TAG" "$FILE" \
+            --title "$TAG" \
+            --target "$GITHUB_SHA" \
+            --notes "$NOTES"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ steps.pack.outputs.file }}
+          if-no-files-found: error
+          retention-days: 7

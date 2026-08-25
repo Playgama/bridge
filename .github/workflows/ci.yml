@@ -62,3 +62,21 @@ jobs:
           path: node_modules
           key: node-modules-${{ hashFiles('package-lock.json') }}
       - run: npm run build
+
+  # The npm package is built here too, not only on a release tag: a broken
+  # package entry or a type error in the published surface has to fail on the
+  # pull request, not two weeks later when a game tries to install the tarball.
+  package:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+      - run: npm run build:package
+      - run: npm pack --dry-run

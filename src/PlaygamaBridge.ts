@@ -90,63 +90,63 @@ class PlaygamaBridge {
         return this.#platformBridge?.options
     }
 
-    get platform(): unknown {
+    get platform(): typeof platformModule {
         return this.#getModule(MODULE_NAME.PLATFORM)
     }
 
-    get player(): unknown {
+    get player(): typeof playerModule {
         return this.#getModule(MODULE_NAME.PLAYER)
     }
 
-    get storage(): unknown {
+    get storage(): typeof storageModule {
         return this.#getModule(MODULE_NAME.STORAGE)
     }
 
-    get advertisement(): unknown {
+    get advertisement(): typeof advertisementModule {
         return this.#getModule(MODULE_NAME.ADVERTISEMENT)
     }
 
-    get social(): unknown {
+    get social(): typeof socialModule {
         return this.#getModule(MODULE_NAME.SOCIAL)
     }
 
-    get device(): unknown {
+    get device(): typeof deviceModule {
         return this.#getModule(MODULE_NAME.DEVICE)
     }
 
-    get leaderboards(): unknown {
+    get leaderboards(): typeof leaderboardsModule {
         return this.#getModule(MODULE_NAME.LEADERBOARDS)
     }
 
-    get payments(): unknown {
+    get payments(): typeof paymentsModule {
         return this.#getModule(MODULE_NAME.PAYMENTS)
     }
 
-    get achievements(): unknown {
+    get achievements(): typeof achievementsModule {
         return this.#getModule(MODULE_NAME.ACHIEVEMENTS)
     }
 
-    get remoteConfig(): unknown {
+    get remoteConfig(): typeof remoteConfigModule {
         return this.#getModule(MODULE_NAME.REMOTE_CONFIG)
     }
 
-    get clipboard(): unknown {
+    get clipboard(): typeof clipboardModule {
         return this.#getModule(MODULE_NAME.CLIPBOARD)
     }
 
-    get analytics(): unknown {
+    get analytics(): typeof analyticsModule {
         return this.#getModule(MODULE_NAME.ANALYTICS)
     }
 
-    get dailyRewards(): unknown {
+    get dailyRewards(): typeof dailyRewardsModule {
         return this.#getModule(MODULE_NAME.DAILY_REWARDS)
     }
 
-    get tasks(): unknown {
+    get tasks(): typeof tasksModule {
         return this.#getModule(MODULE_NAME.TASKS)
     }
 
-    get crossPromo(): unknown {
+    get crossPromo(): typeof crossPromoModule {
         return this.#getModule(MODULE_NAME.CROSS_PROMO)
     }
 
@@ -334,12 +334,17 @@ class PlaygamaBridge {
         }
     }
 
-    #getModule(id: string): unknown {
+    // Typed by the caller rather than by a lookup table: `#modules` is filled at
+    // runtime from MODULE_NAME -> singleton pairs, and each getter above already
+    // names the singleton it is asking for. Returning `unknown` instead made the
+    // npm package unusable from TypeScript — every `bridge.storage.get(...)` in a
+    // game was a type error.
+    #getModule<T>(id: string): T {
         if (!this.#isInitialized) {
             logger.error(ERROR.SDK_NOT_INITIALIZED.message)
         }
 
-        return this.#modules[id]
+        return this.#modules[id] as T
     }
 }
 
