@@ -41,8 +41,6 @@ declare global {
             isNativePlatform?: () => boolean
             Plugins?: Record<string, unknown>
         }
-        bridge?: unknown
-        playgamaBridge?: unknown
         adsbygoogle?: unknown[] & { push?: (config: Record<string, unknown>) => unknown }
         system?: { postMessage: (message: unknown) => void }
         chrome?: {

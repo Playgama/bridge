@@ -1,0 +1,81 @@
+name: Release npm package
+
+# Publishes the npm build of the fork as a GitHub Release asset.
+#
+# Games do not install this package from the npm registry: the registry holds
+# upstream `@playgama/bridge`, and the fork must not squat on that name. They
+# pin the release tarball by URL instead, which is why the asset name has to be
+# predictable — hence the guard below that refuses a tag disagreeing with the
+# version in package.json.
+#
+#   "@playgama/bridge": "https://github.com/EdikN/bridge/releases/download/v<version>/playgama-bridge-<version>.tgz"
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tag must match package version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "::error::tag '$GITHUB_REF_NAME' does not match package.json version '$VERSION'."
+            echo "::error::The tarball would be published under a name no game can predict."
+            exit 1
+          fi
+
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build:package
+
+      - name: Pack
+        id: pack
+        run: |
+          FILE="$(npm pack --pack-destination . | tail -n 1)"
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          ls -la "$FILE"
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.pack.outputs.file }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$FILE" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$FILE" \
+              --title "$GITHUB_REF_NAME" \
+              --notes "npm-сборка форка Playgama Bridge $VERSION.
+
+          Установка в игру:
+
+          \`\`\`json
+          \"@playgama/bridge\": \"https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${FILE}\"
+          \`\`\`"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ steps.pack.outputs.file }}
+          if-no-files-found: error
+          retention-days: 7

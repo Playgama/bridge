@@ -9,6 +9,7 @@ This is EdikN's fork of `Playgama/bridge`, synced with upstream v2 (full TypeScr
 ```bash
 npm run build          # Production build (bundled - single file)
 npm run build:dynamic  # Production build with code splitting (separate chunk per platform)
+npm run build:package  # Fork-only: npm package (script bundle + ESM/UMD + d.ts) for release
 npm run dev            # Dev server on port 3535
 npm run develop        # Development build (non-minified)
 npm run lint           # Check code style (ESLint over .ts)
@@ -57,6 +58,13 @@ Builds also mirror `dist/` into `UnityTemplate/` (fork-only `CopyToUnityTemplate
 - **Ad failure popup** OK styling (`src/modules/advertisement/dom.ts`)
 - **Interstitial interval** — `DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 80` seconds (upstream: 60)
 - **Detection log** — `console.info('[Bridge] Platform detected: ...')` in `PlaygamaBridge.ts`
+- **npm package** — the fork is consumable as `@playgama/bridge` from a GitHub Release tarball:
+  `src/npm.ts` / `src/constantsEntry.ts` / `src/publicConstants.ts` / `src/global.ts`,
+  `tsconfig.types.json`, webpack `--env npm`, `.github/workflows/npm-release.yml`.
+  `PLUGIN_NAME` stays `'playgama-bridge'` even though the package is scoped — it is what
+  Yandex records as the plugin, not a packaging detail. See `docs/npm-package.md`
+- **Typed module getters** — `bridge.storage`, `bridge.advertisement` and friends return their
+  module type instead of `unknown` (`src/PlaygamaBridge.ts`)
 - **UnityTemplate/**, `scripts/android-setup.js`, `scripts/deploy.js`, `bridge-deploy.config.json`, fork docs in `docs/`
 
 ## Code Conventions

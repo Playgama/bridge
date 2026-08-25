@@ -42,6 +42,14 @@ And `src/modules/platform/constants.ts` retains `OK_VK`, `GAME_MONETIZE`, `ANDRO
 - `src/modules/advertisement/dom.ts` — `showAdFailurePopup(platformId)` OK styling
 - `src/PlaygamaBridge.ts` — `[Bridge] Platform detected` console.info
 - `webpack.config.ts` — `CopyToUnityTemplatePlugin` (dist → UnityTemplate/)
+- **npm package of the fork** — `src/npm.ts`, `src/constantsEntry.ts`, `src/publicConstants.ts`,
+  `src/global.ts`, `tsconfig.types.json`, the `--env npm` webpack configs and the
+  `main`/`module`/`types`/`exports`/`files` fields in `package.json`. Upstream ships its own
+  npm build from 2.1.0 onwards: on a merge that reaches 2.1.0, **take upstream's** and keep
+  only what the fork adds on top — the pinned `PLUGIN_NAME` and the fork's own
+  `repository`/`homepage`. See `docs/npm-package.md`.
+- `src/PlaygamaBridge.ts` — module getters return their module type (`typeof storageModule`),
+  not `unknown`. Without it the npm package cannot be used from TypeScript at all.
 
 ## 3. Post-Merge QA
 1. **Install dependencies**: `npm install` (in case `package.json` changed).

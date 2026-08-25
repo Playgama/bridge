@@ -1,8 +1,8 @@
 {
-    "name": "playgama-bridge",
-    "version": "2.0.1",
-    "description": "One SDK for cross-platform publishing HTML5 games",
-    "main": "index.js",
+    "name": "@playgama/bridge",
+    "version": "2.0.2-fork.1",
+    "description": "One SDK for cross-platform publishing HTML5 games (EdikN fork)",
+    "main": "dist/playgama-bridge.umd.js",
     "scripts": {
         "build": "npm run build:bundled",
         "build:dynamic": "webpack --config-name dynamic",
@@ -10,6 +10,9 @@
         "build:nolint": "webpack --config-name bundled --env noLint",
         "build:platform": "ts-node scripts/build-platform.ts",
         "build:dist": "ts-node scripts/build-dist.ts",
+        "build:npm": "webpack --env npm --env noLint",
+        "build:types": "tsc -p tsconfig.types.json",
+        "build:package": "npm run build && npm run build:npm && npm run build:types",
         "build:deploy": "npm run build:dynamic && node scripts/deploy.js",
         "develop": "webpack --mode=development",
         "dev": "webpack serve --mode=development --config-name dynamic",
@@ -20,14 +23,14 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/playgama/bridge"
+        "url": "git+https://github.com/EdikN/bridge"
     },
     "author": "Playgama",
     "license": "LGPL-3.0-or-later",
     "bugs": {
-        "url": "https://github.com/playgama/bridge/issues"
+        "url": "https://github.com/EdikN/bridge/issues"
     },
-    "homepage": "https://github.com/playgama/bridge",
+    "homepage": "https://github.com/EdikN/bridge",
     "devDependencies": {
         "@babel/core": "^7.17.8",
         "@babel/preset-env": "^7.16.11",
@@ -49,5 +52,33 @@
         "webpack": "^5.70.0",
         "webpack-cli": "^4.9.2",
         "webpack-dev-server": "^4.15.2"
-    }
+    },
+    "module": "dist/playgama-bridge.esm.js",
+    "types": "dist/types/npm.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/types/npm.d.ts",
+            "import": "./dist/playgama-bridge.esm.js",
+            "require": "./dist/playgama-bridge.umd.js"
+        },
+        "./constants": {
+            "types": "./dist/types/publicConstants.d.ts",
+            "import": "./dist/constants.esm.js",
+            "require": "./dist/constants.cjs.js"
+        },
+        "./global": {
+            "types": "./dist/types/global.d.ts"
+        },
+        "./dist/playgama-bridge.js": "./dist/playgama-bridge.js"
+    },
+    "files": [
+        "dist/playgama-bridge.js",
+        "dist/playgama-bridge.esm.js",
+        "dist/playgama-bridge.umd.js",
+        "dist/constants.esm.js",
+        "dist/constants.cjs.js",
+        "dist/types",
+        "README.md",
+        "LICENSE"
+    ]
 }
