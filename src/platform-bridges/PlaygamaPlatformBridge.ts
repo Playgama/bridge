@@ -30,7 +30,7 @@ import {
 } from '../modules/advertisement/constants'
 import type { WriteBatch } from '../modules/storage/types'
 
-type AdType = 'interstitial' | 'rewarded'
+type AdType = 'interstitial' | 'interstitial_preroll' | 'rewarded'
 type AdState = 'open' | 'empty' | 'rewarded' | 'close' | 'error' | string
 
 interface PlaygamaPlayer {
@@ -41,15 +41,34 @@ interface PlaygamaPlayer {
     [key: string]: unknown
 }
 
-interface PlaygamaPurchase {
-    status: string
+interface PlaygamaPaidPurchase extends AnyRecord {
+    status: 'PAID'
+    orderId: string
+    amount: number
+    externalId?: string
+}
+
+interface PlaygamaFailedPurchase extends AnyRecord {
+    status: 'FAILED'
+    error: unknown
+}
+
+type PlaygamaPurchase = PlaygamaPaidPurchase | PlaygamaFailedPurchase
+
+// Playgama v1 returns orderId/externalId. Wrap v1 is intentionally looser and
+// may still return the legacy id field or omit externalId.
+interface PlaygamaStoredPurchase extends AnyRecord {
+    id?: string
     orderId?: string
-    error?: unknown
+    externalId?: string
+    bridgeId?: string
     [key: string]: unknown
 }
 
 interface PlaygamaProductData extends AnyRecord {
     id: string
+    amount: number
+    description?: string
     externalId?: string
     bridgeId?: string
 }
@@ -61,7 +80,7 @@ interface PlaygamaSdk {
         getIsPaymentsSupported?: () => boolean
         getIsPlayerAuthorizationSupported?: () => boolean
         getIsCloudSaveSupported?: () => boolean
-        getAdditionalParams?: () => Record<string, unknown> | null
+        getAdditionalParams?: () => Record<string, unknown> | null | undefined
     }
     advService: {
         subscribeToAdStateChanges(callback: (adType: AdType, state: AdState) => void): void
@@ -85,9 +104,9 @@ interface PlaygamaSdk {
     }
     inGamePaymentsApi: {
         purchase(product: PlaygamaProductData): Promise<PlaygamaPurchase>
-        getPurchases?: () => Promise<Array<AnyRecord & { id: string; bridgeId?: string }>>
-        consumePurchase?: (orderId: string | undefined, externalId: string | undefined) => Promise<unknown>
-        confirmDelivery?: (params: { orderId?: string; externalId?: string }) => Promise<unknown>
+        getPurchases?: () => Promise<PlaygamaStoredPurchase[]>
+        consumePurchase?: (orderId: string, externalId?: string) => Promise<unknown>
+        confirmDelivery?: (params: { orderId: string; externalId: string }) => Promise<unknown>
     }
     gameService: {
         gameReady(): void
@@ -264,7 +283,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 return Promise.resolve()
             }
             default: {
-                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(String(message), (options ?? {}) as AnyRecord)
+                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(
+                    String(message),
+                    (options ?? {}) as AnyRecord,
+                )
                 return super.sendMessage(message, options)
             }
         }
@@ -371,14 +393,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        if (options && options.externalId) {
-            product.externalId = options.externalId
-        }
+        const externalId = options?.externalId
+            ?? product.externalId
+            ?? this._paymentsGenerateTransactionId(id)
 
-        if (!product.externalId) {
-            product.externalId = this._paymentsGenerateTransactionId(id)
-        }
-
+        product.externalId = externalId
         product.bridgeId = id
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
@@ -389,12 +408,17 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             sdk.inGamePaymentsApi.purchase(product)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        const mergedPurchase: AnyRecord & { id: string } = { id, ...purchase }
+                        const purchaseExternalId = purchase.externalId ?? externalId
+                        const mergedPurchase: AnyRecord & { id: string } = {
+                            ...purchase,
+                            id,
+                            externalId: purchaseExternalId,
+                        }
                         this._paymentsPurchases.push(mergedPurchase)
                         if (sdk.inGamePaymentsApi.confirmDelivery) {
                             sdk.inGamePaymentsApi.confirmDelivery({
                                 orderId: purchase.orderId,
-                                externalId: mergedPurchase.externalId as string | undefined,
+                                externalId: purchaseExternalId,
                             }).catch(() => { /* purchase is resolved regardless */ })
                         }
                         this._resolvePromiseDecorator(ACTION_NAME.PURCHASE, mergedPurchase)
@@ -417,9 +441,30 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
             sdk.inGamePaymentsApi.getPurchases()
                 .then((purchases) => {
-                    this._paymentsPurchases = purchases.map(({ bridgeId, ...purchase }) => (
-                        bridgeId ? { ...purchase, id: bridgeId } : purchase
-                    ))
+                    this._paymentsPurchases = purchases.flatMap(({ bridgeId, ...purchase }) => {
+                        let orderId: string | undefined
+                        if (typeof purchase.orderId === 'string') {
+                            orderId = purchase.orderId
+                        } else if (typeof purchase.id === 'string') {
+                            orderId = purchase.id
+                        }
+
+                        let id = bridgeId
+                        if (!id && typeof purchase.id === 'string') {
+                            id = purchase.id
+                        }
+                        id ??= orderId
+
+                        if (!id) {
+                            return []
+                        }
+
+                        return [{
+                            ...purchase,
+                            id,
+                            ...(orderId ? { orderId } : {}),
+                        }]
+                    })
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
                 .catch(() => {
@@ -433,17 +478,23 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     paymentsConsumePurchase(id: string): Promise<unknown> {
-        type PurchaseRecord = AnyRecord & { id: string; orderId?: string; externalId?: string }
+        type PurchaseRecord = AnyRecord & { id: string; orderId?: unknown; externalId?: unknown }
         const purchase = this._paymentsPurchases.find((p) => p.id === id) as PurchaseRecord | undefined
         if (!purchase) {
             return Promise.reject()
+        }
+
+        const orderId = typeof purchase.orderId === 'string' ? purchase.orderId : purchase.id
+        const externalId = typeof purchase.externalId === 'string' ? purchase.externalId : undefined
+        if (!orderId || (this.platformId === PLATFORM_ID.PLAYGAMA && !externalId)) {
+            return Promise.reject(new Error('Purchase receipt is missing required platform identifiers'))
         }
 
         const sdk = this._platformSdk as PlaygamaSdk
         if (sdk.inGamePaymentsApi.consumePurchase) {
             const promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CONSUME_PURCHASE)
 
-            sdk.inGamePaymentsApi.consumePurchase(purchase.orderId, purchase.externalId)
+            sdk.inGamePaymentsApi.consumePurchase(orderId, externalId)
                 .then(() => {
                     const idx = this._paymentsPurchases.findIndex((p) => p.id === id)
                     if (idx >= 0) {
