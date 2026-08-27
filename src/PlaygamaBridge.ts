@@ -305,7 +305,10 @@ class PlaygamaBridge {
                     }
                 })
                 .finally(() => {
-                    setTimeout(() => this.#loadingScreen?.setProgress(100, true), 700)
+                    setTimeout(() => {
+                        this.#loadingScreen?.setProgress(100, true)
+                        this.#platformBridge?.setLoadingProgress(100)
+                    }, 700)
                 })
         }
 
@@ -314,6 +317,7 @@ class PlaygamaBridge {
 
     setGameLoadingProgress(percent: number): void {
         this.#loadingScreen?.setProgress(percent)
+        this.#platformBridge?.setLoadingProgress(percent)
     }
 
     async #createPlatformBridge(platformId: PlatformId): Promise<void> {
