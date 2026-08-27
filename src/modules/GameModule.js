@@ -58,6 +58,9 @@ class GameModule extends ModuleBase {
             return
         }
 
+        this._currentLoadingProgress = percent
+        this._platformBridge.setLoadingProgress?.(percent)
+
         const fill = document.getElementById('fillRect')
         const gradientMover = document.getElementById('gradientMover')
         const logo = document.getElementById('logo')
@@ -66,8 +69,6 @@ class GameModule extends ModuleBase {
         if (!fill || !gradientMover || !logo || !loadingOverlay) {
             return
         }
-
-        this._currentLoadingProgress = percent
 
         const progress = Math.max(0, Math.min(100, percent))
         const translateY = 100 - progress
