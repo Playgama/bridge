@@ -380,6 +380,8 @@ class PlatformBridgeBase {
         return Promise.resolve()
     }
 
+    setLoadingProgress(_percent: number): void { }
+
     sendCustomMessage(_id?: unknown, _options?: unknown): Promise<unknown> {
         return Promise.resolve()
     }
