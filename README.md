@@ -3,6 +3,7 @@ One SDK for cross-platform publishing HTML5 games.
 
 ## Supported platforms
 + [Playgama](https://playgama.com/?utm_source=github&utm_medium=bridge)
++ [Standalone](https://playgama.com/wrap/?utm_source=github&utm_medium=bridge)
 + [Game Distribution](https://gamedistribution.com)
 + [Crazy Games](https://crazygames.com)
 + [Yandex Games](https://yandex.com/games)
@@ -23,6 +24,9 @@ One SDK for cross-platform publishing HTML5 games.
 + [Microsoft Store](https://apps.microsoft.com)
 + [GameSnacks](https://gamesnacks.com/)
 + [Dlightek/Aha Games](https://aha.game/)
++ [Portal](https://portalapp.games)
++ [TikTok](https://developers.tiktok.com/doc/mini-games-sdk-overview)
++ [Samsung Instant Plays](https://developer.samsung.com/instant-plays)
 + Other [Work In Progress]
 
 ## Plugins for game engines
