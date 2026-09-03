@@ -566,11 +566,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             this.#isCloudSaveSupported = sdk.platformService.getIsCloudSaveSupported()
         }
 
-        // Guests get cloud storage upfront only when anonymous cloud save is enabled;
-        // otherwise it becomes available once the player authorizes.
-        if (this.#isAnonymousCloudSaveEnabled) {
-            this._setPlatformStorageAvailable(this.#isCloudSaveSupported)
-        }
+        this._setPlatformStorageAvailable(this.#isCloudSaveSupported)
 
         if (sdk.platformService?.getIsPaymentsSupported) {
             this.#isPaymentsSupported = sdk.platformService.getIsPaymentsSupported()
@@ -581,12 +577,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         this.#isAddToHomeScreenSupported = socialService?.getIsAddToHomeScreenSupported?.() ?? false
     }
 
-    get #isAnonymousCloudSaveEnabled(): boolean {
-        return this._options.storage?.allowAnonymousCloudSave === true
-    }
-
     #ensureStorageReady(): Promise<void> {
-        if (!this.#isCloudSaveSupported || (!this.#isAnonymousCloudSaveEnabled && !this._isPlayerAuthorized)) {
+        if (!this.#isCloudSaveSupported) {
             return Promise.reject()
         }
         return Promise.resolve()
