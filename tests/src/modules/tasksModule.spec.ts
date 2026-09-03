@@ -2,7 +2,9 @@ import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
 import TasksModule from '../../../src/modules/tasks/TasksModule'
+import eventBus from '../../../src/lib/EventBus'
 import bridgeConfig from '../../../src/lib/bridge-config'
+import { EVENT_NAME } from '../../../src/constants'
 import { MS_PER_DAY, MS_PER_WEEK } from '../../../src/modules/tasks/constants'
 import type {
     TasksBridgeContract,
@@ -39,7 +41,8 @@ function mockConfig(tasks?: TasksConfig) {
     vi.mocked(bridgeConfig.getValues).mockReturnValue(tasks ? { tasks } : {})
 }
 
-// A bridge whose server time can be moved to drive roll-over.
+// A bridge whose server time can be moved to drive roll-over. Events are
+// emitted on the global event bus, not on the bridge, so the bus emit is spied.
 function createBridge(ms = BASE_MS) {
     const clock = { ms }
     const bridge = {
@@ -49,6 +52,8 @@ function createBridge(ms = BASE_MS) {
     }
     return bridge
 }
+
+const busEmit = vi.spyOn(eventBus, 'emit')
 
 function createModule(bridge: ReturnType<typeof createBridge>) {
     return new TasksModule().initialize(bridge as unknown as TasksBridgeContract)
@@ -79,6 +84,7 @@ function find(tasks: Awaited<ReturnType<TasksModule['getTasks']>>, id: string) {
 describe('TasksModule', () => {
     beforeEach(() => {
         store.clear()
+        busEmit.mockClear()
         mockConfig(undefined)
     })
 
@@ -232,6 +238,95 @@ describe('TasksModule', () => {
 
             const kills = find(await createModule(createBridge()).getTasks(), 'kills')
             expect(kills.targets[0].progress).toBe(7)
+        })
+    })
+
+    describe('events', () => {
+        test('a successful claim emits the reward claimed event with the task rewards', async () => {
+            mockConfig(DAILY_CONFIG)
+            const bridge = createBridge()
+            const module = createModule(bridge)
+            await module.addProgress('enemy_killed', 20)
+
+            await module.claimReward('kills')
+
+            expect(busEmit).toHaveBeenCalledWith(EVENT_NAME.TASKS_REWARD_CLAIMED, {
+                taskId: 'kills',
+                groupId: 'daily',
+                type: 'daily',
+                rewards: [{ id: 'gold', amount: 500 }],
+            })
+        })
+
+        test('a rejected claim (incomplete or repeated) emits nothing', async () => {
+            mockConfig(DAILY_CONFIG)
+            const bridge = createBridge()
+            const module = createModule(bridge)
+
+            await module.claimReward('kills') // incomplete
+            expect(busEmit).not.toHaveBeenCalled()
+
+            await module.addProgress('enemy_killed', 20)
+            await module.claimReward('kills')
+            busEmit.mockClear()
+            await module.claimReward('kills') // repeated
+            expect(busEmit).not.toHaveBeenCalled()
+        })
+
+        test('the very first sync of a group is a start, not a roll-over', async () => {
+            mockConfig(DAILY_CONFIG)
+            const bridge = createBridge()
+
+            await createModule(bridge).getTasks()
+
+            expect(busEmit).not.toHaveBeenCalled()
+        })
+
+        test('a daily period change emits the roll-over event with both period keys', async () => {
+            mockConfig(DAILY_CONFIG)
+            const bridge = createBridge()
+            const module = createModule(bridge)
+            await module.getTasks()
+
+            bridge.clock.ms += MS_PER_DAY
+            await module.getTasks()
+
+            expect(busEmit).toHaveBeenCalledWith(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, {
+                groupId: 'daily',
+                type: 'daily',
+                periodKey: 101,
+                previousPeriodKey: 100,
+            })
+        })
+
+        test('a weekly group does not roll over after a day, only after a week', async () => {
+            mockConfig([{ id: 'weekly', type: 'weekly', items: [{ id: 'wk', targets: [{ id: 'm', amount: 5 }], rewards: [] }] }])
+            const bridge = createBridge()
+            const module = createModule(bridge)
+            await module.getTasks()
+
+            bridge.clock.ms += MS_PER_DAY
+            await module.getTasks()
+            expect(busEmit).not.toHaveBeenCalled()
+
+            bridge.clock.ms += MS_PER_WEEK
+            await module.getTasks()
+            expect(busEmit).toHaveBeenCalledWith(
+                EVENT_NAME.TASKS_PERIOD_ROLLED_OVER,
+                expect.objectContaining({ groupId: 'weekly', type: 'weekly' }),
+            )
+        })
+
+        test('a permanent group never rolls over', async () => {
+            mockConfig([{ id: 'perm', type: 'permanent', items: [{ id: 'pm', targets: [{ id: 'm', amount: 5 }], rewards: [] }] }])
+            const bridge = createBridge()
+            const module = createModule(bridge)
+            await module.getTasks()
+
+            bridge.clock.ms += 30 * MS_PER_DAY
+            await module.getTasks()
+
+            expect(busEmit).not.toHaveBeenCalled()
         })
     })
 

@@ -17,7 +17,10 @@
 
 // Fork note: the stock Playgama SVG-logo loading screen is replaced with the
 // fork's custom "cookie splash" loader. The class keeps the upstream public
-// API (show / setProgress with fallback semantics) so PlaygamaBridge is unchanged.
+// API (show / setProgress with fallback semantics / setHideGate) so
+// PlaygamaBridge is unchanged.
+
+import { LOADING_SCREEN_HIDE_GATE_TIMEOUT } from './constants'
 
 const OVERLAY_ID = 'cookie-splash'
 const STYLES_ID = 'cookie-splash-styles'
@@ -33,6 +36,14 @@ class LoadingScreen {
     #currentProgress: number | null = null
 
     #completed = false
+
+    #hideGate: Promise<unknown> | null = null
+
+    // Delays hiding the screen until the given promise settles. Used to keep the
+    // loader at 100% while the branded loading sound is still playing.
+    setHideGate(gate: Promise<unknown>): void {
+        this.#hideGate = gate
+    }
 
     show(_options: LoadingScreenOptions = {}): void {
         if (document.getElementById(OVERLAY_ID)) {
@@ -90,7 +101,15 @@ class LoadingScreen {
 
         if (progress === 100) {
             this.#completed = true
-            this.#hide()
+
+            if (this.#hideGate) {
+                const timeout = new Promise((resolve) => {
+                    setTimeout(resolve, LOADING_SCREEN_HIDE_GATE_TIMEOUT)
+                })
+                Promise.race([this.#hideGate.catch(() => {}), timeout]).then(() => this.#hide())
+            } else {
+                this.#hide()
+            }
         }
     }
 

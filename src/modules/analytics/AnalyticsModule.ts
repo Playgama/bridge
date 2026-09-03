@@ -349,7 +349,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
                 }
             }
 
-            if (platformId === PLATFORM_ID.PLAYGAMA) {
+            if (platformId === PLATFORM_ID.PLAYGAMA || platformId === PLATFORM_ID.STANDALONE) {
                 const gameIdParam = parsedUrl.searchParams.get('game_id')
                 if (gameIdParam) {
                     return gameIdParam

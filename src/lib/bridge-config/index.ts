@@ -30,6 +30,8 @@ export type {
     SaasConfig,
     SaasFeatureConfig,
     GameConfig,
+    VideoPreview,
+    LoadingSoundConfig,
 } from './types'
 
 export {

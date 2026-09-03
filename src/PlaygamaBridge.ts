@@ -38,6 +38,7 @@ import {
 import { applyEventBusMixin } from './lib/EventBus'
 import Deferred from './lib/Deferred'
 import { LoadingScreen } from './lib/loading-screen'
+import { LoadingSound } from './lib/loading-sound'
 import { SafeArea } from './lib/safe-area'
 import bridgeConfig from './lib/bridge-config'
 import { initApiOrigin } from './lib/apiOrigin'
@@ -53,6 +54,7 @@ import paymentsModule from './modules/payments'
 import remoteConfigModule from './modules/remote-config'
 import clipboardModule from './modules/clipboard'
 import achievementsModule from './modules/achievements'
+import notificationsModule from './modules/notifications'
 import dailyRewardsModule from './modules/daily-rewards'
 import tasksModule from './modules/tasks'
 import crossPromoModule from './modules/cross-promo'
@@ -91,63 +93,67 @@ class PlaygamaBridge {
     }
 
     get platform(): typeof platformModule {
-        return this.#getModule(MODULE_NAME.PLATFORM)
+        return this.#getModule(MODULE_NAME.PLATFORM) as typeof platformModule
     }
 
     get player(): typeof playerModule {
-        return this.#getModule(MODULE_NAME.PLAYER)
+        return this.#getModule(MODULE_NAME.PLAYER) as typeof playerModule
     }
 
     get storage(): typeof storageModule {
-        return this.#getModule(MODULE_NAME.STORAGE)
+        return this.#getModule(MODULE_NAME.STORAGE) as typeof storageModule
     }
 
     get advertisement(): typeof advertisementModule {
-        return this.#getModule(MODULE_NAME.ADVERTISEMENT)
+        return this.#getModule(MODULE_NAME.ADVERTISEMENT) as typeof advertisementModule
     }
 
     get social(): typeof socialModule {
-        return this.#getModule(MODULE_NAME.SOCIAL)
+        return this.#getModule(MODULE_NAME.SOCIAL) as typeof socialModule
     }
 
     get device(): typeof deviceModule {
-        return this.#getModule(MODULE_NAME.DEVICE)
+        return this.#getModule(MODULE_NAME.DEVICE) as typeof deviceModule
     }
 
     get leaderboards(): typeof leaderboardsModule {
-        return this.#getModule(MODULE_NAME.LEADERBOARDS)
+        return this.#getModule(MODULE_NAME.LEADERBOARDS) as typeof leaderboardsModule
     }
 
     get payments(): typeof paymentsModule {
-        return this.#getModule(MODULE_NAME.PAYMENTS)
+        return this.#getModule(MODULE_NAME.PAYMENTS) as typeof paymentsModule
     }
 
     get achievements(): typeof achievementsModule {
-        return this.#getModule(MODULE_NAME.ACHIEVEMENTS)
+        return this.#getModule(MODULE_NAME.ACHIEVEMENTS) as typeof achievementsModule
     }
 
     get remoteConfig(): typeof remoteConfigModule {
-        return this.#getModule(MODULE_NAME.REMOTE_CONFIG)
+        return this.#getModule(MODULE_NAME.REMOTE_CONFIG) as typeof remoteConfigModule
     }
 
     get clipboard(): typeof clipboardModule {
-        return this.#getModule(MODULE_NAME.CLIPBOARD)
+        return this.#getModule(MODULE_NAME.CLIPBOARD) as typeof clipboardModule
+    }
+
+    get notifications(): typeof notificationsModule {
+        return this.#getModule(MODULE_NAME.NOTIFICATIONS) as typeof notificationsModule
     }
 
     get analytics(): typeof analyticsModule {
-        return this.#getModule(MODULE_NAME.ANALYTICS)
+        return this.#getModule(MODULE_NAME.ANALYTICS) as typeof analyticsModule
     }
 
     get dailyRewards(): typeof dailyRewardsModule {
-        return this.#getModule(MODULE_NAME.DAILY_REWARDS)
+        return this.#getModule(MODULE_NAME.DAILY_REWARDS) as typeof dailyRewardsModule
     }
 
     get tasks(): typeof tasksModule {
-        return this.#getModule(MODULE_NAME.TASKS)
+        return this.#getModule(MODULE_NAME.TASKS) as typeof tasksModule
     }
 
     get crossPromo(): typeof crossPromoModule {
-        return this.#getModule(MODULE_NAME.CROSS_PROMO)
+        return this.#getModule(MODULE_NAME.CROSS_PROMO) as typeof crossPromoModule
     }
 
     get engine(): string {
@@ -185,6 +191,8 @@ class PlaygamaBridge {
     #modules: Record<string, unknown> = {}
 
     #loadingScreen: LoadingScreen | null = null
+
+    #loadingSound: LoadingSound | null = null
 
     #engine = 'javascript'
 
@@ -245,6 +253,7 @@ class PlaygamaBridge {
                 { name: MODULE_NAME.REMOTE_CONFIG, module: remoteConfigModule },
                 { name: MODULE_NAME.CLIPBOARD, module: clipboardModule },
                 { name: MODULE_NAME.ACHIEVEMENTS, module: achievementsModule },
+                { name: MODULE_NAME.NOTIFICATIONS, module: notificationsModule },
                 { name: MODULE_NAME.ANALYTICS, module: analyticsModule },
                 { name: MODULE_NAME.DAILY_REWARDS, module: dailyRewardsModule },
                 { name: MODULE_NAME.TASKS, module: tasksModule },
@@ -260,6 +269,8 @@ class PlaygamaBridge {
                 .initialize()
                 .then(() => {
                     this.#isInitialized = true
+
+                    this.#playLoadingSound(bridge)
 
                     logger.banner(`PlaygamaBridge v${this.version} initialized.`)
 
@@ -280,6 +291,8 @@ class PlaygamaBridge {
                     }
                 })
                 .catch((error) => {
+                    this.#loadingSound?.cancel()
+
                     const endTime = performance.now()
                     const timeInSeconds = ((endTime - startTime) / 1000).toFixed(2)
                     const errorMessage = error?.message || String(error)
@@ -297,7 +310,10 @@ class PlaygamaBridge {
                     }
                 })
                 .finally(() => {
-                    setTimeout(() => this.#loadingScreen?.setProgress(100, true), 700)
+                    setTimeout(() => {
+                        this.#loadingScreen?.setProgress(100, true)
+                        this.#platformBridge?.setLoadingProgress(100)
+                    }, 700)
                 })
         }
 
@@ -306,6 +322,7 @@ class PlaygamaBridge {
 
     setGameLoadingProgress(percent: number): void {
         this.#loadingScreen?.setProgress(percent)
+        this.#platformBridge?.setLoadingProgress(percent)
     }
 
     async #createPlatformBridge(platformId: PlatformId): Promise<void> {
@@ -322,11 +339,16 @@ class PlaygamaBridge {
             const showFullLogo = bridge.platformId === PLATFORM_ID.YANDEX
                 || bridge.platformId === PLATFORM_ID.Y8
                 ? false
-                : options.showFullLoadingLogo === true
+                : options.showFullLoadingLogo !== false
             const showLoadingText = bridge.platformId === PLATFORM_ID.XIAOMI
                 || options.showLoadingText === true
             this.#loadingScreen = new LoadingScreen()
             this.#loadingScreen.show({ showFullLogo, showLoadingText })
+
+            if (options.loadingSound?.url) {
+                this.#loadingSound = new LoadingSound(options.loadingSound)
+                this.#loadingScreen.setHideGate(this.#loadingSound.finished)
+            }
         }
 
         if (options.game?.adaptToSafeArea) {
@@ -334,17 +356,26 @@ class PlaygamaBridge {
         }
     }
 
-    // Typed by the caller rather than by a lookup table: `#modules` is filled at
-    // runtime from MODULE_NAME -> singleton pairs, and each getter above already
-    // names the singleton it is asking for. Returning `unknown` instead made the
-    // npm package unusable from TypeScript — every `bridge.storage.get(...)` in a
-    // game was a type error.
-    #getModule<T>(id: string): T {
+    // The platform audio state is only known once its SDK is initialized, so the
+    // branded sound starts here — in parallel with the still visible loading screen.
+    #playLoadingSound(bridge: PlatformBridgeBase): void {
+        if (!this.#loadingSound) {
+            return
+        }
+
+        if (bridge.isPlatformAudioEnabled) {
+            this.#loadingSound.play()
+        } else {
+            this.#loadingSound.cancel()
+        }
+    }
+
+    #getModule(id: string): unknown {
         if (!this.#isInitialized) {
             logger.error(ERROR.SDK_NOT_INITIALIZED.message)
         }
 
-        return this.#modules[id] as T
+        return this.#modules[id]
     }
 }
 

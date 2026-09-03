@@ -15,23 +15,13 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const MODULE_NAME = {
-    CORE: 'core',
-    PLATFORM: 'platform',
-    PLAYER: 'player',
-    STORAGE: 'storage',
-    ADVERTISEMENT: 'advertisement',
-    SOCIAL: 'social',
-    DEVICE: 'device',
-    LEADERBOARDS: 'leaderboards',
-    PAYMENTS: 'payments',
-    REMOTE_CONFIG: 'remote_config',
-    CLIPBOARD: 'clipboard',
-    ACHIEVEMENTS: 'achievements',
-    ANALYTICS: 'analytics',
-    NOTIFICATIONS: 'notifications',
-    DAILY_REWARDS: 'daily_rewards',
-    TASKS: 'tasks',
-    CROSS_PROMO: 'cross_promo',
-} as const
-export type ModuleName = typeof MODULE_NAME[keyof typeof MODULE_NAME]
+// Unified leaderboard entry shape. Platforms that expose entries (Yandex, Y8,
+// in-game/SaaS) normalize to these fields; `photo` may be null when the
+// platform provides no avatar.
+export interface LeaderboardEntry {
+    id: string
+    name: string
+    score: number
+    rank: number
+    photo: string | null
+}

@@ -36,6 +36,10 @@ export const LOADING_SCREEN_FILL_RECT_ID = 'fillRect'
 export const LOADING_SCREEN_GRADIENT_MOVER_ID = 'gradientMover'
 export const LOADING_SCREEN_HINT_ID = 'loading-hint'
 
+// Once the progress reaches 100%, the screen waits no longer than this for its
+// hide gate (the branded loading sound) before hiding anyway.
+export const LOADING_SCREEN_HIDE_GATE_TIMEOUT = 3000
+
 export const LOADING_SCREEN_DEFAULT_PRESET: ProgressLogoPreset = {
     viewBox: '0 0 633 819',
     paths: [

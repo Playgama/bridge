@@ -19,6 +19,7 @@ import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import { MODULE_NAME } from '../../constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from './constants'
+import type { LeaderboardEntry } from './types'
 import bridgeConfig from '../../lib/bridge-config'
 import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
 
@@ -80,18 +81,18 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
         return this._platformBridge.leaderboardsSetScore(modifiedId, score, isMain)
     }
 
-    getEntries(id: string): Promise<unknown> {
+    getEntries(id: string): Promise<LeaderboardEntry[]> {
         if (this.type !== LEADERBOARD_TYPE.IN_GAME) {
             return Promise.reject()
         }
 
         if (this.#saas) {
-            return this.#saas.get(`leaderboards/${id}`)
+            return this.#saas.get<LeaderboardEntry[]>(`leaderboards/${id}`)
         }
 
         const modifiedId = this._getPlatformLeaderboardId(id)
 
-        return this._platformBridge.leaderboardsGetEntries(modifiedId)
+        return this._platformBridge.leaderboardsGetEntries(modifiedId) as Promise<LeaderboardEntry[]>
     }
 
     showNativePopup(id: string): Promise<unknown> {

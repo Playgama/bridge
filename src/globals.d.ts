@@ -12,7 +12,6 @@ declare global {
     const __INCLUDE_GAME_DISTRIBUTION__: boolean
     const __INCLUDE_PLAYGAMA__: boolean
     const __INCLUDE_STANDALONE__: boolean
-    const __INCLUDE_PLAYDECK__: boolean
     const __INCLUDE_TELEGRAM__: boolean
     const __INCLUDE_Y8__: boolean
     const __INCLUDE_LAGGED__: boolean

@@ -59,7 +59,7 @@ Builds also mirror `dist/` into `UnityTemplate/` (fork-only `CopyToUnityTemplate
 - **Interstitial interval** — `DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 80` seconds (upstream: 60)
 - **Detection log** — `console.info('[Bridge] Platform detected: ...')` in `PlaygamaBridge.ts`
 - **npm package** — the fork is consumable as `@playgama/bridge` from a GitHub Release tarball:
-  `src/npm.ts` / `src/constantsEntry.ts` / `src/publicConstants.ts` / `src/global.ts`,
+  `src/npm.ts` / `src/publicConstants.ts` / `src/global.ts`,
   `tsconfig.types.json`, webpack `--env npm`, `.github/workflows/npm-release.yml`.
   `PLUGIN_NAME` stays `'playgama-bridge'` even though the package is scoped — it is what
   Yandex records as the plugin, not a packaging detail. See `docs/npm-package.md`

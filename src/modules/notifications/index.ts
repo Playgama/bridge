@@ -15,8 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Entry point of the `@playgama/bridge/constants` subpath. Importing constants
-// must not drag the whole SDK into the bundle, so this entry deliberately does
-// not touch `./index` and creates no bridge instance.
+import NotificationsModule from './NotificationsModule'
 
-export * from './publicConstants'
+export type { NotificationsBridgeContract } from './NotificationsModule'
+export type { ScheduledNotification, NotificationMapping } from './types'
+
+export default new NotificationsModule()

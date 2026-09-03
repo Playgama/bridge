@@ -18,6 +18,7 @@
 import PaymentsModule from './PaymentsModule'
 
 export type { PaymentsBridgeContract } from './PaymentsModule'
+export type { CatalogProduct, Purchase } from './types'
 export {
     getPaymentsProductsPlatformData,
     getPaymentsProductPlatformData,

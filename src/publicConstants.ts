@@ -15,17 +15,20 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// The surface an npm consumer is allowed to import. Everything re-exported here
-// is part of the package contract; everything else in `src/` is an internal
-// detail that may move between releases.
+// Side-effect-free public entry (`@playgama/bridge/constants`). Games that get
+// the SDK runtime from a <script> tag import constant values and data types
+// from here without pulling the whole SDK into their bundle.
 //
-// Each enum-like object is exported twice on purpose — once as a value and once
-// as the union type of its members. That is what lets a game write both
-// `EVENT_NAME.REWARDED_STATE_CHANGED` and `(name: EVENT_NAME) => void` without
-// importing two different identifiers.
+// Every constant is exported together with a same-named type alias
+// (`BANNER_STATE` is both the value map and the union of its values), so it
+// can be used enum-style in both value and type positions.
+
+/* eslint-disable @typescript-eslint/no-redeclare, prefer-destructuring --
+ * each constant is deliberately declared twice — as a value and as a
+ * same-named type alias (enum-style usage in both positions), and namespace
+ * access keeps every value/type pair traceable to its source module. */
 
 import './global'
-
 import * as moduleNames from './constants/moduleName'
 import * as eventNames from './constants/eventName'
 import * as launchSources from './constants/launchSource'
@@ -38,59 +41,75 @@ import * as tasksConstants from './modules/tasks/constants'
 import type * as tasksTypes from './modules/tasks/types'
 import * as crossPromoConstants from './modules/cross-promo/constants'
 
-// Re-exporting `{ PLATFORM_ID }` and `type { PlatformId as PLATFORM_ID }` from
-// the same module is a duplicate identifier: one `export ... from` alias lands
-// in both declaration spaces at once. Binding the value and declaring the type
-// separately is what keeps one name usable in both positions.
-/* eslint-disable @typescript-eslint/no-redeclare */
-export const { MODULE_NAME } = moduleNames
-export type MODULE_NAME = moduleNames.ModuleName
-
-export const { EVENT_NAME } = eventNames
-export type EVENT_NAME = eventNames.EventName
-
-export const { LAUNCH_SOURCE } = launchSources
-export type LAUNCH_SOURCE = launchSources.LaunchSource
-
-export const { ERROR_CODE } = errors
-export type ERROR_CODE = errors.ErrorCode
-
-export const { PLATFORM_ID, PLATFORM_MESSAGE, VISIBILITY_STATE } = platformConstants
+export const PLATFORM_ID = platformConstants.PLATFORM_ID
 export type PLATFORM_ID = platformConstants.PlatformId
+
+export const PLATFORM_MESSAGE = platformConstants.PLATFORM_MESSAGE
 export type PLATFORM_MESSAGE = platformConstants.PlatformMessage
+
+export const VISIBILITY_STATE = platformConstants.VISIBILITY_STATE
 export type VISIBILITY_STATE = platformConstants.VisibilityState
 
-export const { DEVICE_TYPE, DEVICE_OS, DEVICE_ORIENTATION } = deviceConstants
+export const MODULE_NAME = moduleNames.MODULE_NAME
+export type MODULE_NAME = moduleNames.ModuleName
+
+export const EVENT_NAME = eventNames.EVENT_NAME
+export type EVENT_NAME = eventNames.EventName
+
+export const LAUNCH_SOURCE = launchSources.LAUNCH_SOURCE
+export type LAUNCH_SOURCE = launchSources.LaunchSource
+
+export const ERROR_CODE = errors.ERROR_CODE
+export type ERROR_CODE = errors.ErrorCode
+
+export const DEVICE_TYPE = deviceConstants.DEVICE_TYPE
 export type DEVICE_TYPE = deviceConstants.DeviceType
+
+export const DEVICE_OS = deviceConstants.DEVICE_OS
 export type DEVICE_OS = deviceConstants.DeviceOs
+
+export const DEVICE_ORIENTATION = deviceConstants.DEVICE_ORIENTATION
 export type DEVICE_ORIENTATION = deviceConstants.DeviceOrientation
 
-export const {
-    BANNER_POSITION, BANNER_STATE, INTERSTITIAL_STATE, REWARDED_STATE,
-} = advertisementConstants
+export const BANNER_POSITION = advertisementConstants.BANNER_POSITION
 export type BANNER_POSITION = advertisementConstants.BannerPosition
+
+export const BANNER_STATE = advertisementConstants.BANNER_STATE
 export type BANNER_STATE = advertisementConstants.BannerState
+
+export const INTERSTITIAL_STATE = advertisementConstants.INTERSTITIAL_STATE
 export type INTERSTITIAL_STATE = advertisementConstants.InterstitialState
+
+export const REWARDED_STATE = advertisementConstants.REWARDED_STATE
 export type REWARDED_STATE = advertisementConstants.RewardedState
 
-export const { LEADERBOARD_TYPE } = leaderboardsConstants
+export const LEADERBOARD_TYPE = leaderboardsConstants.LEADERBOARD_TYPE
 export type LEADERBOARD_TYPE = leaderboardsConstants.LeaderboardType
 
-export const { CROSS_PROMO_SOURCE } = crossPromoConstants
+export const TASK_TYPE = tasksConstants.TASK_TYPE
+export type TASK_TYPE = tasksTypes.TaskType
+
+export const CROSS_PROMO_SOURCE = crossPromoConstants.CROSS_PROMO_SOURCE
 export type CROSS_PROMO_SOURCE = crossPromoConstants.CrossPromoSource
 
-export const { TASK_TYPE } = tasksConstants
-export type TASK_TYPE = tasksTypes.TaskType
 export { BridgeError } from './constants/errors'
 
-// The same members under their camel-case type names, for code that prefers
-// `PlatformId` to `PLATFORM_ID` in type position.
+// CamelCase aliases of the same unions, for code that prefers them over the
+// enum-style names above.
+export type {
+    PlatformId,
+    PlatformMessage,
+    VisibilityState,
+} from './modules/platform/constants'
 export type { ModuleName } from './constants/moduleName'
 export type { EventName } from './constants/eventName'
 export type { LaunchSource } from './constants/launchSource'
 export type { ErrorCode } from './constants/errors'
-export type { PlatformId, PlatformMessage, VisibilityState } from './modules/platform/constants'
-export type { DeviceType, DeviceOs, DeviceOrientation } from './modules/device/constants'
+export type {
+    DeviceType,
+    DeviceOs,
+    DeviceOrientation,
+} from './modules/device/constants'
 export type {
     BannerPosition,
     BannerState,
@@ -98,14 +117,20 @@ export type {
     RewardedState,
 } from './modules/advertisement/constants'
 export type { LeaderboardType } from './modules/leaderboards/constants'
+export type { TaskType } from './modules/tasks/types'
 export type { CrossPromoSource } from './modules/cross-promo/constants'
 
-// Shapes a game receives from the SDK and has to name in its own code.
-export type {
-    TaskType, Task, TaskTarget, TaskReward,
-} from './modules/tasks/types'
-export type { Game } from './modules/cross-promo/types'
+// Public data shapes returned by SDK modules.
+export type { LeaderboardEntry } from './modules/leaderboards/types'
+export type { CatalogProduct, Purchase } from './modules/payments/types'
 export type { NormalizedAchievement } from './modules/achievements/types'
-export type { SafeAreaInsets } from './lib/safe-area/types'
+export type { Game } from './modules/cross-promo/types'
+export type {
+    Task,
+    TaskTarget,
+    TaskReward,
+} from './modules/tasks/types'
+export type { ScheduledNotification } from './modules/notifications/types'
+export type { SafeAreaInsets } from './lib/safe-area'
 export type { RemoteConfigContext } from './modules/remote-config/RemoteConfigModule'
 export type { PlayerAuthorizeOptions } from './modules/player/PlayerModule'

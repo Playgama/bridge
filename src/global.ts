@@ -15,18 +15,18 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Typing for the singletons the bundle attaches to `window`. Lives in a real
-// module (not in the ambient `globals.d.ts`) because `tsc` copies declarations
-// only for compiled modules: the npm package needs this file in `dist/types`,
-// otherwise `import '@playgama/bridge/global'` resolves to nothing.
+// Types the global `bridge` singleton for projects that load the SDK via a
+// <script> tag (CDN or a local copy) instead of importing it. Reaches
+// consumers through the npm/constants entry points, or explicitly via
+// `import type {} from '@playgama/bridge/global'`.
 
 import type PlaygamaBridge from './PlaygamaBridge'
 
 declare global {
-    interface Window {
-        bridge?: PlaygamaBridge
-        playgamaBridge?: PlaygamaBridge
-    }
+    /* eslint-disable no-var, vars-on-top */
+    var bridge: PlaygamaBridge
+    var playgamaBridge: PlaygamaBridge
+    /* eslint-enable no-var, vars-on-top */
 }
 
 export {}

@@ -16,6 +16,7 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import eventBus from '../lib/EventBus'
 import ServerTimeCache from '../lib/ServerTimeCache'
 import MessageBroker from '../lib/MessageBroker'
 import bridgeConfig from '../lib/bridge-config'
@@ -39,6 +40,15 @@ import {
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
+import type { CrossPromoShownPayload } from '../modules/cross-promo/types'
+import type {
+    DailyRewardsClaimedPayload,
+    DailyRewardsStreakResetPayload,
+} from '../modules/daily-rewards/types'
+import type {
+    TasksRewardClaimedPayload,
+    TasksPeriodRolledOverPayload,
+} from '../modules/tasks/types'
 import type { AnyRecord } from '../utils'
 import type { SafeAreaInsets } from '../lib/safe-area'
 
@@ -77,6 +87,13 @@ export const ACTION_NAME_QA = {
     CLEAN_CACHE: 'clean_cache',
     SHOW_ADVANCED_BANNERS: 'show_advanced_banners',
     HIDE_ADVANCED_BANNERS: 'hide_advanced_banners',
+    CROSS_PROMO_SHOWN: 'cross_promo_shown',
+    // Outbound notifications (events that already happened), not commands:
+    // the imperative daily_rewards_* names stay free for future QA tool commands.
+    DAILY_REWARDS_CLAIMED: 'daily_rewards_claimed',
+    DAILY_REWARDS_STREAK_RESET: 'daily_rewards_streak_reset',
+    TASKS_REWARD_CLAIMED: 'tasks_reward_claimed',
+    TASKS_PERIOD_ROLLED_OVER: 'tasks_period_rolled_over',
 } as const
 export type ActionNameQa = typeof ACTION_NAME_QA[keyof typeof ACTION_NAME_QA]
 
@@ -88,6 +105,8 @@ const RECORDER_ACTION = {
     RTC_ICE: 'rtc_ice',
     CAPTURE_STARTED: 'capture_started',
     CAPTURE_ERROR: 'capture_error',
+    TAKE_SCREENSHOT: 'take_screenshot',
+    SCREENSHOT_RESULT: 'screenshot_result',
 } as const
 
 const INTERSTITIAL_STATUS = {
@@ -298,6 +317,44 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                     options: { isPaused },
                 })
             })
+            // Module-originated events arrive on the global event bus (the bus
+            // the public bridge.on() is wired to), unlike AUDIO/PAUSE above,
+            // which this bridge emits itself.
+            eventBus.on(EVENT_NAME.CROSS_PROMO_SHOWN, (payload: CrossPromoShownPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.CROSS_PROMO,
+                    action: ACTION_NAME_QA.CROSS_PROMO_SHOWN,
+                    options: { ...payload },
+                })
+            })
+            eventBus.on(EVENT_NAME.DAILY_REWARDS_CLAIMED, (payload: DailyRewardsClaimedPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.DAILY_REWARDS,
+                    action: ACTION_NAME_QA.DAILY_REWARDS_CLAIMED,
+                    options: { ...payload },
+                })
+            })
+            eventBus.on(EVENT_NAME.DAILY_REWARDS_STREAK_RESET, (payload: DailyRewardsStreakResetPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.DAILY_REWARDS,
+                    action: ACTION_NAME_QA.DAILY_REWARDS_STREAK_RESET,
+                    options: { ...payload },
+                })
+            })
+            eventBus.on(EVENT_NAME.TASKS_REWARD_CLAIMED, (payload: TasksRewardClaimedPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.TASKS,
+                    action: ACTION_NAME_QA.TASKS_REWARD_CLAIMED,
+                    options: { ...payload },
+                })
+            })
+            eventBus.on(EVENT_NAME.TASKS_PERIOD_ROLLED_OVER, (payload: TasksPeriodRolledOverPayload) => {
+                this.#sendMessage({
+                    type: MODULE_NAME.TASKS,
+                    action: ACTION_NAME_QA.TASKS_PERIOD_ROLLED_OVER,
+                    options: { ...payload },
+                })
+            })
 
             const messageHandler = (event: MessageEvent) => {
                 const data = event.data as QaToolMessage | undefined
@@ -342,6 +399,8 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                         loadError: bridgeConfig.loadError,
                         parseError: bridgeConfig.parseError,
                         options: bridgeConfig.getRawValues(),
+                        // What modules actually consume; the QA tool reads module configs from here
+                        resolvedOptions: bridgeConfig.getValues(),
                         path: bridgeConfig.path,
                         remoteLoadStatus: bridgeConfig.remoteLoadStatus,
                         remoteLoadError: bridgeConfig.remoteLoadError,
@@ -1099,6 +1158,16 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
                 break
             case RECORDER_ACTION.RTC_ICE:
                 this.#recorder.handleIce(data.options as RTCIceCandidateInit)
+                break
+            case RECORDER_ACTION.TAKE_SCREENSHOT:
+                this.#recorder.takeScreenshotFromSurface(data.options).then((result) => {
+                    this.#sendMessage({
+                        type: MODULE_NAME_QA.RECORDER,
+                        action: RECORDER_ACTION.SCREENSHOT_RESULT,
+                        id: data.id,
+                        payload: result as unknown as Record<string, unknown>,
+                    })
+                })
                 break
             default:
                 break

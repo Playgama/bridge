@@ -22,5 +22,6 @@ export type {
     LeaderboardsBridgeOptions,
     LeaderboardMapping,
 } from './LeaderboardsModule'
+export type { LeaderboardEntry } from './types'
 
 export default new LeaderboardsModule()

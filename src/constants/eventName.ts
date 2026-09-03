@@ -26,5 +26,12 @@ export const EVENT_NAME = {
     SCREEN_SIZE_CHANGED: 'screen_size_changed',
     PLATFORM_MESSAGE_SENT: 'platform_message_sent',
     PLATFORM_STORAGE_AVAILABILITY_CHANGED: 'platform_storage_availability_changed',
+    VISIBILITY_STATE_CHANGED: 'visibility_state_changed',
+    STORAGE_SET: 'storage_set',
+    CROSS_PROMO_SHOWN: 'cross_promo_shown',
+    DAILY_REWARDS_CLAIMED: 'daily_rewards_claimed',
+    DAILY_REWARDS_STREAK_RESET: 'daily_rewards_streak_reset',
+    TASKS_REWARD_CLAIMED: 'tasks_reward_claimed',
+    TASKS_PERIOD_ROLLED_OVER: 'tasks_period_rolled_over',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]

@@ -15,12 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Entry point of the npm package: `import { bridge } from '@playgama/bridge'`.
-//
-// The instance is not created here. `./index` attaches exactly one singleton to
-// `window`, and a game that also loads the standalone `playgama-bridge.js` must
-// end up talking to that same instance — two bridges on one page means two
-// initializations and two sets of platform listeners.
+// npm entry point. Runs the same side-effect as the CDN/<script> build
+// (populates window.bridge) and additionally exposes the singleton as a
+// typed module export so games can `import bridge from '@playgama/bridge'`.
 
 import './index'
 import './global'
@@ -30,6 +27,10 @@ const bridge = window.bridge as PlaygamaBridge
 
 export default bridge
 export { bridge }
+
+// Public constants and data-shape types (also available side-effect-free via
+// the `@playgama/bridge/constants` subpath).
 export * from './publicConstants'
+
 export type { default as PlaygamaBridge } from './PlaygamaBridge'
 export type { PlaygamaInitOptions } from './PlaygamaBridge'

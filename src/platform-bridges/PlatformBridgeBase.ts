@@ -43,6 +43,7 @@ import {
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
+import type { ScheduledNotification } from '../modules/notifications/types'
 import { internalAnalytics } from '../modules/analytics'
 import {
     getPaymentsProductsPlatformData,
@@ -299,6 +300,11 @@ class PlatformBridgeBase {
         return false
     }
 
+    // notifications
+    get isNotificationsSupported(): boolean {
+        return false
+    }
+
     protected _options!: ConfigFileOptions
 
     protected _additionalData: Record<string, unknown> | null = null
@@ -380,6 +386,8 @@ class PlatformBridgeBase {
         return Promise.resolve()
     }
 
+    setLoadingProgress(_percent: number): void { }
+
     sendCustomMessage(_id?: unknown, _options?: unknown): Promise<unknown> {
         return Promise.resolve()
     }
@@ -416,9 +424,13 @@ class PlatformBridgeBase {
         this._setBannerState(BANNER_STATE.HIDDEN)
     }
 
-    showAdvancedBanners(_banners?: unknown): void { }
+    showAdvancedBanners(_banners?: unknown): void {
+        this._setAdvancedBannersState(BANNER_STATE.FAILED)
+    }
 
-    hideAdvancedBanners(): void { }
+    hideAdvancedBanners(): void {
+        this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+    }
 
     preloadInterstitial(_placement?: unknown): void { }
 
@@ -527,6 +539,22 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
+    // notifications
+    notificationsSchedule(
+        _notification: ScheduledNotification,
+        _platformValue?: string | number,
+    ): Promise<unknown> {
+        return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
+    }
+
+    notificationsCancel(_id: string, _platformValue?: string | number): Promise<void> {
+        return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
+    }
+
+    notificationsCancelAll(): Promise<void> {
+        return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
+    }
+
     protected _setPlatformStorageAvailable(isAvailable: boolean): void {
         if (this._isPlatformStorageAvailable === isAvailable) {
             return
@@ -542,6 +570,7 @@ class PlatformBridgeBase {
         }
 
         this._visibilityState = state
+        this.emit(EVENT_NAME.VISIBILITY_STATE_CHANGED, state)
 
         const isHidden = state === VISIBILITY_STATE.HIDDEN
         if (this._pauseStateAggregator) {
