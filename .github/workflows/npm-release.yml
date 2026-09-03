@@ -9,6 +9,10 @@ name: Release npm package
 # version in package.json.
 #
 #   "@playgama/bridge": "https://github.com/EdikN/bridge/releases/download/v<version>/playgama-bridge-<version>.tgz"
+#
+# Рядом с тарболом в релиз кладётся и скриптовый бандл dist/playgama-bridge.js —
+# то же, что делал upstream-воркфлоу release.yml. Тот воркфлоу в форке удалён:
+# два воркфлоу на один тег наперегонки создавали бы один и тот же релиз.
 
 on:
   push:
@@ -75,7 +79,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$FILE" --clobber
+            gh release upload "$TAG" "$FILE" dist/playgama-bridge.js --clobber
             exit 0
           fi
           NOTES="$(printf '%s\n' \
@@ -88,7 +92,7 @@ jobs:
             '```')"
           # --target нужен для ручного запуска: тега ещё нет, и релиз создаёт его
           # сам на этом коммите.
-          gh release create "$TAG" "$FILE" \
+          gh release create "$TAG" "$FILE" dist/playgama-bridge.js \
             --title "$TAG" \
             --target "$GITHUB_SHA" \
             --notes "$NOTES"

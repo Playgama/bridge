@@ -1,6 +1,6 @@
 # Upgrading Over Upstream (Merge Skill)
 
-> **Status:** synced with upstream **v2.0.1** (TypeScript rewrite) on 2026-07-17.
+> **Status:** synced with upstream **v2.1.0** on 2026-09-03 (previous sync: v2.0.1 on 2026-07-17).
 > The codebase is now TypeScript; all custom features below live in `.ts` files.
 
 When updating the bridge library from the official upstream (`Playgama/bridge`), strictly adhere to the following steps to preserve our custom features:
@@ -15,8 +15,10 @@ git merge upstream/main --no-ff
 
 ### Loading screen (`src/lib/loading-screen/LoadingScreen.ts`)
 **DO NOT** replace our cookie-splash loader with the default Playgama SVG logo.
-The class keeps upstream's public API (`show`, `setProgress(percent, isFallback)`),
-but renders the fork's `#cookie-splash` overlay.
+The class keeps upstream's public API (`show`, `setProgress(percent, isFallback)`,
+`setHideGate(promise)` — the loading-sound gate added in 2.1.0), but renders the fork's
+`#cookie-splash` overlay. When upstream adds a method to its LoadingScreen, add it here too:
+`PlaygamaBridge.ts` calls it unconditionally.
 
 ### Custom Platforms
 Never remove or overwrite our exclusive integrations:
@@ -42,12 +44,17 @@ And `src/modules/platform/constants.ts` retains `OK_VK`, `GAME_MONETIZE`, `ANDRO
 - `src/modules/advertisement/dom.ts` — `showAdFailurePopup(platformId)` OK styling
 - `src/PlaygamaBridge.ts` — `[Bridge] Platform detected` console.info
 - `webpack.config.ts` — `CopyToUnityTemplatePlugin` (dist → UnityTemplate/)
-- **npm package of the fork** — `src/npm.ts`, `src/publicConstants.ts`,
-  `src/global.ts`, `tsconfig.types.json`, the `--env npm` webpack configs and the
-  `main`/`module`/`types`/`exports`/`files` fields in `package.json`. Upstream ships its own
-  npm build from 2.1.0 onwards: on a merge that reaches 2.1.0, **take upstream's** and keep
-  only what the fork adds on top — the pinned `PLUGIN_NAME` and the fork's own
-  `repository`/`homepage`. See `docs/npm-package.md`.
+- **npm package** — since the 2.1.0 sync `src/npm.ts`, `src/publicConstants.ts`, `src/global.ts`,
+  `tsconfig.types.json` and the `--env npm` webpack configs are **upstream's** (take theirs on
+  conflict). The fork keeps on top: `version` `<upstream>-fork.N`, the fork's `description` /
+  `repository` / `bugs` / `homepage`, `build:package` that also runs `npm run build`
+  (the release tarball ships `dist/playgama-bridge.js`), `build:deploy`, and in
+  `webpack.config.ts` the npm bundles are built without `CopyToUnityTemplatePlugin`.
+  `src/constantsEntry.ts` was removed (upstream uses `src/publicConstants.ts` as the entry).
+  See `docs/npm-package.md`.
+- **Release workflows** — upstream's `.github/workflows/release.yml` is deleted in the fork:
+  `npm-release.yml` attaches both the npm tarball and `dist/playgama-bridge.js` to the release.
+  Delete `release.yml` again if a merge brings it back.
 - `src/PlaygamaBridge.ts` — module getters return their module type (`typeof storageModule`),
   not `unknown`. Without it the npm package cannot be used from TypeScript at all.
 

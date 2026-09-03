@@ -77,7 +77,7 @@ git push origin v2.0.3-fork.1
 С версии 2.1.0 апстрим сам умеет собирать npm-пакет. При слиянии до 2.1.0 брать
 апстримовскую сборку, а из форка сохранить:
 
-* `PLUGIN_NAME = 'playgama-bridge'` в `webpack.config.ts` — имя, под которым мост
+* `PLUGIN_NAME: JSON.stringify('playgama-bridge')` в `webpack.config.ts` (upstream с 2.1.0 тоже держит его литералом) — имя, под которым мост
   представляется площадке (Яндекс пишет его как `pluginName`). Оно не должно
   меняться из-за того, что пакет стал скоупнутым;
 * `repository` / `homepage` / `bugs`, указывающие на форк;
