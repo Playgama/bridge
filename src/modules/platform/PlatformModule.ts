@@ -17,6 +17,7 @@
 
 import eventBus, { applyEventBusMixin } from '../../lib/EventBus'
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
+import type { LaunchData } from './types'
 import { EVENT_NAME, MODULE_NAME, type LaunchSource } from '../../constants'
 import {
     PLATFORM_MESSAGE,
@@ -37,6 +38,7 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     platformSdk: unknown
     platformLanguage: string
     platformPayload: string | null
+    launchData: LaunchData | null
     platformTld: string | null
     launchSource: LaunchSource | null
     isPlatformExternalCallsSupported: boolean
@@ -65,6 +67,11 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     get payload(): string | null {
         return this._platformBridge.platformPayload
+    }
+
+    // Structured launch data (e.g. what a shared post carries); `payload` is the string form.
+    get launchData(): LaunchData | null {
+        return this._platformBridge.launchData
     }
 
     get tld(): string | null {

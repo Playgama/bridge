@@ -15,22 +15,19 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import SocialModule from './SocialModule'
+// How often the same player may claim on a post: once per `cooldown` per post,
+// or once per `cooldown` across all claimable posts of the game.
+export const CLAIM_SCOPE = {
+    USER: 'user',
+    POST: 'post',
+} as const
+export type ClaimScope = typeof CLAIM_SCOPE[keyof typeof CLAIM_SCOPE]
 
-export type {
-    SocialBridgeContract,
-    SocialOptions,
-    SocialConfig,
-    SocialMethod,
-    CreatePostOptions,
-    ClaimOptions,
-    ClaimStatus,
-    ClaimResult,
-    InboxOptions,
-    InboxEvent,
-    Inbox,
-} from './types'
-export { CLAIM_SCOPE, CLAIM_REASON } from './constants'
-export { getSocialPlatformData } from './helpers'
-
-export default new SocialModule()
+export const CLAIM_REASON = {
+    UNAUTHORIZED: 'unauthorized',
+    OWN: 'own',
+    COOLDOWN: 'cooldown',
+    EXPIRED: 'expired',
+    LIMIT: 'limit',
+} as const
+export type ClaimReason = typeof CLAIM_REASON[keyof typeof CLAIM_REASON]

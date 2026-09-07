@@ -16,8 +16,18 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import ServerTimeCache from '../lib/ServerTimeCache'
 import { ACTION_NAME } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
+import type { LeaderboardEntry } from '../modules/leaderboards/types'
+import type {
+    ClaimOptions,
+    ClaimResult,
+    ClaimStatus,
+    InboxOptions,
+    Inbox,
+} from '../modules/social/types'
 import type { AnyRecord } from '../utils'
 
 declare global {
@@ -28,11 +38,34 @@ declare global {
     }
 }
 
+// Reddit has no client SDK: every call goes over HTTP to the app's own Devvit
+// server (`/api/*`), which talks to Reddit on the game's behalf. The endpoint
+// contract is shared with the `bridge-reddit-devvit` server template.
 interface InitializePayload {
     isPlayerAuthorized?: boolean
     playerId?: string
     playerName?: string
     playerPhoto?: string
+    // Free-form launch payload the post was created with via `createPost()`.
+    payload?: string
+    // The post the game runs in, exposed as `platform.launchData`, with any
+    // `data` it was created with via `createPost()` and — when the post is
+    // claimable — the current player's claim status.
+    postId?: string
+    subredditName?: string
+    postAuthorId?: string
+    postData?: unknown
+    claimable?: boolean
+    claim?: ClaimStatus
+}
+
+// Raw entry from the server; numeric fields may arrive as strings.
+interface LeaderboardEntryPayload {
+    id?: string | number
+    name?: string
+    score?: number | string
+    rank?: number | string
+    photo?: string | null
 }
 
 interface FetchJsonOptions {
@@ -46,6 +79,10 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.REDDIT
     }
 
+    get platformPayload(): string | null {
+        return this.#platformPayload ?? super.platformPayload
+    }
+
     get isPlatformExternalCallsSupported(): boolean {
         return false
     }
@@ -55,14 +92,36 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // On Reddit sharing means leaving a comment under the post the game runs in.
+    get isShareSupported(): boolean {
+        return true
+    }
+
     get isCreatePostSupported(): boolean {
         return true
+    }
+
+    get isClaimSupported(): boolean {
+        return true
+    }
+
+    get isInboxSupported(): boolean {
+        return true
+    }
+
+    // leaderboards
+    get leaderboardsType(): LeaderboardType {
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     // payments
     get isPaymentsSupported(): boolean {
         return true
     }
+
+    #platformPayload: string | null = null
+
+    #serverTimeCache = new ServerTimeCache(() => this.#fetchServerTime())
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -87,6 +146,19 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                         this._setPlatformStorageAvailable(true)
                     }
 
+                    this.#platformPayload = payload.payload ?? null
+                    if (payload.postId) {
+                        this._launchData = {
+                            id: payload.postId,
+                            authorId: payload.postAuthorId ?? null,
+                            data: payload.postData ?? null,
+                            claimable: !!payload.claimable,
+                            ...(payload.claim ? { claim: payload.claim } : {}),
+                            postId: payload.postId,
+                            subredditName: payload.subredditName ?? null,
+                        }
+                    }
+
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 })
@@ -98,33 +170,213 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // platform
+    getServerTime(): Promise<number> {
+        return this.#serverTimeCache.getServerTime()
+    }
+
+    // storage — the server accepts key arrays, so each operation is a single round trip.
     async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
         await this.#ensureStorageReady()
+        const values = await this.#fetchJson('/api/storage/get', { method: 'POST', body: { key: keys } })
         const result: Record<string, unknown> = {}
-        await Promise.all(keys.map(async (key) => {
-            const value = await this.#fetchJson('/api/storage/get', { method: 'POST', body: { key } })
+        keys.forEach((key, index) => {
+            const value = Array.isArray(values) ? values[index] : null
             if (value !== null && value !== undefined && value !== '') {
                 result[key] = value
             }
-        }))
+        })
         return result
     }
 
     async setDataToStorage(data: Record<string, unknown>): Promise<void> {
         await this.#ensureStorageReady()
-        return Promise.all(Object.keys(data).map((key) => this.#fetchJson('/api/storage/set', { method: 'POST', body: { key, value: data[key] } })))
-            .then(() => undefined)
+        const keys = Object.keys(data)
+        await this.#fetchJson('/api/storage/set', {
+            method: 'POST',
+            body: { key: keys, value: keys.map((key) => data[key]) },
+        })
     }
 
     async deleteDataFromStorage(keys: string[]): Promise<void> {
         await this.#ensureStorageReady()
-        return Promise.all(keys.map((key) => this.#fetchJson('/api/storage/delete', { method: 'POST', body: { key } })))
-            .then(() => undefined)
+        await this.#fetchJson('/api/storage/delete', { method: 'POST', body: { key: keys } })
     }
 
     // advertisement
     checkAdBlock(): Promise<boolean> {
         return Promise.resolve(false)
+    }
+
+    // social
+    share(options?: unknown): Promise<unknown> {
+        const { text, ...rest } = (options ?? {}) as AnyRecord & { text?: string }
+        if (!text) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+
+            this.#fetchJson('/api/share', { method: 'POST', body: { options: { ...rest, text } } })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.SHARE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // Creates a new post running this app. The canonical `text` becomes the post
+    // title; any other field (`data` to attach, `claimable` to let others claim on
+    // it, `payload`) is forwarded to the server verbatim. Resolves with
+    // `{ id, url }` (plus the raw `postId` / `postUrl`).
+    createPost(options?: unknown): Promise<unknown> {
+        const { text, ...rest } = (options ?? {}) as AnyRecord & { text?: string; title?: string }
+        const title = rest.title ?? text
+        if (!title) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
+
+            this.#fetchJson('/api/create-post', { method: 'POST', body: { options: { ...rest, title } } })
+                .then((data) => {
+                    const result = (data ?? {}) as AnyRecord
+                    this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST, {
+                        ...result,
+                        id: String(result.postId ?? result.id ?? ''),
+                        url: typeof result.postUrl === 'string' ? result.postUrl : null,
+                    })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CREATE_POST, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    joinCommunity(): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+
+            this.#fetchJson('/api/join-community', { method: 'POST' })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // Claim on the post the game runs in (created with createPost({ claimable: true })).
+    claim(options: ClaimOptions): Promise<ClaimResult> {
+        if (!this._isPlayerAuthorized || !this._launchData?.claimable) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CLAIM)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CLAIM)
+
+            this.#fetchJson('/api/claim', { method: 'POST', body: { options } })
+                .then((data) => {
+                    this._resolvePromiseDecorator(ACTION_NAME.CLAIM, data)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.CLAIM, error)
+                })
+        }
+
+        return promiseDecorator.promise as Promise<ClaimResult>
+    }
+
+    getInbox(options: InboxOptions): Promise<Inbox> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_INBOX)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_INBOX)
+
+            this.#fetchJson('/api/inbox', { method: 'POST', body: { options } })
+                .then((data) => {
+                    const result = (data ?? {}) as AnyRecord
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_INBOX, {
+                        events: this.#extractList(result.events),
+                        serverTime: Number(result.serverTime ?? 0),
+                    })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_INBOX, error)
+                })
+        }
+
+        return promiseDecorator.promise as Promise<Inbox>
+    }
+
+    // leaderboards
+    leaderboardsSetScore(id: string, score: number, isMain: boolean): Promise<unknown> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+
+            this.#fetchJson('/api/leaderboards/set-score', { method: 'POST', body: { id, score, isMain } })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    leaderboardsGetEntries(id: string): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+
+            this.#fetchJson(`/api/leaderboards/entries?id=${encodeURIComponent(id)}`)
+                .then((data) => {
+                    const entries: LeaderboardEntry[] = this.#extractList(data).map((entry) => {
+                        const {
+                            id: entryId, name, score, rank, photo,
+                        } = (entry ?? {}) as LeaderboardEntryPayload
+                        return {
+                            id: String(entryId ?? ''),
+                            name: name ?? '',
+                            score: Number(score ?? 0),
+                            rank: Number(rank ?? 0),
+                            photo: photo ?? null,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 
     // payments
@@ -203,38 +455,14 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    createPost(options: unknown = {}): Promise<unknown> {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
-
-            this.#fetchJson('/api/create-post', { method: 'POST', body: { options } })
-                .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.CREATE_POST, error)
-                })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    joinCommunity(): Promise<unknown> {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
-
-            this.#fetchJson('/api/join-community', { method: 'POST' })
-                .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, error)
-                })
-        }
-
-        return promiseDecorator.promise
+    #fetchServerTime(): Promise<number> {
+        return this.#fetchJson('/api/server-time').then((data) => {
+            const time = Number((data as AnyRecord | null)?.serverTime)
+            if (!Number.isFinite(time)) {
+                throw new Error('Invalid server time')
+            }
+            return time
+        })
     }
 
     #ensureStorageReady(): Promise<void> {

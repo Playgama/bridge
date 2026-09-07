@@ -21,4 +21,5 @@ export type {
     PlatformBridgeContract,
     PlatformMessageOptions,
 } from './PlatformModule'
+export type { LaunchData } from './types'
 export default new PlatformModule()

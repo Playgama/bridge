@@ -18,7 +18,16 @@
 import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
 import { getSocialPlatformData } from './helpers'
-import type { SocialBridgeContract, SocialMethod, SocialOptions } from './types'
+import type {
+    SocialBridgeContract,
+    SocialMethod,
+    SocialOptions,
+    CreatePostOptions,
+    ClaimOptions,
+    ClaimResult,
+    InboxOptions,
+    Inbox,
+} from './types'
 
 class SocialModule extends ModuleBase<SocialBridgeContract> {
     get isInviteFriendsSupported(): boolean {
@@ -57,6 +66,16 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.isRateSupported
     }
 
+    // Claims: other players act on a post created with createPost({ claimable: true }).
+    // The backend verifies who claimed and when; what a claim grants is the game's.
+    get isClaimSupported(): boolean {
+        return this._platformBridge.isClaimSupported
+    }
+
+    get isInboxSupported(): boolean {
+        return this._platformBridge.isInboxSupported
+    }
+
     inviteFriends(options?: SocialOptions): Promise<unknown> {
         if (!this._platformBridge.isInviteFriendsSupported) {
             return Promise.reject()
@@ -81,12 +100,25 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.share(this.#resolve('share', options))
     }
 
-    createPost(options?: SocialOptions): Promise<unknown> {
+    createPost(options?: CreatePostOptions): Promise<unknown> {
         if (!this._platformBridge.isCreatePostSupported) {
             return Promise.reject()
         }
 
-        return this._platformBridge.createPost(this.#resolve('createPost', options))
+        // `data` is opaque game JSON and `claimable` is a per-post decision: keep
+        // them out of the config merge (deepMerge would reshape arrays inside `data`).
+        const { data, claimable, ...content } = options ?? {}
+        const resolved: AnyRecord = this.#resolve('createPost', content)
+        delete resolved.data
+        delete resolved.claimable
+        if (data !== undefined) {
+            resolved.data = data
+        }
+        if (claimable !== undefined) {
+            resolved.claimable = claimable
+        }
+
+        return this._platformBridge.createPost(resolved)
     }
 
     addToHomeScreen(): Promise<unknown> {
@@ -127,6 +159,26 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         }
 
         return this._platformBridge.rate()
+    }
+
+    // Claim on the post the game was launched from (see platform.launchData).
+    // The claim policy (cooldown, scope) resolves like other social data:
+    // `social.claim` config defaults, runtime options on top.
+    claim(options: ClaimOptions = {}): Promise<ClaimResult> {
+        if (!this._platformBridge.isClaimSupported) {
+            return Promise.reject()
+        }
+
+        return this._platformBridge.claim(this.#resolve('claim', options) as ClaimOptions)
+    }
+
+    // Claims other players made on the current player's posts.
+    getInbox(options: InboxOptions = {}): Promise<Inbox> {
+        if (!this._platformBridge.isInboxSupported) {
+            return Promise.reject()
+        }
+
+        return this._platformBridge.getInbox(options)
     }
 
     // Resolves the platform data for a method: static config (community ids,

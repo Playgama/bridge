@@ -40,6 +40,7 @@ import * as leaderboardsConstants from './modules/leaderboards/constants'
 import * as tasksConstants from './modules/tasks/constants'
 import type * as tasksTypes from './modules/tasks/types'
 import * as crossPromoConstants from './modules/cross-promo/constants'
+import * as socialConstants from './modules/social/constants'
 
 export const PLATFORM_ID = platformConstants.PLATFORM_ID
 export type PLATFORM_ID = platformConstants.PlatformId
@@ -92,6 +93,12 @@ export type TASK_TYPE = tasksTypes.TaskType
 export const CROSS_PROMO_SOURCE = crossPromoConstants.CROSS_PROMO_SOURCE
 export type CROSS_PROMO_SOURCE = crossPromoConstants.CrossPromoSource
 
+export const CLAIM_SCOPE = socialConstants.CLAIM_SCOPE
+export type CLAIM_SCOPE = socialConstants.ClaimScope
+
+export const CLAIM_REASON = socialConstants.CLAIM_REASON
+export type CLAIM_REASON = socialConstants.ClaimReason
+
 export { BridgeError } from './constants/errors'
 
 // CamelCase aliases of the same unions, for code that prefers them over the
@@ -119,12 +126,23 @@ export type {
 export type { LeaderboardType } from './modules/leaderboards/constants'
 export type { TaskType } from './modules/tasks/types'
 export type { CrossPromoSource } from './modules/cross-promo/constants'
+export type { ClaimScope, ClaimReason } from './modules/social/constants'
 
 // Public data shapes returned by SDK modules.
 export type { LeaderboardEntry } from './modules/leaderboards/types'
 export type { CatalogProduct, Purchase } from './modules/payments/types'
 export type { NormalizedAchievement } from './modules/achievements/types'
 export type { Game } from './modules/cross-promo/types'
+export type {
+    CreatePostOptions,
+    ClaimOptions,
+    ClaimStatus,
+    ClaimResult,
+    InboxOptions,
+    InboxEvent,
+    Inbox,
+} from './modules/social/types'
+export type { LaunchData } from './modules/platform/types'
 export type {
     Task,
     TaskTarget,

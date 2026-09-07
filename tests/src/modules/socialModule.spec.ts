@@ -24,6 +24,8 @@ function createBridge(platformId: string, overrides: Record<string, unknown> = {
         isAddToFavoritesSupported: true,
         isAddToFavoritesRewardSupported: false,
         isRateSupported: true,
+        isClaimSupported: true,
+        isInboxSupported: true,
         inviteFriends: vi.fn().mockResolvedValue('ok'),
         joinCommunity: vi.fn().mockResolvedValue('ok'),
         share: vi.fn().mockResolvedValue('ok'),
@@ -33,6 +35,10 @@ function createBridge(platformId: string, overrides: Record<string, unknown> = {
         addToFavorites: vi.fn().mockResolvedValue('ok'),
         getAddToFavoritesReward: vi.fn().mockResolvedValue('ok'),
         rate: vi.fn().mockResolvedValue('ok'),
+        claim: vi.fn().mockResolvedValue({
+            granted: true, count: 1, nextClaimAt: null, serverTime: 1,
+        }),
+        getInbox: vi.fn().mockResolvedValue({ events: [], serverTime: 1 }),
         ...overrides,
     }
 }
@@ -70,6 +76,45 @@ describe('SocialModule', () => {
         })
     })
 
+    test('createPost passes data and claimable through untouched by the config merge', async () => {
+        const data = { objects: [9], theme: 'dark' }
+        const bridge = createBridge('ok', {
+            options: {
+                social: {
+                    ...SOCIAL_CONFIG,
+                    createPost: { status: false, data: { objects: [1, 2, 3] }, claimable: true },
+                },
+            },
+        })
+        await createModule(bridge).createPost({ text: 'Level', data, claimable: false })
+
+        const passed = vi.mocked(bridge.createPost).mock.calls[0][0] as Record<string, unknown>
+        expect(passed).toEqual({
+            status: false, text: 'Level', data, claimable: false,
+        })
+        expect(passed.data).toBe(data)
+    })
+
+    test('createPost drops config data and claimable when the runtime omits them', async () => {
+        const bridge = createBridge('ok', {
+            options: {
+                social: { ...SOCIAL_CONFIG, createPost: { status: false, data: { level: 1 }, claimable: true } },
+            },
+        })
+        await createModule(bridge).createPost({ text: 'Plain' })
+
+        expect(bridge.createPost).toHaveBeenCalledWith({ status: false, text: 'Plain' })
+    })
+
+    test('claim resolves the policy from config with runtime options on top', async () => {
+        const bridge = createBridge('reddit', {
+            options: { social: { claim: { cooldown: 3600, scope: 'post' } } },
+        })
+        await createModule(bridge).claim({ scope: 'user' })
+
+        expect(bridge.claim).toHaveBeenCalledWith({ cooldown: 3600, scope: 'user' })
+    })
+
     test('passes runtime options as is when there is no social config', async () => {
         const bridge = createBridge('vk', { options: {} })
         await createModule(bridge).share({ url: 'https://other.com' })
@@ -100,11 +145,24 @@ describe('SocialModule', () => {
         ['addToHomeScreen', 'isAddToHomeScreenSupported'],
         ['addToFavorites', 'isAddToFavoritesSupported'],
         ['rate', 'isRateSupported'],
+        ['claim', 'isClaimSupported'],
+        ['getInbox', 'isInboxSupported'],
     ] as const)('%s rejects and does not call the bridge when %s is false', async (method, flag) => {
         const bridge = createBridge('vk', { [flag]: false })
         const module = createModule(bridge)
 
         await expect((module[method] as () => Promise<unknown>)()).rejects.toBeUndefined()
         expect(bridge[method]).not.toHaveBeenCalled()
+    })
+
+    test('claim and getInbox delegate to the bridge with their options', async () => {
+        const bridge = createBridge('reddit')
+        const module = createModule(bridge)
+
+        await module.claim({ cooldown: 60, scope: 'user' })
+        expect(bridge.claim).toHaveBeenCalledWith({ cooldown: 60, scope: 'user' })
+
+        await module.getInbox({ ackUntil: 5 })
+        expect(bridge.getInbox).toHaveBeenCalledWith({ ackUntil: 5 })
     })
 })

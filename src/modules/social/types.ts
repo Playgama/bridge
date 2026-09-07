@@ -18,9 +18,10 @@
 import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { AnyRecord } from '../../utils'
+import type { ClaimScope, ClaimReason } from './constants'
 
 // Social methods that resolve their data from the config mapping.
-export type SocialMethod = 'share' | 'inviteFriends' | 'joinCommunity' | 'createPost'
+export type SocialMethod = 'share' | 'inviteFriends' | 'joinCommunity' | 'createPost' | 'claim'
 
 // Content the game passes at call time. `text`/`image`/`url` are the canonical,
 // platform-agnostic fields each bridge maps to its native one (e.g. VK `url` ->
@@ -32,6 +33,63 @@ export interface SocialOptions extends AnyRecord {
     text?: string
     image?: string
     url?: string
+}
+
+// createPost() extras: `data` travels with the post and comes back as
+// `platform.launchData.data`; `claimable` lets other players social.claim() on it.
+// Both are runtime-only — they are never merged from the social config.
+export interface CreatePostOptions extends SocialOptions {
+    data?: unknown
+    claimable?: boolean
+}
+
+// Extra keys are forwarded to the platform verbatim, like SocialOptions.
+export interface ClaimOptions extends AnyRecord {
+    // Seconds before the same player may claim again. Omit for a one-time claim.
+    cooldown?: number
+    scope?: ClaimScope
+}
+
+// Whether the current player may claim on the launch entity right now, as known
+// at launch time — lets the game show a countdown instead of a claim button.
+export interface ClaimStatus {
+    available: boolean
+    reason?: ClaimReason
+    // Total granted claims on the entity so far.
+    count: number
+    // Server time (ms) when this player may claim; null when not limited or not applicable.
+    nextClaimAt: number | null
+    // Server time (ms) the status was produced at — use it for countdowns, not Date.now().
+    serverTime: number
+}
+
+export interface ClaimResult {
+    granted: boolean
+    reason?: ClaimReason
+    count: number
+    nextClaimAt: number | null
+    serverTime: number
+}
+
+export interface InboxOptions {
+    // Acknowledge events with `at` <= this server time; they are not returned again.
+    ackUntil?: number
+}
+
+// Someone claimed on a post the current player created.
+export interface InboxEvent {
+    postId: string
+    from: {
+        id: string
+        name: string | null
+    }
+    // Server time (ms) of the claim.
+    at: number
+}
+
+export interface Inbox {
+    events: InboxEvent[]
+    serverTime: number
 }
 
 // Per-method config block: the social data for one method (publisher settings like
@@ -47,6 +105,8 @@ export interface SocialConfig {
     inviteFriends?: SocialMethodConfig
     joinCommunity?: SocialMethodConfig
     createPost?: SocialMethodConfig
+    // Claim policy (cooldown, scope) — publisher-side defaults the game may override at call time.
+    claim?: ClaimOptions
 }
 
 export interface SocialBridgeOptions extends AnyRecord {
@@ -65,6 +125,8 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     isAddToFavoritesSupported: boolean
     isAddToFavoritesRewardSupported: boolean
     isRateSupported: boolean
+    isClaimSupported: boolean
+    isInboxSupported: boolean
     inviteFriends(data?: AnyRecord): Promise<unknown>
     joinCommunity(data?: AnyRecord): Promise<unknown>
     share(data?: AnyRecord): Promise<unknown>
@@ -74,4 +136,6 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     addToFavorites(): Promise<unknown>
     getAddToFavoritesReward(): Promise<unknown>
     rate(): Promise<unknown>
+    claim(options: ClaimOptions): Promise<ClaimResult>
+    getInbox(options: InboxOptions): Promise<Inbox>
 }
