@@ -54,6 +54,14 @@ interface PlaygamaProductData extends AnyRecord {
     bridgeId?: string
 }
 
+interface PlaygamaCatalogProduct {
+    id: string
+    price: string
+    priceValue: number
+    priceCurrencyCode: string
+    priceCurrencyImage?: string
+}
+
 interface PlaygamaSdk {
     platformService: {
         getLanguage(): string
@@ -85,6 +93,7 @@ interface PlaygamaSdk {
     }
     inGamePaymentsApi: {
         purchase(product: PlaygamaProductData): Promise<PlaygamaPurchase>
+        getCatalog?: (products: PlaygamaProductData[]) => Promise<PlaygamaCatalogProduct[]>
         getPurchases?: () => Promise<Array<AnyRecord & { id: string; bridgeId?: string }>>
         consumePurchase?: (orderId: string | undefined, externalId: string | undefined) => Promise<unknown>
         confirmDelivery?: (params: { orderId?: string; externalId?: string }) => Promise<unknown>
@@ -461,21 +470,21 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return super.paymentsConsumePurchase(id)
     }
 
-    paymentsGetCatalog(): Promise<unknown> {
-        const products = this._paymentsGetProductsPlatformData()
+    async paymentsGetCatalog(): Promise<unknown> {
+        const products = this._paymentsGetProductsPlatformData() as PlaygamaProductData[]
         if (!products) {
             return Promise.reject()
         }
 
-        const updatedProducts = products.map((product) => ({
-            id: product.id,
-            price: `${product.amount} Gam`,
-            priceCurrencyCode: 'Gam',
-            priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
-            priceValue: product.amount,
-        }))
+        const platformCatalog = await this.#paymentsGetPlatformCatalog(products)
+        const platformProductsById = new Map(platformCatalog.map((product) => [product.id, product]))
 
-        return Promise.resolve(updatedProducts)
+        return products.map((product) => {
+            const platformProduct = platformProductsById.get(product.id)
+            return platformProduct
+                ? { ...platformProduct, id: product.id }
+                : this.#paymentsGetFallbackCatalogProduct(product)
+        })
     }
 
     // social
@@ -521,6 +530,34 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // The platform owns pricing (it decides which currency to show). An empty
+    // result sends every product to the Gam fallback: older platform SDKs without
+    // getCatalog, a rejected call, or a malformed response all behave like today.
+    async #paymentsGetPlatformCatalog(products: PlaygamaProductData[]): Promise<PlaygamaCatalogProduct[]> {
+        const paymentsApi = (this._platformSdk as PlaygamaSdk | null)?.inGamePaymentsApi
+        if (typeof paymentsApi?.getCatalog !== 'function') {
+            return []
+        }
+
+        try {
+            const catalog = await paymentsApi.getCatalog(products)
+            return Array.isArray(catalog) ? catalog : []
+        } catch {
+            return []
+        }
+    }
+
+    #paymentsGetFallbackCatalogProduct(product: PlaygamaProductData): PlaygamaCatalogProduct {
+        const amount = product.amount as number
+        return {
+            id: product.id,
+            price: `${amount} Gam`,
+            priceCurrencyCode: 'Gam',
+            priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
+            priceValue: amount,
+        }
     }
 
     #getPlayer(_options?: unknown): Promise<void> {
