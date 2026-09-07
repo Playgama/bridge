@@ -543,7 +543,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
         try {
             const catalog = await paymentsApi.getCatalog(products)
-            return Array.isArray(catalog) ? catalog : []
+            return Array.isArray(catalog) ? catalog.filter((product) => typeof product?.id === 'string') : []
         } catch {
             return []
         }

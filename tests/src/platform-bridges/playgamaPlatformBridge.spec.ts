@@ -95,4 +95,21 @@ describe('Playgama payments catalog', () => {
             gamFallback('coins_500', 500),
         ])
     })
+
+    test('malformed entries in the platform catalog are skipped, not fatal', async () => {
+        const bridge = await createInitializedBridge(vi.fn().mockResolvedValue([
+            null,
+            { price: '$1.00' },
+            {
+                id: 'coins_500', price: '$50.00', priceValue: 50, priceCurrencyCode: 'USD',
+            },
+        ]))
+
+        await expect(bridge.paymentsGetCatalog()).resolves.toEqual([
+            gamFallback('coins_100', 100),
+            {
+                id: 'coins_500', price: '$50.00', priceValue: 50, priceCurrencyCode: 'USD',
+            },
+        ])
+    })
 })
