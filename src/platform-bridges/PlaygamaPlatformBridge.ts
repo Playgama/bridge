@@ -56,6 +56,9 @@ interface PlaygamaProductData extends AnyRecord {
 
 interface PlaygamaCatalogProduct {
     id: string
+    // charge terms the platform expects back on purchase (fiat in minor units)
+    amount?: number
+    currency?: string
     price: string
     priceValue: number
     priceCurrencyCode: string
@@ -177,6 +180,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     #isShareSupported = false
 
     #isAddToHomeScreenSupported = false
+
+    // Catalog entries accepted from the platform; a purchase sends their terms so the
+    // player is charged what the game displayed. Empty after a failed or fallback catalog.
+    #paymentsPlatformCatalog = new Map<string, PlaygamaCatalogProduct>()
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -390,15 +397,25 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
         product.bridgeId = id
 
+        const accepted = this.#paymentsPlatformCatalog.get(id)
+        const request = typeof accepted?.amount === 'number' && accepted.currency
+            ? { ...product, amount: accepted.amount, currency: accepted.currency }
+            : product
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
             const sdk = this._platformSdk as PlaygamaSdk
-            sdk.inGamePaymentsApi.purchase(product)
+            sdk.inGamePaymentsApi.purchase(request)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        const mergedPurchase: AnyRecord & { id: string } = { id, ...purchase }
+                        // The game priced in its config units, so its receipt stays in them
+                        const mergedPurchase: AnyRecord & { id: string } = request === product
+                            ? { id, ...purchase }
+                            : {
+                                id, ...purchase, amount: product.amount, currency: undefined,
+                            }
                         this._paymentsPurchases.push(mergedPurchase)
                         if (sdk.inGamePaymentsApi.confirmDelivery) {
                             sdk.inGamePaymentsApi.confirmDelivery({
@@ -477,10 +494,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         const platformCatalog = await this.#paymentsGetPlatformCatalog(products)
-        const platformProductsById = new Map(platformCatalog.map((product) => [product.id, product]))
+        this.#paymentsPlatformCatalog = new Map(platformCatalog.map((product) => [product.id, product]))
 
         return products.map((product) => {
-            const platformProduct = platformProductsById.get(product.id)
+            const platformProduct = this.#paymentsPlatformCatalog.get(product.id)
             return platformProduct
                 ? { ...platformProduct, id: product.id }
                 : this.#paymentsGetFallbackCatalogProduct(product)

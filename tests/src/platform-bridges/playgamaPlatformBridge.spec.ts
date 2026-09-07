@@ -96,6 +96,32 @@ describe('Playgama payments catalog', () => {
         ])
     })
 
+    test('purchase sends the terms of the accepted platform price, or the config amount after a fallback', async () => {
+        const usdPrice = {
+            id: 'coins_100', amount: 1000, currency: 'usd', price: '$10.00', priceValue: 10, priceCurrencyCode: 'USD',
+        }
+        const getCatalog = vi.fn().mockResolvedValueOnce([usdPrice]).mockRejectedValueOnce(new Error('timeout'))
+        const bridge = await createInitializedBridge(getCatalog)
+        const sdk = window.PLAYGAMA_SDK as PlaygamaSdk
+        const purchase = sdk.inGamePaymentsApi.purchase as ReturnType<typeof vi.fn>
+        purchase.mockResolvedValue({
+            status: 'PAID', orderId: 'order-1', amount: 1000, currency: 'usd',
+        })
+
+        await bridge.paymentsGetCatalog()
+        await expect(bridge.paymentsPurchase('coins_100')).resolves.toEqual({
+            id: 'coins_100', status: 'PAID', orderId: 'order-1', amount: 100,
+        })
+        expect(purchase).toHaveBeenLastCalledWith(
+            expect.objectContaining({ id: 'coins_100', amount: 1000, currency: 'usd' }),
+        )
+
+        await bridge.paymentsGetCatalog()
+        await bridge.paymentsPurchase('coins_100')
+        expect(purchase).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'coins_100', amount: 100 }))
+        expect(purchase.mock.lastCall?.[0]).not.toHaveProperty('currency')
+    })
+
     test('malformed entries in the platform catalog are skipped, not fatal', async () => {
         const bridge = await createInitializedBridge(vi.fn().mockResolvedValue([
             null,
