@@ -25,8 +25,6 @@ export const ACTION_NAME = {
     ADD_TO_HOME_SCREEN: 'add_to_home_screen',
     ADD_TO_FAVORITES: 'add_to_favorites',
     RATE: 'rate',
-    GET_POST_REWARD: 'get_post_reward',
-    GET_CREATE_POST_REWARD: 'get_create_post_reward',
     LEADERBOARDS_SET_SCORE: 'leaderboards_set_score',
     LEADERBOARDS_GET_ENTRIES: 'leaderboards_get_entries',
     LEADERBOARDS_SHOW_NATIVE_POPUP: 'leaderboards_show_native_popup',

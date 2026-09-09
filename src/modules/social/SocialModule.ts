@@ -18,13 +18,7 @@
 import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
 import { getSocialPlatformData } from './helpers'
-import type {
-    SocialBridgeContract,
-    SocialMethod,
-    SocialOptions,
-    PostRewardOptions,
-    CreatePostReward,
-} from './types'
+import type { SocialBridgeContract, SocialMethod, SocialOptions } from './types'
 
 class SocialModule extends ModuleBase<SocialBridgeContract> {
     get isInviteFriendsSupported(): boolean {
@@ -61,14 +55,6 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
 
     get isRateSupported(): boolean {
         return this._platformBridge.isRateSupported
-    }
-
-    get isPostRewardSupported(): boolean {
-        return this._platformBridge.isPostRewardSupported
-    }
-
-    get isCreatePostRewardSupported(): boolean {
-        return this._platformBridge.isCreatePostRewardSupported
     }
 
     inviteFriends(options?: SocialOptions): Promise<unknown> {
@@ -141,27 +127,6 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         }
 
         return this._platformBridge.rate()
-    }
-
-    // Reward for opening a post created with createPost() (launchSource === POST).
-    // Resolves when the reward may be granted and rejects otherwise — same
-    // contract as getAddToHomeScreenReward().
-    getPostReward(options?: PostRewardOptions): Promise<unknown> {
-        if (!this._platformBridge.isPostRewardSupported) {
-            return Promise.reject()
-        }
-
-        return this._platformBridge.getPostReward(options)
-    }
-
-    // Reward for the current player's posts: how many players were rewarded
-    // through them since the previous call.
-    getCreatePostReward(): Promise<CreatePostReward> {
-        if (!this._platformBridge.isCreatePostRewardSupported) {
-            return Promise.reject()
-        }
-
-        return this._platformBridge.getCreatePostReward()
     }
 
     // Resolves the platform data for a method: static config (community ids,

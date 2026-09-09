@@ -2,7 +2,6 @@ import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
 import RedditPlatformBridge from '../../../src/platform-bridges/RedditPlatformBridge'
-import { LAUNCH_SOURCE } from '../../../src/constants/launchSource'
 import { LEADERBOARD_TYPE } from '../../../src/modules/leaderboards/constants'
 
 vi.stubGlobal('PLUGIN_VERSION', 'test-version')
@@ -20,13 +19,17 @@ function jsonResponse(data: unknown, status = 200) {
     })
 }
 
-function lastCall(): FetchCall {
-    const [url, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as [string, RequestInit]
-    return {
+function calls(): FetchCall[] {
+    return fetchMock.mock.calls.map(([url, init]: [string, RequestInit]) => ({
         url,
         method: init.method ?? 'GET',
         body: init.body ? JSON.parse(init.body as string) : undefined,
-    }
+    }))
+}
+
+function lastCall(): FetchCall {
+    const all = calls()
+    return all[all.length - 1]
 }
 
 const AUTHORIZED_PLAYER = {
@@ -40,6 +43,7 @@ async function createInitializedBridge(payload: Record<string, unknown> = AUTHOR
     fetchMock.mockReturnValueOnce(jsonResponse(payload))
     const bridge = new RedditPlatformBridge()
     await bridge.initialize()
+    fetchMock.mockClear()
     return bridge
 }
 
@@ -52,7 +56,9 @@ describe('RedditPlatformBridge server contract', () => {
     })
 
     test('initialize reads the player from /api/initialize', async () => {
-        const bridge = await createInitializedBridge()
+        fetchMock.mockReturnValueOnce(jsonResponse(AUTHORIZED_PLAYER))
+        const bridge = new RedditPlatformBridge()
+        await bridge.initialize()
 
         expect(lastCall()).toEqual({ url: '/api/initialize', method: 'GET', body: undefined })
         expect(bridge.isPlayerAuthorized).toBe(true)
@@ -67,24 +73,6 @@ describe('RedditPlatformBridge server contract', () => {
 
         expect(bridge.isPlayerAuthorized).toBe(false)
         expect(bridge.isPlatformStorageAvailable).toBe(false)
-    })
-
-    test('initialize marks a post launch and exposes the post payload', async () => {
-        const bridge = await createInitializedBridge({
-            ...AUTHORIZED_PLAYER,
-            postId: 't3_xyz',
-            payload: '{"type":"energy"}',
-        })
-
-        expect(bridge.launchSource).toBe(LAUNCH_SOURCE.POST)
-        expect(bridge.platformPayload).toBe('{"type":"energy"}')
-    })
-
-    test('initialize leaves the launch source and payload empty outside a post', async () => {
-        const bridge = await createInitializedBridge()
-
-        expect(bridge.launchSource).toBeNull()
-        expect(bridge.platformPayload).toBeNull()
         expect(bridge.playerExtra).toEqual({})
     })
 
@@ -96,49 +84,55 @@ describe('RedditPlatformBridge server contract', () => {
         expect(lastCall()).toEqual({ url: '/api/server-time', method: 'GET', body: undefined })
     })
 
-    test('storage reads all keys in one request and drops empty values', async () => {
+    test('server time is cached, so a second call makes no request', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse(['1', null, '']))
+        fetchMock.mockReturnValueOnce(jsonResponse({ serverTime: 1725000000000 }))
 
-        const data = await bridge.getDataFromStorage(['coins', 'skin', 'name'])
+        await bridge.getServerTime()
+        await bridge.getServerTime()
 
-        expect(lastCall()).toEqual({
-            url: '/api/storage/get',
-            method: 'POST',
-            body: { key: ['coins', 'skin', 'name'] },
-        })
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    test('storage reads every key and drops empty values', async () => {
+        const bridge = await createInitializedBridge()
+        fetchMock
+            .mockReturnValueOnce(jsonResponse('1'))
+            .mockReturnValueOnce(jsonResponse(null))
+
+        const data = await bridge.getDataFromStorage(['coins', 'skin'])
+
+        expect(calls()).toEqual([
+            { url: '/api/storage/get', method: 'POST', body: { key: 'coins' } },
+            { url: '/api/storage/get', method: 'POST', body: { key: 'skin' } },
+        ])
         expect(data).toEqual({ coins: '1' })
     })
 
-    test('storage writes all keys in one request', async () => {
+    test('storage writes every key', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({ success: true }))
+        fetchMock.mockReturnValue(jsonResponse({ success: true }))
 
-        await bridge.setDataToStorage({ coins: '10', skin: 'red' })
+        await bridge.setDataToStorage({ coins: '10' })
 
         expect(lastCall()).toEqual({
             url: '/api/storage/set',
             method: 'POST',
-            body: { key: ['coins', 'skin'], value: ['10', 'red'] },
+            body: { key: 'coins', value: '10' },
         })
     })
 
-    test('storage deletes all keys in one request', async () => {
+    test('storage deletes every key', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({ success: true }))
+        fetchMock.mockReturnValue(jsonResponse({ success: true }))
 
-        await bridge.deleteDataFromStorage(['coins', 'skin'])
+        await bridge.deleteDataFromStorage(['coins'])
 
-        expect(lastCall()).toEqual({
-            url: '/api/storage/delete',
-            method: 'POST',
-            body: { key: ['coins', 'skin'] },
-        })
+        expect(lastCall()).toEqual({ url: '/api/storage/delete', method: 'POST', body: { key: 'coins' } })
     })
 
     test('storage rejects for a guest without calling the server', async () => {
         const bridge = await createInitializedBridge({ isPlayerAuthorized: false })
-        fetchMock.mockClear()
 
         await expect(bridge.getDataFromStorage(['coins'])).rejects.toBeUndefined()
         expect(fetchMock).not.toHaveBeenCalled()
@@ -160,35 +154,22 @@ describe('RedditPlatformBridge server contract', () => {
 
     test('share rejects without text and does not call the server', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockClear()
 
         await expect(bridge.share({})).rejects.toBeUndefined()
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    test('createPost maps text to the post title and resolves with the created post', async () => {
+    test('createPost forwards the options to the server', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new', postUrl: 'https://reddit.com/r/x/t3_new' }))
+        fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new' }))
 
-        const result = await bridge.createPost({ text: 'My level', payload: '{"objects":[]}' })
+        await bridge.createPost({ title: 'My level' })
 
         expect(lastCall()).toEqual({
             url: '/api/create-post',
             method: 'POST',
-            body: { options: { title: 'My level', payload: '{"objects":[]}' } },
+            body: { options: { title: 'My level' } },
         })
-        expect(result).toEqual({
-            id: 't3_new', url: 'https://reddit.com/r/x/t3_new', postId: 't3_new', postUrl: 'https://reddit.com/r/x/t3_new',
-        })
-    })
-
-    test('createPost prefers an explicit title over text', async () => {
-        const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({}))
-
-        await bridge.createPost({ text: 'ignored', title: 'Explicit' })
-
-        expect(lastCall().body).toEqual({ options: { title: 'Explicit' } })
     })
 
     test('joinCommunity subscribes to the current subreddit', async () => {
@@ -216,7 +197,6 @@ describe('RedditPlatformBridge server contract', () => {
 
     test('leaderboards reject set score for a guest', async () => {
         const bridge = await createInitializedBridge({ isPlayerAuthorized: false })
-        fetchMock.mockClear()
 
         await expect(bridge.leaderboardsSetScore('main', 1500, false)).rejects.toBeUndefined()
         expect(fetchMock).not.toHaveBeenCalled()
@@ -251,52 +231,6 @@ describe('RedditPlatformBridge server contract', () => {
         const entries = await bridge.leaderboardsGetEntries('main') as unknown[]
 
         expect(entries).toHaveLength(1)
-    })
-
-    test('post reward posts the options and resolves when the server grants it', async () => {
-        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, postId: 't3_ref' })
-        fetchMock.mockReturnValueOnce(jsonResponse({ granted: true }))
-
-        expect(bridge.isPostRewardSupported).toBe(true)
-        await expect(bridge.getPostReward({ cooldown: 14400, scope: 'user' })).resolves.toBeUndefined()
-
-        expect(lastCall()).toEqual({
-            url: '/api/post-reward',
-            method: 'POST',
-            body: { options: { cooldown: 14400, scope: 'user' } },
-        })
-    })
-
-    test('post reward rejects when the server denies it', async () => {
-        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, postId: 't3_ref' })
-        fetchMock.mockReturnValueOnce(jsonResponse({ granted: false, reason: 'cooldown' }))
-
-        await expect(bridge.getPostReward()).rejects.toBeUndefined()
-    })
-
-    test('post reward rejects outside a post without calling the server', async () => {
-        const bridge = await createInitializedBridge()
-        fetchMock.mockClear()
-
-        await expect(bridge.getPostReward()).rejects.toBeUndefined()
-        expect(fetchMock).not.toHaveBeenCalled()
-    })
-
-    test('create post reward resolves with the number of rewarded players', async () => {
-        const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({ count: '3' }))
-
-        expect(bridge.isCreatePostRewardSupported).toBe(true)
-        await expect(bridge.getCreatePostReward()).resolves.toEqual({ count: 3 })
-        expect(lastCall()).toEqual({ url: '/api/create-post-reward', method: 'POST', body: undefined })
-    })
-
-    test('create post reward rejects for a guest without calling the server', async () => {
-        const bridge = await createInitializedBridge({ isPlayerAuthorized: false })
-        fetchMock.mockClear()
-
-        await expect(bridge.getCreatePostReward()).rejects.toBeUndefined()
-        expect(fetchMock).not.toHaveBeenCalled()
     })
 
     test('a failed response rejects with the status and body', async () => {

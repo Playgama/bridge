@@ -22,10 +22,7 @@ export type {
     SocialOptions,
     SocialConfig,
     SocialMethod,
-    PostRewardOptions,
-    CreatePostReward,
 } from './types'
-export { POST_REWARD_SCOPE } from './constants'
 export { getSocialPlatformData } from './helpers'
 
 export default new SocialModule()

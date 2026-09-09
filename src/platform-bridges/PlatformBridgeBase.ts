@@ -42,7 +42,6 @@ import {
     BANNER_STATE,
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
-import type { PostRewardOptions, CreatePostReward } from '../modules/social/types'
 import type { NormalizedAchievement } from '../modules/achievements/types'
 import type { ScheduledNotification } from '../modules/notifications/types'
 import { internalAnalytics } from '../modules/analytics'
@@ -216,14 +215,6 @@ class PlatformBridgeBase {
     }
 
     get isRateSupported(): boolean {
-        return false
-    }
-
-    get isPostRewardSupported(): boolean {
-        return false
-    }
-
-    get isCreatePostRewardSupported(): boolean {
         return false
     }
 
@@ -480,15 +471,6 @@ class PlatformBridgeBase {
                     resolve(true)
                 })
         })
-    }
-
-    // social — platforms that support post rewards implement these themselves
-    getPostReward(_options?: PostRewardOptions): Promise<unknown> {
-        return Promise.reject()
-    }
-
-    getCreatePostReward(): Promise<CreatePostReward> {
-        return Promise.reject()
     }
 
     // payments

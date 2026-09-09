@@ -24,8 +24,6 @@ function createBridge(platformId: string, overrides: Record<string, unknown> = {
         isAddToFavoritesSupported: true,
         isAddToFavoritesRewardSupported: false,
         isRateSupported: true,
-        isPostRewardSupported: true,
-        isCreatePostRewardSupported: true,
         inviteFriends: vi.fn().mockResolvedValue('ok'),
         joinCommunity: vi.fn().mockResolvedValue('ok'),
         share: vi.fn().mockResolvedValue('ok'),
@@ -35,8 +33,6 @@ function createBridge(platformId: string, overrides: Record<string, unknown> = {
         addToFavorites: vi.fn().mockResolvedValue('ok'),
         getAddToFavoritesReward: vi.fn().mockResolvedValue('ok'),
         rate: vi.fn().mockResolvedValue('ok'),
-        getPostReward: vi.fn().mockResolvedValue(undefined),
-        getCreatePostReward: vi.fn().mockResolvedValue({ count: 2 }),
         ...overrides,
     }
 }
@@ -104,23 +100,11 @@ describe('SocialModule', () => {
         ['addToHomeScreen', 'isAddToHomeScreenSupported'],
         ['addToFavorites', 'isAddToFavoritesSupported'],
         ['rate', 'isRateSupported'],
-        ['getPostReward', 'isPostRewardSupported'],
-        ['getCreatePostReward', 'isCreatePostRewardSupported'],
     ] as const)('%s rejects and does not call the bridge when %s is false', async (method, flag) => {
         const bridge = createBridge('vk', { [flag]: false })
         const module = createModule(bridge)
 
         await expect((module[method] as () => Promise<unknown>)()).rejects.toBeUndefined()
         expect(bridge[method]).not.toHaveBeenCalled()
-    })
-
-    test('post rewards delegate to the bridge as is, without the config merge', async () => {
-        const bridge = createBridge('reddit')
-        const module = createModule(bridge)
-
-        await module.getPostReward({ cooldown: 60, scope: 'user' })
-        expect(bridge.getPostReward).toHaveBeenCalledWith({ cooldown: 60, scope: 'user' })
-
-        await expect(module.getCreatePostReward()).resolves.toEqual({ count: 2 })
     })
 })

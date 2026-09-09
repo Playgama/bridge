@@ -18,7 +18,6 @@
 import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { AnyRecord } from '../../utils'
-import type { PostRewardScope } from './constants'
 
 // Social methods that resolve their data from the config mapping.
 export type SocialMethod = 'share' | 'inviteFriends' | 'joinCommunity' | 'createPost'
@@ -33,21 +32,6 @@ export interface SocialOptions extends AnyRecord {
     text?: string
     image?: string
     url?: string
-}
-
-// Post rewards: a player who opened a post created with createPost() may
-// receive a reward once (social.getPostReward), and the post author receives
-// one per such player (social.getCreatePostReward). The platform backend only
-// verifies who and when; what a reward is worth is up to the game.
-export interface PostRewardOptions extends AnyRecord {
-    // Seconds before the same player may be rewarded again. Omit for a one-time reward.
-    cooldown?: number
-    scope?: PostRewardScope
-}
-
-export interface CreatePostReward {
-    // Players rewarded on the current player's posts since the previous call.
-    count: number
 }
 
 // Per-method config block: the social data for one method (publisher settings like
@@ -81,8 +65,6 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     isAddToFavoritesSupported: boolean
     isAddToFavoritesRewardSupported: boolean
     isRateSupported: boolean
-    isPostRewardSupported: boolean
-    isCreatePostRewardSupported: boolean
     inviteFriends(data?: AnyRecord): Promise<unknown>
     joinCommunity(data?: AnyRecord): Promise<unknown>
     share(data?: AnyRecord): Promise<unknown>
@@ -92,6 +74,4 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     addToFavorites(): Promise<unknown>
     getAddToFavoritesReward(): Promise<unknown>
     rate(): Promise<unknown>
-    getPostReward(options?: PostRewardOptions): Promise<unknown>
-    getCreatePostReward(): Promise<CreatePostReward>
 }
