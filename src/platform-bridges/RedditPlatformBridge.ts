@@ -16,8 +16,11 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
+import ServerTimeCache from '../lib/ServerTimeCache'
 import { ACTION_NAME } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
+import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
+import type { LeaderboardEntry } from '../modules/leaderboards/types'
 import type { AnyRecord } from '../utils'
 
 declare global {
@@ -33,6 +36,15 @@ interface InitializePayload {
     playerId?: string
     playerName?: string
     playerPhoto?: string
+}
+
+// Raw entry from the server; numeric fields may arrive as strings.
+interface RedditLeaderboardEntry {
+    id?: string | number
+    name?: string
+    score?: number | string
+    rank?: number | string
+    photo?: string | null
 }
 
 interface FetchJsonOptions {
@@ -55,14 +67,26 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    // On Reddit sharing means leaving a comment under the post the game runs in.
+    get isShareSupported(): boolean {
+        return true
+    }
+
     get isCreatePostSupported(): boolean {
         return true
+    }
+
+    // leaderboards
+    get leaderboardsType(): LeaderboardType {
+        return LEADERBOARD_TYPE.IN_GAME
     }
 
     // payments
     get isPaymentsSupported(): boolean {
         return true
     }
+
+    #serverTimeCache = new ServerTimeCache(() => this.#fetchServerTime())
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -96,6 +120,11 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // platform
+    getServerTime(): Promise<number> {
+        return this.#serverTimeCache.getServerTime()
     }
 
     async getDataFromStorage(keys: string[]): Promise<Record<string, unknown>> {
@@ -203,6 +232,29 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // social
+    share(options?: unknown): Promise<unknown> {
+        const { text, ...rest } = (options ?? {}) as AnyRecord & { text?: string }
+        if (!text) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+
+            this.#fetchJson('/api/share', { method: 'POST', body: { options: { ...rest, text } } })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.SHARE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
     createPost(options: unknown = {}): Promise<unknown> {
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
         if (!promiseDecorator) {
@@ -235,6 +287,68 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // leaderboards
+    leaderboardsSetScore(id: string, score: number, isMain: boolean): Promise<unknown> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+
+            this.#fetchJson('/api/leaderboards/set-score', { method: 'POST', body: { id, score, isMain } })
+                .then(() => {
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    leaderboardsGetEntries(id: string): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
+
+            this.#fetchJson(`/api/leaderboards/entries?id=${encodeURIComponent(id)}`)
+                .then((data) => {
+                    const entries: LeaderboardEntry[] = this.#extractList(data).map((entry) => {
+                        const {
+                            id: entryId, name, score, rank, photo,
+                        } = (entry ?? {}) as RedditLeaderboardEntry
+                        return {
+                            id: String(entryId ?? ''),
+                            name: name ?? '',
+                            score: Number(score ?? 0),
+                            rank: Number(rank ?? 0),
+                            photo: photo ?? null,
+                        }
+                    })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    #fetchServerTime(): Promise<number> {
+        return this.#fetchJson('/api/server-time').then((data) => {
+            const time = Number((data as AnyRecord | null)?.serverTime)
+            if (!Number.isFinite(time)) {
+                throw new Error('Invalid server time')
+            }
+            return time
+        })
     }
 
     #ensureStorageReady(): Promise<void> {
