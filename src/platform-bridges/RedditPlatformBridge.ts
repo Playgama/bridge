@@ -39,7 +39,7 @@ interface InitializePayload {
 }
 
 // Raw entry from the server; numeric fields may arrive as strings.
-interface LeaderboardEntryPayload {
+interface RedditLeaderboardEntry {
     id?: string | number
     name?: string
     score?: number | string
@@ -321,7 +321,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                     const entries: LeaderboardEntry[] = this.#extractList(data).map((entry) => {
                         const {
                             id: entryId, name, score, rank, photo,
-                        } = (entry ?? {}) as LeaderboardEntryPayload
+                        } = (entry ?? {}) as RedditLeaderboardEntry
                         return {
                             id: String(entryId ?? ''),
                             name: name ?? '',
