@@ -93,11 +93,8 @@ export type TASK_TYPE = tasksTypes.TaskType
 export const CROSS_PROMO_SOURCE = crossPromoConstants.CROSS_PROMO_SOURCE
 export type CROSS_PROMO_SOURCE = crossPromoConstants.CrossPromoSource
 
-export const CLAIM_SCOPE = socialConstants.CLAIM_SCOPE
-export type CLAIM_SCOPE = socialConstants.ClaimScope
-
-export const CLAIM_REASON = socialConstants.CLAIM_REASON
-export type CLAIM_REASON = socialConstants.ClaimReason
+export const POST_REWARD_SCOPE = socialConstants.POST_REWARD_SCOPE
+export type POST_REWARD_SCOPE = socialConstants.PostRewardScope
 
 export { BridgeError } from './constants/errors'
 
@@ -126,23 +123,14 @@ export type {
 export type { LeaderboardType } from './modules/leaderboards/constants'
 export type { TaskType } from './modules/tasks/types'
 export type { CrossPromoSource } from './modules/cross-promo/constants'
-export type { ClaimScope, ClaimReason } from './modules/social/constants'
+export type { PostRewardScope } from './modules/social/constants'
 
 // Public data shapes returned by SDK modules.
 export type { LeaderboardEntry } from './modules/leaderboards/types'
 export type { CatalogProduct, Purchase } from './modules/payments/types'
 export type { NormalizedAchievement } from './modules/achievements/types'
 export type { Game } from './modules/cross-promo/types'
-export type {
-    CreatePostOptions,
-    ClaimOptions,
-    ClaimStatus,
-    ClaimResult,
-    InboxOptions,
-    InboxEvent,
-    Inbox,
-} from './modules/social/types'
-export type { LaunchData } from './modules/platform/types'
+export type { PostRewardOptions, CreatePostReward } from './modules/social/types'
 export type {
     Task,
     TaskTarget,

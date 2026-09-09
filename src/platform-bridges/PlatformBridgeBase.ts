@@ -30,7 +30,6 @@ import {
     type PlatformId,
     type VisibilityState,
 } from '../modules/platform/constants'
-import type { LaunchData } from '../modules/platform/types'
 import {
     DEVICE_TYPE,
     DEVICE_OS,
@@ -43,12 +42,7 @@ import {
     BANNER_STATE,
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
-import type {
-    ClaimOptions,
-    ClaimResult,
-    InboxOptions,
-    Inbox,
-} from '../modules/social/types'
+import type { PostRewardOptions, CreatePostReward } from '../modules/social/types'
 import type { NormalizedAchievement } from '../modules/achievements/types'
 import type { ScheduledNotification } from '../modules/notifications/types'
 import { internalAnalytics } from '../modules/analytics'
@@ -107,12 +101,6 @@ class PlatformBridgeBase {
 
     get launchSource(): LaunchSource | null {
         return null
-    }
-
-    // Structured data attached to the entity the game was launched from (a post,
-    // a shared link). `platformPayload` is its string counterpart.
-    get launchData(): LaunchData | null {
-        return this._launchData
     }
 
     get isPlatformGamesListSupported(): boolean {
@@ -231,11 +219,11 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isClaimSupported(): boolean {
+    get isPostRewardSupported(): boolean {
         return false
     }
 
-    get isInboxSupported(): boolean {
+    get isCreatePostRewardSupported(): boolean {
         return false
     }
 
@@ -323,10 +311,6 @@ class PlatformBridgeBase {
     protected _options!: ConfigFileOptions
 
     protected _additionalData: Record<string, unknown> | null = null
-
-    // Set during initialize() by platforms that know what the game was launched
-    // from; a backend that only has a launch id resolves the rest from `platformPayload`.
-    protected _launchData: LaunchData | null = null
 
     protected _isInitialized = false
 
@@ -498,12 +482,12 @@ class PlatformBridgeBase {
         })
     }
 
-    // social — platforms that support claims / inbox implement these themselves
-    claim(_options: ClaimOptions): Promise<ClaimResult> {
+    // social — platforms that support post rewards implement these themselves
+    getPostReward(_options?: PostRewardOptions): Promise<unknown> {
         return Promise.reject()
     }
 
-    getInbox(_options: InboxOptions): Promise<Inbox> {
+    getCreatePostReward(): Promise<CreatePostReward> {
         return Promise.reject()
     }
 

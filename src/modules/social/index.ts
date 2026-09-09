@@ -22,15 +22,10 @@ export type {
     SocialOptions,
     SocialConfig,
     SocialMethod,
-    CreatePostOptions,
-    ClaimOptions,
-    ClaimStatus,
-    ClaimResult,
-    InboxOptions,
-    InboxEvent,
-    Inbox,
+    PostRewardOptions,
+    CreatePostReward,
 } from './types'
-export { CLAIM_SCOPE, CLAIM_REASON } from './constants'
+export { POST_REWARD_SCOPE } from './constants'
 export { getSocialPlatformData } from './helpers'
 
 export default new SocialModule()

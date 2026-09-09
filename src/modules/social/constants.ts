@@ -15,19 +15,10 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// How often the same player may claim on a post: once per `cooldown` per post,
-// or once per `cooldown` across all claimable posts of the game.
-export const CLAIM_SCOPE = {
+// How often the same player may receive a post reward: once per `cooldown`
+// across all posts of the game, or once per `cooldown` per post.
+export const POST_REWARD_SCOPE = {
     USER: 'user',
     POST: 'post',
 } as const
-export type ClaimScope = typeof CLAIM_SCOPE[keyof typeof CLAIM_SCOPE]
-
-export const CLAIM_REASON = {
-    UNAUTHORIZED: 'unauthorized',
-    OWN: 'own',
-    COOLDOWN: 'cooldown',
-    EXPIRED: 'expired',
-    LIMIT: 'limit',
-} as const
-export type ClaimReason = typeof CLAIM_REASON[keyof typeof CLAIM_REASON]
+export type PostRewardScope = typeof POST_REWARD_SCOPE[keyof typeof POST_REWARD_SCOPE]

@@ -17,17 +17,11 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import ServerTimeCache from '../lib/ServerTimeCache'
-import { ACTION_NAME } from '../constants'
+import { ACTION_NAME, LAUNCH_SOURCE, type LaunchSource } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { LeaderboardEntry } from '../modules/leaderboards/types'
-import type {
-    ClaimOptions,
-    ClaimResult,
-    ClaimStatus,
-    InboxOptions,
-    Inbox,
-} from '../modules/social/types'
+import type { PostRewardOptions, CreatePostReward } from '../modules/social/types'
 import type { AnyRecord } from '../utils'
 
 declare global {
@@ -46,17 +40,10 @@ interface InitializePayload {
     playerId?: string
     playerName?: string
     playerPhoto?: string
-    // Free-form launch payload the post was created with via `createPost()`.
-    payload?: string
-    // The post the game runs in, exposed as `platform.launchData`, with any
-    // `data` it was created with via `createPost()` and — when the post is
-    // claimable — the current player's claim status.
+    // The post the game runs in, when opened from one, and the `payload` string
+    // that post was created with via `createPost()`.
     postId?: string
-    subredditName?: string
-    postAuthorId?: string
-    postData?: unknown
-    claimable?: boolean
-    claim?: ClaimStatus
+    payload?: string
 }
 
 // Raw entry from the server; numeric fields may arrive as strings.
@@ -83,6 +70,10 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return this.#platformPayload ?? super.platformPayload
     }
 
+    get launchSource(): LaunchSource | null {
+        return this.#launchSource ?? super.launchSource
+    }
+
     get isPlatformExternalCallsSupported(): boolean {
         return false
     }
@@ -101,11 +92,11 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isClaimSupported(): boolean {
+    get isPostRewardSupported(): boolean {
         return true
     }
 
-    get isInboxSupported(): boolean {
+    get isCreatePostRewardSupported(): boolean {
         return true
     }
 
@@ -120,6 +111,8 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     }
 
     #platformPayload: string | null = null
+
+    #launchSource: LaunchSource | null = null
 
     #serverTimeCache = new ServerTimeCache(() => this.#fetchServerTime())
 
@@ -148,15 +141,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
                     this.#platformPayload = payload.payload ?? null
                     if (payload.postId) {
-                        this._launchData = {
-                            id: payload.postId,
-                            authorId: payload.postAuthorId ?? null,
-                            data: payload.postData ?? null,
-                            claimable: !!payload.claimable,
-                            ...(payload.claim ? { claim: payload.claim } : {}),
-                            postId: payload.postId,
-                            subredditName: payload.subredditName ?? null,
-                        }
+                        this.#launchSource = LAUNCH_SOURCE.POST
                     }
 
                     this._isInitialized = true
@@ -232,8 +217,8 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     }
 
     // Creates a new post running this app. The canonical `text` becomes the post
-    // title; any other field (`data` to attach, `claimable` to let others claim on
-    // it, `payload`) is forwarded to the server verbatim. Resolves with
+    // title; `payload` (and any other field) is forwarded to the server verbatim
+    // and comes back as `platformPayload` when that post is opened. Resolves with
     // `{ id, url }` (plus the raw `postId` / `postUrl`).
     createPost(options?: unknown): Promise<unknown> {
         const { text, ...rest } = (options ?? {}) as AnyRecord & { text?: string; title?: string }
@@ -280,51 +265,56 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    // Claim on the post the game runs in (created with createPost({ claimable: true })).
-    claim(options: ClaimOptions): Promise<ClaimResult> {
-        if (!this._isPlayerAuthorized || !this._launchData?.claimable) {
+    // Reward for opening the post the game runs in. The server verifies the
+    // player (not the author, not within `cooldown`) and answers `{ granted }`.
+    getPostReward(options?: PostRewardOptions): Promise<unknown> {
+        if (!this._isPlayerAuthorized || this.#launchSource !== LAUNCH_SOURCE.POST) {
             return Promise.reject()
         }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CLAIM)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_POST_REWARD)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CLAIM)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_POST_REWARD)
 
-            this.#fetchJson('/api/claim', { method: 'POST', body: { options } })
+            this.#fetchJson('/api/post-reward', { method: 'POST', body: { options: options ?? {} } })
                 .then((data) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.CLAIM, data)
+                    if ((data as AnyRecord | null)?.granted) {
+                        this._resolvePromiseDecorator(ACTION_NAME.GET_POST_REWARD)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.GET_POST_REWARD)
+                    }
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.CLAIM, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_POST_REWARD, error)
                 })
         }
 
-        return promiseDecorator.promise as Promise<ClaimResult>
+        return promiseDecorator.promise
     }
 
-    getInbox(options: InboxOptions): Promise<Inbox> {
+    // Players rewarded through the current player's posts since the previous
+    // call; the server resets the counter once it is handed out.
+    getCreatePostReward(): Promise<CreatePostReward> {
         if (!this._isPlayerAuthorized) {
             return Promise.reject()
         }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_INBOX)
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_CREATE_POST_REWARD)
         if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_INBOX)
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_CREATE_POST_REWARD)
 
-            this.#fetchJson('/api/inbox', { method: 'POST', body: { options } })
+            this.#fetchJson('/api/create-post-reward', { method: 'POST' })
                 .then((data) => {
-                    const result = (data ?? {}) as AnyRecord
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_INBOX, {
-                        events: this.#extractList(result.events),
-                        serverTime: Number(result.serverTime ?? 0),
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_CREATE_POST_REWARD, {
+                        count: Number((data as AnyRecord | null)?.count) || 0,
                     })
                 })
                 .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.GET_INBOX, error)
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_CREATE_POST_REWARD, error)
                 })
         }
 
-        return promiseDecorator.promise as Promise<Inbox>
+        return promiseDecorator.promise as Promise<CreatePostReward>
     }
 
     // leaderboards

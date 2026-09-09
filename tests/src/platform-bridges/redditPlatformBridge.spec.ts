@@ -2,6 +2,7 @@ import {
     describe, test, expect, vi, beforeEach,
 } from 'vitest'
 import RedditPlatformBridge from '../../../src/platform-bridges/RedditPlatformBridge'
+import { LAUNCH_SOURCE } from '../../../src/constants/launchSource'
 import { LEADERBOARD_TYPE } from '../../../src/modules/leaderboards/constants'
 
 vi.stubGlobal('PLUGIN_VERSION', 'test-version')
@@ -68,45 +69,23 @@ describe('RedditPlatformBridge server contract', () => {
         expect(bridge.isPlatformStorageAvailable).toBe(false)
     })
 
-    test('initialize exposes the post payload and launch data with claim status', async () => {
+    test('initialize marks a post launch and exposes the post payload', async () => {
         const bridge = await createInitializedBridge({
             ...AUTHORIZED_PLAYER,
-            payload: 'level:snoo',
             postId: 't3_xyz',
-            subredditName: 'pixelchase',
-            postAuthorId: 't2_author',
-            postData: { type: 'energy' },
-            claimable: true,
-            claim: {
-                available: false, reason: 'cooldown', count: 3, nextClaimAt: 1725014400000, serverTime: 1725000000000,
-            },
+            payload: '{"type":"energy"}',
         })
 
-        expect(bridge.platformPayload).toBe('level:snoo')
-        expect(bridge.launchData).toEqual({
-            id: 't3_xyz',
-            authorId: 't2_author',
-            data: { type: 'energy' },
-            claimable: true,
-            claim: {
-                available: false, reason: 'cooldown', count: 3, nextClaimAt: 1725014400000, serverTime: 1725000000000,
-            },
-            postId: 't3_xyz',
-            subredditName: 'pixelchase',
-        })
+        expect(bridge.launchSource).toBe(LAUNCH_SOURCE.POST)
+        expect(bridge.platformPayload).toBe('{"type":"energy"}')
     })
 
-    test('post context never leaks into player extra', async () => {
-        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, postId: 't3_xyz', postData: { level: 42 } })
-
-        expect(bridge.playerExtra).toEqual({})
-    })
-
-    test('initialize leaves launch data empty outside a post', async () => {
+    test('initialize leaves the launch source and payload empty outside a post', async () => {
         const bridge = await createInitializedBridge()
 
+        expect(bridge.launchSource).toBeNull()
         expect(bridge.platformPayload).toBeNull()
-        expect(bridge.launchData).toBeNull()
+        expect(bridge.playerExtra).toEqual({})
     })
 
     test('server time comes from /api/server-time', async () => {
@@ -191,12 +170,12 @@ describe('RedditPlatformBridge server contract', () => {
         const bridge = await createInitializedBridge()
         fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new', postUrl: 'https://reddit.com/r/x/t3_new' }))
 
-        const result = await bridge.createPost({ text: 'My level', data: { objects: [] }, claimable: true })
+        const result = await bridge.createPost({ text: 'My level', payload: '{"objects":[]}' })
 
         expect(lastCall()).toEqual({
             url: '/api/create-post',
             method: 'POST',
-            body: { options: { title: 'My level', data: { objects: [] }, claimable: true } },
+            body: { options: { title: 'My level', payload: '{"objects":[]}' } },
         })
         expect(result).toEqual({
             id: 't3_new', url: 'https://reddit.com/r/x/t3_new', postId: 't3_new', postUrl: 'https://reddit.com/r/x/t3_new',
@@ -274,50 +253,50 @@ describe('RedditPlatformBridge server contract', () => {
         expect(entries).toHaveLength(1)
     })
 
-    test('claim posts the options and resolves with the server verdict', async () => {
-        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, postId: 't3_ref', claimable: true })
-        const verdict = {
-            granted: true, count: 1, nextClaimAt: 1725014400000, serverTime: 1725000000000,
-        }
-        fetchMock.mockReturnValueOnce(jsonResponse(verdict))
+    test('post reward posts the options and resolves when the server grants it', async () => {
+        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, postId: 't3_ref' })
+        fetchMock.mockReturnValueOnce(jsonResponse({ granted: true }))
 
-        expect(bridge.isClaimSupported).toBe(true)
-        const result = await bridge.claim({ cooldown: 14400, scope: 'user' })
+        expect(bridge.isPostRewardSupported).toBe(true)
+        await expect(bridge.getPostReward({ cooldown: 14400, scope: 'user' })).resolves.toBeUndefined()
 
         expect(lastCall()).toEqual({
-            url: '/api/claim',
+            url: '/api/post-reward',
             method: 'POST',
             body: { options: { cooldown: 14400, scope: 'user' } },
         })
-        expect(result).toEqual(verdict)
     })
 
-    test('claim rejects outside a claimable post without calling the server', async () => {
-        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, postId: 't3_plain' })
+    test('post reward rejects when the server denies it', async () => {
+        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, postId: 't3_ref' })
+        fetchMock.mockReturnValueOnce(jsonResponse({ granted: false, reason: 'cooldown' }))
+
+        await expect(bridge.getPostReward()).rejects.toBeUndefined()
+    })
+
+    test('post reward rejects outside a post without calling the server', async () => {
+        const bridge = await createInitializedBridge()
         fetchMock.mockClear()
 
-        await expect(bridge.claim({})).rejects.toBeUndefined()
+        await expect(bridge.getPostReward()).rejects.toBeUndefined()
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    test('inbox returns events and acknowledges up to a server time', async () => {
+    test('create post reward resolves with the number of rewarded players', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({
-            events: [{ postId: 't3_ref', from: { id: 't2_b', name: 'bob' }, at: 1725000000000 }],
-            serverTime: 1725000001000,
-        }))
+        fetchMock.mockReturnValueOnce(jsonResponse({ count: '3' }))
 
-        const inbox = await bridge.getInbox({ ackUntil: 1724999999000 })
+        expect(bridge.isCreatePostRewardSupported).toBe(true)
+        await expect(bridge.getCreatePostReward()).resolves.toEqual({ count: 3 })
+        expect(lastCall()).toEqual({ url: '/api/create-post-reward', method: 'POST', body: undefined })
+    })
 
-        expect(lastCall()).toEqual({
-            url: '/api/inbox',
-            method: 'POST',
-            body: { options: { ackUntil: 1724999999000 } },
-        })
-        expect(inbox).toEqual({
-            events: [{ postId: 't3_ref', from: { id: 't2_b', name: 'bob' }, at: 1725000000000 }],
-            serverTime: 1725000001000,
-        })
+    test('create post reward rejects for a guest without calling the server', async () => {
+        const bridge = await createInitializedBridge({ isPlayerAuthorized: false })
+        fetchMock.mockClear()
+
+        await expect(bridge.getCreatePostReward()).rejects.toBeUndefined()
+        expect(fetchMock).not.toHaveBeenCalled()
     })
 
     test('a failed response rejects with the status and body', async () => {
