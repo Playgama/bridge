@@ -76,8 +76,11 @@ class PlatformBridgeBase {
         return this._platformSdk
     }
 
-    get additionalData(): Record<string, unknown> {
-        return this._additionalData ?? {}
+    // Data the launch carries: parameters the platform passes to the game
+    // (Playgama's launch params), and on platforms that know which post opened
+    // the game, the config entry of that post merged on top by PlatformModule.
+    get data(): Record<string, unknown> {
+        return this._data ?? {}
     }
 
     get platformLanguage(): string {
@@ -100,6 +103,12 @@ class PlatformBridgeBase {
 
     get launchSource(): LaunchSource | null {
         return null
+    }
+
+    // Id of the config `posts` entry the game was launched from, set during
+    // initialize() by platforms that can tell which post opened the game.
+    get launchPostId(): string | null {
+        return this._launchPostId
     }
 
     get isPlatformGamesListSupported(): boolean {
@@ -218,6 +227,14 @@ class PlatformBridgeBase {
         return false
     }
 
+    get isPostVisitRewardSupported(): boolean {
+        return false
+    }
+
+    get isPostAuthorRewardSupported(): boolean {
+        return false
+    }
+
     get isPlatformExternalLinksAllowed(): boolean {
         return true
     }
@@ -301,7 +318,9 @@ class PlatformBridgeBase {
 
     protected _options!: ConfigFileOptions
 
-    protected _additionalData: Record<string, unknown> | null = null
+    protected _data: Record<string, unknown> | null = null
+
+    protected _launchPostId: string | null = null
 
     protected _isInitialized = false
 

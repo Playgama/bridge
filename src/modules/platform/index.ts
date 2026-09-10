@@ -19,6 +19,7 @@ import PlatformModule from './PlatformModule'
 
 export type {
     PlatformBridgeContract,
+    PlatformBridgeOptions,
     PlatformMessageOptions,
 } from './PlatformModule'
 export default new PlatformModule()

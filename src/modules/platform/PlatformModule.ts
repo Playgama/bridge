@@ -23,8 +23,15 @@ import {
     type PlatformId,
     type PlatformMessage,
 } from './constants'
+import { getPostPlatformData } from '../social/helpers'
+import type { PostMapping } from '../social/types'
+import { deepMerge, type AnyRecord } from '../../utils'
 import { internalAnalytics } from '../analytics'
 import type { EventEmitter } from '../../lib/EventBus'
+
+export interface PlatformBridgeOptions extends Record<string, unknown> {
+    posts?: PostMapping[]
+}
 
 export interface PlatformMessageOptions {
     world?: unknown
@@ -38,6 +45,9 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     platformLanguage: string
     platformPayload: string | null
     platformTld: string | null
+    data: AnyRecord
+    launchPostId: string | null
+    options: PlatformBridgeOptions
     launchSource: LaunchSource | null
     isPlatformExternalCallsSupported: boolean
     isPlatformExternalLinksAllowed: boolean
@@ -65,6 +75,20 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     get payload(): string | null {
         return this._platformBridge.platformPayload
+    }
+
+    // Everything the launch carries: the parameters the platform passed to the
+    // game and, when it was opened from one of the game's own posts, that post's
+    // config entry merged on top. Check `launchSource` to tell the cases apart.
+    get data(): AnyRecord {
+        const {
+            data, launchPostId, options, platformId,
+        } = this._platformBridge
+        const post = launchPostId
+            ? getPostPlatformData(options.posts, platformId, launchPostId)
+            : null
+
+        return post ? deepMerge(data, post) : data
     }
 
     get tld(): string | null {

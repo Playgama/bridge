@@ -34,7 +34,7 @@ export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     options: AnalyticsBridgeOptions
     launchSource: LaunchSource | null
     isPlatformExternalCallsSupported: boolean
-    additionalData?: { clid?: string } & Record<string, unknown>
+    data?: { clid?: string } & Record<string, unknown>
 }
 
 export interface AnalyticsSender {

@@ -125,6 +125,7 @@ export type { LeaderboardEntry } from './modules/leaderboards/types'
 export type { CatalogProduct, Purchase } from './modules/payments/types'
 export type { NormalizedAchievement } from './modules/achievements/types'
 export type { Game } from './modules/cross-promo/types'
+export type { PostMapping, PostRewardConfig, PostAuthorReward } from './modules/social/types'
 export type {
     Task,
     TaskTarget,

@@ -22,7 +22,10 @@ export type {
     SocialOptions,
     SocialConfig,
     SocialMethod,
+    PostMapping,
+    PostRewardConfig,
+    PostAuthorReward,
 } from './types'
-export { getSocialPlatformData } from './helpers'
+export { getSocialPlatformData, getPostPlatformData } from './helpers'
 
 export default new SocialModule()

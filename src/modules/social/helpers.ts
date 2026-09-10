@@ -16,7 +16,12 @@
  */
 
 import { deepMerge, type AnyRecord } from '../../utils'
-import type { SocialConfig, SocialMethod, SocialOptions } from './types'
+import { PLATFORM_ID, type PlatformId } from '../platform/constants'
+import type {
+    SocialConfig, SocialMethod, SocialOptions, PostMapping,
+} from './types'
+
+const PLATFORM_IDS = new Set<string>(Object.values(PLATFORM_ID))
 
 // Builds the data a social method receives: the static config block for the method
 // merged with the game's runtime options on top. The config block is already
@@ -34,4 +39,36 @@ export function getSocialPlatformData(
     const base: AnyRecord = configData && typeof configData === 'object' ? configData : {}
     const runtime: AnyRecord = runtimeOptions ?? {}
     return deepMerge(base, runtime)
+}
+
+// Builds the data of a post declared in the config `posts` array: the common
+// fields of the entry with the active platform's own block merged on top, and
+// every other platform's block dropped. Returns null when the id is unknown,
+// which is how the modules tell "this post is not declared" from "declared but
+// empty". The `id` is kept, so the game can branch on platform.data.id.
+export function getPostPlatformData(
+    posts: PostMapping[] | undefined,
+    platformId: PlatformId,
+    id: string,
+): PostMapping | null {
+    const entry = posts?.find((post) => post?.id === id)
+    if (!entry) {
+        return null
+    }
+
+    const common: AnyRecord = {}
+    let platformData: AnyRecord = {}
+    Object.keys(entry).forEach((key) => {
+        const value = (entry as AnyRecord)[key]
+        if (!PLATFORM_IDS.has(key)) {
+            common[key] = value
+            return
+        }
+
+        if (key === platformId && value && typeof value === 'object') {
+            platformData = value as AnyRecord
+        }
+    })
+
+    return deepMerge(common, platformData) as PostMapping
 }

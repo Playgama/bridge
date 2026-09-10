@@ -16,9 +16,15 @@
  */
 
 import ModuleBase from '../ModuleBase'
-import type { AnyRecord } from '../../utils'
-import { getSocialPlatformData } from './helpers'
-import type { SocialBridgeContract, SocialMethod, SocialOptions } from './types'
+import { deepMerge, type AnyRecord } from '../../utils'
+import { getSocialPlatformData, getPostPlatformData } from './helpers'
+import type {
+    SocialBridgeContract,
+    SocialMethod,
+    SocialOptions,
+    PostMapping,
+    PostAuthorReward,
+} from './types'
 
 class SocialModule extends ModuleBase<SocialBridgeContract> {
     get isInviteFriendsSupported(): boolean {
@@ -57,6 +63,17 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.isRateSupported
     }
 
+    // Rewards around posts created with createPost(): one for the player who
+    // came to the game through a post, one for the author of that post. The
+    // platform backend verifies who and when, the game decides what it grants.
+    get isPostVisitRewardSupported(): boolean {
+        return this._platformBridge.isPostVisitRewardSupported
+    }
+
+    get isPostAuthorRewardSupported(): boolean {
+        return this._platformBridge.isPostAuthorRewardSupported
+    }
+
     inviteFriends(options?: SocialOptions): Promise<unknown> {
         if (!this._platformBridge.isInviteFriendsSupported) {
             return Promise.reject()
@@ -81,12 +98,31 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.share(this.#resolve('share', options))
     }
 
+    // With `id` the content comes from the config `posts` entry of that id, so
+    // the game passes nothing but the id. Without it the call behaves as before
+    // and takes its content from the `social.createPost` config block.
     createPost(options?: SocialOptions): Promise<unknown> {
         if (!this._platformBridge.isCreatePostSupported) {
             return Promise.reject()
         }
 
-        return this._platformBridge.createPost(this.#resolve('createPost', options))
+        const { id, ...content } = options ?? {}
+        if (id === undefined) {
+            return this._platformBridge.createPost(this.#resolve('createPost', options))
+        }
+
+        const post = this.#getPost(String(id))
+        if (!post) {
+            return Promise.reject()
+        }
+
+        // The rewards and their cooldown are read from the config again when the
+        // game is launched from this post, so they are not part of its content.
+        const postContent: AnyRecord = { ...post }
+        delete postContent.rewards
+        delete postContent.rewardCooldown
+
+        return this._platformBridge.createPost(deepMerge(postContent, content))
     }
 
     addToHomeScreen(): Promise<unknown> {
@@ -127,6 +163,36 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         }
 
         return this._platformBridge.rate()
+    }
+
+    // Reward for the player who was launched from a post (see platform.data).
+    // Resolves when the reward may be granted and rejects otherwise, the same
+    // contract as getAddToHomeScreenReward(). The wait between rewards comes
+    // from `rewardCooldown` of the post's config entry.
+    getPostVisitReward(): Promise<unknown> {
+        const { launchPostId } = this._platformBridge
+        if (!this._platformBridge.isPostVisitRewardSupported || !launchPostId) {
+            return Promise.reject()
+        }
+
+        const post = this.#getPost(launchPostId)
+        return this._platformBridge.getPostVisitReward(post?.rewardCooldown)
+    }
+
+    // Reward for the author: how many players came to the game through their
+    // posts since the previous call.
+    getPostAuthorReward(): Promise<PostAuthorReward> {
+        if (!this._platformBridge.isPostAuthorRewardSupported) {
+            return Promise.reject()
+        }
+
+        return this._platformBridge.getPostAuthorReward()
+    }
+
+    // Resolves a post declared in the config `posts` array for the active platform.
+    #getPost(id: string): PostMapping | null {
+        const { posts } = this._platformBridge.options
+        return getPostPlatformData(posts, this._platformBridge.platformId, id)
     }
 
     // Resolves the platform data for a method: static config (community ids,

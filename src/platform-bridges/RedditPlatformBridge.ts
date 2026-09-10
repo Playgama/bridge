@@ -17,10 +17,11 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import ServerTimeCache from '../lib/ServerTimeCache'
-import { ACTION_NAME } from '../constants'
+import { ACTION_NAME, LAUNCH_SOURCE, type LaunchSource } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { LeaderboardEntry } from '../modules/leaderboards/types'
+import type { PostAuthorReward } from '../modules/social/types'
 import type { AnyRecord } from '../utils'
 
 declare global {
@@ -36,6 +37,9 @@ interface InitializePayload {
     playerId?: string
     playerName?: string
     playerPhoto?: string
+    // Set when the game runs in a post created with createPost(): the id of the
+    // config `posts` entry that post was created from.
+    post?: { id?: string }
 }
 
 // Raw entry from the server; numeric fields may arrive as strings.
@@ -58,6 +62,11 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.REDDIT
     }
 
+    // The game runs in a post it created itself; which post is platform.data.
+    get launchSource(): LaunchSource | null {
+        return this._launchPostId ? LAUNCH_SOURCE.POST : super.launchSource
+    }
+
     get isPlatformExternalCallsSupported(): boolean {
         return false
     }
@@ -73,6 +82,14 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     }
 
     get isCreatePostSupported(): boolean {
+        return true
+    }
+
+    get isPostVisitRewardSupported(): boolean {
+        return true
+    }
+
+    get isPostAuthorRewardSupported(): boolean {
         return true
     }
 
@@ -110,6 +127,8 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                         }
                         this._setPlatformStorageAvailable(true)
                     }
+
+                    this._launchPostId = payload.post?.id ?? null
 
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -255,14 +274,29 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
+    // Creates a post running this app. The canonical `text` becomes the post
+    // title, and the server remembers the `id` of the config entry the post was
+    // created from, so it can be handed back at launch. Resolves with the link
+    // to the created post.
     createPost(options: unknown = {}): Promise<unknown> {
+        const content: AnyRecord = { ...((options ?? {}) as AnyRecord) }
+        const title = content.title ?? content.text
+        // A Devvit post carries a title only, so the other canonical content
+        // fields are dropped instead of travelling as unknown post options.
+        delete content.text
+        delete content.image
+        delete content.url
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.CREATE_POST)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
 
-            this.#fetchJson('/api/create-post', { method: 'POST', body: { options } })
-                .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST)
+            this.#fetchJson('/api/create-post', { method: 'POST', body: { options: { ...content, title } } })
+                .then((data) => {
+                    const result = (data ?? {}) as AnyRecord
+                    this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST, {
+                        url: typeof result.postUrl === 'string' ? result.postUrl : null,
+                    })
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.CREATE_POST, error)
@@ -287,6 +321,58 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // Reward for the player who opened the post the game runs in. The server
+    // verifies the player, the author and the wait between rewards.
+    getPostVisitReward(cooldown?: number): Promise<unknown> {
+        if (!this._isPlayerAuthorized || !this._launchPostId) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_POST_VISIT_REWARD)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_POST_VISIT_REWARD)
+
+            this.#fetchJson('/api/post-visit-reward', { method: 'POST', body: { cooldown: cooldown ?? 0 } })
+                .then((data) => {
+                    if ((data as AnyRecord | null)?.granted) {
+                        this._resolvePromiseDecorator(ACTION_NAME.GET_POST_VISIT_REWARD)
+                    } else {
+                        this._rejectPromiseDecorator(ACTION_NAME.GET_POST_VISIT_REWARD)
+                    }
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_POST_VISIT_REWARD, error)
+                })
+        }
+
+        return promiseDecorator.promise
+    }
+
+    // Players who came to the game through the current player's posts since the
+    // previous call; the server resets the counter once it is handed out.
+    getPostAuthorReward(): Promise<PostAuthorReward> {
+        if (!this._isPlayerAuthorized) {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.GET_POST_AUTHOR_REWARD)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.GET_POST_AUTHOR_REWARD)
+
+            this.#fetchJson('/api/post-author-reward', { method: 'POST' })
+                .then((data) => {
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_POST_AUTHOR_REWARD, {
+                        count: Number((data as AnyRecord | null)?.count) || 0,
+                    })
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.GET_POST_AUTHOR_REWARD, error)
+                })
+        }
+
+        return promiseDecorator.promise as Promise<PostAuthorReward>
     }
 
     // leaderboards

@@ -34,6 +34,39 @@ export interface SocialOptions extends AnyRecord {
     url?: string
 }
 
+// One reward the game grants for a post. Data-only, mirroring the tasks module:
+// `id` and `amount` are opaque to the bridge — the game decides what they mean
+// and grants them once getPostVisitReward() resolves.
+export interface PostRewardConfig {
+    id: string
+    amount: number
+}
+
+// Players who came to the game through the current player's posts since the
+// previous call; the platform backend resets the counter once it is handed out.
+export interface PostAuthorReward {
+    count: number
+}
+
+// One post declared in the config `posts` array, addressed by `id` from
+// social.createPost({ id }). `text`, `image` and `url` are the same canonical
+// content fields as everywhere in social; a key named after a platform holds
+// that platform's own fields and overrides the common ones on it. Any other
+// key belongs to the game: the bridge forwards it untouched and hands it back
+// as platform.data when the game is launched from this post.
+export interface PostMapping extends AnyRecord {
+    id: string
+    text?: string
+    image?: string
+    url?: string
+    rewards?: PostRewardConfig[]
+    // Seconds the same player waits before the next post visit reward, verified
+    // by the platform backend. The wait is counted per player across all posts
+    // of the game, so opening ten posts in a row does not multiply the reward.
+    // Omit it for a one-time reward.
+    rewardCooldown?: number
+}
+
 // Per-method config block: the social data for one method (publisher settings like
 // community ids/page flags, optional defaults for the canonical content fields, and
 // `native`). It is platform-resolved before the module reads it: put common values
@@ -51,6 +84,7 @@ export interface SocialConfig {
 
 export interface SocialBridgeOptions extends AnyRecord {
     social?: SocialConfig
+    posts?: PostMapping[]
 }
 
 export interface SocialBridgeContract extends PlatformBridgeLike {
@@ -65,6 +99,9 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     isAddToFavoritesSupported: boolean
     isAddToFavoritesRewardSupported: boolean
     isRateSupported: boolean
+    isPostVisitRewardSupported: boolean
+    isPostAuthorRewardSupported: boolean
+    launchPostId: string | null
     inviteFriends(data?: AnyRecord): Promise<unknown>
     joinCommunity(data?: AnyRecord): Promise<unknown>
     share(data?: AnyRecord): Promise<unknown>
@@ -74,4 +111,6 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     addToFavorites(): Promise<unknown>
     getAddToFavoritesReward(): Promise<unknown>
     rate(): Promise<unknown>
+    getPostVisitReward(cooldown?: number): Promise<unknown>
+    getPostAuthorReward(): Promise<PostAuthorReward>
 }
