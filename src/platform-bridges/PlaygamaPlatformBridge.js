@@ -82,6 +82,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     #isPlayerAuthorizationSupported = true
 
+    // Accepted platform prices supply the charge terms for subsequent purchases.
+    #paymentsPlatformCatalog = new Map()
+
     initialize() {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -390,14 +393,24 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
         product.bridgeId = id
 
+        const accepted = this.#paymentsPlatformCatalog.get(id)
+        const request = typeof accepted?.amount === 'number' && accepted.currency
+            ? { ...product, amount: accepted.amount, currency: accepted.currency }
+            : product
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.PURCHASE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.PURCHASE)
 
-            this._platformSdk.inGamePaymentsApi.purchase(product)
+            this._platformSdk.inGamePaymentsApi.purchase(request)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        const mergedPurchase = { id, ...purchase }
+                        // Keep game receipts in the original config units.
+                        const mergedPurchase = request === product
+                            ? { id, ...purchase }
+                            : {
+                                id, ...purchase, amount: product.amount, currency: undefined,
+                            }
                         this._paymentsPurchases.push(mergedPurchase)
                         if (this._platformSdk.inGamePaymentsApi.confirmDelivery) {
                             this._platformSdk.inGamePaymentsApi.confirmDelivery({
@@ -477,21 +490,49 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return super.paymentsConsumePurchase(id)
     }
 
-    paymentsGetCatalog() {
+    async paymentsGetCatalog() {
         const products = this._paymentsGetProductsPlatformData()
         if (!products) {
             return Promise.reject()
         }
 
-        const updatedProducts = products.map((product) => ({
+        const platformCatalog = await this.#paymentsGetPlatformCatalog(products)
+        this.#paymentsPlatformCatalog = new Map(platformCatalog.map((product) => [product.id, product]))
+
+        return products.map((product) => {
+            const platformProduct = this.#paymentsPlatformCatalog.get(product.id)
+            return platformProduct
+                ? { ...platformProduct, id: product.id }
+                : this.#paymentsGetFallbackCatalogProduct(product)
+        })
+    }
+
+    // The platform owns pricing (it decides which currency to show). An empty
+    // result sends every product to the Gam fallback: older platform SDKs without
+    // getCatalog, a rejected call, or a malformed response all behave like today.
+    async #paymentsGetPlatformCatalog(products) {
+        const paymentsApi = this._platformSdk?.inGamePaymentsApi
+        if (typeof paymentsApi?.getCatalog !== 'function') {
+            return []
+        }
+
+        try {
+            const catalog = await paymentsApi.getCatalog(products)
+            return Array.isArray(catalog) ? catalog.filter((product) => typeof product?.id === 'string') : []
+        } catch {
+            return []
+        }
+    }
+
+    #paymentsGetFallbackCatalogProduct(product) {
+        const { amount } = product
+        return {
             id: product.id,
-            price: `${product.amount} Gam`,
+            price: `${amount} Gam`,
             priceCurrencyCode: 'Gam',
             priceCurrencyImage: 'https://games.playgama.com/assets/gold-fennec-coin-large.webp',
-            priceValue: product.amount,
-        }))
-
-        return Promise.resolve(updatedProducts)
+            priceValue: amount,
+        }
     }
 
     #getPlayer() {
