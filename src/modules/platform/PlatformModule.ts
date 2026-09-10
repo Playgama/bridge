@@ -23,13 +23,13 @@ import {
     type PlatformId,
     type PlatformMessage,
 } from './constants'
+import { deepMerge, type AnyRecord } from '../../utils'
 import { getPostPlatformData } from '../social/helpers'
 import type { PostMapping } from '../social/types'
-import { deepMerge, type AnyRecord } from '../../utils'
 import { internalAnalytics } from '../analytics'
 import type { EventEmitter } from '../../lib/EventBus'
 
-export interface PlatformBridgeOptions extends Record<string, unknown> {
+export interface PlatformBridgeOptions extends AnyRecord {
     posts?: PostMapping[]
 }
 
