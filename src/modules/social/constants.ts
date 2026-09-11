@@ -15,10 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import PlatformModule from './PlatformModule'
-
-export type {
-    PlatformBridgeContract,
-    PlatformMessageOptions,
-} from './PlatformModule'
-export default new PlatformModule()
+// Who a post reward is for: the player who came to the game through the post,
+// or its author, once per player who came. A reward declared without a type is
+// a visit reward.
+export const POST_REWARD_TYPE = {
+    VISIT: 'visit',
+    AUTHOR: 'author',
+} as const
+export type PostRewardType = typeof POST_REWARD_TYPE[keyof typeof POST_REWARD_TYPE]

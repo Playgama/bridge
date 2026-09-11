@@ -192,7 +192,7 @@ describe('RedditPlatformBridge server contract', () => {
         const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, post: { id: 'gift' } })
         fetchMock.mockReturnValueOnce(jsonResponse({ granted: true }))
 
-        expect(bridge.isPostVisitRewardSupported).toBe(true)
+        expect(bridge.isPostRewardSupported).toBe(true)
         await expect(bridge.getPostVisitReward(14400)).resolves.toBeUndefined()
 
         expect(lastCall()).toEqual({
@@ -216,12 +216,11 @@ describe('RedditPlatformBridge server contract', () => {
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    test('post author reward resolves with the number of players who came through the posts', async () => {
+    test('post author reward resolves with the players counted per post', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({ count: '3' }))
+        fetchMock.mockReturnValueOnce(jsonResponse({ counts: { gift: '3', level: 0 } }))
 
-        expect(bridge.isPostAuthorRewardSupported).toBe(true)
-        await expect(bridge.getPostAuthorReward()).resolves.toEqual({ count: 3 })
+        await expect(bridge.getPostAuthorReward()).resolves.toEqual({ gift: 3 })
         expect(lastCall()).toEqual({ url: '/api/post-author-reward', method: 'POST', body: undefined })
     })
 

@@ -16,14 +16,15 @@
  */
 
 import ModuleBase from '../ModuleBase'
-import { deepMerge, type AnyRecord } from '../../utils'
-import { getSocialPlatformData, getPostPlatformData } from './helpers'
+import type { AnyRecord } from '../../utils'
+import { getSocialPlatformData, getPostPlatformData, getPostRewards } from './helpers'
+import { POST_REWARD_TYPE } from './constants'
 import type {
     SocialBridgeContract,
     SocialMethod,
     SocialOptions,
     PostMapping,
-    PostAuthorReward,
+    PostReward,
 } from './types'
 
 class SocialModule extends ModuleBase<SocialBridgeContract> {
@@ -63,15 +64,10 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.isRateSupported
     }
 
-    // Rewards around posts created with createPost(): one for the player who
-    // came to the game through a post, one for the author of that post. The
-    // platform backend verifies who and when, the game decides what it grants.
-    get isPostVisitRewardSupported(): boolean {
-        return this._platformBridge.isPostVisitRewardSupported
-    }
-
-    get isPostAuthorRewardSupported(): boolean {
-        return this._platformBridge.isPostAuthorRewardSupported
+    // Rewards around posts created with createPost(). The platform backend
+    // verifies who is rewarded and when, the game decides what a reward means.
+    get isPostRewardSupported(): boolean {
+        return this._platformBridge.isPostRewardSupported
     }
 
     inviteFriends(options?: SocialOptions): Promise<unknown> {
@@ -98,31 +94,30 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.share(this.#resolve('share', options))
     }
 
-    // With `id` the content comes from the config `posts` entry of that id, so
-    // the game passes nothing but the id. Without it the call behaves as before
-    // and takes its content from the `social.createPost` config block.
-    createPost(options?: SocialOptions): Promise<unknown> {
+    // Takes either the id of a `posts` config entry, so the game passes nothing
+    // but the id, or the content itself, which is how the method worked before
+    // and still takes its defaults from the `social.createPost` config block.
+    createPost(options?: string | SocialOptions): Promise<unknown> {
         if (!this._platformBridge.isCreatePostSupported) {
             return Promise.reject()
         }
 
-        const { id, ...content } = options ?? {}
-        if (id === undefined) {
+        if (typeof options !== 'string') {
             return this._platformBridge.createPost(this.#resolve('createPost', options))
         }
 
-        const post = this.#getPost(String(id))
+        const post = this.#getPost(options)
         if (!post) {
             return Promise.reject()
         }
 
         // The rewards and their cooldown are read from the config again when the
         // game is launched from this post, so they are not part of its content.
-        const postContent: AnyRecord = { ...post }
-        delete postContent.rewards
-        delete postContent.rewardCooldown
+        const content: AnyRecord = { ...post }
+        delete content.rewards
+        delete content.rewardCooldown
 
-        return this._platformBridge.createPost(deepMerge(postContent, content))
+        return this._platformBridge.createPost(content)
     }
 
     addToHomeScreen(): Promise<unknown> {
@@ -165,28 +160,30 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.rate()
     }
 
-    // Reward for the player who was launched from a post (see platform.data).
-    // Resolves when the reward may be granted and rejects otherwise, the same
-    // contract as getAddToHomeScreenReward(). The wait between rewards comes
-    // from `rewardCooldown` of the post's config entry.
-    getPostVisitReward(): Promise<unknown> {
+    // The rewards the player has coming from posts, already verified by the
+    // platform backend and taken from the `rewards` of their config entries.
+    // Launched from a post, it is the visit reward of that post, and the promise
+    // rejects when the wait has not passed yet. Otherwise it is what the author
+    // earned from the players who came through their posts since the last call.
+    getPostReward(): Promise<PostReward[]> {
+        if (!this._platformBridge.isPostRewardSupported) {
+            return Promise.reject()
+        }
+
         const { launchPostId } = this._platformBridge
-        if (!this._platformBridge.isPostVisitRewardSupported || !launchPostId) {
-            return Promise.reject()
+        if (launchPostId) {
+            const post = this.#getPost(launchPostId)
+            return this._platformBridge
+                .getPostVisitReward(post?.rewardCooldown)
+                .then(() => getPostRewards(post, POST_REWARD_TYPE.VISIT, 1))
         }
 
-        const post = this.#getPost(launchPostId)
-        return this._platformBridge.getPostVisitReward(post?.rewardCooldown)
-    }
-
-    // Reward for the author: how many players came to the game through their
-    // posts since the previous call.
-    getPostAuthorReward(): Promise<PostAuthorReward> {
-        if (!this._platformBridge.isPostAuthorRewardSupported) {
-            return Promise.reject()
-        }
-
-        return this._platformBridge.getPostAuthorReward()
+        return this._platformBridge.getPostAuthorReward().then((counts) => Object.keys(counts)
+            .flatMap((postId) => getPostRewards(
+                this.#getPost(postId),
+                POST_REWARD_TYPE.AUTHOR,
+                counts[postId],
+            )))
     }
 
     // Resolves a post declared in the config `posts` array for the active platform.

@@ -23,15 +23,9 @@ import {
     type PlatformId,
     type PlatformMessage,
 } from './constants'
-import { deepMerge, type AnyRecord } from '../../utils'
-import { getPostPlatformData } from '../social/helpers'
-import type { PostMapping } from '../social/types'
+import type { AnyRecord } from '../../utils'
 import { internalAnalytics } from '../analytics'
 import type { EventEmitter } from '../../lib/EventBus'
-
-export interface PlatformBridgeOptions extends AnyRecord {
-    posts?: PostMapping[]
-}
 
 export interface PlatformMessageOptions {
     world?: unknown
@@ -47,7 +41,6 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     platformTld: string | null
     data: AnyRecord
     launchPostId: string | null
-    options: PlatformBridgeOptions
     launchSource: LaunchSource | null
     isPlatformExternalCallsSupported: boolean
     isPlatformExternalLinksAllowed: boolean
@@ -78,17 +71,11 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
     }
 
     // Everything the launch carries: the parameters the platform passed to the
-    // game and, when it was opened from one of the game's own posts, that post's
-    // config entry merged on top. Check `launchSource` to tell the cases apart.
+    // game and, when it was opened from one of the game's own posts, the id of
+    // that post's config entry. What the post grants is social.getPostReward().
     get data(): AnyRecord {
-        const {
-            data, launchPostId, options, platformId,
-        } = this._platformBridge
-        const post = launchPostId
-            ? getPostPlatformData(options.posts, platformId, launchPostId)
-            : null
-
-        return post ? deepMerge(data, post) : data
+        const { data, launchPostId } = this._platformBridge
+        return launchPostId ? { ...data, postId: launchPostId } : data
     }
 
     get tld(): string | null {

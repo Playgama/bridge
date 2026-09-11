@@ -18,6 +18,7 @@
 import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { AnyRecord } from '../../utils'
+import type { PostRewardType } from './constants'
 
 // Social methods that resolve their data from the config mapping.
 export type SocialMethod = 'share' | 'inviteFriends' | 'joinCommunity' | 'createPost'
@@ -34,18 +35,22 @@ export interface SocialOptions extends AnyRecord {
     url?: string
 }
 
-// One reward the game grants for a post. Data-only, mirroring the tasks module:
-// `id` and `amount` are opaque to the bridge — the game decides what they mean
-// and grants them once getPostVisitReward() resolves.
+// One reward declared for a post. Data-only, mirroring the tasks module: `id`
+// and `amount` are opaque to the bridge — the game decides what they mean and
+// grants them. `type` says who gets it; without it the reward is for the player
+// who came to the game through the post.
 export interface PostRewardConfig {
     id: string
     amount: number
+    type?: PostRewardType
 }
 
-// Players who came to the game through the current player's posts since the
-// previous call; the platform backend resets the counter once it is handed out.
-export interface PostAuthorReward {
-    count: number
+// A reward social.getPostReward() hands to the game. For the author the amount
+// is already multiplied by the number of players the backend counted.
+export interface PostReward {
+    id: string
+    amount: number
+    type: PostRewardType
 }
 
 // One post declared in the config `posts` array, addressed by `id` from
@@ -99,8 +104,7 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     isAddToFavoritesSupported: boolean
     isAddToFavoritesRewardSupported: boolean
     isRateSupported: boolean
-    isPostVisitRewardSupported: boolean
-    isPostAuthorRewardSupported: boolean
+    isPostRewardSupported: boolean
     launchPostId: string | null
     inviteFriends(data?: AnyRecord): Promise<unknown>
     joinCommunity(data?: AnyRecord): Promise<unknown>
@@ -112,5 +116,7 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     getAddToFavoritesReward(): Promise<unknown>
     rate(): Promise<unknown>
     getPostVisitReward(cooldown?: number): Promise<unknown>
-    getPostAuthorReward(): Promise<PostAuthorReward>
+    // Players counted on the current player's posts since the previous call,
+    // keyed by the config entry id of the post they came through.
+    getPostAuthorReward(): Promise<Record<string, number>>
 }

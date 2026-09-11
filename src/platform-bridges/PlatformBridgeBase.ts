@@ -227,11 +227,7 @@ class PlatformBridgeBase {
         return false
     }
 
-    get isPostVisitRewardSupported(): boolean {
-        return false
-    }
-
-    get isPostAuthorRewardSupported(): boolean {
+    get isPostRewardSupported(): boolean {
         return false
     }
 

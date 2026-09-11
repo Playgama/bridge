@@ -17,8 +17,9 @@
 
 import { deepMerge, type AnyRecord } from '../../utils'
 import { PLATFORM_ID, type PlatformId } from '../platform/constants'
+import { POST_REWARD_TYPE, type PostRewardType } from './constants'
 import type {
-    SocialConfig, SocialMethod, SocialOptions, PostMapping,
+    SocialConfig, SocialMethod, SocialOptions, PostMapping, PostRewardConfig, PostReward,
 } from './types'
 
 const PLATFORM_IDS = new Set<string>(Object.values(PLATFORM_ID))
@@ -71,4 +72,18 @@ export function getPostPlatformData(
     })
 
     return deepMerge(common, platformData) as PostMapping
+}
+
+// Rewards of one post entry meant for one side. A reward declared without a
+// type is for the player who came through the post; the author's ones are
+// multiplied by how many players the platform backend counted.
+export function getPostRewards(
+    post: PostMapping | null,
+    type: PostRewardType,
+    count: number,
+): PostReward[] {
+    const rewards = (post?.rewards ?? []) as PostRewardConfig[]
+    return rewards
+        .filter((reward) => (reward.type ?? POST_REWARD_TYPE.VISIT) === type)
+        .map(({ id, amount }) => ({ id, amount: amount * count, type }))
 }

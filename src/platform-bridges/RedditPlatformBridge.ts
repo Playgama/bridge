@@ -21,7 +21,6 @@ import { ACTION_NAME, LAUNCH_SOURCE, type LaunchSource } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { LeaderboardEntry } from '../modules/leaderboards/types'
-import type { PostAuthorReward } from '../modules/social/types'
 import type { AnyRecord } from '../utils'
 
 declare global {
@@ -85,11 +84,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    get isPostVisitRewardSupported(): boolean {
-        return true
-    }
-
-    get isPostAuthorRewardSupported(): boolean {
+    get isPostRewardSupported(): boolean {
         return true
     }
 
@@ -351,8 +346,9 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     }
 
     // Players who came to the game through the current player's posts since the
-    // previous call; the server resets the counter once it is handed out.
-    getPostAuthorReward(): Promise<PostAuthorReward> {
+    // previous call, keyed by the config entry id of the post; the server resets
+    // the counters once they are handed out.
+    getPostAuthorReward(): Promise<Record<string, number>> {
         if (!this._isPlayerAuthorized) {
             return Promise.reject()
         }
@@ -363,16 +359,23 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
             this.#fetchJson('/api/post-author-reward', { method: 'POST' })
                 .then((data) => {
-                    this._resolvePromiseDecorator(ACTION_NAME.GET_POST_AUTHOR_REWARD, {
-                        count: Number((data as AnyRecord | null)?.count) || 0,
+                    const counts = ((data as AnyRecord | null)?.counts ?? {}) as AnyRecord
+                    const result: Record<string, number> = {}
+                    Object.keys(counts).forEach((postId) => {
+                        const count = Number(counts[postId]) || 0
+                        if (count > 0) {
+                            result[postId] = count
+                        }
                     })
+
+                    this._resolvePromiseDecorator(ACTION_NAME.GET_POST_AUTHOR_REWARD, result)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.GET_POST_AUTHOR_REWARD, error)
                 })
         }
 
-        return promiseDecorator.promise as Promise<PostAuthorReward>
+        return promiseDecorator.promise as Promise<Record<string, number>>
     }
 
     // leaderboards

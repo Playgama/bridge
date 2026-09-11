@@ -37,21 +37,10 @@ describe('PlatformModule data', () => {
         expect(module.data).toEqual({ clid: 'partner-1' })
     })
 
-    test('merges the config entry of the launch post on top of them', () => {
+    test('adds the id of the post the game was launched from', () => {
         const module = createModule(createBridge({ data: { clid: 'partner-1' }, launchPostId: 'gift' }))
 
-        expect(module.data).toEqual({
-            clid: 'partner-1',
-            id: 'gift',
-            text: '🎁 Free coins inside',
-            rewards: [{ id: 'coins', amount: 100 }],
-        })
-    })
-
-    test('keeps the launch parameters when the post id is not declared in the config', () => {
-        const module = createModule(createBridge({ data: { clid: 'partner-1' }, launchPostId: 'unknown' }))
-
-        expect(module.data).toEqual({ clid: 'partner-1' })
+        expect(module.data).toEqual({ clid: 'partner-1', postId: 'gift' })
     })
 
     test('is an empty object when the launch carries nothing', () => {

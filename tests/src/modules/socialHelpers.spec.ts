@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { getSocialPlatformData, getPostPlatformData } from '../../../src/modules/social/helpers'
+import { getSocialPlatformData, getPostPlatformData, getPostRewards } from '../../../src/modules/social/helpers'
 import type { SocialConfig, PostMapping } from '../../../src/modules/social/types'
 
 // The config loader resolves `social[method]` for the active platform before the
@@ -68,7 +68,10 @@ const POSTS: PostMapping[] = [
         id: 'gift',
         text: 'I am sharing coins!',
         image: 'gift.png',
-        rewards: [{ id: 'coins', amount: 100 }],
+        rewards: [
+            { id: 'coins', amount: 100 },
+            { id: 'coins', amount: 50, type: 'author' },
+        ],
         rewardCooldown: 14400,
         ok: { status: true },
         reddit: { text: '🎁 Free coins inside' },
@@ -81,7 +84,10 @@ describe('getPostPlatformData', () => {
             id: 'gift',
             text: '🎁 Free coins inside',
             image: 'gift.png',
-            rewards: [{ id: 'coins', amount: 100 }],
+            rewards: [
+            { id: 'coins', amount: 100 },
+            { id: 'coins', amount: 50, type: 'author' },
+        ],
             rewardCooldown: 14400,
         })
     })
@@ -93,7 +99,10 @@ describe('getPostPlatformData', () => {
             id: 'gift',
             text: 'I am sharing coins!',
             image: 'gift.png',
-            rewards: [{ id: 'coins', amount: 100 }],
+            rewards: [
+            { id: 'coins', amount: 100 },
+            { id: 'coins', amount: 50, type: 'author' },
+        ],
             rewardCooldown: 14400,
             status: true,
         })
@@ -104,7 +113,10 @@ describe('getPostPlatformData', () => {
             id: 'gift',
             text: 'I am sharing coins!',
             image: 'gift.png',
-            rewards: [{ id: 'coins', amount: 100 }],
+            rewards: [
+            { id: 'coins', amount: 100 },
+            { id: 'coins', amount: 50, type: 'author' },
+        ],
             rewardCooldown: 14400,
         })
     })
@@ -112,5 +124,21 @@ describe('getPostPlatformData', () => {
     test('returns null for an id that is not declared', () => {
         expect(getPostPlatformData(POSTS, 'reddit', 'unknown')).toBeNull()
         expect(getPostPlatformData(undefined, 'reddit', 'gift')).toBeNull()
+    })
+})
+
+describe('getPostRewards', () => {
+    const post = getPostPlatformData(POSTS, 'reddit', 'gift')
+
+    test('returns the rewards of the player who came through the post', () => {
+        expect(getPostRewards(post, 'visit', 1)).toEqual([{ id: 'coins', amount: 100, type: 'visit' }])
+    })
+
+    test('multiplies the author rewards by the players counted', () => {
+        expect(getPostRewards(post, 'author', 3)).toEqual([{ id: 'coins', amount: 150, type: 'author' }])
+    })
+
+    test('returns nothing for a post that declares no rewards', () => {
+        expect(getPostRewards(null, 'visit', 1)).toEqual([])
     })
 })
