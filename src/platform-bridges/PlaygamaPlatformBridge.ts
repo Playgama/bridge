@@ -409,7 +409,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             sdk.inGamePaymentsApi.purchase(request)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        const mergedPurchase = this.#paymentsToGameReceipt({ id, ...purchase }, request.currency)
+                        const mergedPurchase: AnyRecord & { id: string } = { id, ...purchase }
                         this._paymentsPurchases.push(mergedPurchase)
                         if (sdk.inGamePaymentsApi.confirmDelivery) {
                             sdk.inGamePaymentsApi.confirmDelivery({
@@ -438,7 +438,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             sdk.inGamePaymentsApi.getPurchases()
                 .then((purchases) => {
                     this._paymentsPurchases = purchases.map(({ bridgeId, ...purchase }) => (
-                        this.#paymentsToGameReceipt(bridgeId ? { ...purchase, id: bridgeId } : purchase)
+                        bridgeId ? { ...purchase, id: bridgeId } : purchase
                     ))
                     this._resolvePromiseDecorator(ACTION_NAME.GET_PURCHASES, this._paymentsPurchases)
                 })
@@ -550,20 +550,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
-    }
-
-    // Both new and restored fiat purchases use the game's config units.
-    #paymentsToGameReceipt(receipt: AnyRecord & { id: string }, requestCurrency?: unknown): AnyRecord & { id: string } {
-        const currency = receipt.currency ?? requestCurrency
-        const product = this._paymentsGetProductPlatformData(receipt.id)
-        if (typeof currency !== 'string' || currency.toLowerCase() === 'gam'
-            || typeof product?.amount !== 'number') {
-            return receipt
-        }
-
-        const result: AnyRecord & { id: string } = { ...receipt, amount: product.amount }
-        delete result.currency
-        return result
     }
 
     // A failed refresh keeps the last displayed prices and their charge terms.
