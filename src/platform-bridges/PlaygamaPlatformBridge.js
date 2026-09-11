@@ -405,12 +405,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.inGamePaymentsApi.purchase(request)
                 .then((purchase) => {
                     if (purchase.status === 'PAID') {
-                        // Keep game receipts in the original config units.
-                        const mergedPurchase = request === product
-                            ? { id, ...purchase }
-                            : {
-                                id, ...purchase, amount: product.amount, currency: undefined,
-                            }
+                        const mergedPurchase = this.#paymentsToGameReceipt({ id, ...purchase }, request.currency)
                         this._paymentsPurchases.push(mergedPurchase)
                         if (this._platformSdk.inGamePaymentsApi.confirmDelivery) {
                             this._platformSdk.inGamePaymentsApi.confirmDelivery({
@@ -442,7 +437,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             this._platformSdk.inGamePaymentsApi.getPurchases()
                 .then((purchases) => {
                     this._paymentsPurchases = purchases.map(
-                        ({ bridgeId, ...purchase }) => ({
+                        ({ bridgeId, ...purchase }) => this.#paymentsToGameReceipt({
                             id: bridgeId,
                             ...purchase,
                         }),
@@ -497,30 +492,52 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         const platformCatalog = await this.#paymentsGetPlatformCatalog(products)
-        this.#paymentsPlatformCatalog = new Map(platformCatalog.map((product) => [product.id, product]))
+        if (platformCatalog !== null) {
+            this.#paymentsPlatformCatalog = new Map(platformCatalog.map((product) => [product.id, product]))
+        }
 
         return products.map((product) => {
             const platformProduct = this.#paymentsPlatformCatalog.get(product.id)
             return platformProduct
-                ? { ...platformProduct, id: product.id }
+                ? {
+                    id: product.id,
+                    price: platformProduct.price,
+                    priceValue: platformProduct.priceValue,
+                    priceCurrencyCode: platformProduct.priceCurrencyCode,
+                    ...(platformProduct.priceCurrencyImage === undefined
+                        ? {} : { priceCurrencyImage: platformProduct.priceCurrencyImage }),
+                }
                 : this.#paymentsGetFallbackCatalogProduct(product)
         })
     }
 
-    // The platform owns pricing (it decides which currency to show). An empty
-    // result sends every product to the Gam fallback: older platform SDKs without
-    // getCatalog, a rejected call, or a malformed response all behave like today.
+    // Both new and restored fiat purchases use the game's config units.
+    #paymentsToGameReceipt(receipt, requestCurrency) {
+        const currency = receipt.currency ?? requestCurrency
+        const product = this._paymentsGetProductPlatformData(receipt.id)
+        if (typeof currency !== 'string' || currency.toLowerCase() === 'gam'
+            || typeof product?.amount !== 'number') {
+            return receipt
+        }
+
+        const result = { ...receipt, amount: product.amount }
+        delete result.currency
+        return result
+    }
+
+    // A failed refresh keeps the last displayed prices and their charge terms.
+    // With no accepted catalog, products still use the legacy GAM fallback.
     async #paymentsGetPlatformCatalog(products) {
         const paymentsApi = this._platformSdk?.inGamePaymentsApi
         if (typeof paymentsApi?.getCatalog !== 'function') {
-            return []
+            return null
         }
 
         try {
             const catalog = await paymentsApi.getCatalog(products)
-            return Array.isArray(catalog) ? catalog.filter((product) => typeof product?.id === 'string') : []
+            return Array.isArray(catalog) ? catalog.filter((product) => typeof product?.id === 'string') : null
         } catch {
-            return []
+            return null
         }
     }
 
