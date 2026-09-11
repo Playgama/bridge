@@ -109,7 +109,7 @@ describe('Playgama payments catalog', () => {
 
         await bridge.paymentsGetCatalog()
         await expect(bridge.paymentsPurchase('coins_100')).resolves.toEqual({
-            id: 'coins_100', status: 'PAID', orderId: 'order-1', amount: 100,
+            id: 'coins_100', status: 'PAID', orderId: 'order-1', amount: 1000, currency: 'usd',
         })
         expect(purchase).toHaveBeenLastCalledWith(
             expect.objectContaining({ id: 'coins_100', amount: 1000, currency: 'usd' }),
@@ -170,62 +170,28 @@ describe('Playgama payments catalog', () => {
             },
         ])
     })
-    test('new and restored fiat receipts use the same config units without a currency key', async () => {
-        const { bridge, sdk } = await createInitializedBridge(vi.fn().mockResolvedValue([{
-            id: 'coins_100', amount: 1000, currency: 'usd', price: '$10.00',
-            priceValue: 10, priceCurrencyCode: 'USD',
-        }]))
-        const paid = { status: 'PAID', orderId: 'order-fiat', externalId: 'external', amount: 1000, currency: 'usd' }
-        sdk.inGamePaymentsApi.purchase.mockResolvedValue(paid)
-        sdk.inGamePaymentsApi.getPurchases.mockResolvedValue([{ ...paid, bridgeId: 'coins_100' }])
-        await bridge.paymentsGetCatalog()
-        const receipt = await bridge.paymentsPurchase('coins_100')
-        const expected = { id: 'coins_100', status: 'PAID', orderId: 'order-fiat', externalId: 'external', amount: 100 }
-        expect(receipt).toStrictEqual(expected)
-        expect(receipt).not.toHaveProperty('currency')
-        await expect(bridge.paymentsGetPurchases()).resolves.toStrictEqual([expected])
-        expect(sdk.inGamePaymentsApi.confirmDelivery).toHaveBeenCalledWith({ orderId: 'order-fiat', externalId: 'external' })
-        expect(paid).toHaveProperty('currency', 'usd')
-
-    })
-
-    test('restoration normalizes known fiat products without a catalog and preserves unknown products', async () => {
-        const { bridge, sdk } = await createInitializedBridge()
-        const paid = { status: 'PAID', orderId: 'restored', amount: 1000, currency: 'USD' }
-        sdk.inGamePaymentsApi.getPurchases.mockResolvedValue([
-            { ...paid, bridgeId: 'coins_100' },
-            { ...paid, bridgeId: 'removed_product' },
-        ])
-        await expect(bridge.paymentsGetPurchases()).resolves.toStrictEqual([
-            { id: 'coins_100', status: 'PAID', orderId: 'restored', amount: 100 },
-            { id: 'removed_product', ...paid },
-        ])
-    })
-
-    test('explicit GAM catalog terms leave new and restored GAM receipts unchanged', async () => {
-        const { bridge, sdk } = await createInitializedBridge(vi.fn().mockResolvedValue([{
-            id: 'coins_100', amount: 100, currency: 'gam', price: '100 Gam',
-            priceValue: 100, priceCurrencyCode: 'Gam',
-        }]))
-        const paid = { status: 'PAID', orderId: 'order-gam', amount: 100, currency: 'gam' }
-        sdk.inGamePaymentsApi.purchase.mockResolvedValue(paid)
-        sdk.inGamePaymentsApi.getPurchases.mockResolvedValue([{ ...paid, bridgeId: 'coins_100' }])
-        await bridge.paymentsGetCatalog()
-        await expect(bridge.paymentsPurchase('coins_100')).resolves.toStrictEqual({ id: 'coins_100', ...paid })
-        await expect(bridge.paymentsGetPurchases()).resolves.toStrictEqual([{ id: 'coins_100', ...paid }])
-    })
-
     test.each([
-        [{ status: 'PAID', amount: 1000 }, { id: 'coins_100', status: 'PAID', amount: 100 }],
-        [{ status: 'PAID', amount: 90, currency: 'gam' }, { id: 'coins_100', status: 'PAID', amount: 90, currency: 'gam' }],
-    ])('receipt currency takes precedence over requested USD terms: %j', async (paid, expected) => {
+        { amount: 1000, currency: 'usd' },
+        { amount: 100, currency: 'gam' },
+        { amount: 100 },
+        { amount: 90, currency: 'future-currency', platformField: 'preserved' },
+    ])('passes platform receipt fields through for purchases and restoration: %j', async (terms) => {
         const { bridge, sdk } = await createInitializedBridge(vi.fn().mockResolvedValue([{
             id: 'coins_100', amount: 1000, currency: 'usd', price: '$10.00',
             priceValue: 10, priceCurrencyCode: 'USD',
         }]))
+        const paid = { status: 'PAID', orderId: 'order-1', externalId: 'external', ...terms }
         sdk.inGamePaymentsApi.purchase.mockResolvedValue(paid)
+        sdk.inGamePaymentsApi.getPurchases.mockResolvedValue([{ ...paid, bridgeId: 'coins_100' }])
         await bridge.paymentsGetCatalog()
+        const expected = { id: 'coins_100', ...paid }
         await expect(bridge.paymentsPurchase('coins_100')).resolves.toStrictEqual(expected)
+        await expect(bridge.paymentsGetPurchases()).resolves.toStrictEqual([expected])
+        expect(sdk.inGamePaymentsApi.confirmDelivery).toHaveBeenCalledWith({ orderId: 'order-1', externalId: 'external' })
+
+        const restored = await createInitializedBridge()
+        restored.sdk.inGamePaymentsApi.getPurchases.mockResolvedValue([{ ...paid, bridgeId: 'coins_100' }])
+        await expect(restored.bridge.paymentsGetPurchases()).resolves.toStrictEqual([expected])
     })
 
     test('catalog exposes display fields only and a successful refresh replaces purchase terms', async () => {
