@@ -156,30 +156,48 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.rate()
     }
 
-    // The rewards the player has coming from posts, already verified by the
-    // platform backend and taken from the `rewards` of their config entries.
-    // Launched from a post, it is the visit reward of that post, and the promise
-    // rejects when the wait has not passed yet. Otherwise it is what the author
-    // earned from the players who came through their posts since the last call.
+    // Everything the player has coming from posts right now, verified by the
+    // platform backend and taken from the `rewards` of the config entries: the
+    // reward for the post the game was launched from, when it may be granted,
+    // and what the author earned from the players who came through their posts.
+    // Resolves with an empty array when there is nothing, so a game grants what
+    // it gets and stays quiet otherwise.
     getPostReward(): Promise<PostReward[]> {
         if (!this._platformBridge.isPostRewardSupported) {
             return Promise.reject()
         }
 
+        return Promise.all([this.#getVisitRewards(), this.#getAuthorRewards()])
+            .then(([visit, author]) => [...visit, ...author])
+    }
+
+    // The reward for the launch post. Nothing is asked of the backend when the
+    // game was not launched from a post or that post declares no visit reward,
+    // so the player's cooldown is not spent for nothing.
+    #getVisitRewards(): Promise<PostReward[]> {
         const { launchPostId } = this._platformBridge
-        if (launchPostId) {
-            const post = this.#getPost(launchPostId)
-            return this._platformBridge
-                .getPostVisitReward(post?.rewardCooldown)
-                .then(() => getPostRewards(post, POST_REWARD_TYPE.VISIT, 1))
+        const post = launchPostId ? this.#getPost(launchPostId) : null
+        const rewards = getPostRewards(post, POST_REWARD_TYPE.VISIT, 1)
+        if (!post || rewards.length === 0) {
+            return Promise.resolve([])
         }
 
-        return this._platformBridge.getPostAuthorReward().then((counts) => Object.keys(counts)
-            .flatMap((postId) => getPostRewards(
+        return this._platformBridge
+            .getPostVisitReward(post.rewardCooldown)
+            .then(() => rewards)
+            .catch(() => [])
+    }
+
+    // What the author earned since the previous call, by the config entry of
+    // the post each player came through.
+    #getAuthorRewards(): Promise<PostReward[]> {
+        return this._platformBridge.getPostAuthorReward()
+            .then((counts) => Object.keys(counts).flatMap((postId) => getPostRewards(
                 this.#getPost(postId),
                 POST_REWARD_TYPE.AUTHOR,
                 counts[postId],
             )))
+            .catch(() => [])
     }
 
     // What actually reaches the platform SDK: the canonical content fields and

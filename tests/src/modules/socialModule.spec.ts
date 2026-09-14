@@ -129,13 +129,37 @@ describe('SocialModule', () => {
         expect(bridge.createPost).not.toHaveBeenCalled()
     })
 
-    test('post reward returns the visit rewards of the post the game was launched from', async () => {
+    test('post reward returns both sides at once: the visit reward and what the author earned', async () => {
         const bridge = createBridge('reddit', { options: { posts: POSTS }, launchPostId: 'gift' })
 
         await expect(createModule(bridge).getPostReward()).resolves.toEqual([
             { id: 'coins', amount: 100, type: 'visit' },
+            { id: 'coins', amount: 100, type: 'author' },
         ])
         expect(bridge.getPostVisitReward).toHaveBeenCalledWith(14400)
+    })
+
+    test('post reward keeps the author rewards when the visit one is declined', async () => {
+        const bridge = createBridge('reddit', {
+            options: { posts: POSTS },
+            launchPostId: 'gift',
+            getPostVisitReward: vi.fn().mockRejectedValue(undefined),
+        })
+
+        await expect(createModule(bridge).getPostReward()).resolves.toEqual([
+            { id: 'coins', amount: 100, type: 'author' },
+        ])
+    })
+
+    test('post reward asks nothing of the backend for a post with no visit reward', async () => {
+        const bridge = createBridge('reddit', {
+            options: { posts: [{ id: 'plain', text: 'Just a post' }] },
+            launchPostId: 'plain',
+            getPostAuthorReward: vi.fn().mockResolvedValue({}),
+        })
+
+        await expect(createModule(bridge).getPostReward()).resolves.toEqual([])
+        expect(bridge.getPostVisitReward).not.toHaveBeenCalled()
     })
 
     test('post reward rejects and calls nothing when the platform does not support it', async () => {
@@ -153,6 +177,15 @@ describe('SocialModule', () => {
             { id: 'coins', amount: 100, type: 'author' },
         ])
         expect(bridge.getPostVisitReward).not.toHaveBeenCalled()
+    })
+
+    test('post reward resolves with an empty array when nothing is waiting', async () => {
+        const bridge = createBridge('reddit', {
+            options: { posts: POSTS },
+            getPostAuthorReward: vi.fn().mockResolvedValue({}),
+        })
+
+        await expect(createModule(bridge).getPostReward()).resolves.toEqual([])
     })
 
     test('passes runtime options as is when there is no social config', async () => {

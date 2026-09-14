@@ -116,6 +116,10 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     addToFavorites(): Promise<unknown>
     getAddToFavoritesReward(): Promise<unknown>
     rate(): Promise<unknown>
+    // The two sides of a post reward are two different calls to the platform
+    // backend, so the bridge keeps them apart. The game sees one method:
+    // SocialModule.getPostReward() picks the side by the launch post and turns
+    // the answer into the rewards declared in the config entry.
     getPostVisitReward(cooldown?: number): Promise<unknown>
     // Players counted on the current player's posts since the previous call,
     // keyed by the config entry id of the post they came through.
