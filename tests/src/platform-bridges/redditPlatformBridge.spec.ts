@@ -164,7 +164,7 @@ describe('RedditPlatformBridge server contract', () => {
         const bridge = await createInitializedBridge()
         fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new', postUrl: 'https://reddit.com/r/x/t3_new' }))
 
-        const result = await bridge.createPost({ text: '🎁 Free coins inside' }, 'gift')
+        const result = await bridge.createPost({ text: '🎁 Free coins inside' }, { id: 'gift' })
 
         expect(lastCall()).toEqual({
             url: '/api/create-post',
@@ -181,11 +181,34 @@ describe('RedditPlatformBridge server contract', () => {
         expect(bridge.launchSource).toBe(LAUNCH_SOURCE.POST)
     })
 
+    test('createPost sends the payload the game attached to this one post', async () => {
+        const bridge = await createInitializedBridge()
+        fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new' }))
+
+        await bridge.createPost({ text: 'My level' }, { id: 'level', payload: '{"objects":[]}' })
+
+        expect(lastCall().body).toEqual({
+            options: { title: 'My level' },
+            id: 'level',
+            payload: '{"objects":[]}',
+        })
+    })
+
+    test('initialize hands the payload back as the platform payload', async () => {
+        const bridge = await createInitializedBridge({
+            ...AUTHORIZED_PLAYER,
+            post: { id: 'level', payload: '{"objects":[]}' },
+        })
+
+        expect(bridge.platformPayload).toBe('{"objects":[]}')
+    })
+
     test('initialize leaves the launch post empty outside a created post', async () => {
         const bridge = await createInitializedBridge()
 
         expect(bridge.launchPostId).toBeNull()
         expect(bridge.launchSource).toBeNull()
+        expect(bridge.platformPayload).toBeNull()
     })
 
     test('post visit reward sends the policy and resolves when the server grants it', async () => {

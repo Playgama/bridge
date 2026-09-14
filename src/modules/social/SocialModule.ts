@@ -97,7 +97,9 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
     // Takes either the id of a `posts` config entry, so the game passes nothing
     // but the id, or the content itself, which is how the method worked before
     // and still takes its defaults from the `social.createPost` config block.
-    createPost(options?: string | SocialOptions): Promise<unknown> {
+    // `payload` is the game's own string for this one post — a level, a seed, a
+    // challenge — handed back as platform.payload when someone opens it.
+    createPost(options?: string | SocialOptions, payload?: string): Promise<unknown> {
         if (!this._platformBridge.isCreatePostSupported) {
             return Promise.reject()
         }
@@ -111,9 +113,12 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
             return Promise.reject()
         }
 
-        // The id travels beside the content, not inside it: platforms that can
-        // remember which entry a post was created from take it, the rest ignore it.
-        return this._platformBridge.createPost(content, options)
+        // The id and the payload travel beside the content, not inside it:
+        // platforms that can remember them take them, the rest ignore them.
+        return this._platformBridge.createPost(content, {
+            id: options,
+            ...(payload === undefined ? {} : { payload }),
+        })
     }
 
     addToHomeScreen(): Promise<unknown> {

@@ -45,6 +45,12 @@ export interface PostRewardConfig {
     type?: PostRewardType
 }
 
+// Travels with a post and comes back when someone opens it.
+export interface PostLaunchOptions {
+    id?: string
+    payload?: string
+}
+
 // A reward social.getPostReward() hands to the game. For the author the amount
 // is already multiplied by the number of players the backend counted.
 export interface PostReward {
@@ -109,8 +115,11 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     inviteFriends(data?: AnyRecord): Promise<unknown>
     joinCommunity(data?: AnyRecord): Promise<unknown>
     share(data?: AnyRecord): Promise<unknown>
-    // `postId` is the id of the config entry, for platforms that remember it.
-    createPost(data?: AnyRecord, postId?: string): Promise<unknown>
+    // What the post carries besides its content: the id of the config entry it
+    // was created from and the game's own payload string. Both are kept out of
+    // `data` so that nothing but content reaches the platform SDK, and both come
+    // back when someone opens the post, as launchPostId and platformPayload.
+    createPost(data?: AnyRecord, post?: PostLaunchOptions): Promise<unknown>
     addToHomeScreen(): Promise<unknown>
     getAddToHomeScreenReward(): Promise<unknown>
     addToFavorites(): Promise<unknown>

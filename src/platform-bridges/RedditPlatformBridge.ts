@@ -21,6 +21,7 @@ import { ACTION_NAME, LAUNCH_SOURCE, type LaunchSource } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { LeaderboardEntry } from '../modules/leaderboards/types'
+import type { PostLaunchOptions } from '../modules/social/types'
 import type { AnyRecord } from '../utils'
 
 declare global {
@@ -37,8 +38,9 @@ interface InitializePayload {
     playerName?: string
     playerPhoto?: string
     // Set when the game runs in a post created with createPost(): the id of the
-    // config `posts` entry that post was created from.
-    post?: { id?: string }
+    // config `posts` entry it was created from and the payload string the game
+    // attached to this one post.
+    post?: { id?: string; payload?: string }
 }
 
 // Raw entry from the server; numeric fields may arrive as strings.
@@ -64,6 +66,11 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     // The game runs in a post it created itself; which post is platform.data.
     get launchSource(): LaunchSource | null {
         return this._launchPostId ? LAUNCH_SOURCE.POST : super.launchSource
+    }
+
+    // The string the post was created with, for the game to read back.
+    get platformPayload(): string | null {
+        return this.#platformPayload ?? super.platformPayload
     }
 
     get isPlatformExternalCallsSupported(): boolean {
@@ -98,6 +105,8 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    #platformPayload: string | null = null
+
     #serverTimeCache = new ServerTimeCache(() => this.#fetchServerTime())
 
     initialize(): Promise<unknown> {
@@ -124,6 +133,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
                     }
 
                     this._launchPostId = payload.post?.id ?? null
+                    this.#platformPayload = payload.post?.payload ?? null
 
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
@@ -273,7 +283,7 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     // title, and `postId`, the id of the config entry it was created from, is
     // remembered by the server so it can be handed back at launch. Resolves
     // with the link to the created post.
-    createPost(options?: unknown, postId?: string): Promise<unknown> {
+    createPost(options?: unknown, post?: PostLaunchOptions): Promise<unknown> {
         const content: AnyRecord = { ...((options ?? {}) as AnyRecord) }
         const title = content.title ?? content.text
         // A Devvit post carries a title only, so the other canonical content
@@ -288,7 +298,11 @@ class RedditPlatformBridge extends PlatformBridgeBase {
 
             this.#fetchJson('/api/create-post', {
                 method: 'POST',
-                body: { options: { ...content, title }, ...(postId ? { id: postId } : {}) },
+                body: {
+                    options: { ...content, title },
+                    ...(post?.id ? { id: post.id } : {}),
+                    ...(post?.payload === undefined ? {} : { payload: post.payload }),
+                },
             })
                 .then((data) => {
                     const result = (data ?? {}) as AnyRecord

@@ -93,7 +93,7 @@ describe('SocialModule', () => {
 
         // Only the content reaches the platform; the id travels beside it and the
         // rewards, the cooldown and the game's own keys stay in the config.
-        expect(bridge.createPost).toHaveBeenCalledWith({ text: '🎁 Free coins inside' }, 'gift')
+        expect(bridge.createPost).toHaveBeenCalledWith({ text: '🎁 Free coins inside' }, { id: 'gift' })
     })
 
     test('createPost sends no config data to the platform sdk', async () => {
@@ -112,7 +112,17 @@ describe('SocialModule', () => {
         })
         await createModule(bridge).createPost('gift')
 
-        expect(bridge.createPost).toHaveBeenCalledWith({ text: 'Take my coins', status: true }, 'gift')
+        expect(bridge.createPost).toHaveBeenCalledWith({ text: 'Take my coins', status: true }, { id: 'gift' })
+    })
+
+    test('createPost passes the payload of this one post beside the content', async () => {
+        const bridge = createBridge('reddit', { options: { posts: POSTS } })
+        await createModule(bridge).createPost('gift', '{"level":42}')
+
+        expect(bridge.createPost).toHaveBeenCalledWith(
+            { text: '🎁 Free coins inside' },
+            { id: 'gift', payload: '{"level":42}' },
+        )
     })
 
     test('createPost keeps taking a content object, the way it worked before post ids', async () => {
