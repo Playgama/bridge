@@ -164,12 +164,12 @@ describe('RedditPlatformBridge server contract', () => {
         const bridge = await createInitializedBridge()
         fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new', postUrl: 'https://reddit.com/r/x/t3_new' }))
 
-        const result = await bridge.createPost({ id: 'gift', text: '🎁 Free coins inside' })
+        const result = await bridge.createPost({ text: '🎁 Free coins inside' }, 'gift')
 
         expect(lastCall()).toEqual({
             url: '/api/create-post',
             method: 'POST',
-            body: { options: { id: 'gift', title: '🎁 Free coins inside' } },
+            body: { options: { title: '🎁 Free coins inside' }, id: 'gift' },
         })
         expect(result).toEqual({ url: 'https://reddit.com/r/x/t3_new' })
     })

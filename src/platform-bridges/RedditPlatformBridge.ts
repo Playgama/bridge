@@ -270,10 +270,10 @@ class RedditPlatformBridge extends PlatformBridgeBase {
     }
 
     // Creates a post running this app. The canonical `text` becomes the post
-    // title, and the server remembers the `id` of the config entry the post was
-    // created from, so it can be handed back at launch. Resolves with the link
-    // to the created post.
-    createPost(options: unknown = {}): Promise<unknown> {
+    // title, and `postId`, the id of the config entry it was created from, is
+    // remembered by the server so it can be handed back at launch. Resolves
+    // with the link to the created post.
+    createPost(options?: unknown, postId?: string): Promise<unknown> {
         const content: AnyRecord = { ...((options ?? {}) as AnyRecord) }
         const title = content.title ?? content.text
         // A Devvit post carries a title only, so the other canonical content
@@ -286,7 +286,10 @@ class RedditPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.CREATE_POST)
 
-            this.#fetchJson('/api/create-post', { method: 'POST', body: { options: { ...content, title } } })
+            this.#fetchJson('/api/create-post', {
+                method: 'POST',
+                body: { options: { ...content, title }, ...(postId ? { id: postId } : {}) },
+            })
                 .then((data) => {
                     const result = (data ?? {}) as AnyRecord
                     this._resolvePromiseDecorator(ACTION_NAME.CREATE_POST, {

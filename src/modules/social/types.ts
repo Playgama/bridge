@@ -109,7 +109,8 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     inviteFriends(data?: AnyRecord): Promise<unknown>
     joinCommunity(data?: AnyRecord): Promise<unknown>
     share(data?: AnyRecord): Promise<unknown>
-    createPost(data?: AnyRecord): Promise<unknown>
+    // `postId` is the id of the config entry, for platforms that remember it.
+    createPost(data?: AnyRecord, postId?: string): Promise<unknown>
     addToHomeScreen(): Promise<unknown>
     getAddToHomeScreenReward(): Promise<unknown>
     addToFavorites(): Promise<unknown>

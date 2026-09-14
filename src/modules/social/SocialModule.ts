@@ -106,18 +106,14 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
             return this._platformBridge.createPost(this.#resolve('createPost', options))
         }
 
-        const post = this.#getPost(options)
-        if (!post) {
+        const content = this.#getPostContent(options)
+        if (!content) {
             return Promise.reject()
         }
 
-        // The rewards and their cooldown are read from the config again when the
-        // game is launched from this post, so they are not part of its content.
-        const content: AnyRecord = { ...post }
-        delete content.rewards
-        delete content.rewardCooldown
-
-        return this._platformBridge.createPost(content)
+        // The id travels beside the content, not inside it: platforms that can
+        // remember which entry a post was created from take it, the rest ignore it.
+        return this._platformBridge.createPost(content, options)
     }
 
     addToHomeScreen(): Promise<unknown> {
@@ -184,6 +180,30 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
                 POST_REWARD_TYPE.AUTHOR,
                 counts[postId],
             )))
+    }
+
+    // What actually reaches the platform SDK: the canonical content fields and
+    // the block written for this platform. Everything else in the entry — the
+    // id, the rewards, the card, whatever the game keeps there — stays here.
+    #getPostContent(id: string): AnyRecord | null {
+        const { posts } = this._platformBridge.options
+        const entry = posts?.find((post) => post?.id === id)
+        if (!entry) {
+            return null
+        }
+
+        const content: AnyRecord = {}
+        const canonical = ['text', 'image', 'url'] as const
+        canonical.forEach((key) => {
+            if (entry[key] !== undefined) {
+                content[key] = entry[key]
+            }
+        })
+
+        const platformData = entry[this._platformBridge.platformId]
+        return platformData && typeof platformData === 'object'
+            ? { ...content, ...platformData as AnyRecord }
+            : content
     }
 
     // Resolves a post declared in the config `posts` array for the active platform.
