@@ -23,6 +23,7 @@ export const PLATFORM_ID = {
     GAME_DISTRIBUTION: 'game_distribution',
     PLAYGAMA: 'playgama',
     STANDALONE: 'standalone',
+    PLAYGAMA_SANDBOX: 'playgama_sandbox',
     TELEGRAM: 'telegram',
     Y8: 'y8',
     LAGGED: 'lagged',

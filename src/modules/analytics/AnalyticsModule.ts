@@ -349,7 +349,11 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
                 }
             }
 
-            if (platformId === PLATFORM_ID.PLAYGAMA || platformId === PLATFORM_ID.STANDALONE) {
+            if (
+                platformId === PLATFORM_ID.PLAYGAMA
+                || platformId === PLATFORM_ID.STANDALONE
+                || platformId === PLATFORM_ID.PLAYGAMA_SANDBOX
+            ) {
                 const gameIdParam = parsedUrl.searchParams.get('game_id')
                 if (gameIdParam) {
                     return gameIdParam
@@ -357,7 +361,8 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
                 const match = parsedUrl.hostname.match(/^([a-z0-9-]+)\.games\.playgama\.net$/i)
                 if (match) {
-                    return match[1]
+                    // Sandbox games are served from an sb-<gameId> subdomain.
+                    return match[1].replace(/^sb-/i, '')
                 }
             }
         } catch {

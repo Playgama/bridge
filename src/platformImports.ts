@@ -44,6 +44,9 @@ if (__INCLUDE_PLAYGAMA__) {
 if (__INCLUDE_STANDALONE__) {
     platformImports[PLATFORM_ID.STANDALONE] = () => import('./platform-bridges/StandalonePlatformBridge')
 }
+if (__INCLUDE_PLAYGAMA_SANDBOX__) {
+    platformImports[PLATFORM_ID.PLAYGAMA_SANDBOX] = () => import('./platform-bridges/PlaygamaSandboxPlatformBridge')
+}
 if (__INCLUDE_TELEGRAM__) {
     platformImports[PLATFORM_ID.TELEGRAM] = () => import('./platform-bridges/TelegramPlatformBridge')
 }

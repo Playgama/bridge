@@ -11,7 +11,7 @@ export const ALL_PLATFORM_IDS: string[] = Array.from(new Set(ids))
 
 // Platforms that must always be bundled together with the key platform.
 const PLATFORM_BUNDLE_EXTRAS: Record<string, string[]> = {
-    playgama: ['standalone'],
+    playgama: ['standalone', 'playgama_sandbox'],
 }
 
 export const expandPlatforms = (platforms: string[]): string[] => Array.from(
