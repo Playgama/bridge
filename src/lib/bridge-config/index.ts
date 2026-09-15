@@ -49,6 +49,7 @@ export {
     REMOTE_CONFIG_DEFAULT_TIMEOUT,
     REMOTE_CONFIG_DEFAULT_TTL,
     LOCAL_ONLY_CONFIG_FIELDS,
+    PUBLIC_TOKEN_QUERY_PARAM,
 } from './constants'
 
 export default bridgeConfig

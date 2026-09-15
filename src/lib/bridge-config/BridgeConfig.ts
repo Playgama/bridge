@@ -19,7 +19,7 @@ import { deepMerge, type AnyRecord } from '../../utils'
 import { ERROR_CODE, BridgeError } from '../../constants'
 import logger from '../logger'
 import type { ConfigFileOptions } from './types'
-import { LOCAL_ONLY_CONFIG_FIELDS } from './constants'
+import { LOCAL_ONLY_CONFIG_FIELDS, PUBLIC_TOKEN_QUERY_PARAM } from './constants'
 import RemoteConfigLoader, {
     REMOTE_LOAD_STATUS,
     type RemoteAppliedSource,
@@ -133,7 +133,7 @@ class BridgeConfig {
     initialize(platformId: string): void {
         const platformOverrides = this.#rawValues.platforms?.[platformId]
         this.#values = platformOverrides
-            ? deepMerge(this.#rawValues, platformOverrides) as ConfigFileOptions
+            ? BridgeConfig.#applyPublicTokenOverride(deepMerge(this.#rawValues, platformOverrides) as ConfigFileOptions)
             : this.#rawValues
     }
 
@@ -162,9 +162,26 @@ class BridgeConfig {
     }
 
     #setValues(values: ConfigFileOptions): void {
-        this.#rawValues = { ...values }
+        this.#rawValues = BridgeConfig.#applyPublicTokenOverride({ ...values })
         // Keep resolved values usable before initialize() applies platform overrides.
         this.#values = this.#rawValues
+    }
+
+    // The public_token URL parameter, when present, overrides the config file value.
+    static #applyPublicTokenOverride(values: ConfigFileOptions): ConfigFileOptions {
+        let publicToken = ''
+
+        try {
+            publicToken = new URL(window.location.href).searchParams.get(PUBLIC_TOKEN_QUERY_PARAM) || ''
+        } catch {
+            publicToken = ''
+        }
+
+        if (!publicToken) {
+            return values
+        }
+
+        return { ...values, saas: { ...values.saas, publicToken } }
     }
 
     async #applyRemoteConfig(): Promise<void> {

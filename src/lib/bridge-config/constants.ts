@@ -27,3 +27,6 @@ export const LOCAL_ONLY_CONFIG_FIELDS = [
     'forciblySetPlatformId',
     'remoteConfigUrl',
 ] as const
+
+// URL parameter that overrides saas.publicToken from the config file.
+export const PUBLIC_TOKEN_QUERY_PARAM = 'public_token'
