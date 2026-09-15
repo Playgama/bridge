@@ -23,6 +23,7 @@ export type {
     AdvertisementOptions,
     PlacementMapping,
     AdvancedBannersPlacementConfig,
+    AdvancedBannerConfig,
 } from './types'
 export {
     createAdvertisementBannerContainer,
@@ -32,6 +33,5 @@ export {
     findGameCanvas,
     showInfoPopup,
     showAdFailurePopup,
-    type AdvancedBannerConfig,
 } from './dom'
 export default new AdvertisementModule()

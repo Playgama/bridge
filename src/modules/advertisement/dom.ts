@@ -21,15 +21,7 @@ import {
     BANNER_POSITION,
     type BannerPosition,
 } from './constants'
-
-export interface AdvancedBannerConfig {
-    width?: string
-    height?: string
-    top?: string
-    bottom?: string
-    left?: string
-    right?: string
-}
+import type { AdvancedBannerConfig } from './types'
 
 export function createAdvertisementBannerContainer(position: BannerPosition): HTMLDivElement {
     const container = document.createElement('div')

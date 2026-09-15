@@ -31,6 +31,15 @@ export interface AdvancedBannersPlacementConfig {
     [key: string]: unknown
 }
 
+export interface AdvancedBannerConfig {
+    width?: string
+    height?: string
+    top?: string
+    bottom?: string
+    left?: string
+    right?: string
+}
+
 export interface AdvertisementOptions {
     banner?: {
         disable?: boolean

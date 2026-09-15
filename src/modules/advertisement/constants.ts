@@ -69,5 +69,9 @@ export const ADVANCED_BANNERS_SCORE = {
     CANVAS: 1,
 }
 
+export const ADVANCED_BANNER_SIZE_KEYS = ['width', 'height'] as const
+export const ADVANCED_BANNER_POSITION_KEYS = ['top', 'bottom', 'left', 'right'] as const
+export const ADVANCED_BANNER_PERCENT_PATTERN = /^\d+(?:\.\d+)?%$/
+
 export const DEVICE_TYPES_SET = new Set<string>(Object.values(DEVICE_TYPE))
 export const ORIENTATIONS_SET = new Set<string>(Object.values(DEVICE_ORIENTATION))

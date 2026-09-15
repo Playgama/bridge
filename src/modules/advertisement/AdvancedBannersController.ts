@@ -23,15 +23,14 @@ import { EVENT_NAME, MODULE_NAME } from '../../constants'
 import type { DeviceOrientation, DeviceType } from '../device/constants'
 import {
     ADVANCED_BANNERS_ACTION,
-    BANNER_STATE,
-    type BannerState,
-} from './constants'
-import {
     ADVANCED_BANNERS_CONDITIONS_DEBOUNCE,
     ADVANCED_BANNERS_SCORE,
+    BANNER_STATE,
     DEVICE_TYPES_SET,
     ORIENTATIONS_SET,
+    type BannerState,
 } from './constants'
+import { filterValidAdvancedBanners } from './validation'
 import type {
     AdvancedBannersPlacementConfig,
     AdvertisementBridgeContract,
@@ -309,7 +308,10 @@ class AdvancedBannersController {
                 }
             })
 
-        return bestBanners
+        // Banners that are not expressed in percentages are never passed to the platform SDK.
+        const validBanners = filterValidAdvancedBanners(bestBanners)
+
+        return validBanners.length > 0 ? validBanners : null
     }
 
     #matchKey(key: string, context: AdvancedBannerMatchContext): { matched: boolean; score: number } {

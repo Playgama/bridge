@@ -820,24 +820,18 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return `${position}:${bestSize[0]}x${bestSize[1]}`
     }
 
+    // Advanced banners are validated as percent-only before they reach the bridge.
     #parseMsnDimension(value: string | undefined, screenSize: number): number | null {
-        if (typeof value !== 'string') {
+        if (typeof value !== 'string' || !value.endsWith('%')) {
             return null
         }
 
-        if (value.endsWith('%')) {
-            const percent = parseFloat(value)
-            if (Number.isNaN(percent)) {
-                return null
-            }
-            return Math.floor((screenSize * percent) / 100)
-        }
-
-        const px = parseInt(value, 10)
-        if (Number.isNaN(px)) {
+        const percent = parseFloat(value)
+        if (Number.isNaN(percent)) {
             return null
         }
-        return px
+
+        return Math.floor((screenSize * percent) / 100)
     }
 
     #resolveMsnPosition(banner: AdvancedBannerConfig): string | null {
