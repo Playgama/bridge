@@ -425,7 +425,7 @@ describe('BridgeConfig', () => {
             expect(unknownOptions.useSignedData).toBeUndefined()
         })
 
-        test('should merge payments arrays by index (deepMerge behavior)', async () => {
+        test('should replace the payments array with the platform one (deepMerge behavior)', async () => {
             const configData = {
                 payments: [
                     {
@@ -453,13 +453,10 @@ describe('BridgeConfig', () => {
             const fbOptions = await resolveForPlatform(configData, 'facebook')
 
             expect(fbOptions.subscribeForNotificationsOnStart).toBe(false)
-            // deepMerge merges arrays by index - first element is overwritten, second remains
-            expect(fbOptions.payments![0]).toEqual({
+            // deepMerge replaces arrays whole: the platform list is the only one left
+            expect(fbOptions.payments).toEqual([{
                 id: 'fb_item', title: 'FB Item', description: 'FB only', price: 2.99,
-            })
-            expect(fbOptions.payments![1]).toEqual({
-                id: 'base_item_2', title: 'Base Item 2', description: 'Base 2', price: 3.99,
-            })
+            }])
             // Base leaderboards should still be present
             expect(fbOptions.leaderboards).toEqual([
                 { id: 'base_board', title: 'Base Board' },

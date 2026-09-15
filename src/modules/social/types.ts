@@ -59,17 +59,23 @@ export interface PostReward {
     type: PostRewardType
 }
 
-// One post declared in the config `posts` array, addressed by `id` from
-// social.createPost({ id }). `text`, `image` and `url` are the same canonical
-// content fields as everywhere in social; a key named after a platform holds
-// that platform's own fields and overrides the common ones on it. Any other
-// key belongs to the game: the bridge forwards it untouched and hands it back
-// as platform.data when the game is launched from this post.
-export interface PostMapping extends AnyRecord {
+// Config entry a social method reads by id: `social.shares` for share(),
+// `social.invites` for inviteFriends(), `social.posts` for createPost(). A key
+// named after a platform holds that platform's fields and overrides the common ones.
+export interface SocialContentMapping extends AnyRecord {
     id: string
     text?: string
     image?: string
     url?: string
+}
+
+export type ShareMapping = SocialContentMapping
+
+export type InviteMapping = SocialContentMapping
+
+// Entry of `social.posts`: the content plus what the post grants, see
+// social.getPostReward().
+export interface PostMapping extends SocialContentMapping {
     rewards?: PostRewardConfig[]
     // Seconds the same player waits before the next post visit reward, verified
     // by the platform backend. The wait is counted per player across all posts
@@ -84,6 +90,7 @@ export interface PostMapping extends AnyRecord {
 // in the top-level `social[method]` block and platform-specific overrides in
 // `platforms[id].social[method]` — the config loader deep-merges them. So there is
 // no platform key here; the game can still override any of it at call time.
+// A method called with an id reads its config entry instead of this block.
 export type SocialMethodConfig = SocialOptions
 
 export interface SocialConfig {
@@ -91,11 +98,14 @@ export interface SocialConfig {
     inviteFriends?: SocialMethodConfig
     joinCommunity?: SocialMethodConfig
     createPost?: SocialMethodConfig
+    // Entries the methods read when called with an id.
+    shares?: ShareMapping[]
+    invites?: InviteMapping[]
+    posts?: PostMapping[]
 }
 
 export interface SocialBridgeOptions extends AnyRecord {
     social?: SocialConfig
-    posts?: PostMapping[]
 }
 
 export interface SocialBridgeContract extends PlatformBridgeLike {

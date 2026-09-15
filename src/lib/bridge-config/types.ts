@@ -22,7 +22,7 @@ import type { TasksConfig } from '../../modules/tasks/types'
 import type { AchievementMapping } from '../../modules/achievements/types'
 import type { CrossPromoConfig } from '../../modules/cross-promo/types'
 import type { LeaderboardMapping } from '../../modules/leaderboards'
-import type { PostMapping } from '../../modules/social/types'
+import type { SocialConfig } from '../../modules/social/types'
 import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
 
@@ -78,7 +78,7 @@ export interface ConfigFileOptions extends AnyRecord {
     tasks?: TasksConfig
     achievements?: AchievementMapping[]
     leaderboards?: LeaderboardMapping[]
-    posts?: PostMapping[]
+    social?: SocialConfig
     notifications?: NotificationMapping[]
     disableAutoNotifications?: boolean
     device?: DeviceConfig

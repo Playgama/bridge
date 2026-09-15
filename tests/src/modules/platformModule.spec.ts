@@ -21,7 +21,7 @@ function createBridge(overrides: Record<string, unknown> = {}) {
         on: vi.fn(),
         data: {},
         launchPostId: null,
-        options: { posts: POSTS },
+        options: { social: { posts: POSTS } },
         ...overrides,
     }
 }

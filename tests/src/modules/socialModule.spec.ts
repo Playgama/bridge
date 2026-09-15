@@ -18,6 +18,24 @@ const POSTS = [
     },
 ]
 
+const SHARES = [
+    {
+        id: 'score',
+        text: 'Can you beat my score?',
+        image: 'https://cdn.mygame.com/score.png',
+        vk: { url: 'https://vk.com/app123' },
+    },
+]
+
+const INVITES = [
+    {
+        id: 'friends',
+        text: 'Play with me!',
+        image: 'https://cdn.mygame.com/invite.png',
+        ok: { text: 'Join me in the game' },
+    },
+]
+
 const SOCIAL_CONFIG: SocialConfig = {
     share: { image: 'https://cdn.mygame.com/share.png', text: 'Play my game!' },
     joinCommunity: { groupId: 12345 },
@@ -69,6 +87,57 @@ describe('SocialModule', () => {
         })
     })
 
+    test('share takes the content of the config shares entry addressed by id', async () => {
+        const bridge = createBridge('vk', { options: { social: { ...SOCIAL_CONFIG, shares: SHARES } } })
+        await createModule(bridge).share('score')
+
+        // The entry is the whole content: the social.share block only backs
+        // the object form, and the id does not reach the platform.
+        expect(bridge.share).toHaveBeenCalledWith({
+            text: 'Can you beat my score?',
+            image: 'https://cdn.mygame.com/score.png',
+            url: 'https://vk.com/app123',
+        })
+    })
+
+    test('share rejects for an id that is not declared in the config', async () => {
+        const bridge = createBridge('vk', { options: { social: { shares: SHARES } } })
+
+        await expect(createModule(bridge).share('unknown')).rejects.toBeUndefined()
+        expect(bridge.share).not.toHaveBeenCalled()
+    })
+
+    test('reads the entries from the social block, not from the config root', async () => {
+        const bridge = createBridge('vk', { options: { shares: SHARES } })
+
+        await expect(createModule(bridge).share('score')).rejects.toBeUndefined()
+        expect(bridge.share).not.toHaveBeenCalled()
+    })
+
+    test('inviteFriends takes the content of the config invites entry addressed by id', async () => {
+        const bridge = createBridge('ok', { options: { social: { invites: INVITES } } })
+        await createModule(bridge).inviteFriends('friends')
+
+        expect(bridge.inviteFriends).toHaveBeenCalledWith({
+            text: 'Join me in the game',
+            image: 'https://cdn.mygame.com/invite.png',
+        })
+    })
+
+    test('inviteFriends keeps taking a content object, the way it worked before ids', async () => {
+        const bridge = createBridge('ok', { options: { social: { invites: INVITES } } })
+        await createModule(bridge).inviteFriends({ text: 'Hand-written invite' })
+
+        expect(bridge.inviteFriends).toHaveBeenCalledWith({ text: 'Hand-written invite' })
+    })
+
+    test('inviteFriends rejects for an id that is not declared in the config', async () => {
+        const bridge = createBridge('ok', { options: {} })
+
+        await expect(createModule(bridge).inviteFriends('friends')).rejects.toBeUndefined()
+        expect(bridge.inviteFriends).not.toHaveBeenCalled()
+    })
+
     test('joinCommunity passes the static config block with no runtime options', async () => {
         const bridge = createBridge('vk')
         await createModule(bridge).joinCommunity()
@@ -88,7 +157,7 @@ describe('SocialModule', () => {
     })
 
     test('createPost takes the content of the config posts entry addressed by id', async () => {
-        const bridge = createBridge('reddit', { options: { posts: POSTS } })
+        const bridge = createBridge('reddit', { options: { social: { posts: POSTS } } })
         await createModule(bridge).createPost('gift')
 
         // Only the content reaches the platform; the id travels beside it and the
@@ -99,15 +168,17 @@ describe('SocialModule', () => {
     test('createPost sends no config data to the platform sdk', async () => {
         const bridge = createBridge('ok', {
             options: {
-                posts: [{
-                    id: 'gift',
-                    text: 'Take my coins',
-                    rewards: [{ id: 'coins', amount: 100 }],
-                    rewardCooldown: 14400,
-                    card: { title: '+100 COINS' },
-                    secretGameKey: 'do not send me',
-                    ok: { status: true },
-                }],
+                social: {
+                    posts: [{
+                        id: 'gift',
+                        text: 'Take my coins',
+                        rewards: [{ id: 'coins', amount: 100 }],
+                        rewardCooldown: 14400,
+                        card: { title: '+100 COINS' },
+                        secretGameKey: 'do not send me',
+                        ok: { status: true },
+                    }],
+                },
             },
         })
         await createModule(bridge).createPost('gift')
@@ -116,7 +187,7 @@ describe('SocialModule', () => {
     })
 
     test('createPost passes the payload of this one post beside the content', async () => {
-        const bridge = createBridge('reddit', { options: { posts: POSTS } })
+        const bridge = createBridge('reddit', { options: { social: { posts: POSTS } } })
         await createModule(bridge).createPost('gift', '{"level":42}')
 
         expect(bridge.createPost).toHaveBeenCalledWith(
@@ -133,14 +204,14 @@ describe('SocialModule', () => {
     })
 
     test('createPost rejects for an id that is not declared in the config', async () => {
-        const bridge = createBridge('reddit', { options: { posts: POSTS } })
+        const bridge = createBridge('reddit', { options: { social: { posts: POSTS } } })
 
         await expect(createModule(bridge).createPost('unknown')).rejects.toBeUndefined()
         expect(bridge.createPost).not.toHaveBeenCalled()
     })
 
     test('post reward returns both sides at once: the visit reward and what the author earned', async () => {
-        const bridge = createBridge('reddit', { options: { posts: POSTS }, launchPostId: 'gift' })
+        const bridge = createBridge('reddit', { options: { social: { posts: POSTS } }, launchPostId: 'gift' })
 
         await expect(createModule(bridge).getPostReward()).resolves.toEqual([
             { id: 'coins', amount: 100, type: 'visit' },
@@ -151,7 +222,7 @@ describe('SocialModule', () => {
 
     test('post reward keeps the author rewards when the visit one is declined', async () => {
         const bridge = createBridge('reddit', {
-            options: { posts: POSTS },
+            options: { social: { posts: POSTS } },
             launchPostId: 'gift',
             getPostVisitReward: vi.fn().mockRejectedValue(undefined),
         })
@@ -163,7 +234,7 @@ describe('SocialModule', () => {
 
     test('post reward asks nothing of the backend for a post with no visit reward', async () => {
         const bridge = createBridge('reddit', {
-            options: { posts: [{ id: 'plain', text: 'Just a post' }] },
+            options: { social: { posts: [{ id: 'plain', text: 'Just a post' }] } },
             launchPostId: 'plain',
             getPostAuthorReward: vi.fn().mockResolvedValue({}),
         })
@@ -181,7 +252,7 @@ describe('SocialModule', () => {
     })
 
     test('post reward multiplies the author rewards by the players counted', async () => {
-        const bridge = createBridge('reddit', { options: { posts: POSTS } })
+        const bridge = createBridge('reddit', { options: { social: { posts: POSTS } } })
 
         await expect(createModule(bridge).getPostReward()).resolves.toEqual([
             { id: 'coins', amount: 100, type: 'author' },
@@ -191,7 +262,7 @@ describe('SocialModule', () => {
 
     test('post reward resolves with an empty array when nothing is waiting', async () => {
         const bridge = createBridge('reddit', {
-            options: { posts: POSTS },
+            options: { social: { posts: POSTS } },
             getPostAuthorReward: vi.fn().mockResolvedValue({}),
         })
 

@@ -17,12 +17,15 @@
 
 import ModuleBase from '../ModuleBase'
 import type { AnyRecord } from '../../utils'
-import { getSocialPlatformData, getPostPlatformData, getPostRewards } from './helpers'
+import {
+    getSocialPlatformData, getSocialContent, getPostPlatformData, getPostRewards,
+} from './helpers'
 import { POST_REWARD_TYPE } from './constants'
 import type {
     SocialBridgeContract,
     SocialMethod,
     SocialOptions,
+    SocialContentMapping,
     PostMapping,
     PostReward,
 } from './types'
@@ -70,12 +73,21 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.isPostRewardSupported
     }
 
-    inviteFriends(options?: SocialOptions): Promise<unknown> {
+    inviteFriends(options?: string | SocialOptions): Promise<unknown> {
         if (!this._platformBridge.isInviteFriendsSupported) {
             return Promise.reject()
         }
 
-        return this._platformBridge.inviteFriends(this.#resolve('inviteFriends', options))
+        if (typeof options !== 'string') {
+            return this._platformBridge.inviteFriends(this.#resolve('inviteFriends', options))
+        }
+
+        const content = this.#getContent(this._platformBridge.options.social?.invites, options)
+        if (!content) {
+            return Promise.reject()
+        }
+
+        return this._platformBridge.inviteFriends(content)
     }
 
     joinCommunity(options?: SocialOptions): Promise<unknown> {
@@ -86,12 +98,21 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
         return this._platformBridge.joinCommunity(this.#resolve('joinCommunity', options))
     }
 
-    share(options?: SocialOptions): Promise<unknown> {
+    share(options?: string | SocialOptions): Promise<unknown> {
         if (!this._platformBridge.isShareSupported) {
             return Promise.reject()
         }
 
-        return this._platformBridge.share(this.#resolve('share', options))
+        if (typeof options !== 'string') {
+            return this._platformBridge.share(this.#resolve('share', options))
+        }
+
+        const content = this.#getContent(this._platformBridge.options.social?.shares, options)
+        if (!content) {
+            return Promise.reject()
+        }
+
+        return this._platformBridge.share(content)
     }
 
     // Takes either the id of a `posts` config entry, so the game passes nothing
@@ -108,7 +129,7 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
             return this._platformBridge.createPost(this.#resolve('createPost', options))
         }
 
-        const content = this.#getPostContent(options)
+        const content = this.#getContent(this._platformBridge.options.social?.posts, options)
         if (!content) {
             return Promise.reject()
         }
@@ -205,33 +226,14 @@ class SocialModule extends ModuleBase<SocialBridgeContract> {
             .catch(() => [])
     }
 
-    // What actually reaches the platform SDK: the canonical content fields and
-    // the block written for this platform. Everything else in the entry — the
-    // id, the rewards, the card, whatever the game keeps there — stays here.
-    #getPostContent(id: string): AnyRecord | null {
-        const { posts } = this._platformBridge.options
-        const entry = posts?.find((post) => post?.id === id)
-        if (!entry) {
-            return null
-        }
-
-        const content: AnyRecord = {}
-        const canonical = ['text', 'image', 'url'] as const
-        canonical.forEach((key) => {
-            if (entry[key] !== undefined) {
-                content[key] = entry[key]
-            }
-        })
-
-        const platformData = entry[this._platformBridge.platformId]
-        return platformData && typeof platformData === 'object'
-            ? { ...content, ...platformData as AnyRecord }
-            : content
+    // Resolves a `social.shares`, `social.invites` or `social.posts` entry to its content for the active platform.
+    #getContent(entries: SocialContentMapping[] | undefined, id: string): AnyRecord | null {
+        return getSocialContent(entries, this._platformBridge.platformId, id)
     }
 
-    // Resolves a post declared in the config `posts` array for the active platform.
+    // Resolves a post declared in `social.posts` for the active platform.
     #getPost(id: string): PostMapping | null {
-        const { posts } = this._platformBridge.options
+        const posts = this._platformBridge.options.social?.posts
         return getPostPlatformData(posts, this._platformBridge.platformId, id)
     }
 
