@@ -23,6 +23,7 @@ import {
     type PlatformId,
     type PlatformMessage,
 } from './constants'
+import type { AnyRecord } from '../../utils'
 import { internalAnalytics } from '../analytics'
 import type { EventEmitter } from '../../lib/EventBus'
 
@@ -38,6 +39,8 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     platformLanguage: string
     platformPayload: string | null
     platformTld: string | null
+    data: AnyRecord
+    launchPostId: string | null
     launchSource: LaunchSource | null
     isPlatformExternalCallsSupported: boolean
     isPlatformExternalLinksAllowed: boolean
@@ -65,6 +68,14 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     get payload(): string | null {
         return this._platformBridge.platformPayload
+    }
+
+    // Everything the launch carries: the parameters the platform passed to the
+    // game and, when it was opened from one of the game's own posts, the id of
+    // that post's config entry. What the post grants is social.getPostReward().
+    get data(): AnyRecord {
+        const { data, launchPostId } = this._platformBridge
+        return launchPostId ? { ...data, postId: launchPostId } : data
     }
 
     get tld(): string | null {

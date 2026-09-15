@@ -15,10 +15,11 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export const LAUNCH_SOURCE = {
-    NOTIFICATION: 'notification',
-    // Opened from a post the game created with social.createPost(); the post's
-    // config entry is available as platform.data.
-    POST: 'post',
+// Who a post reward is for: the player who came to the game through the post,
+// or its author, once per player who came. A reward declared without a type is
+// a visit reward.
+export const POST_REWARD_TYPE = {
+    VISIT: 'visit',
+    AUTHOR: 'author',
 } as const
-export type LaunchSource = typeof LAUNCH_SOURCE[keyof typeof LAUNCH_SOURCE]
+export type PostRewardType = typeof POST_REWARD_TYPE[keyof typeof POST_REWARD_TYPE]

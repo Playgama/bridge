@@ -157,7 +157,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             player_guest_id: this.#playerGuestId,
             device_type: this._platformBridge.deviceType,
             device_os: this._platformBridge.deviceOs,
-            clid: this._platformBridge.additionalData?.clid ?? '',
+            clid: this._platformBridge.data?.clid ?? '',
             launch_source: this._platformBridge.launchSource,
         }
 

@@ -240,7 +240,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                             this.#resolveSupportedFeatures()
 
                             if (sdk.platformService?.getAdditionalParams) {
-                                this._additionalData = sdk.platformService.getAdditionalParams() || {}
+                                this._data = sdk.platformService.getAdditionalParams() || {}
                             }
 
                             return this.#getPlayer()

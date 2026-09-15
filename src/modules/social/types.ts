@@ -18,6 +18,7 @@
 import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { AnyRecord } from '../../utils'
+import type { PostRewardType } from './constants'
 
 // Social methods that resolve their data from the config mapping.
 export type SocialMethod = 'share' | 'inviteFriends' | 'joinCommunity' | 'createPost'
@@ -32,6 +33,49 @@ export interface SocialOptions extends AnyRecord {
     text?: string
     image?: string
     url?: string
+}
+
+// One reward declared for a post. Data-only, mirroring the tasks module: `id`
+// and `amount` are opaque to the bridge — the game decides what they mean and
+// grants them. `type` says who gets it; without it the reward is for the player
+// who came to the game through the post.
+export interface PostRewardConfig {
+    id: string
+    amount: number
+    type?: PostRewardType
+}
+
+// Travels with a post and comes back when someone opens it.
+export interface PostLaunchOptions {
+    id?: string
+    payload?: string
+}
+
+// A reward social.getPostReward() hands to the game. For the author the amount
+// is already multiplied by the number of players the backend counted.
+export interface PostReward {
+    id: string
+    amount: number
+    type: PostRewardType
+}
+
+// One post declared in the config `posts` array, addressed by `id` from
+// social.createPost({ id }). `text`, `image` and `url` are the same canonical
+// content fields as everywhere in social; a key named after a platform holds
+// that platform's own fields and overrides the common ones on it. Any other
+// key belongs to the game: the bridge forwards it untouched and hands it back
+// as platform.data when the game is launched from this post.
+export interface PostMapping extends AnyRecord {
+    id: string
+    text?: string
+    image?: string
+    url?: string
+    rewards?: PostRewardConfig[]
+    // Seconds the same player waits before the next post visit reward, verified
+    // by the platform backend. The wait is counted per player across all posts
+    // of the game, so opening ten posts in a row does not multiply the reward.
+    // Omit it for a one-time reward.
+    rewardCooldown?: number
 }
 
 // Per-method config block: the social data for one method (publisher settings like
@@ -51,6 +95,7 @@ export interface SocialConfig {
 
 export interface SocialBridgeOptions extends AnyRecord {
     social?: SocialConfig
+    posts?: PostMapping[]
 }
 
 export interface SocialBridgeContract extends PlatformBridgeLike {
@@ -65,13 +110,27 @@ export interface SocialBridgeContract extends PlatformBridgeLike {
     isAddToFavoritesSupported: boolean
     isAddToFavoritesRewardSupported: boolean
     isRateSupported: boolean
+    isPostRewardSupported: boolean
+    launchPostId: string | null
     inviteFriends(data?: AnyRecord): Promise<unknown>
     joinCommunity(data?: AnyRecord): Promise<unknown>
     share(data?: AnyRecord): Promise<unknown>
-    createPost(data?: AnyRecord): Promise<unknown>
+    // What the post carries besides its content: the id of the config entry it
+    // was created from and the game's own payload string. Both are kept out of
+    // `data` so that nothing but content reaches the platform SDK, and both come
+    // back when someone opens the post, as launchPostId and platformPayload.
+    createPost(data?: AnyRecord, post?: PostLaunchOptions): Promise<unknown>
     addToHomeScreen(): Promise<unknown>
     getAddToHomeScreenReward(): Promise<unknown>
     addToFavorites(): Promise<unknown>
     getAddToFavoritesReward(): Promise<unknown>
     rate(): Promise<unknown>
+    // The two sides of a post reward are two different calls to the platform
+    // backend, so the bridge keeps them apart. The game sees one method:
+    // SocialModule.getPostReward() picks the side by the launch post and turns
+    // the answer into the rewards declared in the config entry.
+    getPostVisitReward(cooldown?: number): Promise<unknown>
+    // Players counted on the current player's posts since the previous call,
+    // keyed by the config entry id of the post they came through.
+    getPostAuthorReward(): Promise<Record<string, number>>
 }

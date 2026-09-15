@@ -3,6 +3,7 @@ import {
 } from 'vitest'
 import RedditPlatformBridge from '../../../src/platform-bridges/RedditPlatformBridge'
 import { LEADERBOARD_TYPE } from '../../../src/modules/leaderboards/constants'
+import { LAUNCH_SOURCE } from '../../../src/constants/launchSource'
 
 vi.stubGlobal('PLUGIN_VERSION', 'test-version')
 
@@ -159,17 +160,98 @@ describe('RedditPlatformBridge server contract', () => {
         expect(fetchMock).not.toHaveBeenCalled()
     })
 
-    test('createPost forwards the options to the server', async () => {
+    test('createPost sends the post id with the title and resolves with the link', async () => {
         const bridge = await createInitializedBridge()
-        fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new' }))
+        fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new', postUrl: 'https://reddit.com/r/x/t3_new' }))
 
-        await bridge.createPost({ title: 'My level' })
+        const result = await bridge.createPost({ text: '🎁 Free coins inside' }, { id: 'gift' })
 
         expect(lastCall()).toEqual({
             url: '/api/create-post',
             method: 'POST',
-            body: { options: { title: 'My level' } },
+            body: { options: { title: '🎁 Free coins inside' }, id: 'gift' },
         })
+        expect(result).toEqual({ url: 'https://reddit.com/r/x/t3_new' })
+    })
+
+    test('initialize remembers the post the game was launched from', async () => {
+        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, post: { id: 'gift' } })
+
+        expect(bridge.launchPostId).toBe('gift')
+        expect(bridge.launchSource).toBe(LAUNCH_SOURCE.POST)
+    })
+
+    test('createPost sends the payload the game attached to this one post', async () => {
+        const bridge = await createInitializedBridge()
+        fetchMock.mockReturnValueOnce(jsonResponse({ postId: 't3_new' }))
+
+        await bridge.createPost({ text: 'My level' }, { id: 'level', payload: '{"objects":[]}' })
+
+        expect(lastCall().body).toEqual({
+            options: { title: 'My level' },
+            id: 'level',
+            payload: '{"objects":[]}',
+        })
+    })
+
+    test('initialize hands the payload back as the platform payload', async () => {
+        const bridge = await createInitializedBridge({
+            ...AUTHORIZED_PLAYER,
+            post: { id: 'level', payload: '{"objects":[]}' },
+        })
+
+        expect(bridge.platformPayload).toBe('{"objects":[]}')
+    })
+
+    test('initialize leaves the launch post empty outside a created post', async () => {
+        const bridge = await createInitializedBridge()
+
+        expect(bridge.launchPostId).toBeNull()
+        expect(bridge.launchSource).toBeNull()
+        expect(bridge.platformPayload).toBeNull()
+    })
+
+    test('post visit reward sends the policy and resolves when the server grants it', async () => {
+        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, post: { id: 'gift' } })
+        fetchMock.mockReturnValueOnce(jsonResponse({ granted: true }))
+
+        expect(bridge.isPostRewardSupported).toBe(true)
+        await expect(bridge.getPostVisitReward(14400)).resolves.toBeUndefined()
+
+        expect(lastCall()).toEqual({
+            url: '/api/post-visit-reward',
+            method: 'POST',
+            body: { cooldown: 14400 },
+        })
+    })
+
+    test('post visit reward rejects when the server denies it', async () => {
+        const bridge = await createInitializedBridge({ ...AUTHORIZED_PLAYER, post: { id: 'gift' } })
+        fetchMock.mockReturnValueOnce(jsonResponse({ granted: false }))
+
+        await expect(bridge.getPostVisitReward()).rejects.toBeUndefined()
+    })
+
+    test('post visit reward rejects outside a created post without calling the server', async () => {
+        const bridge = await createInitializedBridge()
+
+        await expect(bridge.getPostVisitReward()).rejects.toBeUndefined()
+        expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    test('post author reward resolves with the players counted per post', async () => {
+        const bridge = await createInitializedBridge()
+        fetchMock.mockReturnValueOnce(jsonResponse({ counts: { gift: '3', level: 0 } }))
+
+        await expect(bridge.getPostAuthorReward()).resolves.toEqual({ gift: 3 })
+        expect(lastCall()).toEqual({ url: '/api/post-author-reward', method: 'POST', body: undefined })
+    })
+
+    test('post author reward rejects for a guest without calling the server', async () => {
+        const bridge = await createInitializedBridge({ isPlayerAuthorized: false })
+
+        await expect(bridge.getPostAuthorReward()).rejects.toBeUndefined()
+        expect(fetchMock).not.toHaveBeenCalled()
     })
 
     test('joinCommunity subscribes to the current subreddit', async () => {
