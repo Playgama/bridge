@@ -552,8 +552,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    // A failed refresh keeps the last displayed prices and their charge terms.
-    // With no accepted catalog, products still use the legacy GAM fallback.
+    // Rejected SDK calls keep the last displayed prices and their charge terms.
+    // An empty response (including portal quote failures) replaces them with GAM fallback prices.
     async #paymentsGetPlatformCatalog(products: PlaygamaProductData[]): Promise<PlaygamaCatalogProduct[] | null> {
         const paymentsApi = (this._platformSdk as PlaygamaSdk | null)?.inGamePaymentsApi
         if (typeof paymentsApi?.getCatalog !== 'function') {

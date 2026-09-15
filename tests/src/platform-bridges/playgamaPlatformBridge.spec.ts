@@ -96,7 +96,7 @@ describe('Playgama payments catalog', () => {
         ])
     })
 
-    test('failed catalog refresh preserves displayed USD prices and purchase terms', async () => {
+    test('rejected SDK catalog call preserves displayed USD prices and purchase terms', async () => {
         const usdPrice = {
             id: 'coins_100', amount: 1000, currency: 'usd', price: '$10.00', priceValue: 10, priceCurrencyCode: 'USD',
         }
@@ -194,7 +194,7 @@ describe('Playgama payments catalog', () => {
         await expect(restored.bridge.paymentsGetPurchases()).resolves.toStrictEqual([expected])
     })
 
-    test('catalog exposes display fields only and a successful refresh replaces purchase terms', async () => {
+    test('catalog hides charge fields and an empty portal response restores GAM display and purchase terms', async () => {
         const usd = {
             id: 'coins_100', amount: 1000, currency: 'usd', price: '$10.00', priceValue: 10,
             priceCurrencyCode: 'USD', priceCurrencyImage: 'usd.png',
