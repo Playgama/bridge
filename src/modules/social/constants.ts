@@ -23,3 +23,5 @@ export const POST_REWARD_TYPE = {
     AUTHOR: 'author',
 } as const
 export type PostRewardType = typeof POST_REWARD_TYPE[keyof typeof POST_REWARD_TYPE]
+
+export const CONTENT_FIELDS = ['text', 'image', 'url'] as const

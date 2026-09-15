@@ -66,6 +66,8 @@ export function resolvePlatformOptions<T extends AnyRecord>(
     return options
 }
 
+// Objects are merged key by key; arrays and other values of the second object
+// replace the first ones, so a platform list replaces the common list whole.
 export function deepMerge<A extends AnyRecord, B extends AnyRecord>(
     firstObject: A,
     secondObject: B,
@@ -81,6 +83,8 @@ export function deepMerge<A extends AnyRecord, B extends AnyRecord>(
             key in firstObject
             && secondValue instanceof Object
             && firstValue instanceof Object
+            && !Array.isArray(firstValue)
+            && !Array.isArray(secondValue)
         ) {
             result[key] = deepMerge(firstValue as AnyRecord, secondValue as AnyRecord)
         } else {

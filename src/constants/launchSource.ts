@@ -17,8 +17,8 @@
 
 export const LAUNCH_SOURCE = {
     NOTIFICATION: 'notification',
-    // Opened from a post the game created with social.createPost(); the post's
-    // config entry is available as platform.data.
+    // Opened from a post the game created with social.createPost(); the id of
+    // the post's config entry is platform.data.postId.
     POST: 'post',
 } as const
 export type LaunchSource = typeof LAUNCH_SOURCE[keyof typeof LAUNCH_SOURCE]

@@ -16,13 +16,11 @@
  */
 
 import { deepMerge, type AnyRecord } from '../../utils'
-import { PLATFORM_ID, type PlatformId } from '../platform/constants'
-import { POST_REWARD_TYPE, type PostRewardType } from './constants'
+import type { PlatformId } from '../platform/constants'
+import { POST_REWARD_TYPE, CONTENT_FIELDS, type PostRewardType } from './constants'
 import type {
-    SocialConfig, SocialMethod, SocialOptions, PostMapping, PostRewardConfig, PostReward,
+    SocialConfig, SocialMethod, SocialOptions, SocialContentMapping, PostMapping, PostRewardConfig, PostReward,
 } from './types'
-
-const PLATFORM_IDS = new Set<string>(Object.values(PLATFORM_ID))
 
 // Builds the data a social method receives: the static config block for the method
 // merged with the game's runtime options on top. The config block is already
@@ -42,11 +40,35 @@ export function getSocialPlatformData(
     return deepMerge(base, runtime)
 }
 
-// Builds the data of a post declared in the config `posts` array: the common
-// fields of the entry with the active platform's own block merged on top, and
-// every other platform's block dropped. Returns null when the id is unknown,
-// which is how the modules tell "this post is not declared" from "declared but
-// empty". The `id` is kept, so the game can branch on platform.data.id.
+// Builds what a social method called with an id sends to the platform SDK:
+// the canonical content fields of the entry with the active platform's block
+// on top, nothing else. Returns null when the id is not declared.
+export function getSocialContent(
+    entries: SocialContentMapping[] | undefined,
+    platformId: PlatformId,
+    id: string,
+): AnyRecord | null {
+    const entry = entries?.find((item) => item?.id === id)
+    if (!entry) {
+        return null
+    }
+
+    const content: AnyRecord = {}
+    CONTENT_FIELDS.forEach((key) => {
+        if (entry[key] !== undefined) {
+            content[key] = entry[key]
+        }
+    })
+
+    const platformData = entry[platformId]
+    return platformData && typeof platformData === 'object'
+        ? deepMerge(content, platformData as AnyRecord)
+        : content
+}
+
+// Resolves a post declared in `social.posts` for the active platform, merging
+// its block on top like a `platforms` block over the config. The module reads
+// the rewards and the cooldown from it. Null when the id is not declared.
 export function getPostPlatformData(
     posts: PostMapping[] | undefined,
     platformId: PlatformId,
@@ -57,21 +79,10 @@ export function getPostPlatformData(
         return null
     }
 
-    const common: AnyRecord = {}
-    let platformData: AnyRecord = {}
-    Object.keys(entry).forEach((key) => {
-        const value = (entry as AnyRecord)[key]
-        if (!PLATFORM_IDS.has(key)) {
-            common[key] = value
-            return
-        }
-
-        if (key === platformId && value && typeof value === 'object') {
-            platformData = value as AnyRecord
-        }
-    })
-
-    return deepMerge(common, platformData) as PostMapping
+    const platformData = entry[platformId]
+    return platformData && typeof platformData === 'object'
+        ? deepMerge(entry, platformData as AnyRecord)
+        : entry
 }
 
 // Rewards of one post entry meant for one side. A reward declared without a
