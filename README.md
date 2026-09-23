@@ -1,38 +1,6 @@
 # Playgama Bridge
 One SDK for cross-platform publishing HTML5 games.
 
-## Installation
-
-### Script tag
-
-```html
-<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
-```
-
-### npm
-
-```bash
-npm i @playgama/bridge
-```
-
-With Vite, add the plugin:
-
-```js
-// vite.config.js
-import playgamaBridge from '@playgama/bridge/vite'
-
-export default {
-    base: './',
-    plugins: [playgamaBridge()],
-}
-```
-
-Without Vite, add the script tag above to `index.html` before your game script.
-
-```ts
-import bridge from '@playgama/bridge'
-```
-
 ## Supported platforms
 + [Playgama](https://playgama.com/?utm_source=github&utm_medium=bridge)
 + [Standalone](https://playgama.com/wrap/?utm_source=github&utm_medium=bridge)
