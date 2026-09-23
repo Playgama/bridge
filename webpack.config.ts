@@ -188,9 +188,9 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
         ],
     }
 
-    // npm-consumable bundles. Same source, but with a real module export
-    // (src/npm.ts) so `import bridge from '@playgama/bridge'` works. Everything
-    // is inlined into a single file (no platform-bridges/ chunks to fetch).
+    // npm entry bundles (src/npm.ts): a shim that re-exports window.bridge plus
+    // the public constants and types. The runtime is not bundled here; it ships
+    // as dist/playgama-bridge.js and is loaded via <script> (see vite/).
     if (env.npm) {
         const singleChunk = new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 })
 
@@ -207,15 +207,14 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
             plugins: [...(baseConfig.plugins ?? []), singleChunk],
         }
 
-        const npmUmdConfig: Configuration = {
+        const npmCjsConfig: Configuration = {
             ...baseConfig,
-            name: 'npm-umd',
+            name: 'npm-cjs',
             entry: './src/npm',
             output: {
-                filename: 'playgama-bridge.umd.js',
+                filename: 'playgama-bridge.cjs.js',
                 path: path.resolve(__dirname, 'dist'),
-                library: { name: 'bridge', type: 'umd' },
-                globalObject: 'this',
+                library: { type: 'commonjs2' },
             },
             plugins: [...(baseConfig.plugins ?? []), singleChunk],
         }
@@ -248,7 +247,7 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
             plugins: [...(baseConfig.plugins ?? []), singleChunk],
         }
 
-        return [npmEsmConfig, npmUmdConfig, constantsEsmConfig, constantsCjsConfig]
+        return [npmEsmConfig, npmCjsConfig, constantsEsmConfig, constantsCjsConfig]
     }
 
     return [dynamicConfig, bundledConfig]
