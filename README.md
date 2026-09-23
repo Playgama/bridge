@@ -9,13 +9,13 @@ One SDK for cross-platform publishing HTML5 games.
 <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 ```
 
-The SDK is available as `window.bridge`. Put `playgama-bridge-config.json` next to `index.html`.
-
-### npm + Vite
+### npm
 
 ```bash
 npm i @playgama/bridge
 ```
+
+With Vite, add the plugin:
 
 ```js
 // vite.config.js
@@ -27,37 +27,11 @@ export default {
 }
 ```
 
+Without Vite, add the script tag above to `index.html` before your game script.
+
 ```ts
-import bridge, { PLATFORM_ID } from '@playgama/bridge'
-
-await bridge.initialize()
+import bridge from '@playgama/bridge'
 ```
-
-The plugin injects the SDK `<script>` into `index.html` and writes `playgama-bridge.js` next to the game files, so the SDK is never bundled into the game code. The `@playgama/bridge` import returns that same `window.bridge` instance with full typings.
-
-#### Loading modes
-
-| `mode` | Script tag | Runtime version |
-| --- | --- | --- |
-| `cdn` (default) | the CDN, with the local file as a fallback | whatever `v2/stable` serves, so fixes arrive without a rebuild |
-| `local` | the local file only | the version installed from npm |
-
-Pass the mode as `playgamaBridge({ mode: 'local' })`. In `cdn` mode the runtime version can differ from the installed package, which is exactly what makes updates automatic. Choose `local` when a build has to stay reproducible.
-
-#### Notes
-
-- Keep `base` relative (`'./'`) or a site-root path such as `'/my-game/'`. An absolute URL points the local fallback at your own host, and platform builds cannot rewrite it.
-- Remove your own `<script>` tag for the SDK if you had one. The plugin skips injection when it finds a tag and warns about it, so nothing breaks, but the tag is then yours to maintain.
-- A `playgama-bridge.js` in `public/` is ignored in favour of the packaged copy, with a warning. Delete it.
-- There is no `window` on a server, in a worker or in tests, so import from `@playgama/bridge/constants` there. That entry carries the constants and the types with no runtime.
-
-#### Upgrading from 2.2.0 or earlier
-
-Earlier versions inlined the whole SDK into the game code on `import`. The import now returns the runtime that a `<script>` tag has loaded, so add the Vite plugin or the tag; without either, the import throws and the message says what to do. The UMD build `dist/playgama-bridge.umd.js` is gone, and `require('@playgama/bridge')` resolves to `dist/playgama-bridge.cjs.js`.
-
-### Other bundlers
-
-Add the script tag yourself and copy `node_modules/@playgama/bridge/dist/playgama-bridge.js` into the build output.
 
 ## Supported platforms
 + [Playgama](https://playgama.com/?utm_source=github&utm_medium=bridge)
