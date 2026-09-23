@@ -65,4 +65,5 @@ export interface AnalyticsMeta {
 export interface AnalyticsPayload {
     meta: AnalyticsMeta
     events: AnalyticsEvent[]
+    custom_events?: AnalyticsEvent[]
 }

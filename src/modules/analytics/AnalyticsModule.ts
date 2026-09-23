@@ -23,10 +23,12 @@ import { generateRandomId } from '../../utils'
 import { getGuestUser } from '../player'
 import ModuleBase from '../ModuleBase'
 import bridgeConfig from '../../lib/bridge-config'
+import logger from '../../lib/logger'
 import { getApiOrigin } from '../../lib/apiOrigin'
 import {
     ANALYTICS_PATH,
     FLUSH_INTERVAL,
+    CUSTOM_EVENTS_QUEUE_LIMIT,
 } from './constants'
 import type {
     AnalyticsBridgeContract,
@@ -36,12 +38,18 @@ import type {
     AnalyticsPayload,
 } from './types'
 
+export const internalAnalytics: AnalyticsSender = {
+    send: () => {},
+}
+
 class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     set gameVersion(value: string | null) {
         this.#gameVersion = value
     }
 
     #eventQueue: AnalyticsEvent[] = []
+
+    #customEventQueue: AnalyticsEvent[] = []
 
     #flushTimer: ReturnType<typeof setInterval> | null = null
 
@@ -66,10 +74,12 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     #isCompressionSupported = typeof CompressionStream !== 'undefined'
 
     constructor() {
-        // Singleton: created at import time without a bridge; the bridge is
-        // injected later via initialize().
         super()
         this.#sessionId = this.#generateSessionId()
+
+        internalAnalytics.send = (eventName: string, data: Record<string, unknown> = {}): void => {
+            this.#sendInternal(eventName, data)
+        }
     }
 
     initialize(platformBridge: AnalyticsBridgeContract): this {
@@ -85,8 +95,6 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             this.#isDisabled = true
         }
 
-        // Without external calls the events can never reach the backend, so
-        // turn analytics off entirely instead of retrying forever.
         if (!this._platformBridge.isPlatformExternalCallsSupported) {
             this.#isDisabled = true
         }
@@ -99,20 +107,36 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         }
 
         this.#fetchTimeDiff()
-        this.send(`${MODULE_NAME.CORE}_initialization_started`)
+        this.#sendInternal(`${MODULE_NAME.CORE}_initialization_started`)
         this.#startFlushInterval()
         this.#setupPageUnloadHandler()
 
         return this
     }
 
-    send(eventType: string, data: Record<string, unknown> = {}): void {
+    send(eventName: string, data: Record<string, unknown> = {}): void {
         if (this.#isDisabled) {
             return
         }
 
-        const event = this.#createEvent(eventType, data)
-        this.#eventQueue.push(event)
+        if (typeof eventName !== 'string' || eventName.length === 0) {
+            logger.warn('Analytics event name must be a non-empty string', eventName)
+            return
+        }
+
+        this.#customEventQueue.push(this.#createEvent(eventName, data))
+
+        if (this.#customEventQueue.length > CUSTOM_EVENTS_QUEUE_LIMIT) {
+            this.#customEventQueue.splice(0, this.#customEventQueue.length - CUSTOM_EVENTS_QUEUE_LIMIT)
+        }
+    }
+
+    #sendInternal(eventName: string, data: Record<string, unknown> = {}): void {
+        if (this.#isDisabled) {
+            return
+        }
+
+        this.#eventQueue.push(this.#createEvent(eventName, data))
     }
 
     #generateSessionId(): string {
@@ -128,13 +152,18 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             const serverTime = await serverTimeCache.getServerTime()
             this.#timeDiff = serverTime - Date.now()
 
-            for (let i = 0; i < this.#eventQueue.length; i++) {
-                const event = this.#eventQueue[i]
-                const localTime = new Date(event.timestamp).getTime()
-                event.timestamp = new Date(localTime + this.#timeDiff).toISOString()
-            }
+            this.#applyTimeDiff(this.#eventQueue)
+            this.#applyTimeDiff(this.#customEventQueue)
         } catch {
             // Keep timeDiff = 0, use local time as fallback
+        }
+    }
+
+    #applyTimeDiff(events: AnalyticsEvent[]): void {
+        for (let i = 0; i < events.length; i++) {
+            const event = events[i]
+            const localTime = new Date(event.timestamp).getTime()
+            event.timestamp = new Date(localTime + this.#timeDiff).toISOString()
         }
     }
 
@@ -180,24 +209,33 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         return `${getApiOrigin()}${ANALYTICS_PATH}`
     }
 
-    #createPayload(events: AnalyticsEvent[]): AnalyticsPayload {
-        return {
+    #createPayload(events: AnalyticsEvent[], customEvents: AnalyticsEvent[]): AnalyticsPayload {
+        const payload: AnalyticsPayload = {
             meta: this.#createMeta(),
             events,
         }
+
+        if (customEvents.length > 0) {
+            payload.custom_events = customEvents
+        }
+
+        return payload
     }
 
     async #flush(): Promise<void> {
-        if (this.#eventQueue.length === 0 || this.#isDisabled) {
+        if (this.#isDisabled || (this.#eventQueue.length === 0 && this.#customEventQueue.length === 0)) {
             return
         }
 
         const events = [...this.#eventQueue]
+        const customEvents = [...this.#customEventQueue]
         this.#eventQueue = []
+        this.#customEventQueue = []
 
-        const success = await this.#sendRequest(this.#createPayload(events))
+        const success = await this.#sendRequest(this.#createPayload(events, customEvents))
         if (!success && !this.#isDisabled) {
             this.#eventQueue = [...events, ...this.#eventQueue]
+            this.#customEventQueue = [...customEvents, ...this.#customEventQueue].slice(-CUSTOM_EVENTS_QUEUE_LIMIT)
         }
     }
 
@@ -236,15 +274,17 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 
     #flushSync(): void {
-        if (this.#eventQueue.length === 0 || this.#isDisabled) {
+        if (this.#isDisabled || (this.#eventQueue.length === 0 && this.#customEventQueue.length === 0)) {
             return
         }
 
         const events = [...this.#eventQueue]
+        const customEvents = [...this.#customEventQueue]
         this.#eventQueue = []
+        this.#customEventQueue = []
 
         const url = this.#getApiUrl()
-        const payload = this.#createPayload(events)
+        const payload = this.#createPayload(events, customEvents)
         const body = JSON.stringify(payload)
 
         if (navigator.sendBeacon) {
@@ -257,8 +297,6 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         this.#pagehideHandler = (event: PageTransitionEvent) => {
             this.#sendSessionEnd()
 
-            // The page is entering the back/forward cache and may be restored
-            // later — allow a new session_end to be sent on the next exit.
             if (event.persisted) {
                 this.#resumeSession()
             }
@@ -266,12 +304,9 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
         this.#visibilityHandler = () => {
             if (document.visibilityState === 'hidden') {
-                // The last reliable moment on mobile: stop pinging and flush.
                 this.#stopFlushInterval()
                 this.#sendSessionEnd()
             } else {
-                // The page is visible again — resume the session so the next
-                // hide/exit reports session_end instead of being swallowed.
                 this.#resumeSession()
             }
         }
@@ -295,7 +330,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         }
 
         this.#isSessionEndSent = true
-        this.send(`${MODULE_NAME.CORE}_session_end`)
+        this.#sendInternal(`${MODULE_NAME.CORE}_session_end`)
         this.#flushSync()
     }
 
@@ -361,7 +396,6 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
                 const match = parsedUrl.hostname.match(/^([a-z0-9-]+)\.games\.playgama\.net$/i)
                 if (match) {
-                    // Sandbox games are served from an sb-<gameId> subdomain.
                     return match[1].replace(/^sb-/i, '')
                 }
             }
@@ -378,7 +412,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         }
 
         this.#flushTimer = setInterval(() => {
-            this.send(`${MODULE_NAME.CORE}_ping`)
+            this.#sendInternal(`${MODULE_NAME.CORE}_ping`)
             this.#flush()
         }, FLUSH_INTERVAL)
     }
@@ -392,5 +426,4 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 }
 
 const analyticsModule = new AnalyticsModule()
-export const internalAnalytics: AnalyticsSender = analyticsModule
 export default analyticsModule

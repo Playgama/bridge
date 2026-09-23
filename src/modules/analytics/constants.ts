@@ -17,3 +17,5 @@
 
 export const ANALYTICS_PATH = '/api/events/v3/bridge/analytics'
 export const FLUSH_INTERVAL = 30000
+
+export const CUSTOM_EVENTS_QUEUE_LIMIT = 1000
