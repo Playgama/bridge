@@ -58,10 +58,10 @@ export function createAdvancedBannerContainers(banners: AdvancedBannerConfig[]):
 
         if (banner.width) container.style.width = banner.width
         if (banner.height) container.style.height = banner.height
-        if (banner.top) container.style.top = banner.top
-        if (banner.bottom) container.style.bottom = banner.bottom
-        if (banner.left) container.style.left = banner.left
-        if (banner.right) container.style.right = banner.right
+        if (banner.top !== undefined) container.style.top = String(banner.top)
+        if (banner.bottom !== undefined) container.style.bottom = String(banner.bottom)
+        if (banner.left !== undefined) container.style.left = String(banner.left)
+        if (banner.right !== undefined) container.style.right = String(banner.right)
 
         document.body.appendChild(container)
         containerIds.push(id)

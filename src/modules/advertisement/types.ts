@@ -34,10 +34,10 @@ export interface AdvancedBannersPlacementConfig {
 export interface AdvancedBannerConfig {
     width?: string
     height?: string
-    top?: string
-    bottom?: string
-    left?: string
-    right?: string
+    top?: string | number
+    bottom?: string | number
+    left?: string | number
+    right?: string | number
 }
 
 export interface AdvertisementOptions {

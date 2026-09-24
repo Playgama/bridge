@@ -183,7 +183,7 @@ class PlatformBridgeBase {
     }
 
     get initialInterstitialDelay(): number {
-        return 60
+        return 30
     }
 
     get isRewardedSupported(): boolean {
