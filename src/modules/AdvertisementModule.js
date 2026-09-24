@@ -24,6 +24,7 @@ import {
     PLATFORM_MESSAGE, REWARDED_STATE,
 } from '../constants'
 import { detectOrientation, findGameCanvas } from '../common/utils'
+import { filterValidAdvancedBanners } from '../common/advancedBannersValidation'
 import analyticsModule from './AnalyticsModule'
 
 const DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL = 60
@@ -676,7 +677,9 @@ class AdvertisementModule extends ModuleBase {
                 }
             })
 
-        return bestBanners
+        const validBanners = filterValidAdvancedBanners(bestBanners)
+
+        return validBanners.length > 0 ? validBanners : null
     }
 
     #matchAdvancedBannerKey(key, context) {

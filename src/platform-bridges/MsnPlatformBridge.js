@@ -670,9 +670,6 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
         const width = this.#parseMsnDimension(banner.width, window.innerWidth)
         const height = this.#parseMsnDimension(banner.height, window.innerHeight)
-        if (width === null || height === null) {
-            return null
-        }
 
         const smallerSizes = sizes.filter((size) => size[0] <= width && size[1] <= height)
         if (smallerSizes.length === 0) {
@@ -693,24 +690,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         return `${position}:${bestSize[0]}x${bestSize[1]}`
     }
 
+    // Sizes are validated as percent values before they reach the bridge.
     #parseMsnDimension(value, screenSize) {
-        if (typeof value !== 'string') {
-            return null
-        }
-
-        if (value.endsWith('%')) {
-            const percent = parseFloat(value)
-            if (Number.isNaN(percent)) {
-                return null
-            }
-            return Math.floor((screenSize * percent) / 100)
-        }
-
-        const px = parseInt(value, 10)
-        if (Number.isNaN(px)) {
-            return null
-        }
-        return px
+        return Math.floor((screenSize * parseFloat(value)) / 100)
     }
 
     #resolveMsnPosition(banner) {

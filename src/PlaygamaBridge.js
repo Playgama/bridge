@@ -17,6 +17,7 @@
 
 import {
     PLATFORM_ID,
+    PLAYGAMA_PLATFORM_IDS,
     MODULE_NAME,
     EVENT_NAME,
     INTERSTITIAL_STATE,
@@ -351,20 +352,20 @@ class PlaygamaBridge {
 
     #isSaas(feature) {
         const { options, platformId } = this.#platformBridge
+        const saas = options?.saas
 
-        if (!options.saas?.[feature]) {
-            return false
-        }
-
-        // On Playgama the feature runs through SaaS as soon as a token is set,
-        // without listing the platform explicitly.
-        if (platformId === PLATFORM_ID.PLAYGAMA && options.saas.publicToken) {
+        // On Playgama platforms the feature runs through SaaS as soon as a token is set,
+        // without configuring the feature explicitly.
+        if (PLAYGAMA_PLATFORM_IDS.includes(platformId) && saas?.publicToken) {
             return true
         }
 
-        return (
-            Array.isArray(options.saas[feature].platforms)
-            && options.saas[feature].platforms.includes(platformId)
+        const config = saas?.[feature]
+
+        return Boolean(
+            config
+            && Array.isArray(config.platforms)
+            && config.platforms.includes(platformId),
         )
     }
 }

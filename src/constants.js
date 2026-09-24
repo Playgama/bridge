@@ -52,6 +52,11 @@ export const PLATFORM_ID = {
     SAMSUNG: 'samsung',
 }
 
+export const PLAYGAMA_PLATFORM_IDS = [
+    PLATFORM_ID.PLAYGAMA,
+    PLATFORM_ID.STANDALONE,
+]
+
 export const MODULE_NAME = {
     CORE: 'core',
     PLATFORM: 'platform',
@@ -119,6 +124,9 @@ export const ADVANCED_BANNERS_ACTION = {
     SHOW: 'show',
     HIDE: 'hide',
 }
+export const ADVANCED_BANNER_SIZE_KEYS = ['width', 'height']
+export const ADVANCED_BANNER_POSITION_KEYS = ['top', 'bottom', 'left', 'right']
+export const ADVANCED_BANNER_PERCENT_PATTERN = /^\d+(?:\.\d+)?%$/
 export const BANNER_CONTAINER_ID = 'banner-container'
 export const ADVANCED_BANNER_CONTAINER_ID_PREFIX = 'advanced-banner-'
 export const INTERSTITIAL_CONTAINER_ID = 'interstitial-container'

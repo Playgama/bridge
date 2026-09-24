@@ -15,7 +15,9 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MODULE_NAME, PLATFORM_ID, TIMESTAMP_URL } from '../constants'
+import {
+    MODULE_NAME, PLATFORM_ID, PLAYGAMA_PLATFORM_IDS, TIMESTAMP_URL,
+} from '../constants'
 import packageJson from '../../package.json'
 import { generateRandomId, getGuestUser } from '../common/utils'
 import ModuleBase from './ModuleBase'
@@ -346,7 +348,7 @@ class AnalyticsModule extends ModuleBase {
                 }
             }
 
-            if (platformId === PLATFORM_ID.PLAYGAMA || platformId === PLATFORM_ID.STANDALONE) {
+            if (PLAYGAMA_PLATFORM_IDS.includes(platformId)) {
                 if (parsedUrl.searchParams.get('game_id')) {
                     return parsedUrl.searchParams.get('game_id')
                 }
