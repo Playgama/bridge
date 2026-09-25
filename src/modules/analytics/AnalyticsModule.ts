@@ -15,16 +15,18 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { MODULE_NAME } from '../../constants'
+import { EVENT_NAME, MODULE_NAME } from '../../constants'
 import { serverTimeCache } from '../../lib/serverTime'
-import { PLATFORM_ID, type PlatformId } from '../platform/constants'
+import { PLATFORM_ID, PLATFORM_MESSAGE, type PlatformId } from '../platform/constants'
 import packageJson from '../../../package.json'
 import { generateRandomId } from '../../utils'
 import { getGuestUser } from '../player'
 import ModuleBase from '../ModuleBase'
+import eventBus from '../../lib/EventBus'
 import bridgeConfig from '../../lib/bridge-config'
 import logger from '../../lib/logger'
 import { getApiOrigin } from '../../lib/apiOrigin'
+import GameplayMilestoneTracker from './GameplayMilestoneTracker'
 import {
     ANALYTICS_PATH,
     FLUSH_INTERVAL,
@@ -73,6 +75,10 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     #isCompressionSupported = typeof CompressionStream !== 'undefined'
 
+    #gameplayMilestones = new GameplayMilestoneTracker(
+        (eventName: string) => this.#sendInternal(eventName),
+    )
+
     constructor() {
         super()
         this.#sessionId = this.#generateSessionId()
@@ -110,6 +116,7 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         this.#sendInternal(`${MODULE_NAME.CORE}_initialization_started`)
         this.#startFlushInterval()
         this.#setupPageUnloadHandler()
+        this.#setupGameplayMilestones()
 
         return this
     }
@@ -404,6 +411,21 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         }
 
         return null
+    }
+
+    // Counts from the moment the game reports it is ready and reports how long the player stays
+    #setupGameplayMilestones(): void {
+        this.#gameplayMilestones.setPauseState(this._platformBridge.isPlatformPaused)
+
+        this._platformBridge.on(EVENT_NAME.PAUSE_STATE_CHANGED, (isPaused: unknown) => {
+            this.#gameplayMilestones.setPauseState(isPaused === true)
+        })
+
+        eventBus.on(EVENT_NAME.PLATFORM_MESSAGE_SENT, (message: unknown) => {
+            if (message === PLATFORM_MESSAGE.GAME_READY) {
+                this.#gameplayMilestones.start()
+            }
+        })
     }
 
     #startFlushInterval(): void {
