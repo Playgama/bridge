@@ -131,7 +131,8 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             return
         }
 
-        this.#customEventQueue.push(this.#createEvent(eventName, data))
+        const safeData = data && typeof data === 'object' && !Array.isArray(data) ? data : {}
+        this.#customEventQueue.push(this.#createEvent(eventName, safeData))
 
         if (this.#customEventQueue.length > CUSTOM_EVENTS_QUEUE_LIMIT) {
             this.#customEventQueue.splice(0, this.#customEventQueue.length - CUSTOM_EVENTS_QUEUE_LIMIT)
