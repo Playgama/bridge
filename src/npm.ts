@@ -15,22 +15,31 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// npm entry point. Runs the same side-effect as the CDN/<script> build
-// (populates window.bridge) and additionally exposes the singleton as a
-// typed module export so games can `import bridge from '@playgama/bridge'`.
-
-import './index'
 import './global'
 import type PlaygamaBridge from './PlaygamaBridge'
 
-const bridge = window.bridge as PlaygamaBridge
+const NO_WINDOW_MESSAGE = 'Playgama Bridge runs in a browser only, and there is no window in this environment. '
+    + 'On a server, in a worker or in tests, import from \'@playgama/bridge/constants\' instead: '
+    + 'it carries the constants and the types with no runtime.'
+
+const RUNTIME_MISSING_MESSAGE = 'Playgama Bridge runtime is not loaded. '
+    + 'Add <script src="playgama-bridge.js"></script> to index.html before the game script, '
+    + 'or add the Vite plugin: import playgamaBridge from \'@playgama/bridge/vite\'. '
+    + 'For constants only, import from \'@playgama/bridge/constants\'.'
+
+if (typeof window === 'undefined') {
+    throw new Error(NO_WINDOW_MESSAGE)
+}
+
+const runtime = (window.bridge || window.playgamaBridge) as PlaygamaBridge | undefined
+
+if (!runtime) {
+    throw new Error(RUNTIME_MISSING_MESSAGE)
+}
+
+const bridge: PlaygamaBridge = runtime
 
 export default bridge
 export { bridge }
-
-// Public constants and data-shape types (also available side-effect-free via
-// the `@playgama/bridge/constants` subpath).
 export * from './publicConstants'
-
-export type { default as PlaygamaBridge } from './PlaygamaBridge'
-export type { PlaygamaInitOptions } from './PlaygamaBridge'
+export type { default as PlaygamaBridge, PlaygamaInitOptions } from './PlaygamaBridge'

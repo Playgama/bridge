@@ -2,14 +2,14 @@
     "name": "@playgama/bridge",
     "version": "2.2.1-preview.1",
     "description": "One SDK for cross-platform publishing HTML5 games",
-    "main": "dist/playgama-bridge.umd.js",
+    "main": "dist/playgama-bridge.cjs.js",
     "module": "dist/playgama-bridge.esm.js",
     "types": "dist/types/npm.d.ts",
     "exports": {
         ".": {
             "types": "./dist/types/npm.d.ts",
             "import": "./dist/playgama-bridge.esm.js",
-            "require": "./dist/playgama-bridge.umd.js"
+            "require": "./dist/playgama-bridge.cjs.js"
         },
         "./constants": {
             "types": "./dist/types/publicConstants.d.ts",
@@ -19,15 +19,21 @@
         "./global": {
             "types": "./dist/types/global.d.ts"
         },
+        "./vite": {
+            "types": "./vite/index.d.ts",
+            "import": "./vite/index.mjs",
+            "require": "./vite/index.cjs"
+        },
         "./dist/playgama-bridge.js": "./dist/playgama-bridge.js"
     },
     "files": [
         "dist/playgama-bridge.js",
         "dist/playgama-bridge.esm.js",
-        "dist/playgama-bridge.umd.js",
+        "dist/playgama-bridge.cjs.js",
         "dist/constants.esm.js",
         "dist/constants.cjs.js",
         "dist/types",
+        "vite",
         "README.md",
         "LICENSE"
     ],
