@@ -18,26 +18,39 @@
 import './global'
 import type PlaygamaBridge from './PlaygamaBridge'
 
-const NO_WINDOW_MESSAGE = 'Playgama Bridge runs in a browser only, and there is no window in this environment. '
-    + 'On a server, in a worker or in tests, import from \'@playgama/bridge/constants\' instead: '
-    + 'it carries the constants and the types with no runtime.'
-
 const RUNTIME_MISSING_MESSAGE = 'Playgama Bridge runtime is not loaded. '
-    + 'Add <script src="playgama-bridge.js"></script> to index.html before the game script, '
+    + 'Add the SDK script to index.html before the game script, '
     + 'or add the Vite plugin: import playgamaBridge from \'@playgama/bridge/vite\'. '
     + 'For constants only, import from \'@playgama/bridge/constants\'.'
 
-if (typeof window === 'undefined') {
-    throw new Error(NO_WINDOW_MESSAGE)
+const readRuntime = (): PlaygamaBridge | undefined => (
+    typeof window === 'undefined' ? undefined : window.bridge || window.playgamaBridge
+)
+
+const requireRuntime = (): PlaygamaBridge => {
+    const runtime = readRuntime()
+    if (!runtime) {
+        throw new Error(RUNTIME_MISSING_MESSAGE)
+    }
+    return runtime
 }
 
-const runtime = (window.bridge || window.playgamaBridge) as PlaygamaBridge | undefined
+const deferred = new Proxy({} as PlaygamaBridge, {
+    get(_, key) {
+        const runtime = requireRuntime()
+        const value: unknown = Reflect.get(runtime, key, runtime)
+        return typeof value === 'function' ? value.bind(runtime) : value
+    },
+    set(_, key, value) {
+        return Reflect.set(requireRuntime(), key, value)
+    },
+    has(_, key) {
+        const runtime = readRuntime()
+        return runtime !== undefined && Reflect.has(runtime, key)
+    },
+})
 
-if (!runtime) {
-    throw new Error(RUNTIME_MISSING_MESSAGE)
-}
-
-const bridge: PlaygamaBridge = runtime
+const bridge: PlaygamaBridge = readRuntime() || deferred
 
 export default bridge
 export { bridge }

@@ -200,7 +200,7 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
             entry: './src/npm',
             experiments: { outputModule: true },
             output: {
-                filename: 'playgama-bridge.esm.js',
+                filename: 'playgama-bridge.esm.mjs',
                 path: path.resolve(__dirname, 'dist'),
                 library: { type: 'module' },
             },
@@ -228,7 +228,7 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
             entry: './src/publicConstants',
             experiments: { outputModule: true },
             output: {
-                filename: 'constants.esm.js',
+                filename: 'constants.esm.mjs',
                 path: path.resolve(__dirname, 'dist'),
                 library: { type: 'module' },
             },
