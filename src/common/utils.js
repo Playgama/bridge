@@ -507,12 +507,8 @@ export function showAdFailurePopup() {
         closeButton.onclick = closePopup
         popup.onclick = closePopup
 
-        const messages = [
-            'If you see this message, no Ad was returned for the Ad request.<br><br>Please ask the developer to check the Ad setup.',
-            'This is placeholder for the Ad. Playgama helps games reach players worldwide.',
-        ]
         const textElement = document.getElementById('bridge-ad-failure-popup-text')
-        textElement.innerHTML = messages[Math.floor(Math.random() * messages.length)]
+        textElement.innerHTML = 'Oops! It looks like you closed the ad too early, or it isn\'t available right now.<br><br>That\'s okay, it happens sometimes! To continue playing, just tap the × in the top-right corner.'
 
         popup.style.display = 'grid'
     })
