@@ -1,5 +1,5 @@
 <p align="center">
-    <a href="https://playgama.com/developers?utm_source=github&utm_medium=bridge"><img src="https://raw.githubusercontent.com/Playgama/.github/main/assets/banners/bridge.jpg" alt="Playgama Bridge" width="100%"></a>
+    <a href="https://playgama.com/developers?utm_source=github&utm_medium=bridge"><img src="https://raw.githubusercontent.com/Playgama/.github/main/assets/banners/bridge.png" alt="Playgama Bridge" width="100%"></a>
 </p>
 
 <p align="center"><b>One SDK to publish HTML5 games on 20+ web platforms</b></p>
