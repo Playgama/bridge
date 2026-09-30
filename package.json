@@ -48,7 +48,7 @@
         "build:platform": "ts-node scripts/build-platform.ts",
         "build:dist": "ts-node scripts/build-dist.ts",
         "build:npm": "webpack --env npm --env noLint",
-        "build:types": "tsc -p tsconfig.types.json",
+        "build:types": "node -e \"require('fs').rmSync('dist/types', { recursive: true, force: true })\" && tsc -p tsconfig.types.json",
         "build:package": "npm run build:npm && npm run build:types",
         "develop": "webpack --mode=development",
         "dev": "webpack serve --mode=development --config-name dynamic",
