@@ -105,6 +105,14 @@ const MSN_SIZES_BY_POSITION: Record<string, [number, number][]> = {
     bottomright: [[300, 250]],
 }
 
+// MSN reports an unfulfilled ad request with these codes, only then custom backfill is allowed
+const MSN_BACKFILL_ERROR_CODES = ['LOAD_ADS_FAILURE', 'SHOW_ADS_FAILURE']
+
+interface MsnLoadAdsOptions {
+    isRewardedAd: boolean
+    canBackfill: boolean
+}
+
 interface MsnAdInstance {
     instanceId: string
     showAdsCompletedAsync: Promise<unknown>
@@ -144,7 +152,7 @@ interface MsnSdk {
     submitGameResultsAsync(score: unknown): Promise<unknown>
     showDisplayAdsAsync(placements: string[]): Promise<unknown>
     hideDisplayAdsAsync(): Promise<unknown>
-    loadAdsAsync(rewarded: boolean): Promise<MsnAdInstance>
+    loadAdsAsync(options: MsnLoadAdsOptions): Promise<MsnAdInstance>
     showAdsAsync(instanceId: string): Promise<MsnAdInstance>
     iap: MsnIap
 }
@@ -486,29 +494,28 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     showInterstitial(): void {
         const sdk = this._platformSdk as MsnSdk
-        sdk.loadAdsAsync(false)
+        sdk.loadAdsAsync({ isRewardedAd: false, canBackfill: this.#playgamaAds !== null })
             .then((adInstance) => sdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
                 return adInstance.showAdsCompletedAsync
-            })
-            .then(() => this._setInterstitialState(INTERSTITIAL_STATE.CLOSED))
-            .catch(() => this.#showPlaygamaInterstitial())
+                    .catch(() => {})
+                    .then(() => this._setInterstitialState(INTERSTITIAL_STATE.CLOSED))
+            }, (error) => this.#handleAdFailure(error, false))
     }
 
     showRewarded(): void {
         const sdk = this._platformSdk as MsnSdk
-        sdk.loadAdsAsync(true)
+        sdk.loadAdsAsync({ isRewardedAd: true, canBackfill: this.#playgamaAds !== null })
             .then((adInstance) => sdk.showAdsAsync(adInstance.instanceId))
             .then((adInstance) => {
                 this._setRewardedState(REWARDED_STATE.OPENED)
                 return adInstance.showAdsCompletedAsync
-            })
-            .then(() => {
-                this._setRewardedState(REWARDED_STATE.REWARDED)
-                this._setRewardedState(REWARDED_STATE.CLOSED)
-            })
-            .catch(() => this.#showPlaygamaRewarded())
+                    .then(() => this._setRewardedState(REWARDED_STATE.REWARDED))
+                    // Skipped or closed before completion, no reward
+                    .catch(() => {})
+                    .then(() => this._setRewardedState(REWARDED_STATE.CLOSED))
+            }, (error) => this.#handleAdFailure(error, true))
     }
 
     // payments
@@ -678,6 +685,15 @@ class MsnPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    #handleAdFailure(error: unknown, isRewarded: boolean): Promise<void> {
+        const code = (error as { code?: string } | undefined)?.code
+        if (code && MSN_BACKFILL_ERROR_CODES.includes(code)) {
+            return isRewarded ? this.#showPlaygamaRewarded() : this.#showPlaygamaInterstitial()
+        }
+
+        return this._advertisementShowErrorPopup(isRewarded)
     }
 
     #showPlaygamaInterstitial(): Promise<void> {
