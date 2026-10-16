@@ -36,6 +36,7 @@ export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     isPlatformExternalCallsSupported: boolean
     isPlatformPaused: boolean
     data?: { clid?: string } & Record<string, unknown>
+    sendAnalyticsEvent?(eventName: string, data: Record<string, unknown>): void
 }
 
 export interface AnalyticsSender {

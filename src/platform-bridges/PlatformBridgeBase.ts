@@ -539,6 +539,9 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
+    // analytics — platforms with their own event tracking forward custom game events there
+    sendAnalyticsEvent(_eventName: string, _data: Record<string, unknown>): void { }
+
     // notifications
     notificationsSchedule(
         _notification: ScheduledNotification,

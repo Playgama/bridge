@@ -17,6 +17,7 @@
 
 import { PLATFORM_ID, type PlatformId } from './modules/platform/constants'
 import PlatformBridgeBase from './platform-bridges/PlatformBridgeBase'
+import bridgeConfig from './lib/bridge-config'
 
 type PlatformBridgeConstructor = new (...args: never[]) => PlatformBridgeBase
 type PlatformBridgeImporter = () => Promise<{ default: PlatformBridgeConstructor }>
@@ -51,7 +52,13 @@ if (__INCLUDE_TELEGRAM__) {
     platformImports[PLATFORM_ID.TELEGRAM] = () => import('./platform-bridges/TelegramPlatformBridge')
 }
 if (__INCLUDE_Y8__) {
-    platformImports[PLATFORM_ID.Y8] = () => import('./platform-bridges/Y8PlatformBridge')
+    // Both appId and gameId select the new Y8 SDK; a single id keeps the legacy integration
+    platformImports[PLATFORM_ID.Y8] = () => {
+        const { appId, gameId } = bridgeConfig.getValues() as { appId?: string; gameId?: string }
+        return appId && gameId
+            ? import('./platform-bridges/Y8PlatformBridge')
+            : import('./platform-bridges/Y8LegacyPlatformBridge')
+    }
 }
 if (__INCLUDE_LAGGED__) {
     platformImports[PLATFORM_ID.LAGGED] = () => import('./platform-bridges/LaggedPlatformBridge')

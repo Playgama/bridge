@@ -118,9 +118,8 @@ const createFullConfig = () => ({
             adsgramBlockId: 'tg-ads-block-123',
         },
         y8: {
-            gameId: 'y8-game-id',
-            adsenseId: 'ca-pub-1234567890',
-            channelId: 'y8-channel-1',
+            appId: 'y8-app-id',
+            gameId: '123456',
         },
         lagged: {
             devId: 'lagged-dev-123',
