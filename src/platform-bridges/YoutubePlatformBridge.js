@@ -326,6 +326,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
             })
     }
 
+    checkAdBlock() {
+        return Promise.resolve(false)
+    }
+
     // leaderboards
     leaderboardsSetScore(id, score, isMain) {
         if (!isMain) {
