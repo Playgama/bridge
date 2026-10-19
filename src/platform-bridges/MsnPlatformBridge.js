@@ -29,7 +29,7 @@ import {
     STORAGE_TYPE,
 } from '../constants'
 
-const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
+const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.23.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 const AUTO_NOTIFICATIONS = [
@@ -741,11 +741,13 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     #updatePlayerInfo(data) {
         if (data) {
+            const playerInformation = data.playerInformation ?? data
             this._isPlayerAuthorized = true
-            this._playerId = data.playerId ?? data.publisherPlayerId
-            this._playerName = data.playerDisplayName
-            this._playerExtra = data
-            this.#isPaymentsSupported = data.userAccountType.toLowerCase() === 'personal'
+            this._playerId = playerInformation.playerId ?? playerInformation.publisherPlayerId
+            this._playerName = playerInformation.playerDisplayName
+            this._playerPhotos = playerInformation.userAvatarUrl ? [playerInformation.userAvatarUrl] : []
+            this._playerExtra = { ...playerInformation, ...data }
+            this.#isPaymentsSupported = playerInformation.userAccountType?.toLowerCase() === 'personal'
         } else {
             this._playerApplyGuestData()
         }
