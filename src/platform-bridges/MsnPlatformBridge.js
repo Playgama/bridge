@@ -745,6 +745,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             this._isPlayerAuthorized = true
             this._playerId = playerInformation.playerId ?? playerInformation.publisherPlayerId
             this._playerName = playerInformation.playerDisplayName
+            this._playerPhotos = playerInformation.userAvatarUrl ? [playerInformation.userAvatarUrl] : []
             this._playerExtra = { ...playerInformation, ...data }
             this.#isPaymentsSupported = playerInformation.userAccountType?.toLowerCase() === 'personal'
         } else {
