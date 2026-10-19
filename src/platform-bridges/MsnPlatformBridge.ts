@@ -890,6 +890,7 @@ class MsnPlatformBridge extends PlatformBridgeBase {
             this._isPlayerAuthorized = true
             this._playerId = (playerInformation.playerId ?? playerInformation.publisherPlayerId) as string
             this._playerName = playerInformation.playerDisplayName as string
+            this._playerPhotos = playerInformation.userAvatarUrl ? [playerInformation.userAvatarUrl as string] : []
             this._playerExtra = { ...playerInformation, ...data }
             this.#isPaymentsSupported = (playerInformation.userAccountType as string | undefined)?.toLowerCase() === 'personal'
             // The player may sign in after init (via authorizePlayer or implicitly through payments);
