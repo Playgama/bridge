@@ -254,6 +254,10 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
             })
     }
 
+    checkAdBlock(): Promise<boolean> {
+        return Promise.resolve(false)
+    }
+
     leaderboardsSetScore(_id?: unknown, score?: unknown, isMain?: unknown): Promise<unknown> {
         if (!isMain) {
             return Promise.reject()
