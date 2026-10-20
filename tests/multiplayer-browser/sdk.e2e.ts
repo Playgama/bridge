@@ -83,7 +83,7 @@ test('built lazy SDK: create, invite, late join, stable snapshots, relay, metada
     }
 })
 
-test('native short return, HTTP fallback, cloned-tab terminal replacement and outage-safe leave', async ({ browser }) => {
+test('native short return, HTTP fallback and cloned-tab terminal replacement', async ({ browser }) => {
     const peers = await Promise.all([peer(browser), peer(browser)])
     try {
         const [a, b] = peers
@@ -117,10 +117,29 @@ test('native short return, HTTP fallback, cloned-tab terminal replacement and ou
         peers.push(clone)
         await enter(clone.page, 'joinRoom', { code, player: { name: 'Clone' } })
         await ready(clone.page)
+        expect((await snapshot(clone.page)).playerId).toBe(playerId)
         await expect.poll(async () => (await snapshot(b.page)).errors).toContain('REPLACED')
         expect((await snapshot(b.page)).connectionState).toBe('disconnected')
-        expect((await snapshot(clone.page)).playerId).toBe(playerId)
+    } finally {
+        await Promise.all(peers.map(async ({ page, context }) => {
+            await context.setOffline(false)
+            await page.evaluate(() => (window as any).sdkTest.leave()).catch(() => {})
+            await context.close()
+        }))
+    }
+})
 
+test('explicit leave closes healthy WSS while independent HTTP confirmation is unavailable', async ({ browser }) => {
+    const peers = await Promise.all([peer(browser), peer(browser)])
+    try {
+        const [a, b] = peers
+        await enter(a.page, 'createRoom', { player: { name: 'A' }, maxPlayers: 4 })
+        await ready(a.page)
+        const code = await a.page.evaluate(() => (window as any).sdkTest.code())
+        await enter(b.page, 'joinRoom', { code, player: { name: 'B' } })
+        await ready(b.page)
+        await a.page.evaluate(() => (window as any).sdkTest.freeze())
+        await expect.poll(async () => (await snapshot(b.page)).world.frozen).toBe(true)
         let blockLeave = true
         await a.context.route('**/rooms/leave', async (route) => {
             if (blockLeave) await route.abort()
@@ -132,7 +151,7 @@ test('native short return, HTTP fallback, cloned-tab terminal replacement and ou
             target.leaveComplete = false
             target.sdkTest.leave().then(() => { target.leaveComplete = true })
         })
-        await expect.poll(async () => (await snapshot(clone.page)).isHost, { timeout: 20000 }).toBe(true)
+        await expect.poll(async () => (await snapshot(b.page)).isHost, { timeout: 20000 }).toBe(true)
         expect(await a.page.evaluate(() => (window as any).leaveComplete)).toBe(false)
         blockLeave = false
         await expect.poll(() => a.page.evaluate(() => (window as any).leaveComplete), { timeout: 10000 }).toBe(true)
