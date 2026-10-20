@@ -114,7 +114,11 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
         this.#fetchTimeDiff()
         this.#sendInternal(`${MODULE_NAME.CORE}_initialization_started`)
-        this.#startFlushInterval()
+
+        if (document.visibilityState === 'visible') {
+            this.#startFlushInterval()
+        }
+
         this.#setupPageUnloadHandler()
         this.#setupGameplayMilestones()
 

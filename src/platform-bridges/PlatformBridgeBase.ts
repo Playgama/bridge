@@ -368,7 +368,7 @@ class PlatformBridgeBase {
         )
 
         if (this.isPlatformPageVisibilityApiAllowed) {
-            this._visibilityState = document.visibilityState
+            this._setVisibilityState(document.visibilityState as VisibilityState)
 
             document.addEventListener('visibilitychange', () => {
                 this._setVisibilityState(document.visibilityState as VisibilityState)
