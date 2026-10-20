@@ -132,6 +132,8 @@ interface WebpackEnv {
     // Absolute URL the dynamic bundle uses to fetch its platform-bridges/ chunks.
     // Should match the deploy location, e.g. https://<domain>/v<major>/<channel>/
     publicPath?: string
+    // Opt-in staging artifact: preserve lazy multiplayer even in the browser bundle.
+    multiplayer?: boolean
 }
 
 interface WebpackArgv {
@@ -170,7 +172,7 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
         name: 'dynamic',
         output: {
             ...baseConfig.output,
-            publicPath: isDevelopment ? 'auto' : env.publicPath,
+            publicPath: isDevelopment ? 'auto' : env.publicPath || 'auto',
         },
         plugins: [
             ...(baseConfig.plugins ?? []),
@@ -186,6 +188,10 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
                 maxChunks: 1,
             }),
         ],
+    }
+
+    if (env.multiplayer) {
+        return { ...dynamicConfig, name: 'multiplayer' }
     }
 
     // npm-consumable bundles. Same source, but with a real module export

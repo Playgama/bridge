@@ -97,8 +97,8 @@ export class MultiplayerError extends Error {
 
     readonly retryAfterMs?: number
 
-    constructor(code: string, message = code, retryAfterMs?: number) {
-        super(message)
+    constructor(code: string, message?: string, retryAfterMs?: number) {
+        super(message || code)
         this.name = 'MultiplayerError'
         this.code = code
         this.retryAfterMs = retryAfterMs

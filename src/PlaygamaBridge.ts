@@ -57,6 +57,8 @@ import achievementsModule from './modules/achievements'
 import notificationsModule from './modules/notifications'
 import dailyRewardsModule from './modules/daily-rewards'
 import tasksModule from './modules/tasks'
+import multiplayerModule from './modules/multiplayer'
+import type { MultiplayerConfig } from './modules/multiplayer'
 import crossPromoModule from './modules/cross-promo'
 import analyticsModule, { internalAnalytics } from './modules/analytics'
 import { applyBrowserDefaultsProtection } from './utils'
@@ -67,6 +69,7 @@ import type { EventEmitter } from './lib/EventBus'
 
 export interface PlaygamaInitOptions {
     configFilePath?: string
+    multiplayer?: MultiplayerConfig
     [key: string]: unknown
 }
 
@@ -156,6 +159,10 @@ class PlaygamaBridge {
         return this.#getModule(MODULE_NAME.CROSS_PROMO) as typeof crossPromoModule
     }
 
+    get multiplayer(): typeof multiplayerModule {
+        return multiplayerModule
+    }
+
     get engine(): string {
         return this.#engine
     }
@@ -233,6 +240,7 @@ class PlaygamaBridge {
 
             const bridge = this.#platformBridge as PlatformBridgeBase & { engine?: string }
             bridge.engine = this.engine
+            multiplayerModule.initialize(bridge, options?.multiplayer)
 
             this.#setupLoadingVisuals(bridge)
 

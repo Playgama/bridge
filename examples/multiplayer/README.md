@@ -6,16 +6,16 @@ The SDK obtains the regional base from `sessions` and routes invitation codes in
 The public app token identifies the game; never put a management credential here.
 
 ```js
-if (!bridge.isInitialized) {
-    await bridge.initialize({
+// Add this block to the game's ORIGINAL Bridge initialization.
+// If Bridge is initialized elsewhere, merge the config there before loading this code.
+await bridge.initialize({
         multiplayer: {
             apiBase: 'https://staging.playgama.com/api/bridge/v1/relay',
             appToken: PUBLIC_GAME_TOKEN,
             environment: 'staging',
             region: 'eu',
         },
-    })
-}
+})
 
 const room = await bridge.multiplayer.joinOrCreateRoom({
     player: { name: 'Player' },
@@ -59,7 +59,45 @@ through HTTP. `setRoom` and `setPlayer` wait for server acknowledgement.
 The browser artifact uses `window.bridge`. Copy the entire dynamic build directory,
 including its chunks, preserving relative paths. The multiplayer runtime and Colyseus
 are fetched on first use; importing the Bridge alone does not create a session.
+For a game that already initializes Bridge, add `multiplayer` to that original call
+or its local Bridge config and reload the page. A second `initialize()` does not
+change an initialized Bridge. `bridge.multiplayer.isSupported` reports whether
+the module has opt-in config. Missing config rejects multiplayer operations with
+`MULTIPLAYER_NOT_CONFIGURED` before any network request.
 
 `fixture.mjs` exports `createMultiplayerFixture()` for isolated UI development. It has
 one local host and does not contact any backend. Its success is **not** an E2E test.
 The authoritative public types are `src/modules/multiplayer/types.ts`.
+
+## Validation
+
+Run `npm test`, `npx tsc --noEmit`, and `npm run build:multiplayer`.
+The experimental browser artifact is `dist/playgama-bridge.js` plus the entire
+`dist/platform-bridges/` directory; `publicPath` is resolved from the script URL.
+Do not run the build while serving these files to a test browser.
+
+The real browser suite is `npm run test:multiplayer:browser`, with:
+
+- `MP_API_BASE`: the running local facade root, such as `http://127.0.0.1:3300/api/bridge/v1/relay`.
+- `MP_PUBLIC_TOKEN`: the public test game token registered in that facade.
+- `MP_SERVER_ROOT`: the server worktree containing its `scripts/local-stack.mjs`
+  hook. The crash test deliberately restarts that local server; coordinate its use.
+- `MP_BROWSER_PATH`: optional Chrome executable (default `/usr/bin/google-chrome`).
+
+Allow `http://127.0.0.1:4178` in the test game's origins. The suite serves
+`harness.html` and uses independent browser contexts for different players;
+the cloned-tab test deliberately copies session storage to test replacement.
+It tests actual HTTP/WS, lazy chunks, invite/matching, JSON relay, late snapshots,
+host migration, native return, HTTP fallback, terminal replacement, leave during
+HTTP outage and process recovery. State comparisons use a frozen world.
+Without the server hook, process recovery is explicitly skipped. Missing API or
+public token fails configuration; it never substitutes a fixture.
+
+The harness's local config uses the `mock` **platform adapter** and disables core
+analytics. Multiplayer still uses the real facade and official Colyseus SDK.
+Browser requests outside loopback are blocked; platform account verification and
+public staging routing are separate deployment checks.
+
+Explicit leave immediately closes the local transport and cancels recovery.
+Its promise resolves only after the independent, idempotent HTTP leave confirms
+membership release; transient HTTP failure cannot keep an abandoned host socket alive.

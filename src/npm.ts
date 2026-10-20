@@ -34,3 +34,4 @@ export * from './publicConstants'
 
 export type { default as PlaygamaBridge } from './PlaygamaBridge'
 export type { PlaygamaInitOptions } from './PlaygamaBridge'
+export * from './modules/multiplayer/types'

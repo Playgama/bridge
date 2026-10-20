@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridge multiplayer integration harness</title>
+<style>
+body { font: 16px system-ui; max-width: 760px; margin: 3rem auto; padding: 0 1rem; background: #15202b; color: #e9f2fa }
+pre { white-space: pre-wrap; padding: 1rem; background: #243447; border-radius: 8px }
+</style>
+<h1>Bridge multiplayer integration harness</h1>
+<p>This page uses the built SDK and a real configured facade. It contains no mock transport.
+Configure it through <code>sdkTest.initialize(config)</code>, then enter a room.</p>
+<pre id="status">SDK loading…</pre>
+<script src="../../dist/playgama-bridge.js"></script>
+<script>
+(() => {
+    let room
+    let world = { tick: 0, counter: 0, frozen: false }
+    const errors = []
+    const messages = []
+    const states = []
+    const status = document.getElementById('status')
+    const snapshot = () => ({
+        world: structuredClone(world),
+        playerId: room?.playerId,
+        hostPlayerId: room?.hostPlayerId,
+        roomId: room?.id,
+        players: room?.players,
+        isHost: room?.isHost,
+        isReady: room?.isReady,
+        connectionState: room?.connectionState,
+        errors: [...errors],
+        messages: [...messages],
+        states: [...states],
+    })
+    const update = () => { status.textContent = JSON.stringify(snapshot(), null, 2) }
+    setInterval(() => {
+        if (room?.isHost && !world.frozen) world.tick += 1
+    }, 20)
+    setInterval(update, 250)
+    window.sdkTest = {
+        async initialize(multiplayer) {
+            await bridge.initialize({
+                forciblySetPlatformId: 'mock',
+                sendAnalyticsEvents: false,
+                disableLoadingLogo: true,
+                multiplayer,
+            })
+        },
+        async enter(method, options) {
+            room = await bridge.multiplayer[method](options)
+            room.onError((error) => errors.push(error.code))
+            room.onStateChange((state) => states.push(state))
+            room.onMessage(({ type, data, from }) => {
+                messages.push({ type, data, from })
+                if (type === 'increment' && room.isHost) world.counter += data.amount
+            })
+            room.syncState({
+                getState: () => world,
+                applyState: (state) => { world = state },
+            })
+            return snapshot()
+        },
+        // Invite code is intentionally absent from page status and test logs.
+        code: () => room.inviteCode,
+        snapshot,
+        freeze() { if (room.isHost) world.frozen = true },
+        send(amount = 1) { room.send('increment', { amount }, room.hostPlayerId) },
+        async leave() { await room.leave() },
+        // Uses the browser offline lifecycle; no private SDK members are patched.
+        drop() { window.dispatchEvent(new Event('offline')) },
+    }
+    status.textContent = 'Ready for sdkTest.initialize(config)'
+})()
+</script>
+</html>

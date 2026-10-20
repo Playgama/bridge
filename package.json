@@ -37,6 +37,7 @@
     "scripts": {
         "build": "npm run build:bundled",
         "build:dynamic": "webpack --config-name dynamic",
+        "build:multiplayer": "webpack --env multiplayer",
         "build:bundled": "webpack --config-name bundled",
         "build:nolint": "webpack --config-name bundled --env noLint",
         "build:platform": "ts-node scripts/build-platform.ts",
@@ -47,6 +48,7 @@
         "develop": "webpack --mode=development",
         "dev": "webpack serve --mode=development --config-name dynamic",
         "test": "vitest run",
+        "test:multiplayer:browser": "playwright test --config tests/multiplayer-browser/playwright.config.ts",
         "test:watch": "vitest",
         "lint": "eslint src/ scripts/ webpack.config.ts vitest.config.ts --ext .ts,.tsx",
         "lint:fix": "eslint src/ scripts/ webpack.config.ts vitest.config.ts --ext .ts,.tsx --fix",
@@ -65,6 +67,7 @@
     "devDependencies": {
         "@babel/core": "^7.17.8",
         "@babel/preset-env": "^7.16.11",
+        "@playwright/test": "1.64.1",
         "@types/jsdom": "^21.1.6",
         "@types/node": "^20.11.0",
         "@typescript-eslint/eslint-plugin": "^7.18.0",
@@ -83,5 +86,8 @@
         "webpack": "^5.70.0",
         "webpack-cli": "^4.9.2",
         "webpack-dev-server": "^4.15.2"
+    },
+    "dependencies": {
+        "@colyseus/sdk": "0.17.43"
     }
 }

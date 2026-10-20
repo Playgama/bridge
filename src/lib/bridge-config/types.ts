@@ -25,6 +25,7 @@ import type { LeaderboardMapping } from '../../modules/leaderboards'
 import type { SocialConfig } from '../../modules/social/types'
 import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
+import type { MultiplayerConfig } from '../../modules/multiplayer/types'
 
 export interface SaasFeatureConfig {
     platforms?: string[]
@@ -84,6 +85,7 @@ export interface ConfigFileOptions extends AnyRecord {
     device?: DeviceConfig
     crossPromo?: CrossPromoConfig
     saas?: SaasConfig
+    multiplayer?: MultiplayerConfig
     payments?: Array<AnyRecord & { id: string }>
     videoPreviews?: VideoPreview[]
 }
