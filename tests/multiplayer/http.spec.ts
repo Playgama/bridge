@@ -89,6 +89,48 @@ describe('session scope and HTTP retry identity', () => {
         expect(fetch).not.toHaveBeenCalled()
     })
 
+    it.each(['86400', 'Wed, 01 Jan 2099 00:00:00 GMT'])('bounds Retry-After %s by the supplied deadline', async (header) => {
+        const fetch = vi.fn().mockResolvedValue(new Response('{"status":"pending"}', {
+            status: 202, headers: { 'Retry-After': header },
+        }))
+        vi.stubGlobal('fetch', fetch)
+        const http = new HttpClient(config, () => ({}))
+        const result = expect(http.request('/rooms/create', {}, undefined, 'key', undefined, Date.now() + 2000))
+            .rejects.toMatchObject({ code: 'NETWORK_TIMEOUT' })
+        await vi.advanceTimersByTimeAsync(2000)
+        await result
+        expect(fetch).toHaveBeenCalledTimes(1)
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('aborts in-flight fetch at the remaining deadline instead of starting another ten seconds', async () => {
+        let aborted = false
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((_url, options) => new Promise((_resolve, reject) => {
+            options.signal.addEventListener('abort', () => { aborted = true; reject(new Error('aborted')) })
+        })))
+        const result = expect(new HttpClient(config, () => ({}))
+            .request('/rooms/create', {}, undefined, 'key', undefined, Date.now() + 2000))
+            .rejects.toMatchObject({ code: 'NETWORK_TIMEOUT' })
+        await vi.advanceTimersByTimeAsync(2000)
+        await result
+        expect(aborted).toBe(true)
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('cancels a pending HTTP retry immediately without another request', async () => {
+        const fetch = vi.fn().mockResolvedValue(json({ status: 'pending', retryAfterMs: 86400000 }, 202))
+        vi.stubGlobal('fetch', fetch)
+        const controller = new AbortController()
+        const result = expect(new HttpClient(config, () => ({}))
+            .request('/rooms/rejoin', {}, undefined, 'key', controller.signal))
+            .rejects.toMatchObject({ code: 'CANCELLED' })
+        await vi.advanceTimersByTimeAsync(1)
+        controller.abort()
+        await result
+        expect(fetch).toHaveBeenCalledTimes(1)
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
     it('rejects a regional base outside the configured environment before sending its token', async () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ ...session(), apiBase: 'https://playgama.com/api/bridge/v1/relay/regions/eu' })))
         await expect(new HttpClient(config, () => ({})).session()).rejects.toMatchObject({ code: 'PROTOCOL_VIOLATION' })

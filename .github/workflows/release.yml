@@ -23,13 +23,16 @@ jobs:
       - run: npm ci
       - name: Build bundled SDK
         run: npm run build
+      - name: Package SDK with optional multiplayer runtime
+        working-directory: dist
+        run: zip playgama-bridge.zip playgama-bridge.js platform-bridges/multiplayer.js
       - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/playgama-bridge.js --clobber
+            gh release upload "$TAG" dist/playgama-bridge.js dist/playgama-bridge.zip --clobber
           else
-            gh release create "$TAG" dist/playgama-bridge.js --title "$TAG" --generate-notes --verify-tag
+            gh release create "$TAG" dist/playgama-bridge.js dist/playgama-bridge.zip --title "$TAG" --generate-notes --verify-tag
           fi

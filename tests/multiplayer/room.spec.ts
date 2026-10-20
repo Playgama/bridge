@@ -100,7 +100,7 @@ describe('room lifecycle with an injected transport (not E2E)', () => {
         control('error', { requestId: old.requestId, code: 'STALE_EPOCH' })
         expect(room.connectionState).toBe('reconnecting')
         await vi.advanceTimersByTimeAsync(2200)
-        expect(request).toHaveBeenCalledWith('/rooms/rejoin', { roomId: room.id }, session, expect.any(String), expect.any(AbortSignal))
+        expect(request).toHaveBeenCalledWith('/rooms/rejoin', { roomId: room.id }, session, expect.any(String), expect.any(AbortSignal), expect.any(Number))
         const next = fake.instances.at(-1)
         const replay = next.sent.find((item: any) => item.channel === 'control').value
         expect(replay.requestId).toBe(old.requestId)
@@ -152,6 +152,45 @@ describe('room lifecycle with an injected transport (not E2E)', () => {
         expect(room.connectionState).toBe('disconnected')
         expect(request.mock.calls.map((call) => call[0])).toEqual(['/rooms/leave'])
         expect(fake.instances).toHaveLength(1)
+    })
+
+    it('includes failed native attempts in the total rejoin budget', async () => {
+        const { room, native, request } = await connected()
+        const start = Date.now()
+        fake.welcome = false
+        native.events.closed(1006)
+        await vi.advanceTimersByTimeAsync(19999)
+        expect(request).not.toHaveBeenCalled()
+        await vi.advanceTimersByTimeAsync(3001)
+        expect(request.mock.calls[0][5]).toBe(start + 120000)
+        await vi.advanceTimersByTimeAsync(97000)
+        expect(room.connectionState).toBe('disconnected')
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('bounds maintenance Retry-After by the total recovery deadline', async () => {
+        const { room, control, request } = await connected()
+        const errors = vi.fn()
+        room.onError(errors)
+        control('maintenance', { retryAfterMs: 86400000 })
+        await vi.advanceTimersByTimeAsync(119999)
+        expect(room.connectionState).toBe('reconnecting')
+        await vi.advanceTimersByTimeAsync(1)
+        expect(room.connectionState).toBe('disconnected')
+        expect(errors.mock.calls[0][0].code).toBe('RETURN_EXPIRED')
+        expect(request).not.toHaveBeenCalled()
+        expect(vi.getTimerCount()).toBe(0)
+    })
+
+    it('isolates JSON listeners from binary listener payload mutation', async () => {
+        const { room, native } = await connected()
+        room.onMessageBytes(({ data }) => data.fill(0))
+        const json = vi.fn()
+        room.onMessage(json)
+        native.events.relay(frame({ v: 1, type: 'move', from: room.playerId, ownerEpoch: '1' },
+            new TextEncoder().encode('{"x":3}')))
+        expect(json.mock.calls[0][0].data).toEqual({ x: 3 })
+        room.abandon()
     })
 
     it('closes healthy WSS immediately during HTTP leave outage and coalesces repeated leave', async () => {

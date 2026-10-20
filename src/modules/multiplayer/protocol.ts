@@ -1,4 +1,5 @@
 import { MultiplayerError } from './types'
+import type { JsonValue } from '../../utils/json'
 import type {
     MultiplayerConfig, MultiplayerPlayer, MultiplayerProperties, MultiplayerRegion,
 } from './types'
@@ -98,7 +99,7 @@ export function validateConfig(config: MultiplayerConfig): void {
     }
 }
 
-export function encodeJson(value: unknown, objectOnly = false): Uint8Array {
+function validateJson(value: unknown, objectOnly = false): asserts value is JsonValue {
     const seen = new Set<object>()
     const visit = (item: unknown, depth: number): void => {
         if (depth > 64) throw new MultiplayerError('SYNC_STATE_INVALID', 'JSON nesting exceeds 64')
@@ -124,9 +125,20 @@ export function encodeJson(value: unknown, objectOnly = false): Uint8Array {
         throw new MultiplayerError('SYNC_STATE_INVALID', 'getState must return a JSON object')
     }
     visit(value, 0)
+}
+
+export function encodeJson(value: unknown, objectOnly = false): Uint8Array {
+    validateJson(value, objectOnly)
     const bytes = new TextEncoder().encode(JSON.stringify(value))
     if (bytes.length > 65536) throw new MultiplayerError('SYNC_STATE_TOO_LARGE', 'JSON payload exceeds 65536 bytes')
     return bytes
+}
+
+export function decodeJson(bytes: Uint8Array, objectOnly = false): JsonValue {
+    if (bytes.length > 65536) throw new MultiplayerError('SYNC_STATE_TOO_LARGE', 'JSON payload exceeds 65536 bytes')
+    const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes))
+    validateJson(value, objectOnly)
+    return value
 }
 
 export function frame(header: object, payload: Uint8Array): Uint8Array {
@@ -147,7 +159,7 @@ export function unframe(bytes: Uint8Array): { header: Record<string, unknown>; p
     }
     const header = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(4, 4 + length)))
     if (!header || typeof header !== 'object' || Array.isArray(header)) throw new MultiplayerError('PROTOCOL_VIOLATION')
-    return { header, payload: bytes.slice(4 + length) }
+    return { header, payload: bytes.subarray(4 + length) }
 }
 
 /** One budget shared by relay and snapshots, including framing. */

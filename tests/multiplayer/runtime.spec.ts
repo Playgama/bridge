@@ -7,7 +7,8 @@ const fake = vi.hoisted(() => ({
     request: vi.fn(),
     connects: 0,
 }))
-vi.mock('../../src/modules/multiplayer/HttpClient', () => ({
+vi.mock('../../src/modules/multiplayer/HttpClient', async (importOriginal) => ({
+    ...await importOriginal<typeof import('../../src/modules/multiplayer/HttpClient')>(),
     default: class {
         async session() { return fake.session }
         request = fake.request

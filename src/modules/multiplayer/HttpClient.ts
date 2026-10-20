@@ -4,17 +4,24 @@ import type { MultiplayerConfig, MultiplayerRegion } from './types'
 import { validateConfig } from './protocol'
 import type { Session } from './protocol'
 
-export const delay = (ms: number, signal?: AbortSignal): Promise<void> => new Promise((resolve, reject) => {
+export const remaining = (deadline: number, signal?: AbortSignal): number => {
+    if (signal?.aborted) throw new MultiplayerError('CANCELLED')
+    const time = deadline - Date.now()
+    if (time <= 0) throw new MultiplayerError('NETWORK_TIMEOUT')
+    return time
+}
+
+export const delay = (ms: number, signal?: AbortSignal, deadline = Infinity): Promise<void> => new Promise((resolve, reject) => {
+    const time = remaining(deadline, signal)
     const abort = (): void => {
         clearTimeout(timer)
         reject(new MultiplayerError('CANCELLED'))
     }
     const timer = setTimeout(() => {
         signal?.removeEventListener('abort', abort)
-        resolve()
-    }, ms)
-    if (signal?.aborted) abort()
-    else signal?.addEventListener('abort', abort, { once: true })
+        try { remaining(deadline, signal); resolve() } catch (error) { reject(error) }
+    }, Math.min(ms, time))
+    signal?.addEventListener('abort', abort, { once: true })
 })
 
 export default class HttpClient {
@@ -70,20 +77,26 @@ export default class HttpClient {
         return pending
     }
 
-    async request<T>(path: string, body?: unknown, session?: Session, key?: string, signal?: AbortSignal): Promise<T> {
+    async request<T>(
+        path: string,
+        body?: unknown,
+        session?: Session,
+        key?: string,
+        signal?: AbortSignal,
+        deadline = Date.now() + 120000,
+    ): Promise<T> {
         const serialized = body === undefined ? undefined : JSON.stringify(body)
         if (serialized && new TextEncoder().encode(serialized).length > 16384) {
             throw new MultiplayerError('INVALID_REQUEST', 'Request exceeds 16384 bytes')
         }
-        const started = Date.now()
         let attempt = 0
         while (true) {
-            if (signal?.aborted) throw new MultiplayerError('CANCELLED')
+            const time = remaining(deadline, signal)
             if (session && Date.parse(session.expiresAt) <= Date.now()) throw new MultiplayerError('UNAUTHORIZED')
             const controller = new AbortController()
             const abort = (): void => controller.abort()
             signal?.addEventListener('abort', abort, { once: true })
-            const timeout = setTimeout(abort, 10000)
+            const timeout = setTimeout(abort, Math.min(10000, time))
             let retryAfter = 0
             try {
                 const response = await fetch(`${session?.apiBase || this.config.apiBase}${path}`, {
@@ -105,6 +118,7 @@ export default class HttpClient {
                         ? Number(retryHeader) * 1000 : Math.max(0, Date.parse(retryHeader) - Date.now())
                 }
                 const result = await response.json()
+                remaining(deadline, signal)
                 if (response.ok && result.status !== 'pending') return result as T
                 if (response.status === 202 && result.status === 'pending') {
                     retryAfter = Math.max(retryAfter, Number(result.retryAfterMs) || 1000)
@@ -121,10 +135,9 @@ export default class HttpClient {
                 clearTimeout(timeout)
                 signal?.removeEventListener('abort', abort)
             }
-            if (Date.now() - started >= 120000) throw new MultiplayerError('NETWORK_TIMEOUT')
             const backoff = Math.min(5000, 500 * (2 ** Math.min(attempt, 4)))
             attempt += 1
-            await delay(Math.max(retryAfter, backoff + Math.random() * 250), signal)
+            await delay(Math.max(retryAfter, backoff + Math.random() * 250), signal, deadline)
         }
     }
 

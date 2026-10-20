@@ -1,9 +1,10 @@
 /* eslint-disable no-await-in-loop -- Each handle has one cancellable recovery sequence. */
 /* eslint-disable max-classes-per-file -- Subscribers is private to the room handle. */
-import HttpClient, { delay } from './HttpClient'
+import HttpClient, { delay, remaining } from './HttpClient'
 import NativeConnection, { needsRejoin, terminalClose } from './NativeConnection'
 import StateSync from './StateSync'
 import { MultiplayerError } from './types'
+import { admit, terminalAdmissionError } from './admission'
 import type {
     MultiplayerRoom, MultiplayerConnectionState, MultiplayerState, MultiplayerPlayer,
     MultiplayerProperties, MultiplayerRoomPatch, MultiplayerSyncOptions, MultiplayerRecipient,
@@ -13,7 +14,7 @@ import {
     uuid, decimal, encodeJson, frame, unframe, SendBudget, invitation,
 } from './protocol'
 import type {
-    Admission, Reservation, Session, RoomMetadata, Welcome,
+    Reservation, Session, RoomMetadata, Welcome,
 } from './protocol'
 
 class Subscribers<T> {
@@ -490,32 +491,37 @@ export default class RoomHandle implements MultiplayerRoom {
     private async recoverLoop(reservation: Reservation, token?: string, retryAfterMs = 0): Promise<void> {
         const { signal } = this.controller
         const deadline = Date.now() + 120000
-        const nativeDeadline = Date.now() + 20000
-        if (token) {
-            while (Date.now() < nativeDeadline && !signal.aborted) {
-                await delay(500 + Math.random() * 250, signal)
-                try {
-                    await this.connect(reservation, token, Math.min(5000, nativeDeadline - Date.now()))
-                    return
-                } catch (error) {
-                    if (error instanceof MultiplayerError && ['REPLACED', 'ROOM_ENDED', 'UNAUTHORIZED', 'PROTOCOL_VIOLATION'].includes(error.code)) throw error
+        const nativeDeadline = Math.min(deadline, Date.now() + 20000)
+        try {
+            if (token) {
+                while (Date.now() < nativeDeadline) {
+                    await delay(500 + Math.random() * 250, signal, deadline)
+                    if (Date.now() >= nativeDeadline) break
+                    try {
+                        await this.connect(reservation, token, Math.min(5000, remaining(nativeDeadline, signal)))
+                        remaining(deadline, signal)
+                        return
+                    } catch (error) {
+                        if (terminalAdmissionError(error)) throw error
+                    }
                 }
             }
-        }
-        await delay(Math.max(Number(retryAfterMs) || 0, Math.random() * 2000), signal)
-        let key = uuid()
-        while (Date.now() < deadline && !signal.aborted) {
-            const response = await this.http.request<Admission>('/rooms/rejoin', { roomId: this.id }, this.session, key, signal)
-            if (response.status === 'admitted') {
-                key = uuid()
-            } else if (response.status === 'grant') {
-                try { await this.connect(response.reservation); return } catch (error) {
-                    if (error instanceof MultiplayerError && ['REPLACED', 'ROOM_ENDED', 'UNAUTHORIZED', 'PROTOCOL_VIOLATION'].includes(error.code)) throw error
-                }
+            await delay(Math.max(Number(retryAfterMs) || 0, Math.random() * 2000), signal, deadline)
+            await admit({
+                http: this.http,
+                session: this.session,
+                path: '/rooms/rejoin',
+                body: { roomId: this.id },
+                deadline,
+                signal,
+                connect: (grant, timeoutMs) => this.connect(grant, undefined, timeoutMs),
+            })
+        } catch (error) {
+            if (error instanceof MultiplayerError && error.code === 'NETWORK_TIMEOUT') {
+                throw new MultiplayerError('RETURN_EXPIRED')
             }
-            await delay(1000 + Math.random() * 250, signal)
+            throw error
         }
-        throw new MultiplayerError('RETURN_EXPIRED')
     }
 
     private rejectControls(error: MultiplayerError): void {

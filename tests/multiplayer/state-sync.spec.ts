@@ -151,6 +151,50 @@ describe('server-authorized state synchronization', () => {
         h.sync.dispose()
     })
 
+    it('retains bytes before applyState can mutate the original frame', () => {
+        const h = harness()
+        h.control({ kind: 'registered' })
+        h.role({ hostPlayerId: 'other', hostEpoch: '1', hostStatus: 'active', syncStarted: true })
+        const packet = frame({
+            v: 1, roomId: 'room', ownerEpoch: '1', hostEpoch: '1', seq: '1', from: 'other',
+        }, new TextEncoder().encode('{"tick":7}'))
+        const ticks: number[] = []
+        h.applyState.mockImplementation((state) => {
+            ticks.push((state as { tick: number }).tick)
+            packet.fill(0)
+        })
+        h.sync.snapshot(packet)
+        h.role({ hostPlayerId: 'self', hostEpoch: '2', hostStatus: 'preparing' })
+        vi.advanceTimersByTime(100)
+        expect(ticks).toEqual([7, 7])
+        expect(h.error).not.toHaveBeenCalled()
+        h.sync.dispose()
+    })
+
+    it.each([
+        new TextEncoder().encode('null'),
+        new TextEncoder().encode('[]'),
+        new TextEncoder().encode('{"a":1e999}'),
+        new TextEncoder().encode(`{"a":${'['.repeat(65)}0${']'.repeat(65)}}`),
+        new TextEncoder().encode(`{"a":"${'x'.repeat(65536)}"}`),
+        new Uint8Array([123, 34, 97, 34, 58, 34, 255, 34, 125]),
+    ])('rejects invalid incoming JSON before invoking applyState %#', (payload) => {
+        const h = harness()
+        h.control({ kind: 'registered' })
+        h.role({ hostPlayerId: 'other', hostEpoch: '1', hostStatus: 'active', syncStarted: true })
+        const prefix = frame({
+            v: 1, roomId: 'room', ownerEpoch: '1', hostEpoch: '1', seq: '1', from: 'other',
+        }, new Uint8Array())
+        const packet = new Uint8Array(prefix.length + payload.length)
+        packet.set(prefix)
+        packet.set(payload, prefix.length)
+        h.sync.snapshot(packet)
+        expect(h.applyState).not.toHaveBeenCalled()
+        expect(h.error).toHaveBeenCalledTimes(1)
+        expect(h.sync.isReady).toBe(false)
+        h.sync.dispose()
+    })
+
     it('does not create a new world after syncStarted without retained state', () => {
         const h = harness()
         h.control({ kind: 'registered' })

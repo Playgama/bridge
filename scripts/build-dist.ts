@@ -95,6 +95,7 @@ if (buildStandalone) {
         run(`npx webpack --env platform=${id} --env noLint`)
         ensureBuilt()
         collect(BUILT_FILE, path.join('standalone', id, 'playgama-bridge.js'))
+        collect(path.join(CHUNKS_DIR, 'multiplayer.js'), path.join('standalone', id, 'platform-bridges', 'multiplayer.js'))
     })
 }
 

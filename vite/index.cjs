@@ -4,6 +4,8 @@ const path = require('node:path')
 const FILE_NAME = 'playgama-bridge.js'
 const CDN_ORIGIN = 'https://bridge.playgama.com'
 const RUNTIME_PATH = path.resolve(__dirname, '..', 'dist', FILE_NAME)
+const MULTIPLAYER_FILE = 'platform-bridges/multiplayer.js'
+const MULTIPLAYER_PATH = path.resolve(__dirname, '..', 'dist', MULTIPLAYER_FILE)
 const MODES = ['cdn', 'local']
 const EXISTING_TAG_REGEX = /<script[^>]+src\s*=\s*["'][^"']*playgama-bridge\.js(?:\?[^"']*)?["']/i
 
@@ -62,18 +64,27 @@ function playgamaBridge(options = {}) {
 
         configureServer(server) {
             server.middlewares.use((req, res, next) => {
-                if ((req.url || '').split('?')[0] !== localSrc()) {
+                const pathname = (req.url || '').split('?')[0]
+                const file = pathname === localSrc() ? RUNTIME_PATH
+                    : pathname === `${base}${MULTIPLAYER_FILE}` ? MULTIPLAYER_PATH : null
+                if (!file) {
                     next()
                     return
                 }
 
                 res.setHeader('Content-Type', 'application/javascript')
-                fs.createReadStream(RUNTIME_PATH).pipe(res)
+                const stream = fs.createReadStream(file)
+                stream.on('error', (error) => {
+                    res.statusCode = error.code === 'ENOENT' ? 404 : 500
+                    res.end()
+                })
+                stream.pipe(res)
             })
         },
 
         generateBundle() {
             this.emitFile({ type: 'asset', fileName: FILE_NAME, source: fs.readFileSync(RUNTIME_PATH) })
+            this.emitFile({ type: 'asset', fileName: MULTIPLAYER_FILE, source: fs.readFileSync(MULTIPLAYER_PATH) })
         },
     }
 }

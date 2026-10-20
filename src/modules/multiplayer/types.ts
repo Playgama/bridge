@@ -1,6 +1,8 @@
+import type { JsonValue, JsonObject } from '../../utils/json'
+
 export type MultiplayerRegion = 'eu' | 'us' | 'ap'
-export type MultiplayerJson = null | boolean | number | string | MultiplayerJson[] | { [key: string]: MultiplayerJson }
-export type MultiplayerProperties = { [key: string]: MultiplayerJson }
+export type MultiplayerJson = JsonValue
+export type MultiplayerProperties = JsonObject
 export type MultiplayerFilter = Record<string, string | boolean | number>
 export type MultiplayerRecipient = 'others' | string | string[]
 export type MultiplayerConnectionState = 'connected' | 'reconnecting' | 'disconnected'

@@ -20,6 +20,18 @@ class CleanPlatformsPlugin {
     }
 }
 
+const lazyMultiplayerPlugin = {
+    apply(compiler: Compiler): void {
+        compiler.hooks.compilation.tap('LazyMultiplayerPlugin', (compilation) => {
+            compilation.hooks.optimizeChunks.tap({ name: 'LazyMultiplayerPlugin', stage: 0 }, (chunks) => {
+                Array.from(chunks).forEach((chunk) => {
+                    if (chunk.name === 'multiplayer') Object.assign(chunk, { preventIntegration: true })
+                })
+            })
+        })
+    },
+}
+
 const createPlatformDefines = (targetPlatforms: string[]): Record<string, boolean> => {
     const includeAll = targetPlatforms.length === 0
     return Object.fromEntries(
@@ -32,9 +44,10 @@ const createPlatformDefines = (targetPlatforms: string[]): Record<string, boolea
 
 interface CreateConfigOptions {
     noLint?: boolean
+    cleanPlatforms?: boolean
 }
 
-const createConfig = (targetPlatforms: string[] = [], { noLint = false }: CreateConfigOptions = {}): Configuration => ({
+const createConfig = (targetPlatforms: string[] = [], { noLint = false, cleanPlatforms = true }: CreateConfigOptions = {}): Configuration => ({
     mode: 'production',
     entry: './src/index',
     output: {
@@ -108,7 +121,8 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
         },
     },
     plugins: [
-        new CleanPlatformsPlugin(),
+        ...cleanPlatforms ? [new CleanPlatformsPlugin()] : [],
+        lazyMultiplayerPlugin,
         ...noLint ? [] : [new ESLintPlugin({ extensions: ['js', 'ts', 'tsx'] })],
         new webpack.DefinePlugin({
             PLUGIN_VERSION: JSON.stringify(packageJson.version),
@@ -132,8 +146,6 @@ interface WebpackEnv {
     // Absolute URL the dynamic bundle uses to fetch its platform-bridges/ chunks.
     // Should match the deploy location, e.g. https://<domain>/v<major>/<channel>/
     publicPath?: string
-    // Opt-in staging artifact: preserve lazy multiplayer even in the browser bundle.
-    multiplayer?: boolean
 }
 
 interface WebpackArgv {
@@ -152,6 +164,7 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
             ...config,
             name: 'platform',
             output: {
+                ...config.output,
                 filename: 'playgama-bridge.js',
                 path: path.resolve(__dirname, 'dist'),
                 publicPath: 'auto',
@@ -165,7 +178,7 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
         }
     }
 
-    const baseConfig = createConfig([], { noLint })
+    const baseConfig = createConfig([], { noLint, cleanPlatforms: !env.npm })
 
     const dynamicConfig: Configuration = {
         ...baseConfig,
@@ -188,10 +201,6 @@ export default (env: WebpackEnv = {}, argv: WebpackArgv = {}): Configuration | C
                 maxChunks: 1,
             }),
         ],
-    }
-
-    if (env.multiplayer) {
-        return { ...dynamicConfig, name: 'multiplayer' }
     }
 
     // npm entry bundles (src/npm.ts): a shim that re-exports window.bridge plus

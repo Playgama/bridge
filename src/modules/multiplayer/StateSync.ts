@@ -1,7 +1,7 @@
 import { MultiplayerError } from './types'
 import type { MultiplayerSyncOptions } from './types'
 import {
-    decimal, encodeJson, frame, unframe, uuid,
+    decimal, encodeJson, decodeJson, frame, unframe, uuid,
 } from './protocol'
 import type { HostMetadata } from './protocol'
 
@@ -107,7 +107,7 @@ export default class StateSync {
         this.registered = false
         this.lastControl = -Infinity
         this.pausedUntil = 0
-        if (this.retained && !this.apply(this.retained.payload)) return
+        if (this.retained && !this.apply(decodeJson(this.retained.payload, true) as object)) return
         const after = this.transport.context()
         if (this.disposed || !after.connected || before.generation !== after.generation
             || before.ownerEpoch !== after.ownerEpoch || before.hostEpoch !== after.hostEpoch) return
@@ -220,11 +220,12 @@ export default class StateSync {
                 || header.hostEpoch !== context.hostEpoch || header.from !== context.hostPlayerId
                 || !decimal(header.seq) || BigInt(header.seq) <= this.lastApplied) return
             // Decode and validate before invoking application code, retaining separate immutable bytes.
-            const state = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(payload))
-            encodeJson(state, true)
+            const state = decodeJson(payload, true) as object
+            const retained = { payload: payload.slice(), hostEpoch: context.hostEpoch, seq: header.seq }
             const { assignment } = this
-            if (!this.apply(payload) || assignment !== this.assignment || !this.transport.context().connected) return
-            this.retained = { payload: payload.slice(), hostEpoch: context.hostEpoch, seq: header.seq }
+            if (!this.apply(state) || this.disposed || assignment !== this.assignment
+                || !this.transport.context().connected) return
+            this.retained = retained
             this.lastApplied = BigInt(header.seq)
             this.ready = true
             if (!this.applied) this.applied = { hostEpoch: context.hostEpoch, seq: header.seq }
@@ -257,7 +258,7 @@ export default class StateSync {
         if (!this.prepared) {
             if (context.syncStarted && !this.retained) return
             const { assignment } = this
-            if (this.retained && !this.apply(this.retained.payload)) return
+            if (this.retained && !this.apply(decodeJson(this.retained.payload, true) as object)) return
             if (assignment !== this.assignment || !this.canCapture()) return
             this.prepared = true
         }
@@ -307,9 +308,8 @@ export default class StateSync {
             && ['preparing', 'active'].includes(context.hostStatus) && !this.failure && !this.suspended
     }
 
-    private apply(payload: Uint8Array): boolean {
+    private apply(state: object): boolean {
         try {
-            const state = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(payload))
             const result: unknown = this.options.applyState(state)
             if (result && typeof (result as { then?: unknown }).then === 'function') {
                 // Observe a rejected promise without allowing asynchronous completion to restore authority.

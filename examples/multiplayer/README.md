@@ -56,8 +56,11 @@ or an array of UUIDs; there is no wire alias for the host.
 `await room.leave()` stops local simulation/reconnect immediately and confirms the exit
 through HTTP. `setRoom` and `setPlayer` wait for server acknowledgement.
 
-The browser artifact uses `window.bridge`. Copy the entire dynamic build directory,
-including its chunks, preserving relative paths. The multiplayer runtime and Colyseus
+The browser artifact uses `window.bridge`. Ordinary bundled and platform builds produce
+`playgama-bridge.js` and the optional `platform-bridges/multiplayer.js`. Deploy both from
+the same compilation, preserving these relative paths. Do not mix addons from different
+builds, including different platforms. Dynamic builds also require their platform chunks.
+The multiplayer runtime and Colyseus
 are fetched on first use; importing the Bridge alone does not create a session.
 For a game that already initializes Bridge, add `multiplayer` to that original call
 or its local Bridge config and reload the page. A second `initialize()` does not
@@ -65,16 +68,24 @@ change an initialized Bridge. `bridge.multiplayer.isSupported` reports whether
 the module has opt-in config. Missing config rejects multiplayer operations with
 `MULTIPLAYER_NOT_CONFIGURED` before any network request.
 
-`fixture.mjs` exports `createMultiplayerFixture()` for isolated UI development. It has
-one local host and does not contact any backend. Its success is **not** an E2E test.
 The authoritative public types are `src/modules/multiplayer/types.ts`.
+
+For GitHub Releases, extract `playgama-bridge.zip` to keep the matching pair and paths.
+The separate historical `playgama-bridge.js` attachment supports the core features alone.
+The npm package includes both files. The Vite plugin serves/copies them with
+`playgamaBridge({ mode: 'local' })`; its default CDN mode still selects the existing
+stable CDN runtime, not this experimental build. This branch does not publish to that CDN.
 
 ## Validation
 
-Run `npm test`, `npx tsc --noEmit`, and `npm run build:multiplayer`.
-The experimental browser artifact is `dist/playgama-bridge.js` plus the entire
-`dist/platform-bridges/` directory; `publicPath` is resolved from the script URL.
+Run `npm test`, `npx tsc --noEmit`, and `npm run build`.
+The browser artifact is `dist/playgama-bridge.js` plus
+`dist/platform-bridges/multiplayer.js`; `publicPath` is resolved from the script URL.
 Do not run the build while serving these files to a test browser.
+
+`node tests/multiplayer-browser/packaging.mjs [artifact-directory]` checks ordinary
+core initialization, lazy concurrent loading and retry after a missing addon in Chrome.
+It deliberately rejects HTTP with a packaging sentinel; it is not a multiplayer E2E test.
 
 The real browser suite is `npm run test:multiplayer:browser`, with:
 

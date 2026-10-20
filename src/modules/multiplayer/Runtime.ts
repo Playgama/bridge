@@ -1,9 +1,8 @@
-/* eslint-disable no-await-in-loop -- Admission retries are ordered and reuse one operation key. */
-import HttpClient, { delay } from './HttpClient'
+import HttpClient from './HttpClient'
 import RoomHandle from './RoomHandle'
-import { invitation, uuid } from './protocol'
-import type { Admission, Session } from './protocol'
-import { MultiplayerError } from './types'
+import { invitation } from './protocol'
+import type { Session } from './protocol'
+import { admit } from './admission'
 import type {
     MultiplayerConfig, MultiplayerCreateOptions, MultiplayerJoinOptions, MultiplayerMatchOptions,
     MultiplayerRoom, MultiplayerRoomsQuery, MultiplayerRoomSummary, MultiplayerRegion,
@@ -76,37 +75,22 @@ export default class MultiplayerRuntime {
             ))
             if (existing) return existing
         }
-        let endpoint = path
-        let requestBody = body
-        let key = uuid()
         let handle: RoomHandle | undefined
-        const deadline = Date.now() + 120000
         try {
-            while (Date.now() < deadline) {
-                const response = await this.http.request<Admission>(endpoint, requestBody, session, key)
-                if (response.status === 'admitted') {
-                    const existing = this.rooms.get(response.roomId)
-                    if (existing) return existing
-                    endpoint = '/rooms/rejoin'
-                    requestBody = { roomId: response.roomId }
-                    key = uuid()
-                } else if (response.status === 'grant') {
-                    const { reservation } = response
-                    const existing = this.rooms.get(reservation.roomId)
-                    if (existing) return existing
+            return await admit({
+                http: this.http,
+                session,
+                path,
+                body,
+                deadline: Date.now() + 120000,
+                existing: (roomId) => this.rooms.get(roomId),
+                connect: async (reservation, timeoutMs) => {
                     handle ??= this.createHandle(session, reservation.roomId)
-                    try {
-                        await handle.connect(reservation)
-                        this.rooms.set(reservation.roomId, handle)
-                        return handle
-                    } catch (error) {
-                        if (error instanceof MultiplayerError
-                            && ['CANCELLED', 'REPLACED', 'ROOM_ENDED', 'UNAUTHORIZED', 'PROTOCOL_VIOLATION'].includes(error.code)) throw error
-                    }
-                } else throw new MultiplayerError('PROTOCOL_VIOLATION', 'Unexpected admission response')
-                await delay(1000 + Math.random() * 250)
-            }
-            throw new MultiplayerError('NETWORK_TIMEOUT')
+                    await handle.connect(reservation, undefined, timeoutMs)
+                    this.rooms.set(reservation.roomId, handle)
+                    return handle
+                },
+            })
         } catch (error) {
             handle?.abandon()
             throw error
