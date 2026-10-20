@@ -83,6 +83,47 @@ test('built lazy SDK: create, invite, late join, stable snapshots, relay, metada
     }
 })
 
+test('SDK room catalog traverses limit-one cursors without duplicates and terminates', async ({ browser }) => {
+    const peers = await Promise.all([peer(browser), peer(browser), peer(browser)])
+    try {
+        const filter = { run: crypto.randomUUID() }
+        const expectedIds: string[] = []
+        for (const [index, { page }] of peers.entries()) {
+            await enter(page, 'createRoom', {
+                player: { name: `Catalog ${index}` }, maxPlayers: 4, isVisible: true, filter,
+            })
+            await ready(page)
+            expectedIds.push((await snapshot(page)).roomId)
+        }
+        const ids: string[] = []
+        const cursors = new Set<string>()
+        let cursor: string | null = null
+        for (let pageNumber = 0; pageNumber < expectedIds.length; pageNumber += 1) {
+            const result: { rooms: { id: string }[]; nextCursor: string | null } = await peers[0].page.evaluate((query) => (
+                (window as any).bridge.multiplayer.getRooms(query)
+            ), { filter, limit: 1, ...(cursor ? { cursor } : {}) })
+            expect(result.rooms).toHaveLength(1)
+            const id = result.rooms[0].id
+            expect(expectedIds).toContain(id)
+            expect(ids).not.toContain(id)
+            ids.push(id)
+            cursor = result.nextCursor
+            if (pageNumber < expectedIds.length - 1) {
+                expect(typeof cursor).toBe('string')
+                expect(Boolean(cursor)).toBe(true)
+                expect(cursors.has(cursor!)).toBe(false)
+                cursors.add(cursor!)
+            } else expect(cursor).toBeNull()
+        }
+        expect([...ids].sort()).toEqual([...expectedIds].sort())
+    } finally {
+        await Promise.all(peers.map(async ({ page, context }) => {
+            await page.evaluate(() => (window as any).sdkTest.leave()).catch(() => {})
+            await context.close()
+        }))
+    }
+})
+
 test('native short return, HTTP fallback and cloned-tab terminal replacement', async ({ browser }) => {
     const peers = await Promise.all([peer(browser), peer(browser)])
     try {
