@@ -15,23 +15,45 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// npm entry point. Runs the same side-effect as the CDN/<script> build
-// (populates window.bridge) and additionally exposes the singleton as a
-// typed module export so games can `import bridge from '@playgama/bridge'`.
-
-import './index'
 import './global'
 import type PlaygamaBridge from './PlaygamaBridge'
 
-const bridge = window.bridge as PlaygamaBridge
+const RUNTIME_MISSING_MESSAGE = 'Playgama Bridge runtime is not loaded. '
+    + 'Add the SDK script to index.html before the game script, '
+    + 'or add the Vite plugin: import playgamaBridge from \'@playgama/bridge/vite\'. '
+    + 'For constants only, import from \'@playgama/bridge/constants\'.'
+
+const readRuntime = (): PlaygamaBridge | undefined => (
+    typeof window === 'undefined' ? undefined : window.bridge || window.playgamaBridge
+)
+
+const requireRuntime = (): PlaygamaBridge => {
+    const runtime = readRuntime()
+    if (!runtime) {
+        throw new Error(RUNTIME_MISSING_MESSAGE)
+    }
+    return runtime
+}
+
+const deferred = new Proxy({} as PlaygamaBridge, {
+    get(_, key) {
+        const runtime = requireRuntime()
+        const value: unknown = Reflect.get(runtime, key, runtime)
+        return typeof value === 'function' ? value.bind(runtime) : value
+    },
+    set(_, key, value) {
+        return Reflect.set(requireRuntime(), key, value)
+    },
+    has(_, key) {
+        const runtime = readRuntime()
+        return runtime !== undefined && Reflect.has(runtime, key)
+    },
+})
+
+const bridge: PlaygamaBridge = readRuntime() || deferred
 
 export default bridge
 export { bridge }
-
-// Public constants and data-shape types (also available side-effect-free via
-// the `@playgama/bridge/constants` subpath).
 export * from './publicConstants'
-
-export type { default as PlaygamaBridge } from './PlaygamaBridge'
-export type { PlaygamaInitOptions } from './PlaygamaBridge'
-export * from './modules/multiplayer/types'
+export type { default as PlaygamaBridge, PlaygamaInitOptions } from './PlaygamaBridge'
+export type * from './modules/multiplayer/types'

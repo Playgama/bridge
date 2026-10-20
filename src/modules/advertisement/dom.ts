@@ -58,10 +58,10 @@ export function createAdvancedBannerContainers(banners: AdvancedBannerConfig[]):
 
         if (banner.width) container.style.width = banner.width
         if (banner.height) container.style.height = banner.height
-        if (banner.top) container.style.top = banner.top
-        if (banner.bottom) container.style.bottom = banner.bottom
-        if (banner.left) container.style.left = banner.left
-        if (banner.right) container.style.right = banner.right
+        if (banner.top !== undefined) container.style.top = String(banner.top)
+        if (banner.bottom !== undefined) container.style.bottom = String(banner.bottom)
+        if (banner.left !== undefined) container.style.left = String(banner.left)
+        if (banner.right !== undefined) container.style.right = String(banner.right)
 
         document.body.appendChild(container)
         containerIds.push(id)
@@ -359,13 +359,9 @@ export function showAdFailurePopup(): Promise<void> {
         }
         popupEl.onclick = closePopup
 
-        const messages = [
-            'If you see this message, no Ad was returned for the Ad request.<br><br>Please ask the developer to check the Ad setup.',
-            'This is placeholder for the Ad. Playgama helps games reach players worldwide.',
-        ]
         const textElement = document.getElementById('bridge-ad-failure-popup-text')
         if (textElement) {
-            textElement.innerHTML = messages[Math.floor(Math.random() * messages.length)]
+            textElement.innerHTML = 'Oops! It looks like you closed the ad too early, or it isn\'t available right now.<br><br>That\'s okay, it happens sometimes! To continue playing, just tap the × in the top-right corner.'
         }
 
         popupEl.style.display = 'grid'

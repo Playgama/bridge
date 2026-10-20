@@ -30,8 +30,13 @@ function isPercentValue(value: unknown): value is string {
     return typeof value === 'string' && ADVANCED_BANNER_PERCENT_PATTERN.test(value)
 }
 
+// A zero offset is unit-independent, so it is accepted without the percent sign.
+function isOffsetValue(value: unknown): boolean {
+    return value === 0 || value === '0' || isPercentValue(value)
+}
+
 // Advanced banners are configured in percentages only: a banner must declare both
-// sizes and at least one offset as percent values, so every platform can map it to
+// sizes and at least one offset as percent values (or zero), so every platform can map it to
 // its own placements. Anything else is a misconfiguration and never reaches the SDK.
 function isValidBanner(banner: unknown): banner is AdvancedBannerConfig {
     if (!banner || typeof banner !== 'object') {
@@ -46,7 +51,7 @@ function isValidBanner(banner: unknown): banner is AdvancedBannerConfig {
 
     return ADVANCED_BANNER_POSITION_KEYS.some((key) => config[key] !== undefined)
         && ADVANCED_BANNER_POSITION_KEYS.every(
-            (key) => config[key] === undefined || isPercentValue(config[key]),
+            (key) => config[key] === undefined || isOffsetValue(config[key]),
         )
 }
 

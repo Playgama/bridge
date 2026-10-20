@@ -48,6 +48,12 @@ export const PLATFORM_ID = {
 } as const
 export type PlatformId = typeof PLATFORM_ID[keyof typeof PLATFORM_ID]
 
+export const PLAYGAMA_PLATFORM_IDS: PlatformId[] = [
+    PLATFORM_ID.PLAYGAMA,
+    PLATFORM_ID.PLAYGAMA_SANDBOX,
+    PLATFORM_ID.STANDALONE,
+]
+
 export const PLATFORM_MESSAGE = {
     GAME_READY: 'game_ready',
     LEVEL_STARTED: 'level_started',

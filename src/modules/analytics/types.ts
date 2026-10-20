@@ -34,6 +34,7 @@ export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     options: AnalyticsBridgeOptions
     launchSource: LaunchSource | null
     isPlatformExternalCallsSupported: boolean
+    isPlatformPaused: boolean
     data?: { clid?: string } & Record<string, unknown>
 }
 
@@ -65,4 +66,5 @@ export interface AnalyticsMeta {
 export interface AnalyticsPayload {
     meta: AnalyticsMeta
     events: AnalyticsEvent[]
+    custom_events?: AnalyticsEvent[]
 }

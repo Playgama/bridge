@@ -17,18 +17,13 @@
 
 import eventBus, { type EventEmitter } from '../lib/EventBus'
 import bridgeConfig, { type SaasFeatureConfig } from '../lib/bridge-config'
-import { PLATFORM_ID } from './platform/constants'
+import { PLAYGAMA_PLATFORM_IDS, type PlatformId } from './platform/constants'
 
-// Platform bridge contract used by modules. Until PlatformBridgeBase is migrated,
-// we rely on the EventEmitter-shaped subset that ModuleBase actually depends on.
 export type PlatformBridgeLike = EventEmitter & Record<string, unknown>
 
 class ModuleBase<TPlatformBridge extends PlatformBridgeLike = PlatformBridgeLike> {
-    // Assigned during initialize(), which the SDK calls once the platform bridge exists.
     protected _platformBridge!: TPlatformBridge
 
-    // Injects the platform bridge. Subclasses override to add bridge-dependent
-    // setup and must call super.initialize(platformBridge) first.
     initialize(platformBridge: TPlatformBridge): this {
         this._platformBridge = platformBridge
         return this
@@ -38,25 +33,19 @@ class ModuleBase<TPlatformBridge extends PlatformBridgeLike = PlatformBridgeLike
         this._platformBridge.on(eventName, (...args: unknown[]) => eventBus.emit(eventName, ...args))
     }
 
-    // Whether the active platform is configured to use the SaaS backend for the
-    // given feature. Reusable across modules: a module that supports a SaaS
-    // variant calls this in initialize() to pick its implementation.
     protected _isSaas(feature: string): boolean {
-        const platformId = this._platformBridge.platformId as string | undefined
+        const platformId = this._platformBridge.platformId as PlatformId | undefined
         const { saas } = bridgeConfig.getValues()
-        const config = saas?.[feature] as SaasFeatureConfig | undefined
-        if (!config) {
-            return false
-        }
 
-        // On Playgama the feature runs through SaaS as soon as a token is set,
-        // without listing the platform explicitly.
-        if (platformId === PLATFORM_ID.PLAYGAMA && saas?.publicToken) {
+        if (platformId != null && PLAYGAMA_PLATFORM_IDS.includes(platformId) && saas?.publicToken) {
             return true
         }
 
+        const config = saas?.[feature] as SaasFeatureConfig | undefined
+
         return Boolean(
-            Array.isArray(config.platforms)
+            config
+            && Array.isArray(config.platforms)
             && platformId != null
             && config.platforms.includes(platformId),
         )
