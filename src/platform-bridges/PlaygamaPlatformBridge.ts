@@ -33,6 +33,11 @@ import type { WriteBatch } from '../modules/storage/types'
 type AdType = 'interstitial' | 'rewarded'
 type AdState = 'open' | 'empty' | 'rewarded' | 'close' | 'error' | string
 
+type AdResponseDetails = {
+    reason?: string
+    retryAfterMs?: number
+}
+
 interface PlaygamaPlayer {
     isAuthorized: boolean
     id: string
@@ -75,7 +80,9 @@ interface PlaygamaSdk {
         getAdditionalParams?: () => Record<string, unknown> | null
     }
     advService: {
-        subscribeToAdStateChanges(callback: (adType: AdType, state: AdState) => void): void
+        subscribeToAdStateChanges(
+            callback: (adType: AdType, state: AdState, details?: AdResponseDetails) => void,
+        ): void
         showInterstitial(): void
         showRewarded(): void
         showAdvancedBanners(banners: unknown): Promise<unknown>
@@ -171,6 +178,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     protected _isAdvancedBannersSupported = true
 
+    #adRetryAt = new Map<AdType, number>()
+
     #isPaymentsSupported = true
 
     #isCloudSaveSupported = true
@@ -195,8 +204,21 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             addJavaScript(this.sdkUrl).then(() => {
                 waitFor(this.sdkGlobalName).then(() => {
                     const globalScope = window as unknown as Record<string, unknown>
-                    this._platformSdk = globalScope[this.sdkGlobalName] as PlaygamaSdk;
-                    (this._platformSdk as PlaygamaSdk).advService.subscribeToAdStateChanges((adType, state) => {
+                    const sdk = globalScope[this.sdkGlobalName] as PlaygamaSdk
+                    this._platformSdk = sdk
+                    sdk.advService.subscribeToAdStateChanges((adType, state, details) => {
+                        if (
+                            state === 'error'
+                            && (adType === 'interstitial' || adType === 'rewarded')
+                            && ['initial_delay', 'cooldown', 'portal_rule'].includes(details?.reason ?? '')
+                        ) {
+                            const retryAfterMs = details?.retryAfterMs
+                            if (typeof retryAfterMs === 'number' && Number.isFinite(retryAfterMs) && retryAfterMs >= 0) {
+                                this.#adRetryAt.set(adType, Date.now() + retryAfterMs)
+                            }
+                            this.#setAdFrequencyFailure(adType)
+                            return
+                        }
                         if (adType === 'interstitial') {
                             switch (state) {
                                 case 'open': {
@@ -248,7 +270,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    const sdk = this._platformSdk as PlaygamaSdk
                     const platformReadyPromise = sdk.platformService?.isReady ?? Promise.resolve()
                     platformReadyPromise
                         .then(() => {
@@ -279,7 +300,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 return Promise.resolve()
             }
             default: {
-                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(String(message), (options ?? {}) as AnyRecord)
+                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(
+                    String(message),
+                    (options ?? {}) as AnyRecord,
+                )
                 return super.sendMessage(message, options)
             }
         }
@@ -325,10 +349,18 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showInterstitial(): void {
+        if (Date.now() < (this.#adRetryAt.get('interstitial') ?? 0)) {
+            this.#setAdFrequencyFailure('interstitial')
+            return
+        }
         (this._platformSdk as PlaygamaSdk).advService.showInterstitial()
     }
 
     showRewarded(): void {
+        if (Date.now() < (this.#adRetryAt.get('rewarded') ?? 0)) {
+            this.#setAdFrequencyFailure('rewarded')
+            return
+        }
         (this._platformSdk as PlaygamaSdk).advService.showRewarded()
     }
 
@@ -550,6 +582,15 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         }
 
         return promiseDecorator.promise
+    }
+
+    // Frequency rejection must not open the configurable no-fill popup or simulate a close.
+    #setAdFrequencyFailure(adType: AdType): void {
+        if (adType === 'interstitial') {
+            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+        } else {
+            this._setRewardedState(REWARDED_STATE.FAILED)
+        }
     }
 
     // Rejected SDK calls keep the last displayed prices and their charge terms.
