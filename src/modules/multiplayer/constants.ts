@@ -69,6 +69,9 @@ export const MULTIPLAYER_DEFAULTS = {
     // Time to learn the room host after entering: the server picks it from the
     // players whose SDK has registered for the host role.
     HOST_TIMEOUT: 5000,
+    // Messages over the send rate wait in order and are retried after this delay.
+    SEND_RETRY_DELAY: 20,
+    MAX_QUEUED_MESSAGES: 1000,
 } as const
 
 export const MAX_PLAYER_NAME_LENGTH = 32
@@ -89,6 +92,9 @@ export const BACKEND_ERRORS: Readonly<Record<string, ErrorCode>> = {
 
 // Transport errors after which the room is gone, not only the connection.
 export const ROOM_ENDED_ERRORS: readonly string[] = ['ROOM_ENDED']
+
+// Transport refusal of a frame over the send rate: the frame can be sent again later.
+export const RATE_LIMITED_ERROR = 'RATE_LIMITED'
 
 // Transport connection states.
 export const CONNECTION_STATE = {

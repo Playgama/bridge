@@ -42,6 +42,7 @@ import {
     MULTIPLAYER_TARGET,
     MULTIPLAYER_TYPE,
     MULTIPLAYER_UNSUPPORTED_PLATFORMS,
+    RATE_LIMITED_ERROR,
     ROOM_ENDED_ERRORS,
     ROOM_LEAVE_REASON,
     ROOM_UUID_PATTERN,
@@ -73,6 +74,12 @@ export interface MultiplayerBridgeContract extends PlatformBridgeLike {
     multiplayerLaunchRoomId: string | null
     multiplayerInviteToRoom(invite: MultiplayerRoomInvite): Promise<unknown>
     notifyMultiplayerRoomChanged(room: MultiplayerRoomStatus | null): void
+}
+
+interface OutgoingMessage {
+    type: string
+    data: JsonValue
+    to: string | string[]
 }
 
 function isEqual(a: unknown, b: unknown): boolean {
@@ -177,6 +184,10 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     #unsubscribers: Array<() => void> = []
 
     #closeReason: RoomLeaveReason | null = null
+
+    #outgoing: OutgoingMessage[] = []
+
+    #sendTimer: ReturnType<typeof setTimeout> | undefined
 
     // The backend confirms a leave over HTTP; entering a room waits for it.
     #leaving: Promise<void> = Promise.resolve()
@@ -302,7 +313,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         })
     }
 
-    // Game messages are not queued: one sent while the connection is down is lost.
+    // Messages over the send rate wait in order; one sent while the connection is down is lost.
     send(type: string, data?: unknown, options: MultiplayerSendOptions = {}): void {
         const handle = this.#handle
         if (!handle || this.#state !== MULTIPLAYER_STATE.CONNECTED) {
@@ -331,11 +342,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         }
 
         if (remote !== null) {
-            try {
-                handle.send(type, (data ?? null) as JsonValue, remote)
-            } catch (error) {
-                logger.warn('[multiplayer] Message was not sent:', error)
-            }
+            this.#queueMessage({ type, data: (data ?? null) as JsonValue, to: remote })
         }
 
         if (isForSelf) {
@@ -441,6 +448,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
         this.#unsubscribers.forEach((unsubscribe) => unsubscribe())
         this.#unsubscribers = []
+        this.#clearOutgoing()
         this.#handle = null
         this.#players = []
         this.#hostId = null
@@ -522,6 +530,42 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         this.#isHost = isHost
         const host = this.#players.find((player) => player.id === hostId)
         eventBus.emit(EVENT_NAME.MULTIPLAYER_HOST_CHANGED, host ? this.#toPlayer(host) : null)
+    }
+
+    #queueMessage(message: OutgoingMessage): void {
+        if (this.#outgoing.length >= MULTIPLAYER_DEFAULTS.MAX_QUEUED_MESSAGES) {
+            logger.warn('[multiplayer] Message was not sent: too many messages are waiting')
+            return
+        }
+
+        this.#outgoing.push(message)
+        if (this.#outgoing.length === 1) {
+            this.#sendOutgoing()
+        }
+    }
+
+    // The transport refuses frames over its rate instead of queuing them: they are retried here.
+    #sendOutgoing(): void {
+        this.#sendTimer = undefined
+        while (this.#outgoing.length > 0) {
+            const { type, data, to } = this.#outgoing[0]
+            try {
+                this.#handle?.send(type, data, to)
+            } catch (error) {
+                if (error instanceof MultiplayerError && error.code === RATE_LIMITED_ERROR) {
+                    this.#sendTimer = setTimeout(() => this.#sendOutgoing(), MULTIPLAYER_DEFAULTS.SEND_RETRY_DELAY)
+                    return
+                }
+                logger.warn('[multiplayer] Message was not sent:', error)
+            }
+            this.#outgoing.shift()
+        }
+    }
+
+    #clearOutgoing(): void {
+        clearTimeout(this.#sendTimer)
+        this.#sendTimer = undefined
+        this.#outgoing = []
     }
 
     #updateRoom(patch: { isOpen?: boolean, isVisible?: boolean, properties?: JsonObject }): void {

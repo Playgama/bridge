@@ -162,6 +162,12 @@ export function unframe(bytes: Uint8Array): { header: Record<string, unknown>; p
     return { header, payload: bytes.subarray(4 + length) }
 }
 
+/**
+ * Socket buffer that still accepts frames. The browser empties it only after the current task,
+ * so frames sent together must fit; SendBudget limits the rate.
+ */
+export const MAX_BUFFERED_BYTES = 64 * 1024
+
 /** One budget shared by relay and snapshots, including framing. */
 export class SendBudget {
     private bytes = 70 * 1024

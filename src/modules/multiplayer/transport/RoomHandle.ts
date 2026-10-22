@@ -11,7 +11,7 @@ import type {
     MultiplayerJson, MultiplayerMessage, MultiplayerBytesMessage,
 } from './types'
 import {
-    uuid, decimal, encodeJson, frame, unframe, SendBudget, invitation,
+    uuid, decimal, encodeJson, frame, unframe, SendBudget, invitation, MAX_BUFFERED_BYTES,
 } from './protocol'
 import type {
     Reservation, Session, RoomMetadata, Welcome,
@@ -311,7 +311,7 @@ export default class RoomHandle implements MultiplayerRoom {
 
     private sendFrame(channel: string, message: Uint8Array): boolean {
         if (this.closed || this.state !== 'connected' || !this.native?.open
-            || this.native.buffered > 0 || !this.budget.take(message.length)) return false
+            || this.native.buffered > MAX_BUFFERED_BYTES || !this.budget.take(message.length)) return false
         this.native.sendBytes(channel, message)
         return true
     }
