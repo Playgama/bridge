@@ -89,7 +89,7 @@ interface MultiplayerModule extends EventEmitter {}
 // loaded on the first room call.
 class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     get isSupported(): boolean {
-        return Boolean(this.#getConfig().apiBase && this.#getPublicToken())
+        return Boolean(this.#getPublicToken())
             && typeof WebSocket !== 'undefined'
             && !MULTIPLAYER_UNSUPPORTED_PLATFORMS.includes(this._platformBridge.platformId)
     }
@@ -529,8 +529,8 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     #loadRuntime(): Promise<MultiplayerRuntime> {
         if (!this.#runtime) {
-            const { apiBase = '', environment = MULTIPLAYER_DEFAULTS.ENVIRONMENT } = this.#getConfig()
-            const config = { apiBase, environment, appToken: this.#getPublicToken() }
+            const { apiBase = MULTIPLAYER_DEFAULTS.API_BASE } = this.#getConfig()
+            const config = { apiBase, appToken: this.#getPublicToken() }
             this.#runtime = import(/* webpackChunkName: "multiplayer" */ './transport/Runtime')
                 .then(({ default: Runtime }) => new Runtime(config, () => this.#getHeaders()))
                 .catch((error) => {
@@ -555,7 +555,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     }
 
     #getMaxPlayers(maxPlayers?: number): number {
-        return maxPlayers ?? this.#getConfig().maxPlayers ?? MULTIPLAYER_DEFAULTS.MAX_PLAYERS
+        return maxPlayers ?? MULTIPLAYER_DEFAULTS.MAX_PLAYERS
     }
 
     #getPlayer(options: PlayerOptions): { name: string, properties: JsonObject } {

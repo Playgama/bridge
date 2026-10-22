@@ -93,7 +93,7 @@ export function invitation(input: string): { code: string; region: MultiplayerRe
 
 export function validateConfig(config: MultiplayerConfig): void {
     const url = new URL(config.apiBase)
-    if (!config.appToken || !config.environment || url.username || url.password || url.search || url.hash
+    if (!config.appToken || url.username || url.password || url.search || url.hash
         || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) {
         throw new MultiplayerError('INVALID_CONFIG', 'Multiplayer requires an explicit HTTPS facade and public app token')
     }

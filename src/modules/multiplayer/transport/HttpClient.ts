@@ -159,7 +159,7 @@ export default class HttpClient {
 
     private storageKey(region: MultiplayerRegion): string {
         return `playgama.multiplayer.v1:${JSON.stringify([
-            this.config.environment, this.config.apiBase, this.config.appToken, region,
+            this.config.apiBase, this.config.appToken, region,
         ])}`
     }
 

@@ -62,10 +62,10 @@ export const MULTIPLAYER_UNSUPPORTED_PLATFORMS: readonly PlatformId[] = [
 
 export const MULTIPLAYER_DEFAULTS = {
     TYPE: MULTIPLAYER_TYPE.RELAY,
+    // Multiplayer API root; multiplayer.apiBase in the config overrides it (e.g. for staging).
+    API_BASE: 'https://playgama.com/api/bridge/v1/relay',
     MAX_PLAYERS: 4,
     ROOM_LIST_LIMIT: 50,
-    // Storage namespace of the backend sessions when the config names none.
-    ENVIRONMENT: 'production',
     // Time to learn the room host after entering: the server picks it from the
     // players whose SDK has registered for the host role.
     HOST_TIMEOUT: 5000,

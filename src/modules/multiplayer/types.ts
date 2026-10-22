@@ -19,12 +19,9 @@ import type { AnyRecord } from '../../utils'
 import type { MultiplayerTarget, MultiplayerType } from './constants'
 
 export interface MultiplayerConfig {
-    // Multiplayer API root, e.g. https://staging.playgama.com/api/bridge/v1/relay.
-    // Multiplayer is not supported without it and without saas.publicToken.
+    // Multiplayer API root, the Playgama production one by default,
+    // e.g. https://staging.playgama.com/api/bridge/v1/relay for staging.
     apiBase?: string
-    // Keeps backend sessions of different environments apart.
-    environment?: string
-    maxPlayers?: number
 }
 
 // JSON-serializable custom data. On update keys are merged, a null value removes the key.

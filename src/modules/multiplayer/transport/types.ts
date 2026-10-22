@@ -12,7 +12,6 @@ export type MultiplayerConnectionState = 'connected' | 'reconnecting' | 'disconn
 export interface MultiplayerConfig {
     apiBase: string
     appToken: string
-    environment: string
     region?: MultiplayerRegion
 }
 
