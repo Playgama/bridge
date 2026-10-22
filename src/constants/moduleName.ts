@@ -33,5 +33,6 @@ export const MODULE_NAME = {
     DAILY_REWARDS: 'daily_rewards',
     TASKS: 'tasks',
     CROSS_PROMO: 'cross_promo',
+    MULTIPLAYER: 'multiplayer',
 } as const
 export type ModuleName = typeof MODULE_NAME[keyof typeof MODULE_NAME]

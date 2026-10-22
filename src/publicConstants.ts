@@ -41,6 +41,7 @@ import * as tasksConstants from './modules/tasks/constants'
 import type * as tasksTypes from './modules/tasks/types'
 import * as crossPromoConstants from './modules/cross-promo/constants'
 import * as socialConstants from './modules/social/constants'
+import * as multiplayerConstants from './modules/multiplayer/constants'
 
 export const PLATFORM_ID = platformConstants.PLATFORM_ID
 export type PLATFORM_ID = platformConstants.PlatformId
@@ -96,6 +97,18 @@ export type CROSS_PROMO_SOURCE = crossPromoConstants.CrossPromoSource
 export const POST_REWARD_TYPE = socialConstants.POST_REWARD_TYPE
 export type POST_REWARD_TYPE = socialConstants.PostRewardType
 
+export const MULTIPLAYER_TARGET = multiplayerConstants.MULTIPLAYER_TARGET
+export type MULTIPLAYER_TARGET = multiplayerConstants.MultiplayerTarget
+
+export const MULTIPLAYER_TYPE = multiplayerConstants.MULTIPLAYER_TYPE
+export type MULTIPLAYER_TYPE = multiplayerConstants.MultiplayerType
+
+export const MULTIPLAYER_STATE = multiplayerConstants.MULTIPLAYER_STATE
+export type MULTIPLAYER_STATE = multiplayerConstants.MultiplayerState
+
+export const ROOM_LEAVE_REASON = multiplayerConstants.ROOM_LEAVE_REASON
+export type ROOM_LEAVE_REASON = multiplayerConstants.RoomLeaveReason
+
 export { BridgeError } from './constants/errors'
 
 // CamelCase aliases of the same unions, for code that prefers them over the
@@ -124,6 +137,12 @@ export type { LeaderboardType } from './modules/leaderboards/constants'
 export type { TaskType } from './modules/tasks/types'
 export type { CrossPromoSource } from './modules/cross-promo/constants'
 export type { PostRewardType } from './modules/social/constants'
+export type {
+    MultiplayerTarget,
+    MultiplayerType,
+    MultiplayerState,
+    RoomLeaveReason,
+} from './modules/multiplayer/constants'
 
 // Public data shapes returned by SDK modules.
 export type { LeaderboardEntry } from './modules/leaderboards/types'
@@ -143,6 +162,20 @@ export type {
     TaskReward,
 } from './modules/tasks/types'
 export type { ScheduledNotification } from './modules/notifications/types'
+export type {
+    MultiplayerProperties,
+    MultiplayerPlayer,
+    MultiplayerRoom,
+    MultiplayerRoomInfo,
+    MultiplayerMessage,
+    MultiplayerSendOptions,
+    CreateRoomOptions,
+    JoinRoomOptions,
+    JoinOrCreateRoomOptions,
+    RoomTypeOptions,
+    GetRoomsOptions,
+    RoomInviteOptions,
+} from './modules/multiplayer/types'
 export type { SafeAreaInsets } from './lib/safe-area'
 export type { RemoteConfigContext } from './modules/remote-config/RemoteConfigModule'
 export type { PlayerAuthorizeOptions } from './modules/player/PlayerModule'

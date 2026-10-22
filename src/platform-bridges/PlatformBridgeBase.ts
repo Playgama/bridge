@@ -44,6 +44,7 @@ import {
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
 import type { ScheduledNotification } from '../modules/notifications/types'
+import type { MultiplayerRoomInvite, MultiplayerRoomStatus } from '../modules/multiplayer/types'
 import { internalAnalytics } from '../modules/analytics'
 import {
     getPaymentsProductsPlatformData,
@@ -133,6 +134,16 @@ class PlatformBridgeBase {
         }
 
         return false
+    }
+
+    // multiplayer
+    get isMultiplayerRoomInviteSupported(): boolean {
+        return false
+    }
+
+    // Room code from the invite link the game was opened with.
+    get multiplayerLaunchRoomId(): string | null {
+        return null
     }
 
     // player
@@ -557,6 +568,13 @@ class PlatformBridgeBase {
     notificationsCancelAll(): Promise<void> {
         return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
     }
+
+    // multiplayer
+    multiplayerInviteToRoom(_invite: MultiplayerRoomInvite): Promise<unknown> {
+        return Promise.reject()
+    }
+
+    notifyMultiplayerRoomChanged(_room: MultiplayerRoomStatus | null): void { }
 
     protected _setPlatformStorageAvailable(isAvailable: boolean): void {
         if (this._isPlatformStorageAvailable === isAvailable) {

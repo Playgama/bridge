@@ -58,6 +58,7 @@ import notificationsModule from './modules/notifications'
 import dailyRewardsModule from './modules/daily-rewards'
 import tasksModule from './modules/tasks'
 import crossPromoModule from './modules/cross-promo'
+import multiplayerModule from './modules/multiplayer'
 import analyticsModule, { internalAnalytics } from './modules/analytics'
 import { applyBrowserDefaultsProtection } from './utils'
 import { fetchPlatformBridge } from './platformImports'
@@ -154,6 +155,10 @@ class PlaygamaBridge {
 
     get crossPromo(): typeof crossPromoModule {
         return this.#getModule(MODULE_NAME.CROSS_PROMO) as typeof crossPromoModule
+    }
+
+    get multiplayer(): typeof multiplayerModule {
+        return this.#getModule(MODULE_NAME.MULTIPLAYER) as typeof multiplayerModule
     }
 
     get engine(): string {
@@ -253,6 +258,7 @@ class PlaygamaBridge {
                 { name: MODULE_NAME.DAILY_REWARDS, module: dailyRewardsModule },
                 { name: MODULE_NAME.TASKS, module: tasksModule },
                 { name: MODULE_NAME.CROSS_PROMO, module: crossPromoModule },
+                { name: MODULE_NAME.MULTIPLAYER, module: multiplayerModule },
             ]
 
             moduleRegistry.forEach(({ name, module }) => {

@@ -16,6 +16,7 @@
  */
 
 import logger from './logger'
+import { LOGGER_IGNORED_EVENTS } from './logger/constants'
 
 // `any[]` (not `unknown[]`) so consumers can pass listeners with typed
 // parameters, e.g. `(state: BannerState) => void` — with `unknown[]` such
@@ -99,7 +100,9 @@ applyLocalEventMixin(eventBus)
 // Log every event that flows through the global bus (module state changes, etc.).
 const emitWithoutLogging = eventBus.emit.bind(eventBus)
 eventBus.emit = function emit(eventName: string, ...args: unknown[]): void {
-    logger.info(`[event] ${eventName}`, ...args)
+    if (!LOGGER_IGNORED_EVENTS.includes(eventName)) {
+        logger.info(`[event] ${eventName}`, ...args)
+    }
     emitWithoutLogging(eventName, ...args)
 }
 
