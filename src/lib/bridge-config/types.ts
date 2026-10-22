@@ -27,7 +27,7 @@ import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
 import type { MultiplayerConfig } from '../../modules/multiplayer/types'
 import type { LoadingScreenType, LoadingLogoType } from '../loading-screen'
-import type { SubscribeNotificationType } from '../subscribe-notification'
+import type { YoutubeSubscribeButtonType } from '../../platform-bridges/YoutubePlatformBridge'
 
 export interface SaasFeatureConfig {
     platforms?: string[]
@@ -93,6 +93,10 @@ export interface ConfigFileOptions extends AnyRecord {
     saas?: SaasConfig
     payments?: Array<AnyRecord & { id: string }>
     videoPreviews?: VideoPreview[]
-    subscribeNotificationType?: SubscribeNotificationType
+    // YouTube only: the animated hint pointing at the channel subscribe button.
+    // Colors are any CSS colors; each type has its own defaults.
+    youtubeSubscribeButtonType?: YoutubeSubscribeButtonType
+    youtubeSubscribeButtonColor?: string
+    youtubeSubscribeButtonTextColor?: string
     multiplayer?: MultiplayerConfig
 }
