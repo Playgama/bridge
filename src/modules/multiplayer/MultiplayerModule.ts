@@ -321,6 +321,15 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             return
         }
 
+        // Data goes as JSON.stringify sees it: e.g. undefined fields are dropped, not refused
+        let payload: JsonValue
+        try {
+            payload = JSON.parse(JSON.stringify(data ?? null))
+        } catch (error) {
+            logger.warn('[multiplayer] Message was not sent: data is not JSON', error)
+            return
+        }
+
         const self = handle.playerId
         const to = options.to ?? MULTIPLAYER_TARGET.OTHERS
         let remote: string | string[] | null = to
@@ -342,11 +351,12 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         }
 
         if (remote !== null) {
-            this.#queueMessage({ type, data: (data ?? null) as JsonValue, to: remote })
+            this.#queueMessage({ type, data: payload, to: remote })
         }
 
         if (isForSelf) {
-            const message = { type, data: JSON.parse(JSON.stringify(data ?? null)), from: self }
+            // Own copy: a listener may change it while the remote copy still waits in the queue.
+            const message = { type, data: JSON.parse(JSON.stringify(payload)), from: self }
             // Deliver asynchronously so a send to self behaves like a remote send.
             queueMicrotask(() => eventBus.emit(EVENT_NAME.MULTIPLAYER_MESSAGE_RECEIVED, message))
         }
