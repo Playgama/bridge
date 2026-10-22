@@ -27,6 +27,7 @@ import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
 import type { MultiplayerConfig } from '../../modules/multiplayer/types'
 import type { LoadingScreenType, LoadingLogoType } from '../loading-screen'
+import type { SubscribeNotificationType } from '../subscribe-notification'
 
 export interface SaasFeatureConfig {
     platforms?: string[]
@@ -91,5 +92,6 @@ export interface ConfigFileOptions extends AnyRecord {
     saas?: SaasConfig
     payments?: Array<AnyRecord & { id: string }>
     videoPreviews?: VideoPreview[]
+    subscribeNotificationType?: SubscribeNotificationType
     multiplayer?: MultiplayerConfig
 }
