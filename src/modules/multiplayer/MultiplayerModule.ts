@@ -169,6 +169,9 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     #hostId: string | null = null
 
+    // Last reported isHost: the local host role becomes active after the host id is assigned.
+    #isHost = false
+
     #roomSnapshot: unknown = null
 
     #unsubscribers: Array<() => void> = []
@@ -411,6 +414,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         this.#handle = handle
         this.#players = handle.players
         this.#hostId = handle.hostPlayerId
+        this.#isHost = handle.isHost
         this.#roomSnapshot = this.room
         this.#closeReason = null
         this.#isLaunchRoomUsed = true
@@ -440,6 +444,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         this.#handle = null
         this.#players = []
         this.#hostId = null
+        this.#isHost = false
         this.#roomSnapshot = null
         this.#setState(MULTIPLAYER_STATE.DISCONNECTED)
         this.#notifyRoomChanged()
@@ -505,13 +510,16 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         }
     }
 
+    // Also reports the local host role turning active or suspended, so isHost never changes silently.
     #updateHost(): void {
         const hostId = this.#handle?.hostPlayerId ?? null
-        if (hostId === this.#hostId) {
+        const { isHost } = this
+        if (hostId === this.#hostId && isHost === this.#isHost) {
             return
         }
 
         this.#hostId = hostId
+        this.#isHost = isHost
         const host = this.#players.find((player) => player.id === hostId)
         eventBus.emit(EVENT_NAME.MULTIPLAYER_HOST_CHANGED, host ? this.#toPlayer(host) : null)
     }
