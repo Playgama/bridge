@@ -236,7 +236,7 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     // multiplayer
-    get isPlaygamaRoomInviteSupported(): boolean {
+    get isMultiplayerRoomInviteSupported(): boolean {
         return this.#isSupported(this.#multiplayerService, 'inviteToRoom', 'getIsInviteToRoomSupported')
     }
 
