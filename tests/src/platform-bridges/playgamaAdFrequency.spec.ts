@@ -3,6 +3,10 @@ import {
 } from 'vitest'
 import PlaygamaPlatformBridge from '../../../src/platform-bridges/PlaygamaPlatformBridge'
 import bridgeConfig from '../../../src/lib/bridge-config'
+import InterstitialController from '../../../src/modules/advertisement/InterstitialController'
+import type { AdvertisementBridgeContract } from '../../../src/modules/advertisement/types'
+import eventBus from '../../../src/lib/EventBus'
+import { PLATFORM_MESSAGE } from '../../../src/modules/platform/constants'
 import { EVENT_NAME } from '../../../src/constants'
 import { INTERSTITIAL_STATE, REWARDED_STATE } from '../../../src/modules/advertisement/constants'
 
@@ -14,9 +18,15 @@ vi.mock('../../../src/utils', async (importOriginal) => ({
 
 type AdStateHandler = Parameters<NonNullable<Window['PLAYGAMA_SDK']>['advService']['subscribeToAdStateChanges']>[0]
 
-async function createInitializedBridge(bridge = new PlaygamaPlatformBridge()) {
+async function createInitializedBridge(
+    bridge = new PlaygamaPlatformBridge(),
+    adFrequencyManagedByHost: unknown = undefined,
+) {
     const sdk = {
-        platformService: { getLanguage: () => 'en' },
+        platformService: {
+            getLanguage: () => 'en',
+            getAdditionalParams: () => (adFrequencyManagedByHost === undefined ? {} : { adFrequencyManagedByHost }),
+        },
         advService: {
             subscribeToAdStateChanges: vi.fn((callback: AdStateHandler) => callback),
             showInterstitial: vi.fn(),
@@ -47,6 +57,72 @@ describe('Playgama ad frequency compatibility', () => {
     afterEach(() => {
         vi.useRealTimers()
         delete window.PLAYGAMA_SDK
+    })
+
+    test('host-managed frequency skips both local timers even with project and game settings', async () => {
+        vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({
+            advertisement: { initialInterstitialDelay: 30, minimumDelayBetweenInterstitial: 60 },
+        })
+        const bridge = new PlaygamaPlatformBridge()
+        // Real Bridge creates controllers before the platform SDK handshake completes.
+        const controller = new InterstitialController(
+            bridge as unknown as AdvertisementBridgeContract,
+            { send: vi.fn() },
+            vi.fn(),
+        )
+        const { sdk } = await createInitializedBridge(bridge, true)
+        controller.setMinimumDelay(300)
+        expect(controller.minimumDelayBetweenInterstitial).toBe(0)
+        // No GAME_READY and no elapsed initial delay: the host decides whether to show.
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+        bridge.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, INTERSTITIAL_STATE.CLOSED)
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
+    })
+
+    test.each([undefined, false, 'true', 1, null])('keeps project timers without an explicit true host flag: %j', async (flag) => {
+        vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({
+            advertisement: { initialInterstitialDelay: 30, minimumDelayBetweenInterstitial: 60 },
+        })
+        const { bridge, sdk } = await createInitializedBridge(new PlaygamaPlatformBridge(), flag)
+        const controller = new InterstitialController(
+            bridge as unknown as AdvertisementBridgeContract,
+            { send: vi.fn() },
+            vi.fn(),
+        )
+        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
+        vi.advanceTimersByTime(10000)
+        controller.show()
+        expect(sdk.advService.showInterstitial).not.toHaveBeenCalled()
+        vi.advanceTimersByTime(20000)
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+        expect(controller.minimumDelayBetweenInterstitial).toBe(60)
+        bridge.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, INTERSTITIAL_STATE.CLOSED)
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+        vi.advanceTimersByTime(60000)
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
+    })
+
+    test('host-managed frequency still honours host retry deadlines', async () => {
+        const { bridge, sdk } = await createInitializedBridge(new PlaygamaPlatformBridge(), true)
+        const controller = new InterstitialController(
+            bridge as unknown as AdvertisementBridgeContract,
+            { send: vi.fn() },
+            vi.fn(),
+        )
+        controller.show()
+        const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
+        listener('interstitial', 'error', { reason: 'portal_rule', retryAfterMs: 60000 })
+        controller.show()
+        expect(controller.state).toBe(INTERSTITIAL_STATE.FAILED)
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+        vi.advanceTimersByTime(60000)
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
     })
 
     test.each(['initial_delay', 'cooldown', 'portal_rule'].flatMap((reason) => (

@@ -132,6 +132,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return PLATFORM_ID.PLAYGAMA
     }
 
+    // Only an explicit host capability disables Bridge frequency timers.
+    get adFrequencyManagedByHost(): boolean {
+        return this._data?.adFrequencyManagedByHost === true
+    }
+
     get sdkUrl(): string {
         return 'https://playgama.com/platform-sdk/v1.js'
     }

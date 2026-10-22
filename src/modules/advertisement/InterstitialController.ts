@@ -43,7 +43,7 @@ class InterstitialController {
     }
 
     get minimumDelayBetweenInterstitial(): number {
-        return this.#minimumDelay
+        return this.#bridge.adFrequencyManagedByHost === true ? 0 : this.#minimumDelay
     }
 
     get isInProgress(): boolean {
@@ -139,7 +139,7 @@ class InterstitialController {
             }
         }
 
-        if (this.#bridge.isMinimumDelayBetweenInterstitialEnabled) {
+        if (this.#bridge.adFrequencyManagedByHost !== true && this.#bridge.isMinimumDelayBetweenInterstitialEnabled) {
             if (this.#timer && this.#timer.state === TIMER_STATE.STARTED) {
                 this.#setState(INTERSTITIAL_STATE.FAILED)
                 return
@@ -210,6 +210,9 @@ class InterstitialController {
     }
 
     #getInitialDelay(): number {
+        if (this.#bridge.adFrequencyManagedByHost === true) {
+            return 0
+        }
         const configDelay = bridgeConfig.getValues().advertisement?.initialInterstitialDelay
         const delay = parseDelay(configDelay)
         if (delay !== null) {
@@ -220,11 +223,12 @@ class InterstitialController {
     }
 
     #startTimer(): void {
+        const delay = this.minimumDelayBetweenInterstitial
         if (
-            this.#minimumDelay > 0
+            delay > 0
             && this.#bridge.isMinimumDelayBetweenInterstitialEnabled
         ) {
-            this.#timer = new Timer(this.#minimumDelay)
+            this.#timer = new Timer(delay)
             this.#timer.start()
         }
     }
