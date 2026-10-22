@@ -37,7 +37,7 @@ import {
 
 import { applyEventBusMixin } from './lib/EventBus'
 import Deferred from './lib/Deferred'
-import { LoadingScreen, LOADING_LOGO_TYPE } from './lib/loading-screen'
+import { LoadingScreen, LOADING_SCREEN_TYPE, LOADING_LOGO_TYPE } from './lib/loading-screen'
 import { LoadingSound } from './lib/loading-sound'
 import { SafeArea } from './lib/safe-area'
 import bridgeConfig from './lib/bridge-config'
@@ -336,15 +336,24 @@ class PlaygamaBridge {
     #setupLoadingVisuals(bridge: PlatformBridgeBase): void {
         const options = bridgeConfig.getValues()
 
-        if (!options.disableLoadingLogo) {
+        // disableLoadingLogo and showFullLoadingLogo are legacy options, used only
+        // when the new ones are not set.
+        const type = options.loadingScreenType
+            ?? (options.disableLoadingLogo ? LOADING_SCREEN_TYPE.NONE : LOADING_SCREEN_TYPE.LOGO)
+
+        if (type !== LOADING_SCREEN_TYPE.NONE) {
             const isBrandingRestricted = bridge.platformId === PLATFORM_ID.YANDEX
                 || bridge.platformId === PLATFORM_ID.Y8
-            const defaultLogo = options.showFullLoadingLogo === false ? LOADING_LOGO_TYPE.SHORT : LOADING_LOGO_TYPE.FULL
-            const logo = isBrandingRestricted ? LOADING_LOGO_TYPE.SHORT : options.loadingLogoType ?? defaultLogo
+            const configLogo = options.loadingLogoType
+                ?? (options.showFullLoadingLogo === false ? LOADING_LOGO_TYPE.MEDIUM : LOADING_LOGO_TYPE.FULL)
+            // No "playgama" lettering where the platform restricts third-party branding.
+            const logo = isBrandingRestricted && configLogo === LOADING_LOGO_TYPE.FULL
+                ? LOADING_LOGO_TYPE.MEDIUM
+                : configLogo
             const showLoadingText = bridge.platformId === PLATFORM_ID.XIAOMI
                 || options.showLoadingText === true
             this.#loadingScreen = new LoadingScreen()
-            this.#loadingScreen.show({ type: options.loadingScreenType, logo, showLoadingText })
+            this.#loadingScreen.show({ type, logo, showLoadingText })
 
             if (options.loadingSound?.url) {
                 this.#loadingSound = new LoadingSound(options.loadingSound)

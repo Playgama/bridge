@@ -71,12 +71,13 @@ export interface ConfigFileOptions extends AnyRecord {
     remoteConfigTimeout?: number
     remoteConfigTtl?: number
     sendAnalyticsEvents?: boolean
-    disableLoadingLogo?: boolean
     loadingScreenType?: LoadingScreenType
-    // Takes precedence over showFullLoadingLogo.
     loadingLogoType?: LoadingLogoType
-    showFullLoadingLogo?: boolean
     showLoadingText?: boolean
+    // Legacy, used only when loadingScreenType is not set: true = 'none'.
+    disableLoadingLogo?: boolean
+    // Legacy, used only when loadingLogoType is not set: false = 'medium', otherwise 'full'.
+    showFullLoadingLogo?: boolean
     loadingSound?: LoadingSoundConfig
     game?: GameConfig
     advertisement?: AdvertisementOptions

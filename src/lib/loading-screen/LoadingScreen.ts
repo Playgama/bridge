@@ -19,7 +19,6 @@ import {
     LOADING_SCREEN_TYPE,
     LOADING_LOGO_TYPE,
     LOADING_SCREEN_LOGO_PRESETS,
-    LOADING_SCREEN_DEFAULT_PRESET,
     LOADING_SCREEN_HIDE_GATE_TIMEOUT,
     type LoadingScreenType,
     type LoadingLogoType,
@@ -51,12 +50,13 @@ class LoadingScreen {
 
     show({
         type = LOADING_SCREEN_TYPE.LOGO,
-        logo = LOADING_LOGO_TYPE.SHORT,
+        logo = LOADING_LOGO_TYPE.FULL,
         showLoadingText = false,
     }: LoadingScreenOptions = {}): void {
+        const preset = LOADING_SCREEN_LOGO_PRESETS[logo] ?? LOADING_SCREEN_LOGO_PRESETS[LOADING_LOGO_TYPE.FULL]
         this.#view = type === LOADING_SCREEN_TYPE.RING
             ? new RingLoadingView()
-            : new LogoLoadingView(LOADING_SCREEN_LOGO_PRESETS[logo] ?? LOADING_SCREEN_DEFAULT_PRESET, showLoadingText)
+            : new LogoLoadingView(preset, showLoadingText)
         this.#view.show()
     }
 
