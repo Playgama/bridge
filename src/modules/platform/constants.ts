@@ -45,6 +45,7 @@ export const PLATFORM_ID = {
     DLIGHTEK: 'dlightek',
     GAMESNACKS: 'gamesnacks',
     SAMSUNG: 'samsung',
+    GOW: 'gow',
 } as const
 export type PlatformId = typeof PLATFORM_ID[keyof typeof PLATFORM_ID]
 

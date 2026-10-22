@@ -16,6 +16,11 @@
  */
 
 import PlaygamaBridge from './PlaygamaBridge'
+import { getGowChannel } from './lib/gow'
+
+if (__INCLUDE_GOW__) {
+    getGowChannel().start()
+}
 
 if (!window.bridge && !window.playgamaBridge) {
     window.bridge = new PlaygamaBridge()

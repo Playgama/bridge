@@ -33,6 +33,7 @@ declare global {
     const __INCLUDE_DLIGHTEK__: boolean
     const __INCLUDE_GAMESNACKS__: boolean
     const __INCLUDE_SAMSUNG__: boolean
+    const __INCLUDE_GOW__: boolean
 
     interface Window {
         bridge?: unknown
