@@ -168,11 +168,19 @@ export function unframe(bytes: Uint8Array): { header: Record<string, unknown>; p
  */
 export const MAX_BUFFERED_BYTES = 64 * 1024
 
+/**
+ * Packet pace kept under the server quota of 60 packets/s: packets bunch up on the way, and the
+ * server silently drops a packet over its quota, so the client keeps headroom.
+ */
+export const SEND_PACKETS_PER_SECOND = 50
+
+export const SEND_PACKET_BURST = 30
+
 /** One budget shared by relay and snapshots, including framing. */
 export class SendBudget {
     private bytes = 70 * 1024
 
-    private packets = 60
+    private packets = SEND_PACKET_BURST
 
     private at = performance.now()
 
@@ -181,7 +189,7 @@ export class SendBudget {
         const seconds = Math.max(0, now - this.at) / 1000
         this.at = now
         this.bytes = Math.min(70 * 1024, this.bytes + seconds * 65536)
-        this.packets = Math.min(60, this.packets + seconds * 60)
+        this.packets = Math.min(SEND_PACKET_BURST, this.packets + seconds * SEND_PACKETS_PER_SECOND)
         if (this.bytes < size || this.packets < 1) return false
         this.bytes -= size
         this.packets -= 1
