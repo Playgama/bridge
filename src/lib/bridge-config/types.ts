@@ -26,6 +26,7 @@ import type { SocialConfig } from '../../modules/social/types'
 import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
 import type { MultiplayerConfig } from '../../modules/multiplayer/types'
+import type { LoadingScreenType, LoadingLogoType } from '../loading-screen'
 
 export interface SaasFeatureConfig {
     platforms?: string[]
@@ -70,6 +71,9 @@ export interface ConfigFileOptions extends AnyRecord {
     remoteConfigTtl?: number
     sendAnalyticsEvents?: boolean
     disableLoadingLogo?: boolean
+    loadingScreenType?: LoadingScreenType
+    // Takes precedence over showFullLoadingLogo.
+    loadingLogoType?: LoadingLogoType
     showFullLoadingLogo?: boolean
     showLoadingText?: boolean
     loadingSound?: LoadingSoundConfig

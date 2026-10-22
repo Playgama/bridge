@@ -37,7 +37,7 @@ import {
 
 import { applyEventBusMixin } from './lib/EventBus'
 import Deferred from './lib/Deferred'
-import { LoadingScreen } from './lib/loading-screen'
+import { LoadingScreen, LOADING_LOGO_TYPE } from './lib/loading-screen'
 import { LoadingSound } from './lib/loading-sound'
 import { SafeArea } from './lib/safe-area'
 import bridgeConfig from './lib/bridge-config'
@@ -337,14 +337,14 @@ class PlaygamaBridge {
         const options = bridgeConfig.getValues()
 
         if (!options.disableLoadingLogo) {
-            const showFullLogo = bridge.platformId === PLATFORM_ID.YANDEX
+            const isBrandingRestricted = bridge.platformId === PLATFORM_ID.YANDEX
                 || bridge.platformId === PLATFORM_ID.Y8
-                ? false
-                : options.showFullLoadingLogo !== false
+            const defaultLogo = options.showFullLoadingLogo === false ? LOADING_LOGO_TYPE.SHORT : LOADING_LOGO_TYPE.FULL
+            const logo = isBrandingRestricted ? LOADING_LOGO_TYPE.SHORT : options.loadingLogoType ?? defaultLogo
             const showLoadingText = bridge.platformId === PLATFORM_ID.XIAOMI
                 || options.showLoadingText === true
             this.#loadingScreen = new LoadingScreen()
-            this.#loadingScreen.show({ showFullLogo, showLoadingText })
+            this.#loadingScreen.show({ type: options.loadingScreenType, logo, showLoadingText })
 
             if (options.loadingSound?.url) {
                 this.#loadingSound = new LoadingSound(options.loadingSound)
