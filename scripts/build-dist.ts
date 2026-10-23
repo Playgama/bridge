@@ -7,6 +7,7 @@ const DIST_DIR = path.resolve(__dirname, '../dist')
 const OUT_DIR = path.join(DIST_DIR, 'publish')
 const BUILT_FILE = path.join(DIST_DIR, 'playgama-bridge.js')
 const CHUNKS_DIR = path.join(DIST_DIR, 'platform-bridges')
+const MODULES_DIR = path.join(DIST_DIR, 'modules')
 
 const args = process.argv.slice(2)
 
@@ -22,7 +23,7 @@ if (args.includes('--help') || args.includes('--list')) {
     process.exit(0)
 }
 
-// Absolute URL the dynamic bundle uses to fetch its platform-bridges/ chunks.
+// Absolute URL the dynamic bundle uses to fetch its platform-bridges/ and modules/ chunks.
 // Should match the deploy location, e.g. https://<domain>/v<major>/<channel>/
 const publicPath = getArg('public-path')
 
@@ -71,7 +72,7 @@ if (buildDynamic && !publicPath) {
     process.exit(1)
 }
 
-// Dynamic first: it writes dist/platform-bridges/ which later standalone builds wipe.
+// Dynamic first: it writes dist/platform-bridges/ and dist/modules/ which later standalone builds wipe.
 if (buildDynamic) {
     console.info('\n=== Building dynamic bundle (main + platform chunks) ===')
     const publicPathArg = publicPath ? ` --env publicPath=${publicPath}` : ''
@@ -85,6 +86,11 @@ if (buildDynamic) {
     fs.cpSync(CHUNKS_DIR, path.join(OUT_DIR, 'platform-bridges'), { recursive: true })
     const chunks = fs.readdirSync(CHUNKS_DIR).filter((n) => n.endsWith('.js'))
     console.info(`-> platform-bridges/ (${chunks.length} chunk file(s))`)
+    if (fs.existsSync(MODULES_DIR)) {
+        fs.cpSync(MODULES_DIR, path.join(OUT_DIR, 'modules'), { recursive: true })
+        const modules = fs.readdirSync(MODULES_DIR).filter((n) => n.endsWith('.js'))
+        console.info(`-> modules/ (${modules.length} chunk file(s))`)
+    }
 }
 
 if (buildStandalone) {
