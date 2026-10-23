@@ -27,6 +27,11 @@ export interface MultiplayerConfig {
 // JSON-serializable custom data. On update keys are merged, a null value removes the key.
 export type MultiplayerProperties = Record<string, unknown>
 
+// Matchmaking key of a room, set once on creation: flat string/number/boolean values, up to
+// 16 keys. Quick match and the room list compare the whole object exactly, types included
+// (2 and '2' differ). A created room also gets these values in its properties.
+export type MultiplayerFilter = Record<string, string | number | boolean>
+
 export interface MultiplayerPlayer {
     id: string
     name: string
@@ -56,6 +61,7 @@ export interface MultiplayerRoomInfo {
     type: MultiplayerType
     maxPlayers: number
     playerCount: number
+    filter: MultiplayerFilter
     properties: MultiplayerProperties
 }
 
@@ -85,6 +91,8 @@ export interface CreateRoomOptions extends PlayerOptions, RoomTypeOptions {
     // Listed and matched to other players. False by default: the room is joined by code.
     isVisible?: boolean
     isOpen?: boolean
+    // Lets quick match and filtered room lists find a visible room.
+    filter?: MultiplayerFilter
     properties?: MultiplayerProperties
 }
 
@@ -93,15 +101,15 @@ export interface JoinRoomOptions extends PlayerOptions, RoomTypeOptions {}
 export interface JoinOrCreateRoomOptions extends PlayerOptions, RoomTypeOptions {
     // Players are matched only into rooms of the same size.
     maxPlayers?: number
-    // Room properties the room must have (equal values), e.g. { mode: 'duel' };
-    // a created room gets them too.
-    filter?: MultiplayerProperties
+    // Players are matched only into rooms with the same filter, e.g. { mode: 'duel' }.
+    filter?: MultiplayerFilter
     // Extra properties of a created room.
     properties?: MultiplayerProperties
 }
 
 export interface GetRoomsOptions extends RoomTypeOptions {
-    filter?: MultiplayerProperties
+    // Only rooms created with exactly this filter; all rooms when omitted.
+    filter?: MultiplayerFilter
     maxPlayers?: number
     limit?: number
 }

@@ -164,6 +164,7 @@ export type {
 export type { ScheduledNotification } from './modules/notifications/types'
 export type {
     MultiplayerProperties,
+    MultiplayerFilter,
     MultiplayerPlayer,
     MultiplayerRoom,
     MultiplayerRoomInfo,

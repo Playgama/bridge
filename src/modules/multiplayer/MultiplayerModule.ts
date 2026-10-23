@@ -26,7 +26,6 @@ import type { JsonObject, JsonValue } from '../../utils/json'
 import type MultiplayerRuntime from './transport/Runtime'
 import { MultiplayerError } from './transport/types'
 import type {
-    MultiplayerFilter,
     MultiplayerRoom as RoomHandle,
     MultiplayerPlayer as RoomMember,
     MultiplayerState as ConnectionStatus,
@@ -202,7 +201,8 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             maxPlayers: this.#getMaxPlayers(options.maxPlayers),
             isOpen: options.isOpen ?? true,
             isVisible: options.isVisible ?? false,
-            properties: (options.properties ?? {}) as JsonObject,
+            filter: options.filter ?? {},
+            properties: this.#getRoomProperties(options),
         }))
         return this.roomId ?? ''
     }
@@ -228,8 +228,8 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         await this.#enterRoom((runtime) => runtime.joinOrCreateRoom({
             player: this.#getPlayer(options),
             maxPlayers: this.#getMaxPlayers(options.maxPlayers),
-            filter: (options.filter ?? {}) as MultiplayerFilter,
-            properties: (options.properties ?? {}) as JsonObject,
+            filter: options.filter ?? {},
+            properties: this.#getRoomProperties(options),
         }))
         return this.roomId ?? ''
     }
@@ -244,7 +244,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             const runtime = await this.#loadRuntime()
             const { rooms } = await runtime.getRooms({
                 maxPlayers: options.maxPlayers,
-                filter: options.filter as MultiplayerFilter | undefined,
+                filter: options.filter,
                 limit: options.limit ?? MULTIPLAYER_DEFAULTS.ROOM_LIST_LIMIT,
             })
             return rooms
@@ -254,6 +254,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
                     type: MULTIPLAYER_TYPE.RELAY,
                     maxPlayers: room.maxPlayers,
                     playerCount: room.playerCount,
+                    filter: room.filter,
                     properties: room.properties,
                 }))
         } catch (error) {
@@ -618,6 +619,12 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     #getMaxPlayers(maxPlayers?: number): number {
         return maxPlayers ?? MULTIPLAYER_DEFAULTS.MAX_PLAYERS
+    }
+
+    // The filter is not part of the room data on the server: its values are copied into the properties,
+    // so every player sees them.
+    #getRoomProperties(options: CreateRoomOptions | JoinOrCreateRoomOptions): JsonObject {
+        return { ...options.properties, ...options.filter } as JsonObject
     }
 
     #getPlayer(options: PlayerOptions): { name: string, properties: JsonObject } {
