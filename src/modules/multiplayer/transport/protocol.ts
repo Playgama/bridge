@@ -196,3 +196,23 @@ export class SendBudget {
         return true
     }
 }
+
+/** First byte of a room server frame (Colyseus 0.17 wire protocol). */
+export const ROOM_FRAME = {
+    JOIN_ROOM: 10,
+    ERROR: 11,
+    LEAVE_ROOM: 12,
+    ROOM_DATA: 13,
+    ROOM_DATA_BYTES: 17,
+} as const
+
+/** Room server close codes the transport reacts to. */
+export const ROOM_CLOSE_CODE = {
+    SERVER_SHUTDOWN: 4001,
+    MAY_TRY_RECONNECT: 4010,
+    REJOIN: 4410,
+    REPLACED: 4401,
+    ROOM_ENDED: 4402,
+    UNAUTHORIZED: 4403,
+    PROTOCOL_VIOLATION: 4420,
+} as const

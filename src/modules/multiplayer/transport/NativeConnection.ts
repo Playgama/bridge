@@ -1,7 +1,6 @@
-/* eslint-disable max-classes-per-file -- The private Client adapter belongs to this version-pinned transport. */
-import { Client, Room, CloseCode } from '@colyseus/sdk'
-import type { SeatReservation } from '@colyseus/sdk'
 import { MultiplayerError } from './types'
+import { decodeMsgpack, encodeMsgpack } from './msgpack'
+import { ROOM_CLOSE_CODE, ROOM_FRAME } from './protocol'
 import type { Reservation } from './protocol'
 
 export interface NativeEvents {
@@ -12,110 +11,185 @@ export interface NativeEvents {
     closed(code: number): void
 }
 
-class PreparedClient extends Client {
-    private prepare: (room: Room) => void
+export const terminalClose = (code: number): string | undefined => ({
+    [ROOM_CLOSE_CODE.REPLACED]: 'REPLACED',
+    [ROOM_CLOSE_CODE.ROOM_ENDED]: 'ROOM_ENDED',
+    [ROOM_CLOSE_CODE.UNAUTHORIZED]: 'UNAUTHORIZED',
+    [ROOM_CLOSE_CODE.PROTOCOL_VIOLATION]: 'PROTOCOL_VIOLATION',
+} as Record<number, string>)[code]
 
-    constructor(endpoint: string, prepare: (room: Room) => void) {
-        super(endpoint)
-        this.prepare = prepare
-    }
+export const needsRejoin = (code: number): boolean => code === ROOM_CLOSE_CODE.REJOIN
+    || code === ROOM_CLOSE_CODE.SERVER_SHUTDOWN
 
-    protected createRoom<T>(name: string): Room<any, T> {
-        const room = new Room<any, T>(name)
-        this.prepare(room)
-        return room
-    }
+function frame(code: number, type: string, payload: Uint8Array): Uint8Array {
+    const header = encodeMsgpack(type)
+    const result = new Uint8Array(1 + header.length + payload.length)
+    result[0] = code
+    result.set(header, 1)
+    result.set(payload, 1 + header.length)
+    return result
 }
 
-/** Only this adapter knows native IDs and the version-pinned Colyseus API. */
+function roomUrl(reservation: Reservation, endpoint: string, token?: string): string {
+    const {
+        publicAddress, processId, roomId, sessionId, reconnectionToken,
+    } = reservation.colyseus
+    const api = new URL(endpoint)
+    const address = publicAddress || `${api.host}${api.pathname.replace(/\/$/, '')}`
+    const query = new URLSearchParams({ sessionId })
+    const rejoinToken = token ?? (typeof reconnectionToken === 'string' ? reconnectionToken : '')
+    if (rejoinToken) query.set('reconnectionToken', rejoinToken)
+    return `${api.protocol === 'https:' ? 'wss' : 'ws'}://${address}/${processId}/${roomId}?${query}`
+}
+
+/**
+ * WebSocket to the room server. Speaks the frames of the Colyseus wire protocol a relay room
+ * uses: join with a seat reservation, messages and byte messages. Rooms have no Colyseus state.
+ */
 export default class NativeConnection {
-    private room?: Room
-
-    private stopped = false
-
-    private events: NativeEvents
-
-    private cancelConnect?: () => void
-
     get token(): string | undefined {
-        return this.room?.reconnectionToken?.split(':')[1]
+        return this.reconnectionToken
     }
 
     get open(): boolean {
-        return !this.stopped && Boolean(this.room?.connection?.isOpen)
+        return !this.stopped && this.socket?.readyState === WebSocket.OPEN
     }
 
     get buffered(): number {
-        // The pinned ws transport exposes its WebSocket. There is no application queue.
-        const transport = this.room?.connection?.transport as { ws?: { bufferedAmount: number } } | undefined
-        return transport?.ws?.bufferedAmount || 0
+        return this.socket?.bufferedAmount || 0
     }
+
+    private socket?: WebSocket
+
+    private stopped = false
+
+    private joined = false
+
+    private events: NativeEvents
+
+    private reconnectionToken?: string
+
+    private join?: { resolve(): void; reject(error: MultiplayerError): void }
+
+    // A network switch leaves the socket hanging: close it right away so the room reconnects.
+    private offline = (): void => this.drop(ROOM_CLOSE_CODE.MAY_TRY_RECONNECT)
 
     constructor(events: NativeEvents) {
         this.events = events
     }
 
     async connect(reservation: Reservation, endpoint: string, signal: AbortSignal, token?: string): Promise<void> {
-        const client = new PreparedClient(endpoint, (room) => {
-            this.room = room
-            // Own the retry lifecycle: native's scheduled retry cannot be cancelled in 0.17.43.
-            Object.assign(room.reconnection, { enabled: false, maxEnqueuedMessages: 0 })
-            room.onMessage('control', (value: unknown) => { if (!this.stopped) this.events.control(value) })
-            room.onMessage('sync_control', (value: unknown) => { if (!this.stopped) this.events.syncControl(value) })
-            room.onMessage('relay', (value: Uint8Array) => { if (!this.stopped) this.events.relay(value) })
-            room.onMessage('sync_state', (value: Uint8Array) => { if (!this.stopped) this.events.snapshot(value) })
-            room.onLeave((code) => { if (!this.stopped) this.events.closed(code) })
-        })
+        if (signal.aborted) throw new MultiplayerError('CANCELLED')
         const cancel = (): void => this.stop()
         signal.addEventListener('abort', cancel, { once: true })
         try {
-            if (signal.aborted) throw new MultiplayerError('CANCELLED')
-            const cancelled = new Promise<never>((_resolve, reject) => {
-                this.cancelConnect = () => reject(new MultiplayerError('CANCELLED'))
+            await new Promise<void>((resolve, reject) => {
+                this.join = { resolve, reject }
+                const socket = new WebSocket(roomUrl(reservation, endpoint, token))
+                socket.binaryType = 'arraybuffer'
+                socket.onopen = () => window.addEventListener('offline', this.offline)
+                socket.onmessage = (event) => this.receive(new Uint8Array(event.data as ArrayBuffer))
+                socket.onclose = (event) => this.closed(event.code)
+                socket.onerror = () => this.fail(NaN)
+                this.socket = socket
             })
-            const connected = client.consumeSeatReservation({
-                ...reservation.colyseus,
-                ...(token ? { reconnectionToken: token } : {}),
-            } as SeatReservation)
-            await Promise.race([connected, cancelled])
-        } catch (error) {
-            const code = terminalClose(Number((error as { code?: number })?.code))
-            if (code) throw new MultiplayerError(code)
-            throw error
         } finally {
-            this.cancelConnect = undefined
+            this.join = undefined
             signal.removeEventListener('abort', cancel)
         }
     }
 
     send(channel: string, value: unknown): void {
-        if (!this.open) throw new MultiplayerError('NOT_CONNECTED')
-        this.room!.send(channel, value)
+        this.write(frame(ROOM_FRAME.ROOM_DATA, channel, encodeMsgpack(value)))
     }
 
     sendBytes(channel: string, bytes: Uint8Array): void {
-        if (!this.open) throw new MultiplayerError('NOT_CONNECTED')
-        this.room!.sendBytes(channel, bytes)
+        this.write(frame(ROOM_FRAME.ROOM_DATA_BYTES, channel, bytes))
     }
 
     stop(): void {
         if (this.stopped) return
         this.stopped = true
-        this.cancelConnect?.()
-        if (this.room) {
-            this.room.reconnection.enabled = false
-            this.room.reconnection.enqueuedMessages.length = 0
-            this.room.connection?.close()
-            this.room.removeAllListeners()
+        window.removeEventListener('offline', this.offline)
+        this.join?.reject(new MultiplayerError('CANCELLED'))
+        this.socket?.close()
+    }
+
+    private write(data: Uint8Array): void {
+        if (!this.open) throw new MultiplayerError('NOT_CONNECTED')
+        this.socket!.send(data)
+    }
+
+    private receive(data: Uint8Array): void {
+        if (this.stopped) return
+        switch (data[0]) {
+            case ROOM_FRAME.JOIN_ROOM: {
+                // Reconnection token and serializer id, each prefixed by its byte length
+                const length = data[1]
+                this.reconnectionToken = new TextDecoder().decode(data.subarray(2, 2 + length))
+                this.socket!.send(new Uint8Array([ROOM_FRAME.JOIN_ROOM]))
+                this.joined = true
+                this.join?.resolve()
+                break
+            }
+            case ROOM_FRAME.ERROR:
+                this.fail(Number(decodeMsgpack(data, 1).value))
+                break
+            case ROOM_FRAME.LEAVE_ROOM:
+                // The server asks to leave: confirm, then it closes the socket
+                this.socket!.send(new Uint8Array([ROOM_FRAME.LEAVE_ROOM]))
+                break
+            case ROOM_FRAME.ROOM_DATA: {
+                const type = decodeMsgpack(data, 1)
+                const value = type.offset < data.length ? decodeMsgpack(data, type.offset).value : undefined
+                this.dispatch(type.value, value)
+                break
+            }
+            case ROOM_FRAME.ROOM_DATA_BYTES: {
+                const type = decodeMsgpack(data, 1)
+                this.dispatch(type.value, data.subarray(type.offset))
+                break
+            }
+            default:
+                break
         }
     }
+
+    private dispatch(type: unknown, value: unknown): void {
+        switch (type) {
+            case 'control':
+                this.events.control(value)
+                break
+            case 'sync_control':
+                this.events.syncControl(value)
+                break
+            case 'relay':
+                this.events.relay(value as Uint8Array)
+                break
+            case 'sync_state':
+                this.events.snapshot(value as Uint8Array)
+                break
+            default:
+                break
+        }
+    }
+
+    // Errors and closes before the join reject connect(); after it only a close counts.
+    private fail(code: number): void {
+        if (!this.joined) this.join?.reject(new MultiplayerError(terminalClose(code) ?? 'CONNECTION_LOST'))
+    }
+
+    private closed(code: number): void {
+        window.removeEventListener('offline', this.offline)
+        if (this.stopped) return
+        if (this.joined) this.events.closed(code)
+        else this.fail(code)
+    }
+
+    private drop(code: number): void {
+        if (!this.socket) return
+        this.socket.onclose = null
+        this.closed(code)
+        this.socket.close(code)
+    }
 }
-
-export const terminalClose = (code: number): string | undefined => ({
-    4401: 'REPLACED',
-    4402: 'ROOM_ENDED',
-    4403: 'UNAUTHORIZED',
-    4420: 'PROTOCOL_VIOLATION',
-} as Record<number, string>)[code]
-
-export const needsRejoin = (code: number): boolean => code === 4410 || code === CloseCode.SERVER_SHUTDOWN
