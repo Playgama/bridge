@@ -31,6 +31,8 @@ import {
 import type { WriteBatch } from '../modules/storage/types'
 import type { PostLaunchOptions } from '../modules/social/types'
 
+const AD_FREQUENCY_REASONS = new Set(['initial_delay', 'cooldown', 'portal_rule'])
+
 type AdType = 'interstitial' | 'rewarded'
 type AdState = 'open' | 'empty' | 'rewarded' | 'close' | 'error' | string
 
@@ -190,11 +192,11 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     get isMinimumDelayBetweenInterstitialEnabled(): boolean {
-        return this.platformId !== PLATFORM_ID.PLAYGAMA
+        return false
     }
 
-    get initialInterstitialDelay(): number {
-        return this.platformId === PLATFORM_ID.PLAYGAMA ? 0 : super.initialInterstitialDelay
+    get isInitialInterstitialDelayEnabled(): boolean {
+        return false
     }
 
     get isRewardedSupported(): boolean {
@@ -280,8 +282,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     protected _isAdvancedBannersSupported = true
 
-    #adRetryAt = new Map<AdType, number>()
-
     #isPaymentsSupported = true
 
     #isCloudSaveSupported = true
@@ -308,13 +308,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         if (
                             state === 'error'
                             && (adType === 'interstitial' || adType === 'rewarded')
-                            && ['initial_delay', 'cooldown', 'portal_rule'].includes(details?.reason ?? '')
+                            && AD_FREQUENCY_REASONS.has(details?.reason ?? '')
                         ) {
-                            const retryAfterMs = details?.retryAfterMs
-                            if (typeof retryAfterMs === 'number' && Number.isFinite(retryAfterMs) && retryAfterMs >= 0) {
-                                this.#adRetryAt.set(adType, Date.now() + retryAfterMs)
-                            }
-                            this.#setAdFrequencyFailure(adType)
+                            this._setAdFailedState(adType === 'rewarded')
                             return
                         }
                         if (adType === 'interstitial') {
@@ -447,18 +443,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     // advertisement
     showInterstitial(): void {
-        if (Date.now() < (this.#adRetryAt.get('interstitial') ?? 0)) {
-            this.#setAdFrequencyFailure('interstitial')
-            return
-        }
         (this._platformSdk as PlaygamaSdk).advService.showInterstitial()
     }
 
     showRewarded(): void {
-        if (Date.now() < (this.#adRetryAt.get('rewarded') ?? 0)) {
-            this.#setAdFrequencyFailure('rewarded')
-            return
-        }
         (this._platformSdk as PlaygamaSdk).advService.showRewarded()
     }
 
@@ -693,15 +681,6 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             multiplayerService.setCurrentRoom(room)
         } catch {
             // the room status is informational for the portal
-        }
-    }
-
-    // Frequency rejection must not open the configurable no-fill popup or simulate a close.
-    #setAdFrequencyFailure(adType: AdType): void {
-        if (adType === 'interstitial') {
-            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-        } else {
-            this._setRewardedState(REWARDED_STATE.FAILED)
         }
     }
 

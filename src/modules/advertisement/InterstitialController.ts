@@ -19,7 +19,7 @@ import eventBus from '../../lib/EventBus'
 import Timer, { STATE as TIMER_STATE } from '../../lib/Timer'
 import bridgeConfig from '../../lib/bridge-config'
 import { EVENT_NAME, MODULE_NAME } from '../../constants'
-import { PLATFORM_ID, PLATFORM_MESSAGE } from '../platform/constants'
+import { PLATFORM_MESSAGE } from '../platform/constants'
 import {
     DEFAULT_MINIMUM_DELAY_BETWEEN_INTERSTITIAL,
     INTERSTITIAL_STATE,
@@ -131,12 +131,15 @@ class InterstitialController {
             return
         }
 
+        if (this.#initTime === null) {
+            this.#setState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
+
         const initialDelay = this.#getInitialDelay()
-        if (initialDelay > 0) {
-            if (this.#initTime === null || (Date.now() - this.#initTime) / 1000 < initialDelay) {
-                this.#setState(INTERSTITIAL_STATE.FAILED)
-                return
-            }
+        if (initialDelay > 0 && (Date.now() - this.#initTime) / 1000 < initialDelay) {
+            this.#setState(INTERSTITIAL_STATE.FAILED)
+            return
         }
 
         if (this.#bridge.isMinimumDelayBetweenInterstitialEnabled) {
@@ -210,8 +213,7 @@ class InterstitialController {
     }
 
     #getInitialDelay(): number {
-        // The Playgama portal owns frequency rules, including project timer overrides.
-        if (this.#bridge.platformId === PLATFORM_ID.PLAYGAMA) {
+        if (!this.#bridge.isInitialInterstitialDelayEnabled) {
             return 0
         }
 

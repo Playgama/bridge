@@ -35,15 +35,6 @@ async function createInitializedBridge(bridge = new PlaygamaPlatformBridge()) {
     return { bridge, sdk }
 }
 
-class AdTestBridge extends PlaygamaPlatformBridge {
-    readonly popup = vi.fn()
-
-    protected override _showAdFailurePopup(isRewarded: boolean): Promise<void> {
-        this.popup(isRewarded)
-        return Promise.resolve()
-    }
-}
-
 describe('Playgama ad frequency compatibility', () => {
     beforeEach(() => {
         vi.restoreAllMocks()
@@ -63,13 +54,23 @@ describe('Playgama ad frequency compatibility', () => {
             vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({ advertisement })
             const { bridge, sdk } = await createInitializedBridge()
             const timerCount = vi.getTimerCount()
-            const controller = new InterstitialController(bridge as unknown as AdvertisementBridgeContract, { send: vi.fn() }, vi.fn())
+            const controller = new InterstitialController(
+                bridge as unknown as AdvertisementBridgeContract,
+                { send: vi.fn() },
+                vi.fn(),
+            )
             controller.setMinimumDelay(240)
+            controller.show()
+            expect(sdk.advService.showInterstitial).not.toHaveBeenCalled()
+            expect(controller.state).toBe(INTERSTITIAL_STATE.FAILED)
+
+            eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
             controller.show()
             expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
 
             sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]('interstitial', 'close')
             controller.setMinimumDelay(300)
+            vi.setSystemTime(new Date('2026-10-21T09:00:00Z'))
             controller.show()
             expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
             expect(vi.getTimerCount()).toBe(timerCount)
@@ -82,7 +83,11 @@ describe('Playgama ad frequency compatibility', () => {
             vi.spyOn(bridgeConfig, 'getValues').mockReturnValue(config)
             const bridge = new Bridge()
             const show = vi.spyOn(bridge, 'showInterstitial').mockImplementation(() => {})
-            const controller = new InterstitialController(bridge as unknown as AdvertisementBridgeContract, { send: vi.fn() }, vi.fn())
+            const controller = new InterstitialController(
+                bridge as unknown as AdvertisementBridgeContract,
+                { send: vi.fn() },
+                vi.fn(),
+            )
             expect(bridge.initialInterstitialDelay).toBe(30)
             expect(bridge.isMinimumDelayBetweenInterstitialEnabled).toBe(true)
             eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
@@ -107,6 +112,7 @@ describe('Playgama ad frequency compatibility', () => {
     test('portal still prevents concurrent ads', async () => {
         const { bridge, sdk } = await createInitializedBridge()
         const advertisement = new AdvertisementModule().initialize(bridge as unknown as AdvertisementBridgeContract)
+        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
         advertisement.showInterstitial()
         advertisement.showInterstitial()
         advertisement.showRewarded()
@@ -118,7 +124,10 @@ describe('Playgama ad frequency compatibility', () => {
         [true, false].map((useAdvertisementErrorPopup) => ({ reason, useAdvertisementErrorPopup }))
     )))('fails $reason without a popup (popup=$useAdvertisementErrorPopup)', async ({ reason, useAdvertisementErrorPopup }) => {
         vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({ advertisement: { useAdvertisementErrorPopup } })
-        const bridge = new AdTestBridge()
+        const bridge = new PlaygamaPlatformBridge()
+        const popup = vi.spyOn(bridge as unknown as {
+            _showAdFailurePopup(isRewarded: boolean): Promise<void>
+        }, '_showAdFailurePopup').mockResolvedValue()
         const { sdk } = await createInitializedBridge(bridge)
         const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
         const interstitial = vi.fn()
@@ -131,59 +140,72 @@ describe('Playgama ad frequency compatibility', () => {
 
         expect(interstitial).toHaveBeenCalledWith(INTERSTITIAL_STATE.FAILED)
         expect(rewarded).toHaveBeenCalledWith(REWARDED_STATE.FAILED)
-        expect(bridge.popup).not.toHaveBeenCalled()
+        expect(popup).not.toHaveBeenCalled()
     })
 
-    test.each(['interstitial', 'rewarded'] as const)('honours %s retry time without extending it', async (adType) => {
+    test.each(['interstitial', 'rewarded'] as const)(
+        'forwards every %s request after a frequency rejection', async (adType) => {
+            const { bridge, sdk } = await createInitializedBridge()
+            const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
+            const show = adType === 'interstitial' ? () => bridge.showInterstitial() : () => bridge.showRewarded()
+            const sdkShow = adType === 'interstitial' ? sdk.advService.showInterstitial : sdk.advService.showRewarded
+            const failed = vi.fn()
+            bridge.on(
+                adType === 'interstitial' ? EVENT_NAME.INTERSTITIAL_STATE_CHANGED : EVENT_NAME.REWARDED_STATE_CHANGED,
+                failed,
+            )
+            listener(adType, 'error', { reason: 'cooldown', retryAfterMs: 40000 })
+
+            show()
+            vi.advanceTimersByTime(1000)
+            show()
+            // A wall-clock adjustment must not create or extend a local retry block.
+            vi.setSystemTime(new Date('2026-10-21T09:00:00Z'))
+            show()
+            expect(sdkShow).toHaveBeenCalledTimes(3)
+            expect(failed).toHaveBeenCalledTimes(1)
+        },
+    )
+
+    test('portal can allow the next request before its previous retry interval expires', async () => {
         const { bridge, sdk } = await createInitializedBridge()
+        const advertisement = new AdvertisementModule().initialize(bridge as unknown as AdvertisementBridgeContract)
         const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
-        const show = adType === 'interstitial' ? () => bridge.showInterstitial() : () => bridge.showRewarded()
-        const sdkShow = adType === 'interstitial' ? sdk.advService.showInterstitial : sdk.advService.showRewarded
-        const failed = vi.fn()
-        bridge.on(adType === 'interstitial' ? EVENT_NAME.INTERSTITIAL_STATE_CHANGED : EVENT_NAME.REWARDED_STATE_CHANGED, failed)
-        listener(adType, 'error', { reason: 'cooldown', retryAfterMs: 40000 })
+        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
+        advertisement.showInterstitial()
+        listener('interstitial', 'error', { reason: 'cooldown', retryAfterMs: 40000 })
 
-        vi.advanceTimersByTime(20000)
-        show()
-        vi.advanceTimersByTime(19999)
-        show()
-        expect(sdkShow).not.toHaveBeenCalled()
-        expect(failed).toHaveBeenCalledTimes(3)
-
-        vi.advanceTimersByTime(1)
-        show()
-        expect(sdkShow).toHaveBeenCalledTimes(1)
-    })
-
-    test('keeps ad-type retry intervals independent', async () => {
-        const { bridge, sdk } = await createInitializedBridge()
-        const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
-        listener('interstitial', 'error', { reason: 'initial_delay', retryAfterMs: 40000 })
-        bridge.showInterstitial()
-        bridge.showRewarded()
-        expect(sdk.advService.showInterstitial).not.toHaveBeenCalled()
-        expect(sdk.advService.showRewarded).toHaveBeenCalledTimes(1)
+        advertisement.showInterstitial()
+        listener('interstitial', 'open')
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
+        expect(advertisement.interstitialState).toBe(INTERSTITIAL_STATE.OPENED)
     })
 
     test.each([undefined, -1, NaN, Infinity, 0])('invalid or zero retry %s does not block another request', async (retryAfterMs) => {
-        const bridge = new AdTestBridge()
+        const bridge = new PlaygamaPlatformBridge()
+        const popup = vi.spyOn(bridge as unknown as {
+            _showAdFailurePopup(isRewarded: boolean): Promise<void>
+        }, '_showAdFailurePopup').mockResolvedValue()
         const { sdk } = await createInitializedBridge(bridge)
         const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
         listener('interstitial', 'error', { reason: 'portal_rule', retryAfterMs })
         bridge.showInterstitial()
         expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
-        expect(bridge.popup).not.toHaveBeenCalled()
+        expect(popup).not.toHaveBeenCalled()
     })
 
     test('preserves legacy errors and no-fill popup handling', async () => {
-        const bridge = new AdTestBridge()
+        const bridge = new PlaygamaPlatformBridge()
+        const popup = vi.spyOn(bridge as unknown as {
+            _showAdFailurePopup(isRewarded: boolean): Promise<void>
+        }, '_showAdFailurePopup').mockResolvedValue()
         const { sdk } = await createInitializedBridge(bridge)
         const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
         listener('interstitial', 'error')
         listener('rewarded', 'empty')
         listener('rewarded', 'error', { reason: 'no_fill' })
         listener('interstitial', 'error', { reason: 'unknown', retryAfterMs: 40000 })
-        expect(bridge.popup.mock.calls).toEqual([[false], [true], [true], [false]])
+        expect(popup.mock.calls).toEqual([[false], [true], [true], [false]])
         bridge.showInterstitial()
         expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
     })

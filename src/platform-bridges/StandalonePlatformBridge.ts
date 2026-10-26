@@ -34,6 +34,14 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
         return 'PLAYGAMA_WRAP'
     }
 
+    get isMinimumDelayBetweenInterstitialEnabled(): boolean {
+        return true
+    }
+
+    get isInitialInterstitialDelayEnabled(): boolean {
+        return true
+    }
+
     get isPlatformExternalLinksAllowed(): boolean {
         return true
     }
