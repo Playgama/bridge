@@ -68,6 +68,10 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
         return Promise.resolve(updatedProducts)
     }
 
+    protected _configureAdFrequency(): Promise<void> {
+        return Promise.resolve()
+    }
+
     #resolveProductPrice(product: AnyRecord): { price: number | null; currency: string } {
         const price = this.#parsePrice(product.amount)
         if (price !== null) {

@@ -21,16 +21,20 @@ vi.mock('../../../src/utils', async (importOriginal) => ({
 
 type AdStateHandler = Parameters<NonNullable<Window['PLAYGAMA_SDK']>['advService']['subscribeToAdStateChanges']>[0]
 
-async function createInitializedBridge(bridge = new PlaygamaPlatformBridge()) {
+async function createInitializedBridge(
+    bridge = new PlaygamaPlatformBridge(),
+    configureAdFrequency: (() => Promise<boolean>) | null = vi.fn().mockResolvedValue(true),
+) {
     const sdk = {
         platformService: { getLanguage: () => 'en' },
         advService: {
+            configureAdFrequency: configureAdFrequency ?? undefined,
             subscribeToAdStateChanges: vi.fn((callback: AdStateHandler) => callback),
             showInterstitial: vi.fn(),
             showRewarded: vi.fn(),
         },
     }
-    Object.assign(window, { PLAYGAMA_SDK: sdk })
+    Object.assign(window, { [bridge.sdkGlobalName]: sdk })
     await bridge.initialize()
     return { bridge, sdk }
 }
@@ -47,6 +51,8 @@ describe('Playgama ad frequency compatibility', () => {
         vi.clearAllTimers()
         vi.useRealTimers()
         delete window.PLAYGAMA_SDK
+        Reflect.deleteProperty(window, 'PLAYGAMA_WRAP')
+        document.getElementById('bridge-ad-failure-popup')?.remove()
     })
 
     test.each([undefined, { initialInterstitialDelay: 120, minimumDelayBetweenInterstitial: 180 }])(
@@ -74,6 +80,55 @@ describe('Playgama ad frequency compatibility', () => {
             controller.show()
             expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
             expect(vi.getTimerCount()).toBe(timerCount)
+        },
+    )
+
+    test.each([
+        { name: 'old SDK without negotiation', negotiate: null },
+        { name: 'old host without support', negotiate: vi.fn().mockResolvedValue(false) },
+        { name: 'request timeout', negotiate: vi.fn().mockRejectedValue(new Error('Timeout')) },
+    ])('keeps local timers for $name', async ({ negotiate }) => {
+        vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({})
+        const { bridge, sdk } = await createInitializedBridge(new PlaygamaPlatformBridge(), negotiate)
+        expect(bridge.isInitialInterstitialDelayEnabled).toBe(true)
+        expect(bridge.isMinimumDelayBetweenInterstitialEnabled).toBe(true)
+        const controller = new InterstitialController(
+            bridge as unknown as AdvertisementBridgeContract, { send: vi.fn() }, vi.fn(),
+        )
+        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
+        controller.show()
+        expect(sdk.advService.showInterstitial).not.toHaveBeenCalled()
+        vi.advanceTimersByTime(30_000)
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+        sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]('interstitial', 'close')
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+        vi.advanceTimersByTime(60_000)
+        controller.show()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
+    })
+
+    test('keeps timers enabled until the host confirms frequency error support', async () => {
+        let acknowledge!: (supported: boolean) => void
+        const response = new Promise<boolean>((resolve) => { acknowledge = resolve })
+        const bridge = new PlaygamaPlatformBridge()
+        const initialized = createInitializedBridge(bridge, () => response)
+        expect(bridge.isInitialInterstitialDelayEnabled).toBe(true)
+        expect(bridge.isMinimumDelayBetweenInterstitialEnabled).toBe(true)
+        acknowledge(true)
+        await initialized
+        expect(bridge.isInitialInterstitialDelayEnabled).toBe(false)
+        expect(bridge.isMinimumDelayBetweenInterstitialEnabled).toBe(false)
+    })
+
+    test.each([StandalonePlatformBridge, PlaygamaSandboxPlatformBridge])(
+        '%s does not negotiate portal frequency control', async (Bridge) => {
+            const negotiate = vi.fn().mockResolvedValue(true)
+            const { bridge } = await createInitializedBridge(new Bridge(), negotiate)
+            expect(negotiate).not.toHaveBeenCalled()
+            expect(bridge.isInitialInterstitialDelayEnabled).toBe(true)
+            expect(bridge.isMinimumDelayBetweenInterstitialEnabled).toBe(true)
         },
     )
 
@@ -208,6 +263,53 @@ describe('Playgama ad frequency compatibility', () => {
         expect(popup.mock.calls).toEqual([[false], [true], [true], [false]])
         bridge.showInterstitial()
         expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+    })
+
+    test.each(['interstitial', 'rewarded'] as const)(
+        '%s failure without metadata releases the controller and permits another request', async (adType) => {
+            vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({
+                advertisement: { useAdvertisementErrorPopup: false },
+            })
+            const { bridge, sdk } = await createInitializedBridge()
+            const advertisement = new AdvertisementModule().initialize(bridge as unknown as AdvertisementBridgeContract)
+            const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
+            const states = vi.fn()
+            const event = adType === 'interstitial'
+                ? EVENT_NAME.INTERSTITIAL_STATE_CHANGED : EVENT_NAME.REWARDED_STATE_CHANGED
+            bridge.on(event, states)
+            eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
+            const show = () => {
+                if (adType === 'interstitial') advertisement.showInterstitial()
+                else advertisement.showRewarded()
+            }
+
+            show()
+            listener(adType, 'error')
+            expect(states.mock.calls).toEqual([['failed']])
+            expect(bridge.isPlatformPaused).toBe(false)
+            show()
+            const sdkShow = adType === 'interstitial' ? sdk.advService.showInterstitial : sdk.advService.showRewarded
+            expect(sdkShow).toHaveBeenCalledTimes(2)
+        },
+    )
+
+    test('legacy error popup releases pause after the player closes it', async () => {
+        vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({
+            advertisement: { useAdvertisementErrorPopup: true },
+        })
+        const { bridge, sdk } = await createInitializedBridge()
+        const listener = sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]
+        const states = vi.fn()
+        bridge.on(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, states)
+
+        // An old SDK drops frequency metadata, so Bridge must use its legacy error path.
+        listener('interstitial', 'error')
+        expect(document.getElementById('bridge-ad-failure-popup')?.style.display).toBe('grid')
+        expect(bridge.isPlatformPaused).toBe(true)
+        document.getElementById('bridge-ad-failure-popup-close')?.click()
+        await Promise.resolve()
+        expect(states.mock.calls).toEqual([['opened'], ['failed']])
+        expect(bridge.isPlatformPaused).toBe(false)
     })
 
     test('preserves legacy show, reward and close events without metadata', async () => {
