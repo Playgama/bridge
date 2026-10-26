@@ -17,6 +17,9 @@
 
 import type { AnyRecord } from '../../utils'
 import type { MultiplayerTarget, MultiplayerType } from './constants'
+import type { MultiplayerSyncOptions } from './transport/types'
+
+export type { MultiplayerSyncOptions } from './transport/types'
 
 export interface MultiplayerConfig {
     // Multiplayer API root, the Playgama production one by default,
@@ -86,7 +89,8 @@ export interface RoomTypeOptions {
     type?: MultiplayerType
 }
 
-export interface CreateRoomOptions extends PlayerOptions, RoomTypeOptions {
+export interface CreateRoomOptions<T extends object = object> extends PlayerOptions, RoomTypeOptions {
+    syncState?: MultiplayerSyncOptions<T>
     maxPlayers?: number
     // Listed and matched to other players. False by default: the room is joined by code.
     isVisible?: boolean
@@ -96,9 +100,12 @@ export interface CreateRoomOptions extends PlayerOptions, RoomTypeOptions {
     properties?: MultiplayerProperties
 }
 
-export interface JoinRoomOptions extends PlayerOptions, RoomTypeOptions {}
+export interface JoinRoomOptions<T extends object = object> extends PlayerOptions, RoomTypeOptions {
+    syncState?: MultiplayerSyncOptions<T>
+}
 
-export interface JoinOrCreateRoomOptions extends PlayerOptions, RoomTypeOptions {
+export interface JoinOrCreateRoomOptions<T extends object = object> extends PlayerOptions, RoomTypeOptions {
+    syncState?: MultiplayerSyncOptions<T>
     // Players are matched only into rooms of the same size.
     maxPlayers?: number
     // Players are matched only into rooms with the same filter, e.g. { mode: 'duel' }.

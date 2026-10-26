@@ -133,7 +133,9 @@ export default class NativeConnection {
                 break
             }
             case ROOM_FRAME.ERROR:
-                this.fail(Number(decodeMsgpack(data, 1).value))
+                // Known terminal codes use Colyseus schema uint16 (little-endian), not MessagePack.
+                this.fail(data[1] === 0xcd && data.length >= 4
+                    ? new DataView(data.buffer, data.byteOffset, data.byteLength).getUint16(2, true) : NaN)
                 break
             case ROOM_FRAME.LEAVE_ROOM:
                 // The server asks to leave: confirm, then it closes the socket

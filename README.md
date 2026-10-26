@@ -53,6 +53,34 @@ bridge.initialize()
 
 Full API — ads, saves, payments, leaderboards and more: [wiki.playgama.com](https://wiki.playgama.com/playgama/bridge-sdk/api?utm_source=github&utm_medium=bridge).
 
+### Multiplayer state synchronization
+
+Pass `syncState` when creating, joining or matchmaking into a room to use the
+existing snapshot and host recovery mechanism for your game state:
+
+```javascript
+let world = { score: 0, ball: { x: 0, y: 0 } }
+const syncState = {
+    getState: () => world,
+    applyState: state => { world = state },
+    updatesPerSecond: 5,
+}
+
+const code = await bridge.multiplayer.createRoom({ syncState })
+// On another player: await bridge.multiplayer.joinRoom(code, { syncState })
+// For matchmaking: await bridge.multiplayer.joinOrCreateRoom({ syncState })
+```
+
+Every player in the game must supply compatible callbacks on each room entry.
+They run synchronously and may run before the entry promise resolves. Return a
+JSON-serializable object from `getState`; do not guard it with `isHost`, because
+the first snapshot is captured while the host role is still being prepared.
+`applyState` restores received or retained state, including during host recovery.
+`updatesPerSecond` accepts 1–10 (default 10). Without `syncState`, the existing
+empty-state synchronization for host election remains unchanged; it does not
+preserve your game world. Mixing the two modes can replace the world with an
+empty snapshot when a player without callbacks becomes host.
+
 ## Developer tools
 
 ### Bridge DevTools for Chrome
