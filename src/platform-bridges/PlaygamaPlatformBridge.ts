@@ -189,6 +189,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isMinimumDelayBetweenInterstitialEnabled(): boolean {
+        return this.platformId !== PLATFORM_ID.PLAYGAMA
+    }
+
+    get initialInterstitialDelay(): number {
+        return this.platformId === PLATFORM_ID.PLAYGAMA ? 0 : super.initialInterstitialDelay
+    }
+
     get isRewardedSupported(): boolean {
         return true
     }

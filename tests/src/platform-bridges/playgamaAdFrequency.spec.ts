@@ -2,6 +2,13 @@ import {
     describe, test, expect, vi, beforeEach, afterEach,
 } from 'vitest'
 import PlaygamaPlatformBridge from '../../../src/platform-bridges/PlaygamaPlatformBridge'
+import StandalonePlatformBridge from '../../../src/platform-bridges/StandalonePlatformBridge'
+import PlaygamaSandboxPlatformBridge from '../../../src/platform-bridges/PlaygamaSandboxPlatformBridge'
+import InterstitialController from '../../../src/modules/advertisement/InterstitialController'
+import AdvertisementModule from '../../../src/modules/advertisement/AdvertisementModule'
+import type { AdvertisementBridgeContract } from '../../../src/modules/advertisement/types'
+import eventBus from '../../../src/lib/EventBus'
+import { PLATFORM_MESSAGE } from '../../../src/modules/platform/constants'
 import bridgeConfig from '../../../src/lib/bridge-config'
 import { EVENT_NAME } from '../../../src/constants'
 import { INTERSTITIAL_STATE, REWARDED_STATE } from '../../../src/modules/advertisement/constants'
@@ -45,8 +52,66 @@ describe('Playgama ad frequency compatibility', () => {
     })
 
     afterEach(() => {
+        eventBus.off(EVENT_NAME.PLATFORM_MESSAGE_SENT)
+        vi.clearAllTimers()
         vi.useRealTimers()
         delete window.PLAYGAMA_SDK
+    })
+
+    test.each([undefined, { initialInterstitialDelay: 120, minimumDelayBetweenInterstitial: 180 }])(
+        'portal skips local timers even with project overrides: %j', async (advertisement) => {
+            vi.spyOn(bridgeConfig, 'getValues').mockReturnValue({ advertisement })
+            const { bridge, sdk } = await createInitializedBridge()
+            const timerCount = vi.getTimerCount()
+            const controller = new InterstitialController(bridge as unknown as AdvertisementBridgeContract, { send: vi.fn() }, vi.fn())
+            controller.setMinimumDelay(240)
+            controller.show()
+            expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+
+            sdk.advService.subscribeToAdStateChanges.mock.calls[0][0]('interstitial', 'close')
+            controller.setMinimumDelay(300)
+            controller.show()
+            expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(2)
+            expect(vi.getTimerCount()).toBe(timerCount)
+        },
+    )
+
+    test.each([StandalonePlatformBridge, PlaygamaSandboxPlatformBridge])(
+        '%s retains initial delay, cooldown and project overrides', (Bridge) => {
+            const config = { advertisement: { initialInterstitialDelay: 120, minimumDelayBetweenInterstitial: 180 } }
+            vi.spyOn(bridgeConfig, 'getValues').mockReturnValue(config)
+            const bridge = new Bridge()
+            const show = vi.spyOn(bridge, 'showInterstitial').mockImplementation(() => {})
+            const controller = new InterstitialController(bridge as unknown as AdvertisementBridgeContract, { send: vi.fn() }, vi.fn())
+            expect(bridge.initialInterstitialDelay).toBe(30)
+            expect(bridge.isMinimumDelayBetweenInterstitialEnabled).toBe(true)
+            eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, PLATFORM_MESSAGE.GAME_READY)
+            vi.advanceTimersByTime(30000)
+            controller.show()
+            expect(show).not.toHaveBeenCalled()
+            vi.advanceTimersByTime(90000)
+            controller.show()
+            expect(show).toHaveBeenCalledTimes(1)
+
+            bridge.emit(EVENT_NAME.INTERSTITIAL_STATE_CHANGED, INTERSTITIAL_STATE.CLOSED)
+            controller.setMinimumDelay(0)
+            vi.advanceTimersByTime(60000)
+            controller.show()
+            expect(show).toHaveBeenCalledTimes(1)
+            vi.advanceTimersByTime(120000)
+            controller.show()
+            expect(show).toHaveBeenCalledTimes(2)
+        },
+    )
+
+    test('portal still prevents concurrent ads', async () => {
+        const { bridge, sdk } = await createInitializedBridge()
+        const advertisement = new AdvertisementModule().initialize(bridge as unknown as AdvertisementBridgeContract)
+        advertisement.showInterstitial()
+        advertisement.showInterstitial()
+        advertisement.showRewarded()
+        expect(sdk.advService.showInterstitial).toHaveBeenCalledTimes(1)
+        expect(sdk.advService.showRewarded).not.toHaveBeenCalled()
     })
 
     test.each(['initial_delay', 'cooldown', 'portal_rule'].flatMap((reason) => (
