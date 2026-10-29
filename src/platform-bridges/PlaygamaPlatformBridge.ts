@@ -31,8 +31,15 @@ import {
 import type { WriteBatch } from '../modules/storage/types'
 import type { PostLaunchOptions } from '../modules/social/types'
 
+const AD_FREQUENCY_REASONS = new Set(['initial_delay', 'cooldown', 'portal_rule'])
+
 type AdType = 'interstitial' | 'rewarded'
 type AdState = 'open' | 'empty' | 'rewarded' | 'close' | 'error' | string
+
+type AdResponseDetails = {
+    reason?: string
+    retryAfterMs?: number
+}
 
 interface PlaygamaPlayer {
     isAuthorized: boolean
@@ -94,7 +101,10 @@ interface PlaygamaSdk {
         getPayload?: () => string | null
     }
     advService: {
-        subscribeToAdStateChanges(callback: (adType: AdType, state: AdState) => void): void
+        configureAdFrequency?: () => Promise<boolean>
+        subscribeToAdStateChanges(
+            callback: (adType: AdType, state: AdState, details?: AdResponseDetails) => void,
+        ): void
         showInterstitial(): void
         showRewarded(): void
         showAdvancedBanners(banners: unknown): Promise<unknown>
@@ -182,6 +192,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isMinimumDelayBetweenInterstitialEnabled(): boolean {
+        return !this.#isAdFrequencyManagedByHost
+    }
+
+    get isInitialInterstitialDelayEnabled(): boolean {
+        return !this.#isAdFrequencyManagedByHost
+    }
+
     get isRewardedSupported(): boolean {
         return true
     }
@@ -265,6 +283,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     protected _isAdvancedBannersSupported = true
 
+    #isAdFrequencyManagedByHost = false
+
     #isPaymentsSupported = true
 
     #isCloudSaveSupported = true
@@ -285,8 +305,17 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             addJavaScript(this.sdkUrl).then(() => {
                 waitFor(this.sdkGlobalName).then(() => {
                     const globalScope = window as unknown as Record<string, unknown>
-                    this._platformSdk = globalScope[this.sdkGlobalName] as PlaygamaSdk;
-                    (this._platformSdk as PlaygamaSdk).advService.subscribeToAdStateChanges((adType, state) => {
+                    const sdk = globalScope[this.sdkGlobalName] as PlaygamaSdk
+                    this._platformSdk = sdk
+                    sdk.advService.subscribeToAdStateChanges((adType, state, details) => {
+                        if (
+                            state === 'error'
+                            && (adType === 'interstitial' || adType === 'rewarded')
+                            && AD_FREQUENCY_REASONS.has(details?.reason ?? '')
+                        ) {
+                            this._setAdFailedState(adType === 'rewarded')
+                            return
+                        }
                         if (adType === 'interstitial') {
                             switch (state) {
                                 case 'open': {
@@ -338,9 +367,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    const sdk = this._platformSdk as PlaygamaSdk
                     const platformReadyPromise = sdk.platformService?.isReady ?? Promise.resolve()
                     platformReadyPromise
+                        .then(() => this._configureAdFrequency())
                         .then(() => {
                             this.#resolveSupportedFeatures()
 
@@ -369,7 +398,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 return Promise.resolve()
             }
             default: {
-                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(String(message), (options ?? {}) as AnyRecord)
+                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(
+                    String(message),
+                    (options ?? {}) as AnyRecord,
+                )
                 return super.sendMessage(message, options)
             }
         }
@@ -653,6 +685,15 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             multiplayerService.setCurrentRoom(room)
         } catch {
             // the room status is informational for the portal
+        }
+    }
+
+    protected async _configureAdFrequency(): Promise<void> {
+        try {
+            const sdk = this._platformSdk as PlaygamaSdk
+            this.#isAdFrequencyManagedByHost = await sdk.advService.configureAdFrequency?.() === true
+        } catch {
+            this.#isAdFrequencyManagedByHost = false
         }
     }
 

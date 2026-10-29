@@ -193,6 +193,10 @@ class PlatformBridgeBase {
         return true
     }
 
+    get isInitialInterstitialDelayEnabled(): boolean {
+        return true
+    }
+
     get initialInterstitialDelay(): number {
         return 30
     }
@@ -711,16 +715,19 @@ class PlatformBridgeBase {
         return Promise.resolve()
     }
 
+    protected _setAdFailedState(isRewarded: boolean): void {
+        if (isRewarded) {
+            this._setRewardedState(REWARDED_STATE.FAILED)
+        } else {
+            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+        }
+    }
+
     protected _showAdFailurePopup(isRewarded: boolean): Promise<void> {
         const showPopup = this._options?.advertisement?.useAdvertisementErrorPopup ?? this._useAdvertisementErrorPopup
 
         if (!showPopup) {
-            if (isRewarded) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            }
-
+            this._setAdFailedState(isRewarded)
             return Promise.resolve()
         }
 

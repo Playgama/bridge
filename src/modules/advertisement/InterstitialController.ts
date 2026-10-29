@@ -131,12 +131,15 @@ class InterstitialController {
             return
         }
 
+        if (this.#initTime === null) {
+            this.#setState(INTERSTITIAL_STATE.FAILED)
+            return
+        }
+
         const initialDelay = this.#getInitialDelay()
-        if (initialDelay > 0) {
-            if (this.#initTime === null || (Date.now() - this.#initTime) / 1000 < initialDelay) {
-                this.#setState(INTERSTITIAL_STATE.FAILED)
-                return
-            }
+        if (initialDelay > 0 && (Date.now() - this.#initTime) / 1000 < initialDelay) {
+            this.#setState(INTERSTITIAL_STATE.FAILED)
+            return
         }
 
         if (this.#bridge.isMinimumDelayBetweenInterstitialEnabled) {
@@ -210,6 +213,10 @@ class InterstitialController {
     }
 
     #getInitialDelay(): number {
+        if (!this.#bridge.isInitialInterstitialDelayEnabled) {
+            return 0
+        }
+
         const configDelay = bridgeConfig.getValues().advertisement?.initialInterstitialDelay
         const delay = parseDelay(configDelay)
         if (delay !== null) {
