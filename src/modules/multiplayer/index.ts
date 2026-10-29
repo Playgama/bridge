@@ -27,6 +27,7 @@ export type {
     MultiplayerMessage,
     MultiplayerSendOptions,
     MultiplayerSyncOptions,
+    MultiplayerSyncStateOption,
     CreateRoomOptions,
     JoinRoomOptions,
     JoinOrCreateRoomOptions,

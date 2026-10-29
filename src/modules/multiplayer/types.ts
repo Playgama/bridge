@@ -21,6 +21,13 @@ import type { MultiplayerSyncOptions } from './transport/types'
 
 export type { MultiplayerSyncOptions } from './transport/types'
 
+// syncState without callbacks: Bridge sends the world set with setSyncState() and reports
+// received worlds with the MULTIPLAYER_SYNC_STATE_RECEIVED event. True takes the default rate.
+export type MultiplayerSyncStateOption<T extends object = object> =
+    | MultiplayerSyncOptions<T>
+    | { updatesPerSecond?: number }
+    | boolean
+
 export interface MultiplayerConfig {
     // Multiplayer API root, the Playgama production one by default,
     // e.g. https://staging.playgama.com/api/bridge/v1/relay for staging.
@@ -90,7 +97,7 @@ export interface RoomTypeOptions {
 }
 
 export interface CreateRoomOptions<T extends object = object> extends PlayerOptions, RoomTypeOptions {
-    syncState?: MultiplayerSyncOptions<T>
+    syncState?: MultiplayerSyncStateOption<T>
     maxPlayers?: number
     // Listed and matched to other players. False by default: the room is joined by code.
     isVisible?: boolean
@@ -101,11 +108,11 @@ export interface CreateRoomOptions<T extends object = object> extends PlayerOpti
 }
 
 export interface JoinRoomOptions<T extends object = object> extends PlayerOptions, RoomTypeOptions {
-    syncState?: MultiplayerSyncOptions<T>
+    syncState?: MultiplayerSyncStateOption<T>
 }
 
 export interface JoinOrCreateRoomOptions<T extends object = object> extends PlayerOptions, RoomTypeOptions {
-    syncState?: MultiplayerSyncOptions<T>
+    syncState?: MultiplayerSyncStateOption<T>
     // Players are matched only into rooms of the same size.
     maxPlayers?: number
     // Players are matched only into rooms with the same filter, e.g. { mode: 'duel' }.

@@ -47,4 +47,4 @@ export const LOGGER_IGNORED_MODULE_METHODS: readonly string[] = ['on', 'off', 'o
 export const LOGGER_IGNORED_SCOPED_METHODS: readonly string[] = ['multiplayer.send']
 
 // High-frequency events excluded from event bus logging.
-export const LOGGER_IGNORED_EVENTS: readonly string[] = ['multiplayer_message_received']
+export const LOGGER_IGNORED_EVENTS: readonly string[] = ['multiplayer_message_received', 'multiplayer_sync_state_received']

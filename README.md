@@ -81,6 +81,17 @@ empty-state synchronization for host election remains unchanged; it does not
 preserve your game world. Mixing the two modes can replace the world with an
 empty snapshot when a player without callbacks becomes host.
 
+Without callbacks (engine plugins use this mode), pass `syncState: true` or
+`{ updatesPerSecond }`, store the world with `setSyncState()` and take received
+worlds from the event; `syncState` returns the last one:
+
+```javascript
+bridge.multiplayer.setSyncState({ score: 0 })
+await bridge.multiplayer.createRoom({ syncState: true })
+
+bridge.multiplayer.on(bridge.EVENT_NAME.MULTIPLAYER_SYNC_STATE_RECEIVED, world => { })
+```
+
 ## Developer tools
 
 ### Bridge DevTools for Chrome

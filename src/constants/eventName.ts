@@ -41,5 +41,6 @@ export const EVENT_NAME = {
     MULTIPLAYER_PLAYER_UPDATED: 'multiplayer_player_updated',
     MULTIPLAYER_HOST_CHANGED: 'multiplayer_host_changed',
     MULTIPLAYER_MESSAGE_RECEIVED: 'multiplayer_message_received',
+    MULTIPLAYER_SYNC_STATE_RECEIVED: 'multiplayer_sync_state_received',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]

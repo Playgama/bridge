@@ -62,6 +62,7 @@ import type {
     MultiplayerRoomStatus,
     MultiplayerSendOptions,
     MultiplayerSyncOptions,
+    MultiplayerSyncStateOption,
     PlayerOptions,
     RoomInviteOptions,
 } from './types'
@@ -166,6 +167,11 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         return roomId ? String(roomId).trim().toUpperCase() : null
     }
 
+    // World of syncState without callbacks: the last one set with setSyncState() or received.
+    get syncState(): MultiplayerProperties {
+        return { ...this.#syncState }
+    }
+
     #state: MultiplayerState = MULTIPLAYER_STATE.DISCONNECTED
 
     #runtime: Promise<MultiplayerRuntime> | null = null
@@ -193,6 +199,8 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     #leaving: Promise<void> = Promise.resolve()
 
     #isLaunchRoomUsed = false
+
+    #syncState: JsonObject = {}
 
     // Resolves with the invite code. A hidden room (the default) is for friends:
     // only players the code was shared with can join.
@@ -366,9 +374,53 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         }
     }
 
+    // World for syncState without callbacks: the host sends the latest one. Works outside
+    // a room too, e.g. to set the starting world before createRoom().
+    setSyncState(state: MultiplayerProperties): void {
+        let world: unknown
+        try {
+            world = JSON.parse(JSON.stringify(state ?? {}))
+        } catch (error) {
+            logger.warn('[multiplayer] Sync state was not set: state is not JSON', error)
+            return
+        }
+
+        if (!world || typeof world !== 'object' || Array.isArray(world)) {
+            logger.warn('[multiplayer] Sync state was not set: state is not an object')
+            return
+        }
+
+        this.#syncState = world as JsonObject
+    }
+
+    // Callbacks as given, the stored world for true or { updatesPerSecond }, or an empty
+    // world without syncState: the server picks the host only among synced players.
+    #getSyncOptions<T extends object>(syncState?: MultiplayerSyncStateOption<T>): MultiplayerSyncOptions<T> {
+        if (!syncState) {
+            return {
+                getState: () => ({}) as T,
+                applyState: () => {},
+                updatesPerSecond: HOST_SYNC.UPDATES_PER_SECOND,
+            }
+        }
+
+        if (typeof syncState === 'object' && 'getState' in syncState) {
+            return syncState
+        }
+
+        return {
+            getState: () => this.#syncState as T,
+            applyState: (state) => {
+                this.#syncState = state as JsonObject
+                eventBus.emit(EVENT_NAME.MULTIPLAYER_SYNC_STATE_RECEIVED, { ...this.#syncState })
+            },
+            updatesPerSecond: syncState === true ? undefined : syncState.updatesPerSecond,
+        }
+    }
+
     async #enterRoom<T extends object>(
         enter: (runtime: MultiplayerRuntime) => Promise<RoomHandle>,
-        syncState?: MultiplayerSyncOptions<T>,
+        syncState?: MultiplayerSyncStateOption<T>,
     ): Promise<void> {
         if (!this.isSupported) {
             throw new BridgeError(ERROR_CODE.MULTIPLAYER_NOT_SUPPORTED)
@@ -385,15 +437,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             await this.#leaving
             const runtime = await this.#loadRuntime()
             handle = await enter(runtime)
-            if (syncState) {
-                handle.syncState(syncState)
-            } else {
-                handle.syncState({
-                    getState: () => ({}),
-                    applyState: () => {},
-                    updatesPerSecond: HOST_SYNC.UPDATES_PER_SECOND,
-                })
-            }
+            handle.syncState(this.#getSyncOptions(syncState))
             await this.#waitForHost(handle)
         } catch (error) {
             handle?.leave().catch(() => {})
@@ -475,6 +519,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         this.#hostId = null
         this.#isHost = false
         this.#roomSnapshot = null
+        this.#syncState = {}
         this.#setState(MULTIPLAYER_STATE.DISCONNECTED)
         this.#notifyRoomChanged()
         eventBus.emit(EVENT_NAME.MULTIPLAYER_ROOM_LEFT, reason)
