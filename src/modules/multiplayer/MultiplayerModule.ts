@@ -61,6 +61,7 @@ import type {
     MultiplayerRoomInvite,
     MultiplayerRoomStatus,
     MultiplayerSendOptions,
+    MultiplayerSyncOptions,
     PlayerOptions,
     RoomInviteOptions,
 } from './types'
@@ -195,7 +196,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     // Resolves with the invite code. A hidden room (the default) is for friends:
     // only players the code was shared with can join.
-    async createRoom(options: CreateRoomOptions = {}): Promise<string> {
+    async createRoom<T extends object = object>(options: CreateRoomOptions<T> = {}): Promise<string> {
         await this.#enterRoom((runtime) => runtime.createRoom({
             player: this.#getPlayer(options),
             maxPlayers: this.#getMaxPlayers(options.maxPlayers),
@@ -203,20 +204,22 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             isVisible: options.isVisible ?? false,
             filter: options.filter ?? {},
             properties: this.#getRoomProperties(options),
-        }))
+        }), options.syncState)
         return this.roomId ?? ''
     }
 
     // By the invite code, or by the id of a room from getRooms().
-    async joinRoom(roomId: string, options: JoinRoomOptions = {}): Promise<void> {
+    async joinRoom<T extends object = object>(roomId: string, options: JoinRoomOptions<T> = {}): Promise<void> {
         const id = String(roomId).trim()
         const code = id.toUpperCase()
         const player = this.#getPlayer(options)
 
         if (INVITE_CODE_PATTERN.test(code)) {
-            await this.#enterRoom((runtime) => runtime.joinRoom({ code, player }))
+            await this.#enterRoom((runtime) => runtime.joinRoom({ code, player }), options.syncState)
         } else if (ROOM_UUID_PATTERN.test(id)) {
-            await this.#enterRoom((runtime) => runtime.joinRoom({ roomId: id.toLowerCase(), player }))
+            await this.#enterRoom((runtime) => runtime.joinRoom({
+                roomId: id.toLowerCase(), player,
+            }), options.syncState)
         } else {
             throw new BridgeError(ERROR_CODE.MULTIPLAYER_ROOM_NOT_FOUND)
         }
@@ -224,13 +227,13 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     // Quick match: enters an open public room of the same size and filter, the
     // fullest first, or creates one. Resolves with the invite code.
-    async joinOrCreateRoom(options: JoinOrCreateRoomOptions = {}): Promise<string> {
+    async joinOrCreateRoom<T extends object = object>(options: JoinOrCreateRoomOptions<T> = {}): Promise<string> {
         await this.#enterRoom((runtime) => runtime.joinOrCreateRoom({
             player: this.#getPlayer(options),
             maxPlayers: this.#getMaxPlayers(options.maxPlayers),
             filter: options.filter ?? {},
             properties: this.#getRoomProperties(options),
-        }))
+        }), options.syncState)
         return this.roomId ?? ''
     }
 
@@ -363,7 +366,10 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         }
     }
 
-    async #enterRoom(enter: (runtime: MultiplayerRuntime) => Promise<RoomHandle>): Promise<void> {
+    async #enterRoom<T extends object>(
+        enter: (runtime: MultiplayerRuntime) => Promise<RoomHandle>,
+        syncState?: MultiplayerSyncOptions<T>,
+    ): Promise<void> {
         if (!this.isSupported) {
             throw new BridgeError(ERROR_CODE.MULTIPLAYER_NOT_SUPPORTED)
         }
@@ -379,11 +385,15 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             await this.#leaving
             const runtime = await this.#loadRuntime()
             handle = await enter(runtime)
-            handle.syncState({
-                getState: () => ({}),
-                applyState: () => {},
-                updatesPerSecond: HOST_SYNC.UPDATES_PER_SECOND,
-            })
+            if (syncState) {
+                handle.syncState(syncState)
+            } else {
+                handle.syncState({
+                    getState: () => ({}),
+                    applyState: () => {},
+                    updatesPerSecond: HOST_SYNC.UPDATES_PER_SECOND,
+                })
+            }
             await this.#waitForHost(handle)
         } catch (error) {
             handle?.leave().catch(() => {})
@@ -623,7 +633,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     // The filter is not part of the room data on the server: its values are copied into the properties,
     // so every player sees them.
-    #getRoomProperties(options: CreateRoomOptions | JoinOrCreateRoomOptions): JsonObject {
+    #getRoomProperties(options: Pick<CreateRoomOptions, 'properties' | 'filter'>): JsonObject {
         return { ...options.properties, ...options.filter } as JsonObject
     }
 
