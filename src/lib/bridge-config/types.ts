@@ -25,6 +25,9 @@ import type { LeaderboardMapping } from '../../modules/leaderboards'
 import type { SocialConfig } from '../../modules/social/types'
 import type { NotificationMapping } from '../../modules/notifications/types'
 import type { DeviceConfig } from '../../modules/device'
+import type { MultiplayerConfig } from '../../modules/multiplayer/types'
+import type { LoadingScreenType, LoadingLogoType } from '../loading-screen'
+import type { YoutubeSubscribeButtonType } from '../../platform-bridges/YoutubePlatformBridge'
 
 export interface SaasFeatureConfig {
     platforms?: string[]
@@ -68,9 +71,13 @@ export interface ConfigFileOptions extends AnyRecord {
     remoteConfigTimeout?: number
     remoteConfigTtl?: number
     sendAnalyticsEvents?: boolean
-    disableLoadingLogo?: boolean
-    showFullLoadingLogo?: boolean
+    loadingScreenType?: LoadingScreenType
+    loadingLogoType?: LoadingLogoType
     showLoadingText?: boolean
+    // Legacy, used only when loadingScreenType is not set: true = 'none'.
+    disableLoadingLogo?: boolean
+    // Legacy, used only when loadingLogoType is not set: false = 'medium', otherwise 'full'.
+    showFullLoadingLogo?: boolean
     loadingSound?: LoadingSoundConfig
     game?: GameConfig
     advertisement?: AdvertisementOptions
@@ -86,4 +93,10 @@ export interface ConfigFileOptions extends AnyRecord {
     saas?: SaasConfig
     payments?: Array<AnyRecord & { id: string }>
     videoPreviews?: VideoPreview[]
+    // YouTube only: the animated hint pointing at the channel subscribe button.
+    // Colors are any CSS colors; each type has its own defaults.
+    youtubeSubscribeButtonType?: YoutubeSubscribeButtonType
+    youtubeSubscribeButtonColor?: string
+    youtubeSubscribeButtonTextColor?: string
+    multiplayer?: MultiplayerConfig
 }

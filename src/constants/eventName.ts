@@ -33,5 +33,14 @@ export const EVENT_NAME = {
     DAILY_REWARDS_STREAK_RESET: 'daily_rewards_streak_reset',
     TASKS_REWARD_CLAIMED: 'tasks_reward_claimed',
     TASKS_PERIOD_ROLLED_OVER: 'tasks_period_rolled_over',
+    MULTIPLAYER_STATE_CHANGED: 'multiplayer_state_changed',
+    MULTIPLAYER_ROOM_LEFT: 'multiplayer_room_left',
+    MULTIPLAYER_ROOM_UPDATED: 'multiplayer_room_updated',
+    MULTIPLAYER_PLAYER_JOINED: 'multiplayer_player_joined',
+    MULTIPLAYER_PLAYER_LEFT: 'multiplayer_player_left',
+    MULTIPLAYER_PLAYER_UPDATED: 'multiplayer_player_updated',
+    MULTIPLAYER_HOST_CHANGED: 'multiplayer_host_changed',
+    MULTIPLAYER_MESSAGE_RECEIVED: 'multiplayer_message_received',
+    MULTIPLAYER_SYNC_STATE_RECEIVED: 'multiplayer_sync_state_received',
 } as const
 export type EventName = typeof EVENT_NAME[keyof typeof EVENT_NAME]

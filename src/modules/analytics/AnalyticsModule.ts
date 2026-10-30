@@ -114,7 +114,11 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
         this.#fetchTimeDiff()
         this.#sendInternal(`${MODULE_NAME.CORE}_initialization_started`)
-        this.#startFlushInterval()
+
+        if (document.visibilityState === 'visible') {
+            this.#startFlushInterval()
+        }
+
         this.#setupPageUnloadHandler()
         this.#setupGameplayMilestones()
 
@@ -122,16 +126,22 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 
     send(eventName: string, data: Record<string, unknown> = {}): void {
-        if (this.#isDisabled) {
-            return
-        }
-
         if (typeof eventName !== 'string' || eventName.length === 0) {
             logger.warn('Analytics event name must be a non-empty string', eventName)
             return
         }
 
         const safeData = data && typeof data === 'object' && !Array.isArray(data) ? data : {}
+
+        // Platform tracking follows only the config switch, not the environment checks
+        if (bridgeConfig.getValues().sendAnalyticsEvents !== false) {
+            this._platformBridge?.sendAnalyticsEvent?.(eventName, safeData)
+        }
+
+        if (this.#isDisabled) {
+            return
+        }
+
         this.#customEventQueue.push(this.#createEvent(eventName, safeData))
 
         if (this.#customEventQueue.length > CUSTOM_EVENTS_QUEUE_LIMIT) {
@@ -346,18 +356,20 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         const { platformId } = this._platformBridge
         const options = bridgeConfig.getValues()
 
-        const optionKeyMap: Partial<Record<PlatformId, string>> = {
-            [PLATFORM_ID.GAME_DISTRIBUTION]: 'gameId',
-            [PLATFORM_ID.Y8]: 'gameId',
-            [PLATFORM_ID.MSN]: 'gameId',
-            [PLATFORM_ID.HUAWEI]: 'appId',
-            [PLATFORM_ID.DISCORD]: 'appId',
-            [PLATFORM_ID.GAMEPUSH]: 'projectId',
-            [PLATFORM_ID.MICROSOFT_STORE]: 'gameId',
+        // Option keys in priority order: Y8 keeps its app id in appId, or in gameId in legacy configs
+        const optionKeyMap: Partial<Record<PlatformId, string[]>> = {
+            [PLATFORM_ID.GAME_DISTRIBUTION]: ['gameId'],
+            [PLATFORM_ID.Y8]: ['appId', 'gameId'],
+            [PLATFORM_ID.MSN]: ['gameId'],
+            [PLATFORM_ID.HUAWEI]: ['appId'],
+            [PLATFORM_ID.DISCORD]: ['appId'],
+            [PLATFORM_ID.GAMEPUSH]: ['projectId'],
+            [PLATFORM_ID.MICROSOFT_STORE]: ['gameId'],
         }
 
-        const optionKey = optionKeyMap[platformId]
-        const gameId = optionKey ? (options as Record<string, unknown>)?.[optionKey] : null
+        const values = (options ?? {}) as Record<string, unknown>
+        const optionKey = optionKeyMap[platformId]?.find((key) => values[key])
+        const gameId = optionKey ? values[optionKey] : null
 
         return (typeof gameId === 'string' && gameId)
             ? gameId

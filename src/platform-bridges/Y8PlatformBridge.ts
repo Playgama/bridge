@@ -16,15 +16,23 @@
  */
 
 import PlatformBridgeBase from './PlatformBridgeBase'
-import {
-    addAdsByGoogle, addJavaScript, waitFor, type AnyRecord,
-} from '../utils'
+import { addJavaScript, waitFor, type AnyRecord } from '../utils'
 import { ACTION_NAME, ERROR } from '../constants'
 import { PLATFORM_ID, type PlatformId } from '../modules/platform/constants'
 import {
+    ADVANCED_BANNER_CONTAINER_ID_PREFIX,
+    BANNER_CONTAINER_ID,
+    BANNER_STATE,
     INTERSTITIAL_STATE,
     REWARDED_STATE,
+    type BannerPosition,
 } from '../modules/advertisement/constants'
+import {
+    createAdvertisementBannerContainer,
+    createAdvancedBannerContainers,
+    removeAdvancedBannerContainers,
+    type AdvancedBannerConfig,
+} from '../modules/advertisement'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import {
     findAchievementGameId,
@@ -32,75 +40,76 @@ import {
     type NormalizedAchievement,
 } from '../modules/achievements'
 
-const SDK_URL = 'https://cdn.y8.com/api/sdk.js'
+const SDK_URL = 'https://cdn.y8.com/minimal-sdk/2-0/y8.min.js'
 const USERDATA_KEY = 'userData'
-const NOT_FOUND_ERROR = 'Key not found'
-const ADS_ID = '6129580795478709'
+const INTERSTITIAL_TYPES = ['start', 'pause', 'next', 'browse']
+const DEFAULT_INTERSTITIAL_TYPE = 'next'
+const DEFAULT_REWARDED_NAME = 'reward'
+// Banner sizes supported by Y8, largest area first
+const BANNER_SIZES = [
+    { width: 300, height: 250 },
+    { width: 728, height: 90 },
+    { width: 320, height: 100 },
+    { width: 468, height: 60 },
+    { width: 320, height: 50 },
+]
+const ANALYTICS_MAX_AMOUNT = 100
 
-interface Y8LoginResponse {
-    status: string
-    authResponse?: {
-        details: {
-            pid?: string
-            locale?: string
-            nickname?: string
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            first_name?: string
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            last_name?: string
-            avatars: {
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                thumb_url?: string
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                medium_url?: string
-                // eslint-disable-next-line @typescript-eslint/naming-convention
-                large_url?: string
-            }
-        }
+interface Y8User {
+    pid?: string
+    nickname?: string
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    first_name?: string
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    last_name?: string
+    avatars?: {
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        thumb_url?: string
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        medium_url?: string
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        large_url?: string
     }
 }
 
-interface Y8ApiResponse {
-    status?: string
-    error?: string
-    jsondata?: string
-    [key: string]: unknown
+interface Y8AdBreakInfo {
+    breakStatus: string
 }
 
-interface Y8AdShowFn {
-    (config: AnyRecord): unknown
+interface Y8ShowAdOptions {
+    type: string
+    name: string
+    beforeAd?: () => void
+    afterAd?: () => void
+    adBreakDone?: (info: Y8AdBreakInfo) => void
+    beforeReward?: (showAdFn: () => void) => void
+    adDismissed?: () => void
+    adViewed?: () => void
 }
 
 interface Y8Sdk {
-    Event: {
-        subscribe(eventName: string, callback: () => void): void
-    }
-    init(options: { appId: string }): void
-    getLoginStatus(callback: (data: Y8LoginResponse) => void): void
-    login(callback: (data: Y8LoginResponse) => void): void
-    api(method: string, httpMethod: string, params: AnyRecord, callback: (response: Y8ApiResponse) => void): void
-    GameAPI: {
-        Leaderboards: {
-            save(options: AnyRecord, callback: (response: { success: boolean; errormessage?: unknown }) => void): void
-            listCustom(
-                options: AnyRecord,
-                callback: (response: { success: boolean; scores: AnyRecord[]; errormessage?: unknown }) => void,
-            ): void
-        }
-        Achievements: {
-            save(options: AnyRecord, callback: (data: unknown) => void): void
-            listCustom(
-                options: AnyRecord,
-                callback: (data: { success: boolean; achievements: AnyRecord[]; errorcode?: string }) => void,
-            ): void
-            list(options: AnyRecord): void
-        }
-    }
+    init(appConfig: AnyRecord, adConfig?: AnyRecord): Promise<void>
+    onAuth(callback: (user: Y8User | null, error: unknown) => void): void
+    login(): Promise<void>
+    getUser(): Y8User | null
+    getPlatformLocale(): Promise<string>
+    showAd(options: Y8ShowAdOptions): Promise<void>
+    requestBanner(options: { id: string; width: number; height: number }): Promise<void>
+    clearBanner(id: string): void
+    saveLeaderboardScore(options: { table: string; points: number }): Promise<void>
+    getLeaderboardScores(options: { table: string; mode?: string }): Promise<{ items: AnyRecord[] }>
+    getAchievements(): Promise<AnyRecord[]>
+    awardAchievement(options: { achievement: string; achievementKey: string }): Promise<void>
+    saveData(options: { key: string; value: string }): Promise<void>
+    loadData(options: { key: string }): Promise<string | null>
+    trackCustomEvent(name: string, value?: number | null, amount?: number): void
 }
 
 declare global {
     interface Window {
-        ID?: Y8Sdk
+        y8?: {
+            sdk(): Y8Sdk
+        }
     }
 }
 
@@ -108,6 +117,10 @@ class Y8PlatformBridge extends PlatformBridgeBase {
     // platform
     get platformId(): PlatformId {
         return PLATFORM_ID.Y8
+    }
+
+    get platformLanguage(): string {
+        return this.#platformLanguage ?? super.platformLanguage
     }
 
     // advertisement
@@ -143,7 +156,11 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    #showAd: Y8AdShowFn | null = null
+    protected _isBannerSupported = true
+
+    protected _isAdvancedBannersSupported = true
+
+    #platformLanguage: string | null = null
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -154,33 +171,34 @@ class Y8PlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            if (!this._options?.gameId) {
+            // Same names as in the Y8 SDK: appId for appConfig, gameId for adConfig
+            const { appId, gameId } = (this._options ?? {}) as { appId?: string; gameId?: string }
+
+            if (!appId || !gameId) {
                 this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, ERROR.GAME_PARAMS_NOT_FOUND)
             } else {
-                addJavaScript(SDK_URL).then(() => {
-                    waitFor('ID').then(() => {
-                        this._platformSdk = window.ID as Y8Sdk;
-                        (this._platformSdk as Y8Sdk).Event.subscribe('id.init', (() => {
-                            addAdsByGoogle({
-                                adSenseId: this._options.channelId
-                                    ? `ca-pub-${ADS_ID}`
-                                    : this._options.adsenseId as string,
-                                channelId: this._options.channelId as string | undefined,
-                                hostId: `ca-host-pub-${ADS_ID}`,
-                            }).then((showAd) => {
-                                this.#showAd = showAd as Y8AdShowFn
-                            });
-                            (this._platformSdk as Y8Sdk).getLoginStatus((data) => {
-                                this.#updatePlayerInfo(data)
-                                this._isInitialized = true
-                                this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
-                            })
-                        }));
-                        (this._platformSdk as Y8Sdk).init({
-                            appId: this._options.gameId as string,
-                        })
+                addJavaScript(SDK_URL)
+                    .then(() => waitFor('y8', 'sdk'))
+                    .then(async () => {
+                        const sdk = (window.y8 as { sdk(): Y8Sdk }).sdk()
+                        this._platformSdk = sdk
+
+                        sdk.onAuth((user) => this.#updatePlayerInfo(user))
+
+                        // init resolves after the auto login attempt, so the player state is known
+                        await sdk.init(
+                            { appId, autoLogin: true },
+                            { gameId, preloadAdBreaks: 'on', sound: 'on' },
+                        )
+
+                        this.#platformLanguage = await sdk.getPlatformLocale().catch(() => null)
+
+                        this._isInitialized = true
+                        this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     })
-                })
+                    .catch((error) => {
+                        this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
+                    })
             }
         }
 
@@ -193,110 +211,154 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             return Promise.resolve()
         }
 
-        return new Promise(((resolve, reject) => {
-            (this._platformSdk as Y8Sdk).login((response) => {
-                this.#updatePlayerInfo(response)
-                if (response.status === 'ok') {
-                    resolve(undefined)
-                } else {
-                    reject()
+        // login() must run synchronously inside the user gesture, otherwise the popup is blocked
+        return (this._platformSdk as Y8Sdk).login()
+            .then(() => {
+                if (!this._isPlayerAuthorized) {
+                    throw new Error('Y8 login failed')
                 }
             })
-        }))
     }
 
     // storage
     async getDataFromStorage(): Promise<Record<string, unknown>> {
-        await this.#ensureStorageReady()
+        this.#ensurePlayerAuthorized()
 
-        return new Promise((resolve, reject) => {
-            (this._platformSdk as Y8Sdk).api('user_data/retrieve', 'POST', { key: USERDATA_KEY }, ((response) => {
-                if (response.error && response.error !== NOT_FOUND_ERROR) {
-                    reject(response)
-                    return
-                }
+        const value = await (this._platformSdk as Y8Sdk).loadData({ key: USERDATA_KEY })
+        if (!value) {
+            return {}
+        }
 
-                let userData: AnyRecord = {}
-                try {
-                    if (response.jsondata) {
-                        userData = JSON.parse(response.jsondata as string)
-                    }
-                } catch {
-                    userData = {}
-                }
-                resolve(userData)
-            }))
-        })
+        try {
+            return JSON.parse(value)
+        } catch {
+            return {}
+        }
     }
 
     async setDataToStorage(data: Record<string, unknown>): Promise<void> {
-        await this.#ensureStorageReady()
-
         const snapshot = await this.getDataFromStorage()
         Object.keys(data).forEach((key) => { snapshot[key] = data[key] })
         await this.#submitSnapshot(snapshot)
     }
 
     async deleteDataFromStorage(keys: string[]): Promise<void> {
-        await this.#ensureStorageReady()
-
         const snapshot = await this.getDataFromStorage()
         keys.forEach((key) => { delete snapshot[key] })
         await this.#submitSnapshot(snapshot)
     }
 
     // advertisement
-    showInterstitial(): void {
-        if (!this.#showAd) {
-            this._showAdFailurePopup(false)
-            return
+    showBanner(position?: unknown): void {
+        const container = document.getElementById(BANNER_CONTAINER_ID)
+            ?? createAdvertisementBannerContainer(position as BannerPosition)
+
+        container.style.display = 'block'
+
+        this._setBannerState(BANNER_STATE.LOADING)
+        this.#requestBanner(container)
+            .then(() => {
+                this._setBannerState(BANNER_STATE.SHOWN)
+            })
+            .catch(() => {
+                container.style.display = 'none'
+                this._setBannerState(BANNER_STATE.FAILED)
+            })
+    }
+
+    hideBanner(): void {
+        const container = document.getElementById(BANNER_CONTAINER_ID)
+        if (container) {
+            container.style.display = 'none'
         }
 
-        this.#showAd({
-            type: 'start',
-            name: 'start-game',
+        (this._platformSdk as Y8Sdk | null)?.clearBanner(BANNER_CONTAINER_ID)
+        this._setBannerState(BANNER_STATE.HIDDEN)
+    }
+
+    showAdvancedBanners(banners?: unknown): void {
+        this._setAdvancedBannersState(BANNER_STATE.LOADING)
+
+        this.#clearAdvancedBanners()
+        const containerIds = createAdvancedBannerContainers((banners as AdvancedBannerConfig[] | undefined) ?? [])
+        const requests = containerIds.map((id) => this.#requestBanner(document.getElementById(id) as HTMLElement))
+
+        Promise.all(requests)
+            .then(() => {
+                this._setAdvancedBannersState(BANNER_STATE.SHOWN)
+            })
+            .catch(() => {
+                this.#clearAdvancedBanners()
+                this._setAdvancedBannersState(BANNER_STATE.FAILED)
+            })
+    }
+
+    hideAdvancedBanners(): void {
+        this.#clearAdvancedBanners()
+        this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
+    }
+
+    showInterstitial(placement?: unknown): void {
+        const type = typeof placement === 'string' && INTERSTITIAL_TYPES.includes(placement)
+            ? placement
+            : DEFAULT_INTERSTITIAL_TYPE
+        let isOpened = false
+
+        // Y8 skips breaks inside its own frequency window and reports them only via adBreakDone
+        const onNotShown = (breakStatus?: string) => {
+            if (breakStatus === 'frequencyCapped') {
+                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+            } else {
+                this._showAdFailurePopup(false)
+            }
+        }
+
+        (this._platformSdk as Y8Sdk).showAd({
+            type,
+            name: typeof placement === 'string' && placement ? placement : type,
             beforeAd: () => {
+                isOpened = true
                 this._setInterstitialState(INTERSTITIAL_STATE.OPENED)
             },
             afterAd: () => {
-                const { interstitialState } = this as unknown as { interstitialState?: string }
-                if (interstitialState !== INTERSTITIAL_STATE.FAILED) {
-                    this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+                this._setInterstitialState(INTERSTITIAL_STATE.CLOSED)
+            },
+            adBreakDone: ({ breakStatus }) => {
+                if (!isOpened) {
+                    onNotShown(breakStatus)
                 }
             },
-            adBreakDone: (placementInfo: { breakStatus: string }) => {
-                if (placementInfo.breakStatus !== 'viewed') {
-                    this._showAdFailurePopup(false)
-                }
-            },
+        }).catch(() => {
+            if (!isOpened) {
+                onNotShown()
+            }
         })
     }
 
-    showRewarded(): void {
-        if (!this.#showAd) {
-            this._showAdFailurePopup(true)
-            return
-        }
+    showRewarded(placement?: unknown): void {
+        let isOpened = false;
 
-        this.#showAd({
+        (this._platformSdk as Y8Sdk).showAd({
             type: 'reward',
-            name: 'rewarded Ad',
+            name: typeof placement === 'string' && placement ? placement : DEFAULT_REWARDED_NAME,
             beforeAd: () => {
+                isOpened = true
                 this._setRewardedState(REWARDED_STATE.OPENED)
             },
             afterAd: () => {
-                if ((this as unknown as { rewardedState?: string }).rewardedState !== REWARDED_STATE.FAILED) {
-                    this._setRewardedState(REWARDED_STATE.CLOSED)
-                }
+                this._setRewardedState(REWARDED_STATE.CLOSED)
             },
-            beforeReward: (showAdFn: (n: number) => void) => { showAdFn(0) },
-            adDismissed: () => { this._showAdFailurePopup(true) },
+            beforeReward: (showAdFn) => { showAdFn() },
             adViewed: () => { this._setRewardedState(REWARDED_STATE.REWARDED) },
-            adBreakDone: (placementInfo: { breakStatus: string }) => {
-                if (placementInfo.breakStatus === 'frequencyCapped' || placementInfo.breakStatus === 'other') {
+            adBreakDone: () => {
+                if (!isOpened) {
                     this._showAdFailurePopup(true)
                 }
             },
+        }).catch(() => {
+            if (!isOpened) {
+                this._showAdFailurePopup(true)
+            }
         })
     }
 
@@ -306,57 +368,18 @@ class Y8PlatformBridge extends PlatformBridgeBase {
             return Promise.reject()
         }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
-
-            const options = {
-                table: id,
-                points: score,
-            };
-            (this._platformSdk as Y8Sdk).GameAPI.Leaderboards.save(options, ({ success, errormessage: error }) => {
-                if (success) {
-                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
-                } else {
-                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
-                }
-            })
-        }
-
-        return promiseDecorator.promise
+        return (this._platformSdk as Y8Sdk).saveLeaderboardScore({ table: id, points: score })
     }
 
     leaderboardsGetEntries(id: string): Promise<unknown> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
-        }
-
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES)
-
-            const options = {
-                table: id,
-                mode: 'alltime',
-            }
-            const leaderboards = (this._platformSdk as Y8Sdk).GameAPI.Leaderboards
-            leaderboards.listCustom(options, ({ scores, success, errormessage: error }) => {
-                if (success) {
-                    const entries = scores.map((entry) => ({
-                        id: entry.playerid,
-                        name: entry.playername,
-                        score: entry.points,
-                        rank: entry.rank,
-                        photo: null,
-                    }))
-                    this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, entries)
-                } else {
-                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_GET_ENTRIES, error)
-                }
-            })
-        }
-
-        return promiseDecorator.promise
+        return (this._platformSdk as Y8Sdk).getLeaderboardScores({ table: id, mode: 'alltime' })
+            .then(({ items }) => items.map((entry) => ({
+                id: entry.playerid,
+                name: entry.playername,
+                score: entry.points,
+                rank: entry.rank,
+                photo: null,
+            })))
     }
 
     // achievements
@@ -367,106 +390,97 @@ class Y8PlatformBridge extends PlatformBridgeBase {
 
         // Y8 needs an object mapping in the config: { achievement, achievementkey }
         const options = data as AnyRecord | null | undefined
-        if (!options || typeof options !== 'object' || !options.achievement || !options.achievementkey) {
+        const achievementKey = options?.achievementKey ?? options?.achievementkey
+        if (!options || typeof options !== 'object' || !options.achievement || !achievementKey) {
             return Promise.reject()
         }
 
-        return new Promise((resolve) => {
-            (this._platformSdk as Y8Sdk).GameAPI.Achievements.save(options, (response) => {
-                resolve(response)
-            })
+        return (this._platformSdk as Y8Sdk).awardAchievement({
+            achievement: options.achievement as string,
+            achievementKey: achievementKey as string,
         })
     }
 
     achievementsGetList(): Promise<NormalizedAchievement[]> {
-        return new Promise((resolve, reject) => {
-            (this._platformSdk as Y8Sdk).GameAPI.Achievements.listCustom({}, (data) => {
-                if (data.success) {
-                    const achievements = this._options.achievements as AchievementMapping[] | undefined
+        return (this._platformSdk as Y8Sdk).getAchievements()
+            .then((items) => {
+                const achievements = this._options.achievements as AchievementMapping[] | undefined
 
-                    // listCustom returns every achievement configured for the app;
-                    // `awarded` marks the ones the logged-in player has unlocked
-                    // (false/absent when not logged in or not yet earned).
-                    resolve(data.achievements.map((item) => {
-                        const gameId = findAchievementGameId(
-                            achievements,
-                            PLATFORM_ID.Y8,
-                            (platformData) => platformData.achievementkey === item.achievementkey,
-                        )
+                // getAchievements returns every achievement configured for the app;
+                // for a logged-in player the unlocked ones are marked with `awarded` / `player`
+                return items.map((item) => {
+                    const gameId = findAchievementGameId(
+                        achievements,
+                        PLATFORM_ID.Y8,
+                        (platformData) => (platformData.achievementKey ?? platformData.achievementkey)
+                            === item.achievementkey,
+                    )
 
-                        return {
-                            id: gameId ?? item.achievementkey as string,
-                            name: typeof item.achievement === 'string' ? item.achievement : undefined,
-                            description: typeof item.description === 'string' ? item.description : undefined,
-                            unlocked: item.awarded === true,
-                        }
-                    }))
-                } else {
-                    reject(new Error(data.errorcode))
-                }
+                    return {
+                        id: gameId ?? item.achievementkey as string,
+                        name: typeof item.achievement === 'string' ? item.achievement : undefined,
+                        description: typeof item.description === 'string' ? item.description : undefined,
+                        unlocked: item.awarded === true || !!item.player,
+                    }
+                })
             })
-        })
     }
 
-    #ensureStorageReady(): Promise<void> {
-        if (!this._isPlayerAuthorized) {
-            return Promise.reject()
+    // analytics
+    sendAnalyticsEvent(eventName: string, data: Record<string, unknown>): void {
+        const { value, amount } = data
+        const sdk = this._platformSdk as Y8Sdk | null
+        sdk?.trackCustomEvent(
+            eventName,
+            typeof value === 'number' ? value : null,
+            typeof amount === 'number' ? Math.min(amount, ANALYTICS_MAX_AMOUNT) : undefined,
+        )
+    }
+
+    // Picks the largest Y8 banner size that fits into the container
+    #requestBanner(container: HTMLElement): Promise<void> {
+        const size = BANNER_SIZES.find(({ width, height }) => width <= container.clientWidth
+            && height <= container.clientHeight)
+
+        if (!size) {
+            return Promise.reject(new Error('Banner container is too small'))
         }
-        return Promise.resolve()
+
+        return (this._platformSdk as Y8Sdk).requestBanner({ id: container.id, ...size })
+    }
+
+    #clearAdvancedBanners(): void {
+        const containers = document.querySelectorAll(`[id^="${ADVANCED_BANNER_CONTAINER_ID_PREFIX}"]`)
+        containers.forEach((container) => (this._platformSdk as Y8Sdk | null)?.clearBanner(container.id))
+        removeAdvancedBannerContainers()
+    }
+
+    #ensurePlayerAuthorized(): void {
+        if (!this._isPlayerAuthorized) {
+            throw new Error('Player is not authorized')
+        }
     }
 
     #submitSnapshot(snapshot: Record<string, unknown>): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            (this._platformSdk as Y8Sdk).api(
-                'user_data/submit',
-                'POST',
-                { key: USERDATA_KEY, value: JSON.stringify(snapshot) },
-                ((response) => {
-                    if (response.status === 'ok') {
-                        resolve()
-                    } else {
-                        reject(response)
-                    }
-                }),
-            )
-        })
+        return (this._platformSdk as Y8Sdk).saveData({ key: USERDATA_KEY, value: JSON.stringify(snapshot) })
     }
 
-    #updatePlayerInfo(data: Y8LoginResponse): void {
-        if (data.status === 'ok' && data.authResponse) {
-            this._isPlayerAuthorized = true
-            this._setPlatformStorageAvailable(true)
-
-            const {
-                pid, locale, nickname, first_name: firstName, last_name: lastName, avatars,
-            } = data.authResponse.details
-
-            if (pid) {
-                this._playerId = pid
-            }
-
-            (this as unknown as { _platformLanguage?: string })._platformLanguage = locale
-
-            this._playerName = [firstName, lastName].filter((x) => !!x).join(' ') || nickname || null
-
-            this._playerPhotos = []
-
-            const {
-                thumb_url: photoSmall, medium_url: photoMedium, large_url: photoLarge,
-            } = avatars
-
-            if (photoSmall) {
-                this._playerPhotos.push(photoSmall)
-            }
-
-            if (photoMedium) {
-                this._playerPhotos.push(photoMedium)
-            }
-
-            if (photoLarge) {
-                this._playerPhotos.push(photoLarge)
-            }
+    #updatePlayerInfo(user: Y8User | null): void {
+        if (!user) {
+            return
         }
+
+        this._isPlayerAuthorized = true
+        this._setPlatformStorageAvailable(true)
+
+        const {
+            pid, nickname, first_name: firstName, last_name: lastName, avatars,
+        } = user
+
+        this._playerId = pid ?? null
+        this._playerName = [firstName, lastName].filter((x) => !!x).join(' ') || nickname || null
+        this._playerPhotos = [avatars?.thumb_url, avatars?.medium_url, avatars?.large_url]
+            .filter((url): url is string => !!url)
     }
 }
 

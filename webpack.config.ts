@@ -8,14 +8,17 @@ import packageJson from './package.json'
 import { ALL_PLATFORM_IDS, expandPlatforms } from './scripts/platforms'
 
 const platformDirName = 'platform-bridges'
+const moduleDirName = 'modules'
 
-class CleanPlatformsPlugin {
+class CleanChunksPlugin {
     apply(compiler: Compiler): void {
-        compiler.hooks.beforeRun.tap('CleanPlatformsPlugin', () => {
-            const platformsDir = path.resolve(__dirname, `dist/${platformDirName}`)
-            if (fs.existsSync(platformsDir)) {
-                fs.rmSync(platformsDir, { recursive: true })
-            }
+        compiler.hooks.beforeRun.tap('CleanChunksPlugin', () => {
+            [platformDirName, moduleDirName].forEach((dirName) => {
+                const chunksDir = path.resolve(__dirname, `dist/${dirName}`)
+                if (fs.existsSync(chunksDir)) {
+                    fs.rmSync(chunksDir, { recursive: true })
+                }
+            })
         })
     }
 }
@@ -44,6 +47,11 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
         uniqueName: 'playgama-bridge',
         filename: 'playgama-bridge.js',
         chunkFilename: (pathData) => {
+            // Lazy modules are named with webpackChunkName, platform chunks are not
+            const chunkName = pathData.chunk?.name
+            if (chunkName) {
+                return `${moduleDirName}/${chunkName}.js`
+            }
             const chunkId = String(pathData.chunk?.id || pathData.chunk?.name || '')
             const platformDirNameRegex = new RegExp(`${platformDirName}_(\\w+)_(?:ts|js)`)
             const match = chunkId.match(platformDirNameRegex)
@@ -108,7 +116,7 @@ const createConfig = (targetPlatforms: string[] = [], { noLint = false }: Create
         },
     },
     plugins: [
-        new CleanPlatformsPlugin(),
+        new CleanChunksPlugin(),
         ...noLint ? [] : [new ESLintPlugin({ extensions: ['js', 'ts', 'tsx'] })],
         new webpack.DefinePlugin({
             PLUGIN_VERSION: JSON.stringify(packageJson.version),
@@ -129,7 +137,7 @@ interface WebpackEnv {
     noLint?: boolean
     // Build the npm-consumable bundles (ESM + UMD) instead of the CDN builds.
     npm?: boolean
-    // Absolute URL the dynamic bundle uses to fetch its platform-bridges/ chunks.
+    // Absolute URL the dynamic bundle uses to fetch its platform-bridges/ and modules/ chunks.
     // Should match the deploy location, e.g. https://<domain>/v<major>/<channel>/
     publicPath?: string
 }

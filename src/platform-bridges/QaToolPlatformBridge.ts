@@ -215,6 +215,14 @@ class QaToolPlatformBridge extends PlatformBridgeBase {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.INTERSTITIAL)
     }
 
+    get isMinimumDelayBetweenInterstitialEnabled(): boolean {
+        return false
+    }
+
+    get initialInterstitialDelay(): number {
+        return 0
+    }
+
     get isRewardedSupported(): boolean {
         return this._supportedFeatures.includes(SUPPORTED_FEATURES.REWARDED)
     }

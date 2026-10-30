@@ -34,6 +34,14 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
         return 'PLAYGAMA_WRAP'
     }
 
+    get isMinimumDelayBetweenInterstitialEnabled(): boolean {
+        return true
+    }
+
+    get isInitialInterstitialDelayEnabled(): boolean {
+        return true
+    }
+
     get isPlatformExternalLinksAllowed(): boolean {
         return true
     }
@@ -58,6 +66,10 @@ class StandalonePlatformBridge extends PlaygamaPlatformBridge {
         })
 
         return Promise.resolve(updatedProducts)
+    }
+
+    protected _configureAdFrequency(): Promise<void> {
+        return Promise.resolve()
     }
 
     #resolveProductPrice(product: AnyRecord): { price: number | null; currency: string } {

@@ -84,6 +84,7 @@ export interface AdvertisementBridgeContract extends PlatformBridgeLike {
     isInterstitialSupported: boolean
     isRewardedSupported: boolean
     isMinimumDelayBetweenInterstitialEnabled: boolean
+    isInitialInterstitialDelayEnabled: boolean
     initialInterstitialDelay: number
     deviceType: DeviceType
     showBanner(position: BannerPosition, placement?: string | null): void

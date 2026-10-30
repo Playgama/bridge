@@ -39,7 +39,7 @@ import {
 } from '../modules/advertisement/constants'
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 
-const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.21.min.js'
+const SDK_URL = 'https://assets.msn.com/staticsb/statics/latest/msstart-games-sdk/msstart-v1.0.0-rc.23.min.js'
 const PLAYGAMA_ADS_SDK_URL = 'https://playgama.com/ads/msn.v0.1.js'
 
 interface MsnNotification {
@@ -886,11 +886,13 @@ class MsnPlatformBridge extends PlatformBridgeBase {
 
     #updatePlayerInfo(data: AnyRecord | null): void {
         if (data) {
+            const playerInformation = (data.playerInformation ?? data) as AnyRecord
             this._isPlayerAuthorized = true
-            this._playerId = (data.playerId ?? data.publisherPlayerId) as string
-            this._playerName = data.playerDisplayName as string
-            this._playerExtra = data
-            this.#isPaymentsSupported = (data.userAccountType as string).toLowerCase() === 'personal'
+            this._playerId = (playerInformation.playerId ?? playerInformation.publisherPlayerId) as string
+            this._playerName = playerInformation.playerDisplayName as string
+            this._playerPhotos = playerInformation.userAvatarUrl ? [playerInformation.userAvatarUrl as string] : []
+            this._playerExtra = { ...playerInformation, ...data }
+            this.#isPaymentsSupported = (playerInformation.userAccountType as string | undefined)?.toLowerCase() === 'personal'
             // The player may sign in after init (via authorizePlayer or implicitly through payments);
             // enable cloud storage so the module migrates local data up and uses the cloud from now on.
             this._setPlatformStorageAvailable(true)

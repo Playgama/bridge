@@ -44,6 +44,7 @@ import {
 import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/constants'
 import type { NormalizedAchievement } from '../modules/achievements/types'
 import type { ScheduledNotification } from '../modules/notifications/types'
+import type { MultiplayerRoomInvite, MultiplayerRoomStatus } from '../modules/multiplayer/types'
 import { internalAnalytics } from '../modules/analytics'
 import {
     getPaymentsProductsPlatformData,
@@ -135,6 +136,16 @@ class PlatformBridgeBase {
         return false
     }
 
+    // multiplayer
+    get isMultiplayerRoomInviteSupported(): boolean {
+        return false
+    }
+
+    // Room code from the invite link the game was opened with.
+    get multiplayerLaunchRoomId(): string | null {
+        return null
+    }
+
     // player
     get isPlayerAuthorizationSupported(): boolean {
         return false
@@ -179,6 +190,10 @@ class PlatformBridgeBase {
     }
 
     get isMinimumDelayBetweenInterstitialEnabled(): boolean {
+        return true
+    }
+
+    get isInitialInterstitialDelayEnabled(): boolean {
         return true
     }
 
@@ -368,7 +383,7 @@ class PlatformBridgeBase {
         )
 
         if (this.isPlatformPageVisibilityApiAllowed) {
-            this._visibilityState = document.visibilityState
+            this._setVisibilityState(document.visibilityState as VisibilityState)
 
             document.addEventListener('visibilitychange', () => {
                 this._setVisibilityState(document.visibilityState as VisibilityState)
@@ -539,6 +554,9 @@ class PlatformBridgeBase {
         return Promise.reject()
     }
 
+    // analytics — platforms with their own event tracking forward custom game events there
+    sendAnalyticsEvent(_eventName: string, _data: Record<string, unknown>): void { }
+
     // notifications
     notificationsSchedule(
         _notification: ScheduledNotification,
@@ -554,6 +572,13 @@ class PlatformBridgeBase {
     notificationsCancelAll(): Promise<void> {
         return Promise.reject(new BridgeError(ERROR_CODE.NOTIFICATIONS_NOT_SUPPORTED))
     }
+
+    // multiplayer
+    multiplayerInviteToRoom(_invite: MultiplayerRoomInvite): Promise<unknown> {
+        return Promise.reject()
+    }
+
+    notifyMultiplayerRoomChanged(_room: MultiplayerRoomStatus | null): void { }
 
     protected _setPlatformStorageAvailable(isAvailable: boolean): void {
         if (this._isPlatformStorageAvailable === isAvailable) {
@@ -690,16 +715,19 @@ class PlatformBridgeBase {
         return Promise.resolve()
     }
 
+    protected _setAdFailedState(isRewarded: boolean): void {
+        if (isRewarded) {
+            this._setRewardedState(REWARDED_STATE.FAILED)
+        } else {
+            this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
+        }
+    }
+
     protected _showAdFailurePopup(isRewarded: boolean): Promise<void> {
         const showPopup = this._options?.advertisement?.useAdvertisementErrorPopup ?? this._useAdvertisementErrorPopup
 
         if (!showPopup) {
-            if (isRewarded) {
-                this._setRewardedState(REWARDED_STATE.FAILED)
-            } else {
-                this._setInterstitialState(INTERSTITIAL_STATE.FAILED)
-            }
-
+            this._setAdFailedState(isRewarded)
             return Promise.resolve()
         }
 

@@ -42,3 +42,9 @@ export const DEBUG_QUERY_PARAM = 'debug'
 // Module methods excluded from call logging — event emitter plumbing whose
 // arguments (listener callbacks) only add noise to the console.
 export const LOGGER_IGNORED_MODULE_METHODS: readonly string[] = ['on', 'off', 'once', 'emit']
+
+// High-frequency `scope.method` calls excluded from call logging.
+export const LOGGER_IGNORED_SCOPED_METHODS: readonly string[] = ['multiplayer.send']
+
+// High-frequency events excluded from event bus logging.
+export const LOGGER_IGNORED_EVENTS: readonly string[] = ['multiplayer_message_received', 'multiplayer_sync_state_received']

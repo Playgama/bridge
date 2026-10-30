@@ -17,7 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, waitFor, type AnyRecord } from '../utils'
-import { ACTION_NAME } from '../constants'
+import { ACTION_NAME, type ActionName } from '../constants'
 import {
     PLATFORM_ID,
     PLATFORM_MESSAGE,
@@ -29,9 +29,17 @@ import {
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
 import type { WriteBatch } from '../modules/storage/types'
+import type { PostLaunchOptions } from '../modules/social/types'
+
+const AD_FREQUENCY_REASONS = new Set(['initial_delay', 'cooldown', 'portal_rule'])
 
 type AdType = 'interstitial' | 'rewarded'
 type AdState = 'open' | 'empty' | 'rewarded' | 'close' | 'error' | string
+
+type AdResponseDetails = {
+    reason?: string
+    retryAfterMs?: number
+}
 
 interface PlaygamaPlayer {
     isAuthorized: boolean
@@ -65,6 +73,22 @@ interface PlaygamaCatalogProduct {
     priceCurrencyImage?: string
 }
 
+// Room invite the portal turns into a link to the game with the room code.
+interface PlaygamaRoomInvite extends AnyRecord {
+    roomId: string
+    type: string
+}
+
+// The room the player is in, reported to the portal on every change.
+interface PlaygamaRoomStatus {
+    id: string
+    type: string
+    maxPlayers: number
+    playerCount: number
+    isOpen: boolean
+    isVisible: boolean
+}
+
 interface PlaygamaSdk {
     platformService: {
         getLanguage(): string
@@ -73,9 +97,14 @@ interface PlaygamaSdk {
         getIsPlayerAuthorizationSupported?: () => boolean
         getIsCloudSaveSupported?: () => boolean
         getAdditionalParams?: () => Record<string, unknown> | null
+        // Payload of the link the game was opened with (createPost / share), see platform.payload.
+        getPayload?: () => string | null
     }
     advService: {
-        subscribeToAdStateChanges(callback: (adType: AdType, state: AdState) => void): void
+        configureAdFrequency?: () => Promise<boolean>
+        subscribeToAdStateChanges(
+            callback: (adType: AdType, state: AdState, details?: AdResponseDetails) => void,
+        ): void
         showInterstitial(): void
         showRewarded(): void
         showAdvancedBanners(banners: unknown): Promise<unknown>
@@ -105,13 +134,38 @@ interface PlaygamaSdk {
         gameReady(): void
         sendMessage?: (message: string, options?: AnyRecord) => unknown
     }
+    // Every method is optional: the bridge reports a feature as supported once the
+    // portal SDK has its method, unless the matching getIs...Supported() returns false.
     socialService?: {
         getIsShareSupported?: () => boolean
-        getIsAddToHomeScreenSupported?: () => boolean
         share?: (options?: AnyRecord) => Promise<unknown>
+        getIsInviteFriendsSupported?: () => boolean
+        inviteFriends?: (options?: AnyRecord) => Promise<unknown>
+        getIsJoinCommunitySupported?: () => boolean
+        joinCommunity?: (options?: AnyRecord) => Promise<unknown>
+        getIsCreatePostSupported?: () => boolean
+        createPost?: (options?: AnyRecord, post?: PostLaunchOptions) => Promise<unknown>
+        getIsAddToHomeScreenSupported?: () => boolean
         addToHomeScreen?: () => Promise<unknown>
+        getIsAddToHomeScreenRewardSupported?: () => boolean
+        getAddToHomeScreenReward?: () => Promise<unknown>
+        getIsAddToFavoritesSupported?: () => boolean
+        addToFavorites?: () => Promise<unknown>
+        getIsAddToFavoritesRewardSupported?: () => boolean
+        getAddToFavoritesReward?: () => Promise<unknown>
+        getIsRateSupported?: () => boolean
+        rate?: () => Promise<unknown>
+    }
+    multiplayerService?: {
+        getIsInviteToRoomSupported?: () => boolean
+        inviteToRoom?: (invite: PlaygamaRoomInvite) => Promise<unknown>
+        // Room code of the invite link the game was opened with.
+        getLaunchRoomId?: () => string | null
+        setCurrentRoom?: (room: PlaygamaRoomStatus | null) => void
     }
 }
+
+type PlaygamaService = Record<string, unknown> | undefined
 
 declare global {
     interface Window {
@@ -138,6 +192,14 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
+    get isMinimumDelayBetweenInterstitialEnabled(): boolean {
+        return !this.#isAdFrequencyManagedByHost
+    }
+
+    get isInitialInterstitialDelayEnabled(): boolean {
+        return !this.#isAdFrequencyManagedByHost
+    }
+
     get isRewardedSupported(): boolean {
         return true
     }
@@ -148,11 +210,56 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     }
 
     get isShareSupported(): boolean {
-        return this.#isShareSupported
+        return this.#isSupported(this.#socialService, 'share', 'getIsShareSupported')
+    }
+
+    get isInviteFriendsSupported(): boolean {
+        return this.#isSupported(this.#socialService, 'inviteFriends', 'getIsInviteFriendsSupported')
+    }
+
+    get isJoinCommunitySupported(): boolean {
+        return this.#isSupported(this.#socialService, 'joinCommunity', 'getIsJoinCommunitySupported')
+    }
+
+    get isCreatePostSupported(): boolean {
+        return this.#isSupported(this.#socialService, 'createPost', 'getIsCreatePostSupported')
     }
 
     get isAddToHomeScreenSupported(): boolean {
-        return this.#isAddToHomeScreenSupported
+        return this.#isSupported(this.#socialService, 'addToHomeScreen', 'getIsAddToHomeScreenSupported')
+    }
+
+    get isAddToHomeScreenRewardSupported(): boolean {
+        return this.#isSupported(
+            this.#socialService,
+            'getAddToHomeScreenReward',
+            'getIsAddToHomeScreenRewardSupported',
+        )
+    }
+
+    get isAddToFavoritesSupported(): boolean {
+        return this.#isSupported(this.#socialService, 'addToFavorites', 'getIsAddToFavoritesSupported')
+    }
+
+    get isAddToFavoritesRewardSupported(): boolean {
+        return this.#isSupported(
+            this.#socialService,
+            'getAddToFavoritesReward',
+            'getIsAddToFavoritesRewardSupported',
+        )
+    }
+
+    get isRateSupported(): boolean {
+        return this.#isSupported(this.#socialService, 'rate', 'getIsRateSupported')
+    }
+
+    // multiplayer
+    get isMultiplayerRoomInviteSupported(): boolean {
+        return this.#isSupported(this.#multiplayerService, 'inviteToRoom', 'getIsInviteToRoomSupported')
+    }
+
+    get multiplayerLaunchRoomId(): string | null {
+        return this.#getValue(this.#multiplayerService, 'getLaunchRoomId')
     }
 
     // player
@@ -169,17 +276,20 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         return (this._platformSdk as PlaygamaSdk | null)?.platformService?.getLanguage?.() || super.platformLanguage
     }
 
+    get platformPayload(): string | null {
+        const platformService = (this._platformSdk as PlaygamaSdk | null)?.platformService as PlaygamaService
+        return this.#getValue(platformService, 'getPayload') ?? super.platformPayload
+    }
+
     protected _isAdvancedBannersSupported = true
+
+    #isAdFrequencyManagedByHost = false
 
     #isPaymentsSupported = true
 
     #isCloudSaveSupported = true
 
     #isPlayerAuthorizationSupported = true
-
-    #isShareSupported = false
-
-    #isAddToHomeScreenSupported = false
 
     // Catalog entries accepted from the platform supply the displayed purchase terms.
     #paymentsPlatformCatalog = new Map<string, PlaygamaCatalogProduct>()
@@ -195,8 +305,17 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
             addJavaScript(this.sdkUrl).then(() => {
                 waitFor(this.sdkGlobalName).then(() => {
                     const globalScope = window as unknown as Record<string, unknown>
-                    this._platformSdk = globalScope[this.sdkGlobalName] as PlaygamaSdk;
-                    (this._platformSdk as PlaygamaSdk).advService.subscribeToAdStateChanges((adType, state) => {
+                    const sdk = globalScope[this.sdkGlobalName] as PlaygamaSdk
+                    this._platformSdk = sdk
+                    sdk.advService.subscribeToAdStateChanges((adType, state, details) => {
+                        if (
+                            state === 'error'
+                            && (adType === 'interstitial' || adType === 'rewarded')
+                            && AD_FREQUENCY_REASONS.has(details?.reason ?? '')
+                        ) {
+                            this._setAdFailedState(adType === 'rewarded')
+                            return
+                        }
                         if (adType === 'interstitial') {
                             switch (state) {
                                 case 'open': {
@@ -248,9 +367,9 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                         }
                     })
 
-                    const sdk = this._platformSdk as PlaygamaSdk
                     const platformReadyPromise = sdk.platformService?.isReady ?? Promise.resolve()
                     platformReadyPromise
+                        .then(() => this._configureAdFrequency())
                         .then(() => {
                             this.#resolveSupportedFeatures()
 
@@ -279,7 +398,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                 return Promise.resolve()
             }
             default: {
-                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(String(message), (options ?? {}) as AnyRecord)
+                (this._platformSdk as PlaygamaSdk).gameService?.sendMessage?.(
+                    String(message),
+                    (options ?? {}) as AnyRecord,
+                )
                 return super.sendMessage(message, options)
             }
         }
@@ -509,47 +631,70 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
 
     // social
     share(options?: AnyRecord): Promise<unknown> {
-        const socialService = (this._platformSdk as PlaygamaSdk | null)?.socialService
-        if (typeof socialService?.share !== 'function') {
-            return Promise.reject()
-        }
+        return this.#call(this.#socialService, 'share', ACTION_NAME.SHARE, options)
+    }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
+    inviteFriends(options?: AnyRecord): Promise<unknown> {
+        return this.#call(this.#socialService, 'inviteFriends', ACTION_NAME.INVITE_FRIENDS, options)
+    }
 
-            socialService.share(options)
-                .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.SHARE)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.SHARE, error)
-                })
-        }
+    joinCommunity(options?: AnyRecord): Promise<unknown> {
+        return this.#call(this.#socialService, 'joinCommunity', ACTION_NAME.JOIN_COMMUNITY, options)
+    }
 
-        return promiseDecorator.promise
+    createPost(options?: AnyRecord, post?: PostLaunchOptions): Promise<unknown> {
+        return this.#call(this.#socialService, 'createPost', ACTION_NAME.CREATE_POST, options, post)
     }
 
     addToHomeScreen(): Promise<unknown> {
-        const socialService = (this._platformSdk as PlaygamaSdk | null)?.socialService
-        if (typeof socialService?.addToHomeScreen !== 'function') {
-            return Promise.reject()
+        return this.#call(this.#socialService, 'addToHomeScreen', ACTION_NAME.ADD_TO_HOME_SCREEN)
+    }
+
+    getAddToHomeScreenReward(): Promise<unknown> {
+        return this.#call(
+            this.#socialService,
+            'getAddToHomeScreenReward',
+            ACTION_NAME.GET_ADD_TO_HOME_SCREEN_REWARD,
+        )
+    }
+
+    addToFavorites(): Promise<unknown> {
+        return this.#call(this.#socialService, 'addToFavorites', ACTION_NAME.ADD_TO_FAVORITES)
+    }
+
+    getAddToFavoritesReward(): Promise<unknown> {
+        return this.#call(this.#socialService, 'getAddToFavoritesReward', ACTION_NAME.GET_ADD_TO_FAVORITES_REWARD)
+    }
+
+    rate(): Promise<unknown> {
+        return this.#call(this.#socialService, 'rate', ACTION_NAME.RATE)
+    }
+
+    // multiplayer
+    multiplayerInviteToRoom(invite: PlaygamaRoomInvite): Promise<unknown> {
+        return this.#call(this.#multiplayerService, 'inviteToRoom', ACTION_NAME.INVITE_TO_ROOM, invite)
+    }
+
+    notifyMultiplayerRoomChanged(room: PlaygamaRoomStatus | null): void {
+        const multiplayerService = this.#multiplayerService
+        if (typeof multiplayerService?.setCurrentRoom !== 'function') {
+            return
         }
 
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
-
-            socialService.addToHomeScreen()
-                .then(() => {
-                    this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
-                })
-                .catch((error) => {
-                    this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN, error)
-                })
+        try {
+            multiplayerService.setCurrentRoom(room)
+        } catch {
+            // the room status is informational for the portal
         }
+    }
 
-        return promiseDecorator.promise
+    protected async _configureAdFrequency(): Promise<void> {
+        try {
+            const sdk = this._platformSdk as PlaygamaSdk
+            this.#isAdFrequencyManagedByHost = await sdk.advService.configureAdFrequency?.() === true
+        } catch {
+            this.#isAdFrequencyManagedByHost = false
+        }
     }
 
     // Rejected SDK calls keep the last displayed prices and their charge terms.
@@ -627,10 +772,69 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
         if (sdk.platformService?.getIsPaymentsSupported) {
             this.#isPaymentsSupported = sdk.platformService.getIsPaymentsSupported()
         }
+    }
 
-        const { socialService } = sdk
-        this.#isShareSupported = socialService?.getIsShareSupported?.() ?? false
-        this.#isAddToHomeScreenSupported = socialService?.getIsAddToHomeScreenSupported?.() ?? false
+    get #socialService(): PlaygamaService {
+        return (this._platformSdk as PlaygamaSdk | null)?.socialService as PlaygamaService
+    }
+
+    get #multiplayerService(): PlaygamaService {
+        return (this._platformSdk as PlaygamaSdk | null)?.multiplayerService as PlaygamaService
+    }
+
+    // A feature is supported once the portal SDK has its method, unless its
+    // support getter says otherwise, so games get a feature as soon as the portal ships it.
+    #isSupported(service: PlaygamaService, method: string, supportGetter: string): boolean {
+        if (typeof service?.[method] !== 'function') {
+            return false
+        }
+
+        if (typeof service[supportGetter] !== 'function') {
+            return true
+        }
+
+        try {
+            return Boolean((service[supportGetter] as () => unknown).call(service))
+        } catch {
+            return false
+        }
+    }
+
+    #getValue(service: PlaygamaService, getter: string): string | null {
+        if (typeof service?.[getter] !== 'function') {
+            return null
+        }
+
+        try {
+            const value = (service[getter] as () => unknown).call(service)
+            return typeof value === 'string' && value ? value : null
+        } catch {
+            return null
+        }
+    }
+
+    // Calls an optional portal SDK method; a missing method, a throw or a rejection rejects.
+    #call(service: PlaygamaService, method: string, actionName: ActionName, ...args: unknown[]): Promise<unknown> {
+        if (typeof service?.[method] !== 'function') {
+            return Promise.reject()
+        }
+
+        let promiseDecorator = this._getPromiseDecorator(actionName)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(actionName)
+
+            new Promise((resolve) => {
+                resolve((service[method] as (...params: unknown[]) => unknown).apply(service, args))
+            })
+                .then((result) => {
+                    this._resolvePromiseDecorator(actionName, result)
+                })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(actionName, error)
+                })
+        }
+
+        return promiseDecorator.promise
     }
 
     #ensureStorageReady(): Promise<void> {

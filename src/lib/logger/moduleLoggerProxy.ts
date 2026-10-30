@@ -16,7 +16,7 @@
  */
 
 import logger from './Logger'
-import { LOGGER_IGNORED_MODULE_METHODS } from './constants'
+import { LOGGER_IGNORED_MODULE_METHODS, LOGGER_IGNORED_SCOPED_METHODS } from './constants'
 
 type AnyFunction = (...args: unknown[]) => unknown
 
@@ -47,6 +47,7 @@ export function createModuleLoggerProxy<T extends object>(scope: string, target:
                 const method = String(prop)
                 const original = value as AnyFunction
                 const shouldLog = !LOGGER_IGNORED_MODULE_METHODS.includes(method)
+                    && !LOGGER_IGNORED_SCOPED_METHODS.includes(`${scope}.${method}`)
 
                 wrapper = (...args: unknown[]): unknown => {
                     if (!shouldLog) {
