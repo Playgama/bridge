@@ -6,7 +6,7 @@ import type { Reservation } from '../../../src/modules/multiplayer/transport/pro
 
 let socket: { onmessage?: (event: { data: ArrayBuffer }) => void; send: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }
 let native: NativeConnection
-const events = { control: vi.fn(), syncControl: vi.fn(), relay: vi.fn(), snapshot: vi.fn(), closed: vi.fn() }
+const events = { control: vi.fn(), syncControl: vi.fn(), relay: vi.fn(), snapshot: vi.fn(), pong: vi.fn(), closed: vi.fn() }
 const reservation = { colyseus: { processId: 'process', roomId: 'room', sessionId: 'session' } } as Reservation
 const receive = (bytes: number[]) => socket.onmessage!({ data: new Uint8Array(bytes).buffer })
 

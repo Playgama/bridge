@@ -35,6 +35,8 @@ interface RoomStats {
     hostChanges: number
     messagesSent: number
     messagesReceived: number
+    pingSum: number
+    pingCount: number
 }
 
 // Room entry results and per-room stats for the internal analytics.
@@ -52,6 +54,8 @@ class MultiplayerAnalytics {
             hostChanges: 0,
             messagesSent: 0,
             messagesReceived: 0,
+            pingSum: 0,
+            pingCount: 0,
         }
         this.#addPageListener()
         this.#sendEnterCompleted(method)
@@ -96,6 +100,8 @@ class MultiplayerAnalytics {
             peak_players_count: room.peakPlayersCount,
             is_host: room.isHost,
             host_changes: room.hostChanges,
+            // Average round-trip time in ms, null when nothing was measured.
+            avg_ping: room.pingCount > 0 ? Math.round(room.pingSum / room.pingCount) : null,
         })
         this.#room = null
     }
@@ -127,6 +133,13 @@ class MultiplayerAnalytics {
     messageReceived(): void {
         if (this.#room) {
             this.#room.messagesReceived += 1
+        }
+    }
+
+    pingMeasured(roundTripMs: number): void {
+        if (this.#room) {
+            this.#room.pingSum += roundTripMs
+            this.#room.pingCount += 1
         }
     }
 

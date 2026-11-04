@@ -8,6 +8,7 @@ export interface NativeEvents {
     syncControl(value: unknown): void
     relay(value: Uint8Array): void
     snapshot(value: Uint8Array): void
+    pong(roundTripMs: number): void
     closed(code: number): void
 }
 
@@ -71,6 +72,8 @@ export default class NativeConnection {
 
     private join?: { resolve(): void; reject(error: MultiplayerError): void }
 
+    private pingAt?: number
+
     // A network switch leaves the socket hanging: close it right away so the room reconnects.
     private offline = (): void => this.drop(ROOM_CLOSE_CODE.MAY_TRY_RECONNECT)
 
@@ -105,6 +108,13 @@ export default class NativeConnection {
 
     sendBytes(channel: string, bytes: Uint8Array): void {
         this.write(frame(ROOM_FRAME.ROOM_DATA_BYTES, channel, bytes))
+    }
+
+    // One probe at a time: a lost reply is dropped with the socket.
+    ping(): void {
+        if (!this.joined || !this.open || this.pingAt !== undefined) return
+        this.pingAt = performance.now()
+        this.write(new Uint8Array([ROOM_FRAME.PING]))
     }
 
     stop(): void {
@@ -152,6 +162,12 @@ export default class NativeConnection {
                 this.dispatch(type.value, data.subarray(type.offset))
                 break
             }
+            case ROOM_FRAME.PING:
+                if (this.pingAt !== undefined) {
+                    this.events.pong(performance.now() - this.pingAt)
+                    this.pingAt = undefined
+                }
+                break
             default:
                 break
         }

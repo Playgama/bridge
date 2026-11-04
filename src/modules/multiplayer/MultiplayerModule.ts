@@ -515,6 +515,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
                 eventBus.emit(EVENT_NAME.MULTIPLAYER_MESSAGE_RECEIVED, { type, data, from })
             }),
             handle.onPlayersChange((players) => this.#onPlayersChange(players)),
+            handle.onPing((roundTripMs) => this.#analytics.pingMeasured(roundTripMs)),
             handle.onRoomChange(() => this.#onRoomChange()),
             handle.onStateChange((state) => this.#onStateChange(state)),
             handle.onError((error) => this.#onError(error)),
