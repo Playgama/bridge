@@ -65,8 +65,21 @@ class DeviceModule extends ModuleBase<DeviceBridgeContract> {
     }
 
     get safeArea(): SafeAreaInsets {
-        return this._platformBridge.safeArea ?? SafeArea.getInsets()
+        // Games may read it every frame, so it is cached per viewport state. The state is checked
+        // on read, not on events, so a game listener that fires before ours never gets stale values.
+        // Orientation type is part of the key: a 180° rotation moves the notch without a resize.
+        const key = `${window.innerWidth}x${window.innerHeight}:${window.screen.orientation?.type ?? window.orientation}`
+        if (!this.#safeArea || this.#safeAreaKey !== key) {
+            this.#safeArea = this._platformBridge.safeArea ?? SafeArea.getInsets()
+            this.#safeAreaKey = key
+        }
+
+        return { ...this.#safeArea }
     }
+
+    #safeArea: SafeAreaInsets | null = null
+
+    #safeAreaKey = ''
 
     #currentOrientation: DeviceOrientation | null = null
 
