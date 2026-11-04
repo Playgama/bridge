@@ -103,6 +103,29 @@ export const CONNECTION_STATE = {
     DISCONNECTED: 'disconnected',
 } as const
 
+// Internal analytics events.
+export const MULTIPLAYER_ANALYTICS_EVENT = {
+    ROOM_ENTER_COMPLETED: 'multiplayer_room_enter_completed',
+    ROOM_ENTER_FAILED: 'multiplayer_room_enter_failed',
+    ROOM_LEFT: 'multiplayer_room_left',
+} as const
+
+// Analytics-only leave reason: the page was closed while in a room.
+export const PAGE_CLOSED_LEAVE_REASON = 'page_closed'
+
+// Analytics error of a failed reconnect when the transport gave no error code.
+export const RECONNECT_FAILED_ERROR = 'CONNECTION_LOST'
+
+// How the player entered the room.
+export const ROOM_ENTER_METHOD = {
+    CREATE: 'create',
+    JOIN: 'join',
+    JOIN_OR_CREATE: 'join_or_create',
+    // The connection dropped and was restored by the SDK.
+    RECONNECT: 'reconnect',
+} as const
+export type RoomEnterMethod = typeof ROOM_ENTER_METHOD[keyof typeof ROOM_ENTER_METHOD]
+
 // Invite code: 8 chars, the first one is the region of the room.
 export const INVITE_CODE_PATTERN = /^[KRX][0123456789ABCDEFGHJKMNPQRSTVWXYZ]{7}$/
 export const ROOM_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

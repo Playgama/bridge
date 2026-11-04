@@ -43,6 +43,11 @@ export interface AnalyticsSender {
     send(eventType: string, data?: Record<string, unknown>): void
 }
 
+export interface InternalAnalytics extends AnalyticsSender {
+    // Sends the queued events right away with a beacon, e.g. while the page is closing.
+    flush(): void
+}
+
 export interface AnalyticsEvent {
     event_name: string
     timestamp: string

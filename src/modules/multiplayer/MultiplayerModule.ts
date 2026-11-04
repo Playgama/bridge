@@ -24,6 +24,7 @@ import bridgeConfig from '../../lib/bridge-config'
 import logger from '../../lib/logger'
 import type { JsonObject, JsonValue } from '../../utils/json'
 import type MultiplayerRuntime from './transport/Runtime'
+import MultiplayerAnalytics from './MultiplayerAnalytics'
 import { MultiplayerError } from './transport/types'
 import type {
     MultiplayerRoom as RoomHandle,
@@ -43,9 +44,11 @@ import {
     MULTIPLAYER_UNSUPPORTED_PLATFORMS,
     RATE_LIMITED_ERROR,
     ROOM_ENDED_ERRORS,
+    ROOM_ENTER_METHOD,
     ROOM_LEAVE_REASON,
     ROOM_UUID_PATTERN,
     type MultiplayerState,
+    type RoomEnterMethod,
     type RoomLeaveReason,
 } from './constants'
 import type {
@@ -191,6 +194,9 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     #closeReason: RoomLeaveReason | null = null
 
+    // Transport error that closed the room, for the analytics.
+    #closeError: string | null = null
+
     #outgoing: OutgoingMessage[] = []
 
     #sendTimer: ReturnType<typeof setTimeout> | undefined
@@ -202,10 +208,12 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     #syncState: JsonObject = {}
 
+    #analytics = new MultiplayerAnalytics()
+
     // Resolves with the invite code. A hidden room (the default) is for friends:
     // only players the code was shared with can join.
     async createRoom<T extends object = object>(options: CreateRoomOptions<T> = {}): Promise<string> {
-        await this.#enterRoom((runtime) => runtime.createRoom({
+        await this.#enterRoom(ROOM_ENTER_METHOD.CREATE, (runtime) => runtime.createRoom({
             player: this.#getPlayer(options),
             maxPlayers: this.#getMaxPlayers(options.maxPlayers),
             isOpen: options.isOpen ?? true,
@@ -223,9 +231,13 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         const player = this.#getPlayer(options)
 
         if (INVITE_CODE_PATTERN.test(code)) {
-            await this.#enterRoom((runtime) => runtime.joinRoom({ code, player }), options.syncState)
+            await this.#enterRoom(
+                ROOM_ENTER_METHOD.JOIN,
+                (runtime) => runtime.joinRoom({ code, player }),
+                options.syncState,
+            )
         } else if (ROOM_UUID_PATTERN.test(id)) {
-            await this.#enterRoom((runtime) => runtime.joinRoom({
+            await this.#enterRoom(ROOM_ENTER_METHOD.JOIN, (runtime) => runtime.joinRoom({
                 roomId: id.toLowerCase(), player,
             }), options.syncState)
         } else {
@@ -236,7 +248,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     // Quick match: enters an open public room of the same size and filter, the
     // fullest first, or creates one. Resolves with the invite code.
     async joinOrCreateRoom<T extends object = object>(options: JoinOrCreateRoomOptions<T> = {}): Promise<string> {
-        await this.#enterRoom((runtime) => runtime.joinOrCreateRoom({
+        await this.#enterRoom(ROOM_ENTER_METHOD.JOIN_OR_CREATE, (runtime) => runtime.joinOrCreateRoom({
             player: this.#getPlayer(options),
             maxPlayers: this.#getMaxPlayers(options.maxPlayers),
             filter: options.filter ?? {},
@@ -419,6 +431,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     }
 
     async #enterRoom<T extends object>(
+        method: RoomEnterMethod,
         enter: (runtime: MultiplayerRuntime) => Promise<RoomHandle>,
         syncState?: MultiplayerSyncStateOption<T>,
     ): Promise<void> {
@@ -442,9 +455,12 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         } catch (error) {
             handle?.leave().catch(() => {})
             this.#setState(MULTIPLAYER_STATE.DISCONNECTED)
-            throw this.#toBridgeError(error)
+            const bridgeError = this.#toBridgeError(error)
+            this.#analytics.enterFailed(method, bridgeError)
+            throw bridgeError
         }
 
+        this.#analytics.enterCompleted(method, handle)
         this.#attach(handle)
     }
 
@@ -489,11 +505,13 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         this.#isHost = handle.isHost
         this.#roomSnapshot = this.room
         this.#closeReason = null
+        this.#closeError = null
         this.#isLaunchRoomUsed = true
 
         // Subscriptions report the current values right away: they match what is stored above.
         this.#unsubscribers = [
             handle.onMessage(({ type, data, from }) => {
+                this.#analytics.messageReceived()
                 eventBus.emit(EVENT_NAME.MULTIPLAYER_MESSAGE_RECEIVED, { type, data, from })
             }),
             handle.onPlayersChange((players) => this.#onPlayersChange(players)),
@@ -511,6 +529,10 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             return
         }
 
+        if (this.#state === MULTIPLAYER_STATE.RECONNECTING && reason !== ROOM_LEAVE_REASON.LEFT) {
+            this.#analytics.reconnectFailed(this.#closeError)
+        }
+        this.#analytics.roomLeft(reason)
         this.#unsubscribers.forEach((unsubscribe) => unsubscribe())
         this.#unsubscribers = []
         this.#clearOutgoing()
@@ -539,6 +561,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             }
         })
         previous.forEach((player) => eventBus.emit(EVENT_NAME.MULTIPLAYER_PLAYER_LEFT, this.#toPlayer(player)))
+        this.#analytics.playersChanged(players.length)
 
         this.#updateHost()
         this.#notifyRoomChanged()
@@ -559,6 +582,9 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         const handle = this.#handle
         switch (state.connectionState) {
             case CONNECTION_STATE.CONNECTED:
+                if (this.#state === MULTIPLAYER_STATE.RECONNECTING && handle) {
+                    this.#analytics.reconnectCompleted(handle)
+                }
                 this.#setState(MULTIPLAYER_STATE.CONNECTED)
                 break
             case CONNECTION_STATE.RECONNECTING:
@@ -579,6 +605,10 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     #onError(error: MultiplayerError): void {
         logger.warn('[multiplayer]', error.code, error.message)
+        // The error that closed the room follows the disconnected state.
+        if (this.#handle?.connectionState === CONNECTION_STATE.DISCONNECTED) {
+            this.#closeError = error.code
+        }
         if (ROOM_ENDED_ERRORS.includes(error.code)) {
             this.#closeReason = ROOM_LEAVE_REASON.ROOM_CLOSED
         }
@@ -590,6 +620,15 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         const { isHost } = this
         if (hostId === this.#hostId && isHost === this.#isHost) {
             return
+        }
+
+        if (hostId && hostId !== this.#hostId) {
+            this.#analytics.hostChanged()
+        }
+
+        // While reconnecting the role is only suspended: keep the last connected one.
+        if (this.#state === MULTIPLAYER_STATE.CONNECTED) {
+            this.#analytics.hostRoleChanged(isHost)
         }
 
         this.#hostId = hostId
@@ -617,6 +656,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             const { type, data, to } = this.#outgoing[0]
             try {
                 this.#handle?.send(type, data, to)
+                this.#analytics.messageSent()
             } catch (error) {
                 if (error instanceof MultiplayerError && error.code === RATE_LIMITED_ERROR) {
                     this.#sendTimer = setTimeout(() => this.#sendOutgoing(), MULTIPLAYER_DEFAULTS.SEND_RETRY_DELAY)
