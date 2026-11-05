@@ -28,6 +28,7 @@ import type { DeviceConfig } from '../../modules/device'
 import type { MultiplayerConfig } from '../../modules/multiplayer/types'
 import type { LoadingScreenType, LoadingLogoType } from '../loading-screen'
 import type { YoutubeSubscribeButtonType } from '../../platform-bridges/YoutubePlatformBridge'
+import type { FacebookAutoPromptsConfig } from '../../platform-bridges/FacebookPlatformBridge'
 
 export interface SaasFeatureConfig {
     platforms?: string[]
@@ -99,4 +100,6 @@ export interface ConfigFileOptions extends AnyRecord {
     youtubeSubscribeButtonColor?: string
     youtubeSubscribeButtonTextColor?: string
     multiplayer?: MultiplayerConfig
+    // Facebook only: platform prompts the bridge shows by itself, false turns them off.
+    autoPrompts?: false | FacebookAutoPromptsConfig
 }
