@@ -34,14 +34,15 @@ import {
 } from './constants'
 import type {
     AnalyticsBridgeContract,
-    AnalyticsSender,
+    InternalAnalytics,
     AnalyticsEvent,
     AnalyticsMeta,
     AnalyticsPayload,
 } from './types'
 
-export const internalAnalytics: AnalyticsSender = {
+export const internalAnalytics: InternalAnalytics = {
     send: () => {},
+    flush: () => {},
 }
 
 class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
@@ -85,6 +86,9 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
         internalAnalytics.send = (eventName: string, data: Record<string, unknown> = {}): void => {
             this.#sendInternal(eventName, data)
+        }
+        internalAnalytics.flush = (): void => {
+            this.#flushSync()
         }
     }
 

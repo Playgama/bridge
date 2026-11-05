@@ -38,63 +38,35 @@ import { LEADERBOARD_TYPE, type LeaderboardType } from '../modules/leaderboards/
 
 const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 
-function createLoadingOverlay(): HTMLDivElement {
-    const overlay = document.createElement('div')
-    overlay.style.position = 'fixed'
-    overlay.style.top = '0'
-    overlay.style.left = '0'
-    overlay.style.width = '100vw'
-    overlay.style.height = '100vh'
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'
-    overlay.style.display = 'flex'
-    overlay.style.justifyContent = 'center'
-    overlay.style.alignItems = 'center'
-    overlay.style.zIndex = '9999'
-    overlay.id = 'loading-overlay'
+// Player data key that counts game launches, so prompts can skip the first one.
+const SESSION_COUNTER_KEY = 'playgama_bridge_session'
 
-    const loading = document.createElement('div')
-    loading.style.fontSize = '24px'
-    loading.style.color = '#fff'
-    loading.innerText = 'Loading...'
-    overlay.appendChild(loading)
-
-    return overlay
+// Prompts the bridge shows by itself once per session, see FacebookAutoPromptsConfig.
+const AUTO_PROMPTS_DEFAULTS: Required<FacebookAutoPromptsConfig> = {
+    fromSession: 2,
+    addToHomeScreen: true,
+    joinCommunity: true,
 }
 
-const LEADERBOARD_XML = `
-    <View style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center" onTapEvent="close">
-        <View style="position: relative; background-color: #2E3C75;color: #fff;padding: 20px;border-radius: 10px;box-shadow: 0 0 10px #2E3C75;font-size: 24px;text-align: center;min-width: 250px;max-width: 30%;max-height: 80%;overflow: auto;flex-direction: column;justify-content: center;align-items: center;">
-            <View style="display: flex; flex-direction: column; align-items: center; justify-content: center;" onTapEvent="leaderboard">
-                <For source="{{players}}" itemName="player">
-                    <View style="display: flex;align-items: center;justify-content: space-between;width: 100%;gap: 10px;">
-                      <Image src="{{FBInstant.players[{{player.sessionID}}].photo}}" style="width: 50px; height: 50px; border-radius: 50%" />
-                      <Text content="{{FBInstant.players[{{player.sessionID}}].name}}" style="flex: 1; text-align: start;" />
-                      <Text content="{{player.score}}" />
-                    </View>
-                </For>
-            </View>
-        </View>
-    </View>
-`
+// `autoPrompts` option of the facebook platform config: one platform prompt per
+// session, starting from `fromSession`. Prompts take turns between sessions.
+// `false` turns them off.
+export interface FacebookAutoPromptsConfig {
+    fromSession?: number
+    addToHomeScreen?: boolean
+    joinCommunity?: boolean
+}
 
 interface FacebookAd {
     loadAsync(): Promise<unknown>
     showAsync(): Promise<unknown>
 }
 
-interface FacebookOverlayView {
-    showAsync(): Promise<unknown>
-    dismissAsync(): Promise<unknown>
-    iframeElement: HTMLIFrameElement
-}
+// share/invite payload: `image` or a v8 `imageOverlayPath` overlay, other keys go to the SDK as is.
+type SharePayload = AnyRecord & { image?: string; text?: string; imageOverlayPath?: string }
 
-interface FacebookOverlayHandle {
-    iframeElement: HTMLIFrameElement
-}
-
-interface FacebookLeaderboardEntry {
-    getScore(): number
-    getPlayer(): { getSessionID(): string }
+interface FacebookTournament {
+    getID(): string
 }
 
 interface FacebookCatalogProduct {
@@ -120,6 +92,15 @@ interface FacebookSdk {
     getLocale(): string
     getSupportedAPIs(): string[]
     getPlatform(): string
+    onPause(callback: () => void): void
+    // Present in the SDK but not documented, so it is checked before use.
+    onResume?: (callback: () => void) => void
+    canCreateShortcutAsync(): Promise<boolean>
+    createShortcutAsync(): Promise<unknown>
+    getTournamentAsync(): Promise<FacebookTournament>
+    tournament: {
+        postScoreAsync(score: number): Promise<unknown>
+    }
     player: {
         getID(): string
         getDataAsync(keys: string[]): Promise<Record<string, unknown>>
@@ -141,20 +122,6 @@ interface FacebookSdk {
     hideBannerAdAsync(): Promise<unknown>
     getInterstitialAdAsync(placement: unknown): Promise<FacebookAd>
     getRewardedVideoAsync(placement: unknown): Promise<FacebookAd>
-    globalLeaderboards: {
-        setScoreAsync(id: unknown, score: number): Promise<unknown>
-        getTopEntriesAsync(id: unknown, count: number): Promise<FacebookLeaderboardEntry[]>
-    }
-    overlayViews: {
-        setCustomEventHandler(handler: (event: string) => void): void
-        createOverlayViewWithXMLString(
-            xml: string,
-            id: string,
-            data: AnyRecord,
-            onSuccess: (overlayView: FacebookOverlayView) => void,
-            onError: (overlayView: unknown, error: unknown) => void,
-        ): FacebookOverlayHandle
-    }
     payments: {
         purchaseAsync(options: { productID: string }): Promise<FacebookPurchase>
         consumePurchaseAsync(token: string): Promise<unknown>
@@ -221,9 +188,10 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return true
     }
 
-    // leaderboards
+    // leaderboards — SDK 8.0 has no leaderboard API anymore (globalLeaderboards
+    // was removed), so scores go to the tournament the game was launched in.
     get leaderboardsType(): LeaderboardType {
-        return LEADERBOARD_TYPE.NATIVE_POPUP
+        return this.#tournament ? LEADERBOARD_TYPE.NATIVE : LEADERBOARD_TYPE.NOT_AVAILABLE
     }
 
     // payments
@@ -237,11 +205,15 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     get isJoinCommunitySupported(): boolean {
-        return this._isJoinCommunitySupported
+        return this.#canFollowPage || this.#canJoinGroup
     }
 
     get isShareSupported(): boolean {
         return this._supportedApis.includes('shareAsync')
+    }
+
+    get isAddToHomeScreenSupported(): boolean {
+        return this._supportedApis.includes('createShortcutAsync')
     }
 
     protected _platformLanguage: string | null = null
@@ -256,11 +228,16 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     protected _isPlatformStorageAvailable = true
 
-    protected _isJoinCommunitySupported = false
+    #canFollowPage = false
 
-    protected _overlay: FacebookOverlayView | null = null
+    #canJoinGroup = false
 
-    #leaderboardClicked = false
+    #tournament: FacebookTournament | null = null
+
+    #isGameStarted = false
+
+    // Resolves with the number of the current launch, 0 when it is unknown.
+    #sessionNumberPromise: Promise<number> = Promise.resolve(0)
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -291,15 +268,21 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
                     this._supportedApis = sdk.getSupportedAPIs()
 
-                    this.#setupLeaderboards()
+                    this.#setupPauseEvents()
+
+                    if (this.#getAutoPromptsConfig()) {
+                        this.#sessionNumberPromise = this.#trackSession()
+                    }
 
                     return Promise.allSettled([
                         sdk.community.canFollowOfficialPageAsync(),
                         sdk.community.canJoinOfficialGroupAsync(),
-                    ]).then(([pageFollow, groupJoin]) => {
-                        const canFollow = pageFollow.status === 'fulfilled' ? pageFollow.value : false
-                        const canJoin = groupJoin.status === 'fulfilled' ? groupJoin.value : false
-                        this._isJoinCommunitySupported = (canFollow === true && canJoin === true)
+                        // Wrapped so a synchronous throw on old clients does not break initialization.
+                        Promise.resolve().then(() => sdk.getTournamentAsync()),
+                    ]).then(([pageFollow, groupJoin, tournament]) => {
+                        this.#canFollowPage = pageFollow.status === 'fulfilled' && pageFollow.value === true
+                        this.#canJoinGroup = groupJoin.status === 'fulfilled' && groupJoin.value === true
+                        this.#tournament = tournament.status === 'fulfilled' ? tournament.value : null
                     })
                 })
                 .then(() => {
@@ -319,18 +302,31 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                 const sdk = this._platformSdk as FacebookSdk
                 sdk.setLoadingProgress(100)
 
-                if (this._options.subscribeForNotificationsOnStart) {
-                    setTimeout(() => this.#subscribeBotAsync(), 0)
-                }
-
                 return new Promise((resolve) => {
-                    sdk.startGameAsync().then(resolve)
+                    sdk.startGameAsync().then((result) => {
+                        this.#isGameStarted = true
+                        // Platform prompts work only once the game is started.
+                        this.#showStartPrompt()
+                        resolve(result)
+                    })
                 })
             }
             default: {
                 return super.sendMessage(message, options)
             }
         }
+    }
+
+    // Facebook accepts the loading progress only before the game is started.
+    // 100 is sent on game ready: the bridge reports 100 as a fallback right after
+    // its own initialization, while the game may still be loading.
+    setLoadingProgress(percent: number): void {
+        const sdk = this._platformSdk as FacebookSdk | null
+        if (!sdk || !this._isInitialized || this.#isGameStarted || percent >= 100) {
+            return
+        }
+
+        sdk.setLoadingProgress(Math.max(0, percent))
     }
 
     // player
@@ -422,72 +418,28 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
     }
 
     // leaderboards
-    leaderboardsSetScore(id?: unknown, score?: unknown): Promise<unknown> {
+    leaderboardsSetScore(_id?: unknown, score?: unknown, isMain?: boolean): Promise<unknown> {
+        if (!this.#tournament) {
+            return Promise.reject()
+        }
+
+        // A tournament has one score, so with several leaderboards only the main one goes there.
+        const hasMain = this._options.leaderboards?.some((leaderboard) => leaderboard.isMain === true)
+        if (hasMain && !isMain) {
+            return Promise.resolve()
+        }
+
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
 
             const numericScore = typeof score === 'number' ? score : parseInt(score as string, 10);
-            (this._platformSdk as FacebookSdk).globalLeaderboards.setScoreAsync(id, numericScore)
+            (this._platformSdk as FacebookSdk).tournament.postScoreAsync(numericScore)
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE)
                 })
                 .catch((error) => {
                     this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SET_SCORE, error)
-                })
-        }
-
-        return promiseDecorator.promise
-    }
-
-    leaderboardsShowNativePopup(id?: unknown): Promise<unknown> {
-        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
-        if (!promiseDecorator) {
-            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
-
-            const loadingOverlay = createLoadingOverlay()
-            document.body.appendChild(loadingOverlay)
-
-            const sdk = this._platformSdk as FacebookSdk
-            sdk.globalLeaderboards.getTopEntriesAsync(id, 20).then((entries) => {
-                const players = entries.map((entry) => ({
-                    score: entry.getScore(),
-                    sessionID: entry.getPlayer().getSessionID(),
-                }))
-
-                const overlay = sdk.overlayViews.createOverlayViewWithXMLString(
-                    LEADERBOARD_XML,
-                    '',
-                    { players },
-                    (overlayView) => {
-                        overlayView.showAsync()
-                        this._overlay = overlayView
-                        loadingOverlay.remove()
-
-                        this._resolvePromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP)
-                    },
-                    (_, error) => {
-                        loadingOverlay.remove()
-                        this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
-                    },
-                )
-
-                const { iframeElement } = overlay
-
-                iframeElement.style.zIndex = '9999'
-                iframeElement.style.position = 'absolute'
-                iframeElement.style.top = '0'
-                iframeElement.style.left = '0'
-                iframeElement.style.height = '100vh'
-                iframeElement.style.width = '100vw'
-                iframeElement.style.border = '0'
-                iframeElement.id = iframeElement.name
-
-                document.body.appendChild(iframeElement)
-            })
-                .catch((error) => {
-                    loadingOverlay.remove()
-                    this._rejectPromiseDecorator(ACTION_NAME.LEADERBOARDS_SHOW_NATIVE_POPUP, error)
                 })
         }
 
@@ -615,17 +567,16 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     // social
     inviteFriends(options?: unknown): Promise<unknown> {
-        const opts = (options ?? {}) as AnyRecord & { image?: string; text?: string }
-        if (!opts.image || !opts.text) {
+        const opts = (options ?? {}) as SharePayload
+        if (!this.#isSharePayloadValid(opts)) {
             return Promise.reject()
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
-            // Facebook requires a base64 image; a config-supplied URL is fetched and encoded.
-            toBase64Image(opts.image)
-                .then((image) => (this._platformSdk as FacebookSdk).inviteAsync({ ...opts, image }))
+            this.#withBase64Image(opts)
+                .then((payload) => (this._platformSdk as FacebookSdk).inviteAsync(payload))
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.INVITE_FRIENDS)
                 })
@@ -643,37 +594,44 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY)
 
             const opts = options as { isPage?: boolean } | undefined
+            const { community } = this._platformSdk as FacebookSdk
+            // Without an explicit choice the group is kept as before, the page when there is no group.
+            const isPage = opts?.isPage ?? !this.#canJoinGroup
+            const request = isPage ? community.followOfficialPageAsync() : community.joinOfficialGroupAsync()
+            request
+                .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
+        }
+
+        return promiseDecorator.promise
+    }
+
+    addToHomeScreen(): Promise<unknown> {
+        let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+        if (!promiseDecorator) {
+            promiseDecorator = this._createPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN)
+
             const sdk = this._platformSdk as FacebookSdk
-            if (opts && opts.isPage === true) {
-                sdk.community.followOfficialPageAsync()
-                    .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
-                    .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
-            } else {
-                sdk.community.joinOfficialGroupAsync()
-                    .then((res) => this._resolvePromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, res))
-                    .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.JOIN_COMMUNITY, err))
-            }
+            sdk.canCreateShortcutAsync()
+                .then((canCreate) => (canCreate ? sdk.createShortcutAsync() : Promise.reject()))
+                .then(() => this._resolvePromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN))
+                .catch((err) => this._rejectPromiseDecorator(ACTION_NAME.ADD_TO_HOME_SCREEN, err))
         }
 
         return promiseDecorator.promise
     }
 
     share(options?: unknown): Promise<unknown> {
-        const opts = (options ?? {}) as AnyRecord & { image?: string; text?: string }
-        if (!opts.image || !opts.text) {
+        const opts = (options ?? {}) as SharePayload
+        if (!this.#isSharePayloadValid(opts)) {
             return Promise.reject()
         }
 
         let promiseDecorator = this._getPromiseDecorator(ACTION_NAME.SHARE)
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.SHARE)
-            // Facebook requires a base64 image; a config-supplied URL is fetched and encoded.
-            toBase64Image(opts.image)
-                .then((image) => (this._platformSdk as FacebookSdk).shareAsync({
-                    intent: 'REQUEST',
-                    ...opts,
-                    image,
-                }))
+            this.#withBase64Image({ intent: 'REQUEST', ...opts })
+                .then((payload) => (this._platformSdk as FacebookSdk).shareAsync(payload))
                 .then(() => {
                     this._resolvePromiseDecorator(ACTION_NAME.SHARE)
                 })
@@ -685,29 +643,118 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promiseDecorator.promise
     }
 
-    #setupLeaderboards(): void {
-        const self = this;
-        (self._platformSdk as FacebookSdk).overlayViews.setCustomEventHandler((event) => {
-            if (event === 'leaderboard') {
-                self.#leaderboardClicked = true
-            } else if (event === 'close') {
-                if (self.#leaderboardClicked) {
-                    self.#leaderboardClicked = false
-                    return
-                }
+    #isSharePayloadValid(payload: SharePayload): boolean {
+        return !!payload.text && (!!payload.image || !!payload.imageOverlayPath)
+    }
 
-                if (self._overlay) {
-                    const iframeId = self._overlay.iframeElement.id
-                    const iframeNode = document.getElementById(iframeId)
-                    if (iframeNode) {
-                        document.body.removeChild(iframeNode)
-                    }
+    // Facebook requires a base64 image; a config-supplied URL is fetched and encoded.
+    #withBase64Image(payload: SharePayload): Promise<SharePayload> {
+        if (!payload.image) {
+            return Promise.resolve(payload)
+        }
 
-                    self._overlay.dismissAsync()
-                    self._overlay = null
-                }
+        return toBase64Image(payload.image).then((image) => ({ ...payload, image }))
+    }
+
+    #setupPauseEvents(): void {
+        const sdk = this._platformSdk as FacebookSdk
+        sdk.onPause(() => {
+            this._setPauseState(true)
+            this._setAudioState(false)
+        })
+
+        const resume = () => {
+            this._setPauseState(false)
+            this._setAudioState(true)
+        }
+
+        // onResume is not documented, so returning to the page resumes the game as well.
+        if (typeof sdk.onResume === 'function') {
+            sdk.onResume(resume)
+        }
+
+        window.addEventListener('focus', resume)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                resume()
             }
         })
+    }
+
+    #getAutoPromptsConfig(): Required<FacebookAutoPromptsConfig> | null {
+        const { autoPrompts } = this._options
+        if (autoPrompts === false) {
+            return null
+        }
+
+        return { ...AUTO_PROMPTS_DEFAULTS, ...autoPrompts }
+    }
+
+    #trackSession(): Promise<number> {
+        const { player } = this._platformSdk as FacebookSdk
+        return player.getDataAsync([SESSION_COUNTER_KEY])
+            .then((data) => {
+                const sessionNumber = (Number(data[SESSION_COUNTER_KEY]) || 0) + 1
+                player.setDataAsync({ [SESSION_COUNTER_KEY]: sessionNumber }).catch(() => {})
+                return sessionNumber
+            })
+            .catch(() => 0)
+    }
+
+    // Shows at most one platform prompt per session.
+    async #showStartPrompt(): Promise<void> {
+        if (this._options.subscribeForNotificationsOnStart && await this.#subscribeBotAsync()) {
+            return
+        }
+
+        const config = this.#getAutoPromptsConfig()
+        if (!config) {
+            return
+        }
+
+        const sessionNumber = await this.#sessionNumberPromise
+        if (sessionNumber < config.fromSession) {
+            return
+        }
+
+        const prompts: Array<() => Promise<boolean>> = []
+        if (config.addToHomeScreen) {
+            prompts.push(() => this.#promptAddToHomeScreen())
+        }
+
+        if (config.joinCommunity) {
+            prompts.push(() => this.#promptJoinCommunity())
+        }
+
+        // Prompts take turns between sessions, so a declined one does not block the others.
+        const ordered = prompts.map((_, i) => prompts[(sessionNumber + i) % prompts.length])
+        await ordered.reduce(
+            (isShown, prompt) => isShown.then((shown) => shown || prompt()),
+            Promise.resolve(false),
+        )
+    }
+
+    // Resolves true when the prompt was shown, whatever the player chose.
+    #promptAddToHomeScreen(): Promise<boolean> {
+        const sdk = this._platformSdk as FacebookSdk
+        return sdk.canCreateShortcutAsync()
+            .then((canCreate) => (canCreate ? sdk.createShortcutAsync().then(() => true, () => true) : false))
+            .catch(() => false)
+    }
+
+    // The page goes first: following it is what Facebook counts as using the community APIs.
+    #promptJoinCommunity(): Promise<boolean> {
+        const { community } = this._platformSdk as FacebookSdk
+        let request: Promise<unknown>
+        if (this.#canFollowPage) {
+            request = community.followOfficialPageAsync()
+        } else if (this.#canJoinGroup) {
+            request = community.joinOfficialGroupAsync()
+        } else {
+            return Promise.resolve(false)
+        }
+
+        return request.then(() => true, () => true)
     }
 
     #preloadInterstitial(placementId: string, forciblyPreload = false): Promise<FacebookAd> {
@@ -754,37 +801,27 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return promise
     }
 
-    async #subscribeBotAsync(): Promise<unknown> {
-        const sdk = this._platformSdk as FacebookSdk
+    // Resolves true when the subscription prompt was shown, whatever the player chose.
+    async #subscribeBotAsync(): Promise<boolean> {
+        const { player } = this._platformSdk as FacebookSdk
         try {
-            const isSubscribed = await sdk.player.isSubscribedBotAsync()
-            if (isSubscribed) {
-                return Promise.resolve()
+            if (await player.isSubscribedBotAsync()) {
+                return false
             }
-        } catch (e) {
-            if ((e as { code?: string })?.code === 'INVALID_OPERATION') {
-                // web-messenger platform
-            } else {
-                throw new Error(e as string)
-            }
+        } catch {
+            // Messenger on web rejects with INVALID_OPERATION, canSubscribeBotAsync decides there.
         }
 
-        let canSubscribe = false
-
         try {
-            canSubscribe = await sdk.player.canSubscribeBotAsync()
-            if (canSubscribe) {
-                return sdk.player.subscribeBotAsync()
+            if (!await player.canSubscribeBotAsync()) {
+                return false
             }
-        } catch (e) {
-            if ((e as { code?: string })?.code === 'INVALID_OPERATION') {
-                return Promise.resolve()
-            }
-
-            throw new Error(e as string)
+        } catch {
+            return false
         }
 
-        return Promise.resolve()
+        await player.subscribeBotAsync().catch(() => {})
+        return true
     }
 
     #ensureStorageReady(): Promise<void> {

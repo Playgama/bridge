@@ -130,6 +130,7 @@ export interface MultiplayerRoom {
     onStateChange(callback: (state: MultiplayerState) => void): MultiplayerUnsubscribe
     onRoomChange(callback: (room: MultiplayerRoom) => void): MultiplayerUnsubscribe
     onError(callback: (error: MultiplayerError) => void): MultiplayerUnsubscribe
+    onPing(callback: (roundTripMs: number) => void): MultiplayerUnsubscribe
     setRoom(patch: MultiplayerRoomPatch): Promise<void>
     setPlayer(properties: MultiplayerProperties): Promise<void>
     leave(): Promise<void>

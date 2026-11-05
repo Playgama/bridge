@@ -11,7 +11,7 @@ import type {
     MultiplayerJson, MultiplayerMessage, MultiplayerBytesMessage,
 } from './types'
 import {
-    uuid, decimal, encodeJson, frame, unframe, SendBudget, invitation, MAX_BUFFERED_BYTES,
+    uuid, decimal, encodeJson, frame, unframe, SendBudget, invitation, MAX_BUFFERED_BYTES, PING_INTERVAL_MS,
 } from './protocol'
 import type {
     Reservation, Session, RoomMetadata, Welcome,
@@ -94,6 +94,8 @@ export default class RoomHandle implements MultiplayerRoom {
 
     private controlTimer?: ReturnType<typeof setInterval>
 
+    private pingTimer?: ReturnType<typeof setInterval>
+
     private messages = new Subscribers<MultiplayerMessage>()
 
     private bytesMessages = new Subscribers<MultiplayerBytesMessage>()
@@ -105,6 +107,8 @@ export default class RoomHandle implements MultiplayerRoom {
     private roomChanged = new Subscribers<MultiplayerRoom>()
 
     private errors = new Subscribers<MultiplayerError>()
+
+    private pings = new Subscribers<number>()
 
     get id(): string { return this.reservation.roomId }
 
@@ -151,6 +155,7 @@ export default class RoomHandle implements MultiplayerRoom {
             syncControl: (value) => { if (valid()) this.sync?.control(value) },
             relay: (value) => onBytes(value),
             snapshot: (value) => onBytes(value, true),
+            pong: (roundTripMs) => { if (valid()) this.pings.emit(roundTripMs) },
             closed: (code) => {
                 if (!valid()) return
                 const terminal = terminalClose(code)
@@ -181,6 +186,8 @@ export default class RoomHandle implements MultiplayerRoom {
             if (this.closed || generation !== this.generation) throw new MultiplayerError('CANCELLED')
             this.everConnected = true
             if (!this.controlTimer) this.controlTimer = setInterval(() => this.flushControls(), 100)
+            if (!this.pingTimer) this.pingTimer = setInterval(() => this.ping(), PING_INTERVAL_MS)
+            this.ping()
         } catch (error) {
             if (valid()) {
                 native.stop()
@@ -264,6 +271,8 @@ export default class RoomHandle implements MultiplayerRoom {
         return unsubscribe
     }
 
+    onPing(callback: (roundTripMs: number) => void): () => void { return this.pings.add(callback) }
+
     setRoom(patch: MultiplayerRoomPatch): Promise<void> { return this.command('set_room', patch) }
 
     setPlayer(properties: MultiplayerProperties): Promise<void> { return this.command('set_player', { properties }) }
@@ -281,6 +290,7 @@ export default class RoomHandle implements MultiplayerRoom {
         this.controller.abort()
         this.sync?.dispose()
         clearInterval(this.controlTimer)
+        clearInterval(this.pingTimer)
         this.native?.stop()
         this.rejectControls(new MultiplayerError('CANCELLED'))
         this.emitState()
@@ -289,6 +299,7 @@ export default class RoomHandle implements MultiplayerRoom {
             .finally(() => {
                 this.native?.stop()
                 clearInterval(this.controlTimer)
+                clearInterval(this.pingTimer)
                 this.removed()
                 this.messages.clear()
                 this.bytesMessages.clear()
@@ -296,6 +307,7 @@ export default class RoomHandle implements MultiplayerRoom {
                 this.roomChanged.clear()
                 this.stateChanged.clear()
                 this.errors.clear()
+                this.pings.clear()
             })
             .then(resolve, reject)
         return pending
@@ -324,6 +336,10 @@ export default class RoomHandle implements MultiplayerRoom {
         this.controlTokens -= 1
         this.native.send(channel, message)
         return true
+    }
+
+    private ping(): void {
+        if (!this.closed && this.state === 'connected') this.native?.ping()
     }
 
     private currentState(): MultiplayerState {
@@ -540,6 +556,7 @@ export default class RoomHandle implements MultiplayerRoom {
         this.native?.stop()
         this.sync?.disconnected()
         clearInterval(this.controlTimer)
+        clearInterval(this.pingTimer)
         this.rejectControls(error || new MultiplayerError('CANCELLED'))
         this.removed()
         this.emitState()

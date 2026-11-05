@@ -204,7 +204,11 @@ export const ROOM_FRAME = {
     LEAVE_ROOM: 12,
     ROOM_DATA: 13,
     ROOM_DATA_BYTES: 17,
+    PING: 18,
 } as const
+
+/** Round-trip time probe interval while connected. */
+export const PING_INTERVAL_MS = 5000
 
 /** Room server close codes the transport reacts to. */
 export const ROOM_CLOSE_CODE = {

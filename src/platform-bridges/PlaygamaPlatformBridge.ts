@@ -30,6 +30,7 @@ import {
 } from '../modules/advertisement/constants'
 import type { WriteBatch } from '../modules/storage/types'
 import type { PostLaunchOptions } from '../modules/social/types'
+import type { SafeAreaInsets } from '../lib/safe-area'
 
 const AD_FREQUENCY_REASONS = new Set(['initial_delay', 'cooldown', 'portal_rule'])
 
@@ -99,6 +100,8 @@ interface PlaygamaSdk {
         getAdditionalParams?: () => Record<string, unknown> | null
         // Payload of the link the game was opened with (createPost / share), see platform.payload.
         getPayload?: () => string | null
+        // Insets (CSS px) of the game iframe area covered by notches, rounded corners and system bars.
+        getSafeArea?: () => SafeAreaInsets | null
     }
     advService: {
         configureAdFrequency?: () => Promise<boolean>
@@ -279,6 +282,34 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     get platformPayload(): string | null {
         const platformService = (this._platformSdk as PlaygamaSdk | null)?.platformService as PlaygamaService
         return this.#getValue(platformService, 'getPayload') ?? super.platformPayload
+    }
+
+    // device
+    get safeArea(): SafeAreaInsets | null {
+        const platformService = (this._platformSdk as PlaygamaSdk | null)?.platformService
+        if (typeof platformService?.getSafeArea !== 'function') {
+            return null
+        }
+
+        try {
+            const insets = platformService.getSafeArea()
+            if (!insets) {
+                return null
+            }
+
+            const {
+                top, bottom, left, right,
+            } = insets
+            if (![top, bottom, left, right].every(Number.isFinite)) {
+                return null
+            }
+
+            return {
+                top, bottom, left, right,
+            }
+        } catch {
+            return null
+        }
     }
 
     protected _isAdvancedBannersSupported = true

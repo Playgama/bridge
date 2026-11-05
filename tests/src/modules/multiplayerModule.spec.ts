@@ -28,6 +28,7 @@ function room() {
         onPlayersChange: vi.fn(() => vi.fn()),
         onRoomChange: vi.fn(() => vi.fn()),
         onError: vi.fn(() => vi.fn()),
+        onPing: vi.fn(() => vi.fn()),
         leave: vi.fn().mockResolvedValue(undefined),
     }
 }
