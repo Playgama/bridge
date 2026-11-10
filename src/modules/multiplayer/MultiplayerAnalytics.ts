@@ -35,8 +35,7 @@ interface RoomStats {
     hostChanges: number
     messagesSent: number
     messagesReceived: number
-    pingSum: number
-    pingCount: number
+    pings: number[]
 }
 
 // Room entry results and per-room stats for the internal analytics.
@@ -54,8 +53,7 @@ class MultiplayerAnalytics {
             hostChanges: 0,
             messagesSent: 0,
             messagesReceived: 0,
-            pingSum: 0,
-            pingCount: 0,
+            pings: [],
         }
         this.#addPageListener()
         this.#sendEnterCompleted(method)
@@ -100,8 +98,8 @@ class MultiplayerAnalytics {
             peak_players_count: room.peakPlayersCount,
             is_host: room.isHost,
             host_changes: room.hostChanges,
-            // Average round-trip time in ms, null when nothing was measured.
-            avg_ping: room.pingCount > 0 ? Math.round(room.pingSum / room.pingCount) : null,
+            // Median round-trip time in ms, null when nothing was measured.
+            avg_ping: this.#getMedian(room.pings),
         })
         this.#room = null
     }
@@ -138,9 +136,23 @@ class MultiplayerAnalytics {
 
     pingMeasured(roundTripMs: number): void {
         if (this.#room) {
-            this.#room.pingSum += roundTripMs
-            this.#room.pingCount += 1
+            this.#room.pings.push(roundTripMs)
         }
+    }
+
+    // Median is robust to single spikes (tab throttling, GC pauses) that skew the average.
+    #getMedian(values: number[]): number | null {
+        if (values.length === 0) {
+            return null
+        }
+
+        const sorted = [...values].sort((a, b) => a - b)
+        const middle = Math.floor(sorted.length / 2)
+        const median = sorted.length % 2 === 0
+            ? (sorted[middle - 1] + sorted[middle]) / 2
+            : sorted[middle]
+
+        return Math.round(median)
     }
 
     #sendEnterCompleted(method: RoomEnterMethod): void {
