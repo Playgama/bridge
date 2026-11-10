@@ -17,95 +17,61 @@
 
 import { isEmpty } from '../helpers'
 
-// In-memory mirror of the active store (cloud or local). Holds only present, serialized
-// values — the same shape that gets persisted; a missing key means "unknown" and triggers a
-// load. Each key it knows about is in one of three states:
-//   - clean:   a value confirmed in the cloud;
-//   - dirty:   a value that is only in local storage so far (a pending write to push up);
-//   - deleted: a tombstone for a key removed locally while the cloud was unreachable (a pending
-//              delete to push up). Tombstones are not present values, so reads see them as gone.
+// Runtime copy of the active store. For every key it knows, it holds the current value (null
+// means "no data") and, once the cloud has been read or written for that key, the value the
+// cloud holds. A key whose current value differs from the cloud one, or whose cloud value is not
+// known yet, is dirty: it still has to be sent. A key the cache does not know triggers a load.
 //
 // Every storage operation runs one at a time through the queue, so the cache is only ever
-// touched by a single operation and needs no epochs, locks or in-flight de-duplication.
+// touched by a single operation.
 class MemoryCache {
-    #data = new Map<string, unknown>()
+    #values = new Map<string, unknown>()
 
-    // Present keys whose value is only in local storage, not yet confirmed in the cloud.
-    #dirty = new Set<string>()
-
-    // Tombstones: keys deleted locally that still need to be deleted from the cloud.
-    #deleted = new Set<string>()
+    #synced = new Map<string, unknown>()
 
     has(key: string): boolean {
-        return this.#data.has(key)
+        return this.#values.has(key)
     }
 
     get(key: string): unknown {
-        return this.#data.get(key)
-    }
-
-    isDirty(key: string): boolean {
-        return this.#dirty.has(key)
-    }
-
-    isDeleted(key: string): boolean {
-        return this.#deleted.has(key)
-    }
-
-    dirtyKeys(): string[] {
-        return [...this.#dirty]
-    }
-
-    deletedKeys(): string[] {
-        return [...this.#deleted]
-    }
-
-    // Records a cloud-confirmed value (clears any pending state).
-    set(key: string, value: unknown): void {
-        if (isEmpty(value)) {
-            this.delete(key)
-            return
-        }
-        this.#data.set(key, value)
-        this.#dirty.delete(key)
-        this.#deleted.delete(key)
-    }
-
-    // Records a value that lives only in local storage so far (marks it dirty).
-    setDirty(key: string, value: unknown): void {
-        if (isEmpty(value)) {
-            this.delete(key)
-            return
-        }
-        this.#data.set(key, value)
-        this.#dirty.add(key)
-        this.#deleted.delete(key)
-    }
-
-    // Forgets a key entirely, with no pending cloud delete (the cloud already agrees).
-    delete(key: string): void {
-        this.#data.delete(key)
-        this.#dirty.delete(key)
-        this.#deleted.delete(key)
-    }
-
-    // Removes a key and remembers to delete it from the cloud on the next sync.
-    tombstone(key: string): void {
-        this.#data.delete(key)
-        this.#dirty.delete(key)
-        this.#deleted.add(key)
+        return this.#values.get(key) ?? null
     }
 
     keys(): string[] {
-        return [...this.#data.keys()]
+        return [...this.#values.keys()]
     }
 
-    // Drops everything. Used once local changes are safely in the cloud, so the next read
-    // rebuilds the cache straight from the cloud.
+    // Records a change made by the game.
+    set(key: string, value: unknown): void {
+        this.#values.set(key, isEmpty(value) ? null : value)
+    }
+
+    // Records a value read from the cloud. An unsent change of the key is kept.
+    load(key: string, value: unknown): void {
+        const normalized = isEmpty(value) ? null : value
+        if (!this.isDirty(key)) {
+            this.#values.set(key, normalized)
+        }
+        this.#synced.set(key, normalized)
+    }
+
+    // Records that the current value of the key has been sent to the cloud.
+    confirm(key: string): void {
+        this.#synced.set(key, this.get(key))
+    }
+
+    isDirty(key: string): boolean {
+        return this.#values.has(key)
+            && (!this.#synced.has(key) || this.#synced.get(key) !== this.#values.get(key))
+    }
+
+    dirtyKeys(): string[] {
+        return this.keys().filter((key) => this.isDirty(key))
+    }
+
     clear(): void {
-        this.#data.clear()
-        this.#dirty.clear()
-        this.#deleted.clear()
+        this.#values.clear()
+        this.#synced.clear()
     }
 }
 

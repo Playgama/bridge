@@ -55,6 +55,8 @@ export interface NormalizedAchievement {
 
 export interface AchievementsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
+    isPlatformStorageAvailable: boolean
+    playerId: string | null
     isAchievementsSupported: boolean
     achievementsUnlock(data: AchievementPlatformData): Promise<unknown>
     achievementsGetList(): Promise<NormalizedAchievement[]>

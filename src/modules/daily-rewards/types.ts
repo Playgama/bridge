@@ -46,6 +46,8 @@ export interface DailyRewardsStreakResetPayload {
 
 export interface DailyRewardsBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
+    isPlatformStorageAvailable: boolean
+    playerId: string | null
     options?: AnyRecord
     getServerTime(): Promise<number>
 }
