@@ -30,7 +30,11 @@ import {
 } from '../modules/advertisement/constants'
 
 const SDK_URL = 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js'
-const MEASURE_CUSTOM_MESSAGE_ID = 'measure'
+const MEASURE_CUSTOM_CATEGORY = 'custom'
+const MEASURE_CUSTOM_ACTION = 'trigger'
+// Poki reserves '/' and '^' in measure values
+const MEASURE_RESERVED_CHARS = /[/^]/g
+const MEASURE_RESERVED_CHARS_REPLACEMENT = '-'
 const MEASURE_LEVEL_CATEGORY = 'level'
 const MEASURE_LEVEL_ACTIONS: Record<string, string> = {
     [PLATFORM_MESSAGE.LEVEL_STARTED]: 'start',
@@ -142,16 +146,12 @@ class PokiPlatformBridge extends PlatformBridgeBase {
     }
 
     sendCustomMessage(id?: unknown, options?: unknown): Promise<unknown> {
-        if (id !== MEASURE_CUSTOM_MESSAGE_ID) {
-            return super.sendCustomMessage(id, options)
-        }
-
         const { category, what, action } = (options ?? {}) as PokiMeasureOptions
-        if (category === undefined || what === undefined || action === undefined) {
-            return Promise.reject()
-        }
-
-        (this._platformSdk as PokiSdk).measure(String(category), String(what), String(action))
+        this.#measure(
+            category ?? MEASURE_CUSTOM_CATEGORY,
+            what ?? id,
+            action ?? MEASURE_CUSTOM_ACTION,
+        )
         return Promise.resolve()
     }
 
@@ -202,10 +202,17 @@ class PokiPlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        const sdk = this._platformSdk as PokiSdk
         const level = String(options.level)
         const what = options.world === undefined ? level : `${String(options.world)}-${level}`
-        sdk.measure(MEASURE_LEVEL_CATEGORY, what, action)
+        this.#measure(MEASURE_LEVEL_CATEGORY, what, action)
+    }
+
+    #measure(category: unknown, what: unknown, action: unknown): void {
+        const sdk = this._platformSdk as PokiSdk
+        const sanitize = (value: unknown) => String(value)
+            .replace(MEASURE_RESERVED_CHARS, MEASURE_RESERVED_CHARS_REPLACEMENT)
+
+        sdk.measure(sanitize(category), sanitize(what), sanitize(action))
     }
 }
 
