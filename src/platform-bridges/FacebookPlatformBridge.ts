@@ -41,20 +41,38 @@ const SDK_URL = 'https://connect.facebook.net/en_US/fbinstant.8.0.js'
 // Player data key that counts game launches, so prompts can skip the first one.
 const SESSION_COUNTER_KEY = 'playgama_bridge_session'
 
+// Player data key with the one-time prompts the player has already seen.
+const SHOWN_PROMPTS_KEY = 'playgama_bridge_shown_prompts'
+
+const AUTO_PROMPT = {
+    JOIN_COMMUNITY: 'joinCommunity',
+    SHARE: 'share',
+} as const
+
+type AutoPrompt = typeof AUTO_PROMPT[keyof typeof AUTO_PROMPT]
+
 // Prompts the bridge shows by itself once per session, see FacebookAutoPromptsConfig.
 const AUTO_PROMPTS_DEFAULTS: Required<FacebookAutoPromptsConfig> = {
     fromSession: 2,
     addToHomeScreen: true,
     joinCommunity: true,
+    share: true,
 }
 
 // `autoPrompts` option of the facebook platform config: one platform prompt per
-// session, starting from `fromSession`. Prompts take turns between sessions.
-// `false` turns them off.
+// session, starting from `fromSession`: share once (its content comes from
+// `social.share`), then join the community once, then the offer to save the game
+// every session until it is saved. `false` turns them off.
 export interface FacebookAutoPromptsConfig {
     fromSession?: number
     addToHomeScreen?: boolean
     joinCommunity?: boolean
+    share?: boolean
+}
+
+interface FacebookSessionInfo {
+    number: number
+    shownPrompts: AutoPrompt[]
 }
 
 interface FacebookAd {
@@ -236,8 +254,8 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
 
     #isGameStarted = false
 
-    // Resolves with the number of the current launch, 0 when it is unknown.
-    #sessionNumberPromise: Promise<number> = Promise.resolve(0)
+    // Resolves with the current launch, number 0 when it is unknown.
+    #sessionPromise: Promise<FacebookSessionInfo> = Promise.resolve({ number: 0, shownPrompts: [] })
 
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
@@ -271,7 +289,7 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
                     this.#setupPauseEvents()
 
                     if (this.#getAutoPromptsConfig()) {
-                        this.#sessionNumberPromise = this.#trackSession()
+                        this.#sessionPromise = this.#trackSession()
                     }
 
                     return Promise.allSettled([
@@ -690,18 +708,22 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
         return { ...AUTO_PROMPTS_DEFAULTS, ...autoPrompts }
     }
 
-    #trackSession(): Promise<number> {
+    #trackSession(): Promise<FacebookSessionInfo> {
         const { player } = this._platformSdk as FacebookSdk
-        return player.getDataAsync([SESSION_COUNTER_KEY])
+        return player.getDataAsync([SESSION_COUNTER_KEY, SHOWN_PROMPTS_KEY])
             .then((data) => {
-                const sessionNumber = (Number(data[SESSION_COUNTER_KEY]) || 0) + 1
-                player.setDataAsync({ [SESSION_COUNTER_KEY]: sessionNumber }).catch(() => {})
-                return sessionNumber
+                const number = (Number(data[SESSION_COUNTER_KEY]) || 0) + 1
+                player.setDataAsync({ [SESSION_COUNTER_KEY]: number }).catch(() => {})
+                const shownPrompts = Array.isArray(data[SHOWN_PROMPTS_KEY])
+                    ? data[SHOWN_PROMPTS_KEY] as AutoPrompt[]
+                    : []
+                return { number, shownPrompts }
             })
-            .catch(() => 0)
+            .catch(() => ({ number: 0, shownPrompts: [] }))
     }
 
-    // Shows at most one platform prompt per session.
+    // Shows at most one platform prompt per session: the one-time share and community
+    // prompts first, otherwise the offer to save the game.
     async #showStartPrompt(): Promise<void> {
         if (this._options.subscribeForNotificationsOnStart && await this.#subscribeBotAsync()) {
             return
@@ -712,26 +734,60 @@ class FacebookPlatformBridge extends PlatformBridgeBase {
             return
         }
 
-        const sessionNumber = await this.#sessionNumberPromise
-        if (sessionNumber < config.fromSession) {
+        const session = await this.#sessionPromise
+        if (session.number < config.fromSession) {
             return
         }
 
+        const isNew = (prompt: AutoPrompt) => !session.shownPrompts.includes(prompt)
         const prompts: Array<() => Promise<boolean>> = []
+        if (config.share && isNew(AUTO_PROMPT.SHARE)) {
+            prompts.push(() => this.#showOnce(session, AUTO_PROMPT.SHARE, () => this.#promptShare()))
+        }
+
+        if (config.joinCommunity && isNew(AUTO_PROMPT.JOIN_COMMUNITY)) {
+            prompts.push(() => this.#showOnce(session, AUTO_PROMPT.JOIN_COMMUNITY, () => this.#promptJoinCommunity()))
+        }
+
+        // The save offer repeats until the game is saved, then the SDK stops allowing it.
         if (config.addToHomeScreen) {
             prompts.push(() => this.#promptAddToHomeScreen())
         }
 
-        if (config.joinCommunity) {
-            prompts.push(() => this.#promptJoinCommunity())
-        }
-
-        // Prompts take turns between sessions, so a declined one does not block the others.
-        const ordered = prompts.map((_, i) => prompts[(sessionNumber + i) % prompts.length])
-        await ordered.reduce(
+        await prompts.reduce(
             (isShown, prompt) => isShown.then((shown) => shown || prompt()),
             Promise.resolve(false),
         )
+    }
+
+    // Remembers a shown one-time prompt in player data, so it is not shown again.
+    async #showOnce(
+        session: FacebookSessionInfo,
+        prompt: AutoPrompt,
+        show: () => Promise<boolean>,
+    ): Promise<boolean> {
+        const shown = await show()
+        if (shown) {
+            session.shownPrompts.push(prompt)
+            const { player } = this._platformSdk as FacebookSdk
+            player.setDataAsync({ [SHOWN_PROMPTS_KEY]: session.shownPrompts }).catch(() => {})
+        }
+
+        return shown
+    }
+
+    // Shares the `social.share` config content, skipped when it has no text or image.
+    #promptShare(): Promise<boolean> {
+        const payload = { ...this._options.social?.share } as SharePayload
+        if (!this.isShareSupported || !this.#isSharePayloadValid(payload)) {
+            return Promise.resolve(false)
+        }
+
+        return this.#withBase64Image({ intent: 'REQUEST', ...payload })
+            .then(
+                (data) => (this._platformSdk as FacebookSdk).shareAsync(data).then(() => true, () => true),
+                () => false,
+            )
     }
 
     // Resolves true when the prompt was shown, whatever the player chose.
