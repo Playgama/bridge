@@ -23,12 +23,20 @@ import {
     PLATFORM_MESSAGE,
     type PlatformId,
 } from '../modules/platform/constants'
+import type { PlatformMessageOptions } from '../modules/platform/PlatformModule'
 import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
 
 const SDK_URL = 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js'
+const MEASURE_CUSTOM_MESSAGE_ID = 'measure'
+const MEASURE_LEVEL_CATEGORY = 'level'
+const MEASURE_LEVEL_ACTIONS: Record<string, string> = {
+    [PLATFORM_MESSAGE.LEVEL_STARTED]: 'start',
+    [PLATFORM_MESSAGE.LEVEL_COMPLETED]: 'complete',
+    [PLATFORM_MESSAGE.LEVEL_FAILED]: 'fail',
+}
 
 interface PokiSdk {
     init(): Promise<unknown>
@@ -37,6 +45,13 @@ interface PokiSdk {
     gameplayStop(): void
     commercialBreak(onStart: () => void): Promise<unknown>
     rewardedBreak(onStart: () => void): Promise<boolean>
+    measure(category: string, what: string, action: string): void
+}
+
+interface PokiMeasureOptions {
+    category?: unknown
+    what?: unknown
+    action?: unknown
 }
 
 declare global {
@@ -98,8 +113,10 @@ class PokiPlatformBridge extends PlatformBridgeBase {
     }
 
     // platform
-    sendMessage(message?: unknown): Promise<unknown> {
+    sendMessage(message?: unknown, options?: PlatformMessageOptions): Promise<unknown> {
         const sdk = this._platformSdk as PokiSdk
+        this.#measureLevel(message, options)
+
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
                 sdk.gameLoadingFinished()
@@ -122,6 +139,20 @@ class PokiPlatformBridge extends PlatformBridgeBase {
                 return super.sendMessage(message)
             }
         }
+    }
+
+    sendCustomMessage(id?: unknown, options?: unknown): Promise<unknown> {
+        if (id !== MEASURE_CUSTOM_MESSAGE_ID) {
+            return super.sendCustomMessage(id, options)
+        }
+
+        const { category, what, action } = (options ?? {}) as PokiMeasureOptions
+        if (category === undefined || what === undefined || action === undefined) {
+            return Promise.reject()
+        }
+
+        (this._platformSdk as PokiSdk).measure(String(category), String(what), String(action))
+        return Promise.resolve()
     }
 
     // advertisement
@@ -163,6 +194,18 @@ class PokiPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._showAdFailurePopup(true)
             })
+    }
+
+    #measureLevel(message: unknown, options?: PlatformMessageOptions): void {
+        const action = MEASURE_LEVEL_ACTIONS[message as string]
+        if (!action || options?.level === undefined) {
+            return
+        }
+
+        const sdk = this._platformSdk as PokiSdk
+        const level = String(options.level)
+        const what = options.world === undefined ? level : `${String(options.world)}-${level}`
+        sdk.measure(MEASURE_LEVEL_CATEGORY, what, action)
     }
 }
 
