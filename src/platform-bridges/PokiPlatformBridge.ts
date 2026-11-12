@@ -45,6 +45,7 @@ const MEASURE_LEVEL_ACTIONS: Record<string, string> = {
 
 interface PokiSdk {
     init(): Promise<unknown>
+    gameLoadingProgress?(data: { percentageDone: number }): void
     gameLoadingFinished(): void
     gameplayStart(): void
     gameplayStop(): void
@@ -94,6 +95,11 @@ class PokiPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // Last loading progress in whole percent; kept until the SDK is ready to receive it.
+    #loadingProgress: number | null = null
+
+    #isLoadingFinished = false
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -109,6 +115,7 @@ class PokiPlatformBridge extends PlatformBridgeBase {
                     this._platformSdk = window.PokiSDK as PokiSdk
                     const onReady = () => {
                         this._isInitialized = true
+                        this.#sendLoadingProgress()
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                     };
                     // init() rejects when an ad blocker is active, but the SDK keeps working,
@@ -127,12 +134,28 @@ class PokiPlatformBridge extends PlatformBridgeBase {
     }
 
     // platform
+    // Poki accepts the loading progress only until loading is finished (100 or game ready).
+    setLoadingProgress(percent: number): void {
+        if (this.#isLoadingFinished) {
+            return
+        }
+
+        const progress = Math.max(0, Math.min(100, Math.floor(percent)))
+        if (progress === this.#loadingProgress) {
+            return
+        }
+
+        this.#loadingProgress = progress
+        this.#sendLoadingProgress()
+    }
+
     sendMessage(message?: unknown, options?: PlatformMessageOptions): Promise<unknown> {
         const sdk = this._platformSdk as PokiSdk
         this.#measureLevel(message, options)
 
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
+                this.#isLoadingFinished = true
                 sdk.gameLoadingFinished()
                 return Promise.resolve()
             }
@@ -204,6 +227,22 @@ class PokiPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._showAdFailurePopup(true)
             })
+    }
+
+    #sendLoadingProgress(): void {
+        const sdk = this._platformSdk as PokiSdk | null
+        if (!this._isInitialized || !sdk || this.#isLoadingFinished || this.#loadingProgress === null) {
+            return
+        }
+
+        // The current SDK keeps this method as a no-op; it is called in case Poki implements it.
+        if (typeof sdk.gameLoadingProgress === 'function') {
+            sdk.gameLoadingProgress({ percentageDone: this.#loadingProgress / 100 })
+        }
+
+        if (this.#loadingProgress === 100) {
+            this.#isLoadingFinished = true
+        }
     }
 
     #measureLevel(message: unknown, options?: PlatformMessageOptions): void {
