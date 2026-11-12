@@ -53,6 +53,9 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
     // Player the cached cloud data belongs to; undefined until the next cloud operation sets it.
     #ownerId: string | null | undefined = undefined
 
+    // Whether the owner's cloud had no data on the first read; undefined until that read.
+    #isCloudEmpty: boolean | undefined = undefined
+
     initialize(platformBridge: StorageBridgeContract): this {
         super.initialize(platformBridge)
 
@@ -107,6 +110,11 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         return this.#queue.enqueue(() => this.#write(this.#buildEntries(keys, keys.map(() => null))))
     }
 
+    // Sends pending changes to the cloud right away, e.g. before the player changes.
+    flush(): Promise<void> {
+        return this.#flushScheduler.flushNow()
+    }
+
     // Turns a write into entries with serialized values; an empty value (null / undefined / '')
     // means "no data" and becomes null, i.e. a delete. A key repeated in one call keeps its last value.
     #buildEntries(keys: string[], values: unknown[]): StorageEntry[] {
@@ -137,19 +145,43 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         return keys.map((key) => parseValue(this.#cache.get(key), tryParseJson))
     }
 
-    // Loads keys into the cache. The cloud wins as a whole: a key it does not have stays empty and
-    // local guest copies are dropped, so the game never gets a mix of cloud and guest data.
+    // Loads keys into the cache. When the player has cloud data, the cloud wins as a whole: a key
+    // it does not have stays empty and local guest copies are dropped, so the game never gets a mix
+    // of cloud and guest data. When the player has no cloud data at all (e.g. a guest has just
+    // authorized with a new account), the local copies are used and sent to the cloud.
     async #loadFromCloud(keys: string[]): Promise<void> {
         const data = await this._platformBridge.getDataFromStorage(keys)
-        // A platform that loads its whole dataset at once returns more keys — cache them all.
-        Object.keys(data).forEach((key) => this.#cache.load(key, data[key]))
+        const loadedKeys = Object.keys(data)
+        // The first read for the player decides whether their cloud has any data.
+        if (this.#isCloudEmpty === undefined) {
+            this.#isCloudEmpty = loadedKeys.every((key) => isEmpty(data[key]))
+        }
 
+        // A platform that loads its whole dataset at once returns more keys — cache them all.
+        loadedKeys.forEach((key) => this.#cache.load(key, data[key]))
+
+        let hasLocalData = false
         keys.forEach((key) => {
             if (!(key in data)) {
                 this.#cache.load(key, null)
             }
+
+            if (this.#isCloudEmpty && isEmpty(data[key]) && !this.#cache.isDirty(key)) {
+                const local = localStorage.getItem(key)
+                if (!isEmpty(local)) {
+                    // The local copy stays until it is sent (see #confirm).
+                    this.#cache.set(key, local)
+                    hasLocalData = true
+                    return
+                }
+            }
             localStorage.removeItem(key)
         })
+
+        if (hasLocalData) {
+            this.#saveJournal()
+            this.#flushScheduler.schedule()
+        }
     }
 
     async #write(entries: StorageEntry[]): Promise<void> {
@@ -233,8 +265,8 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         this.#saveJournal()
     }
 
-    #enqueueFlush(): void {
-        this.#queue.enqueue(() => this.#flush()).catch(() => {})
+    #enqueueFlush(): Promise<void> {
+        return this.#queue.enqueue(() => this.#flush()).catch(() => {})
     }
 
     // The keys are in the cloud now — the local guest copies are stale.
@@ -278,6 +310,7 @@ class StorageModule extends ModuleBase<StorageBridgeContract> {
         }
 
         this.#ownerId = playerId
+        this.#isCloudEmpty = undefined
         this.#cache.clear()
 
         const pending = this.#journal.load()

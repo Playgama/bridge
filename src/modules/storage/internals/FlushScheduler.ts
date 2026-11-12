@@ -19,7 +19,7 @@
 // next tick (so a burst of synchronous writes still goes out as one), later requests wait for
 // the interval to pass. flushNow() skips the wait, e.g. when the page is being hidden.
 class FlushScheduler {
-    #flush: () => void
+    #flush: () => Promise<void>
 
     #interval: number
 
@@ -27,7 +27,7 @@ class FlushScheduler {
 
     #lastFlushTime = 0
 
-    constructor(flush: () => void, interval: number) {
+    constructor(flush: () => Promise<void>, interval: number) {
         this.#flush = flush
         this.#interval = interval
     }
@@ -38,17 +38,17 @@ class FlushScheduler {
         }
 
         const delay = Math.max(0, this.#lastFlushTime + this.#interval - Date.now())
-        this.#timer = setTimeout(() => this.flushNow(), delay)
+        this.#timer = setTimeout(() => { this.flushNow() }, delay)
     }
 
-    flushNow(): void {
+    flushNow(): Promise<void> {
         if (this.#timer !== null) {
             clearTimeout(this.#timer)
             this.#timer = null
         }
 
         this.#lastFlushTime = Date.now()
-        this.#flush()
+        return this.#flush()
     }
 }
 
