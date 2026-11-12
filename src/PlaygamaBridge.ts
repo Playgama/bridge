@@ -199,6 +199,9 @@ class PlaygamaBridge {
 
     #loadingSound: LoadingSound | null = null
 
+    // Whether the game reports its own loading progress; then the fallback 100 is not sent.
+    #isGameLoadingProgressReported = false
+
     #engine = 'javascript'
 
     async initialize(options?: PlaygamaInitOptions): Promise<void> {
@@ -313,7 +316,9 @@ class PlaygamaBridge {
                 .finally(() => {
                     setTimeout(() => {
                         this.#loadingScreen?.setProgress(100, true)
-                        this.#platformBridge?.setLoadingProgress(100)
+                        if (!this.#isGameLoadingProgressReported) {
+                            this.#platformBridge?.setLoadingProgress(100)
+                        }
                     }, 700)
                 })
         }
@@ -322,6 +327,7 @@ class PlaygamaBridge {
     }
 
     setGameLoadingProgress(percent: number): void {
+        this.#isGameLoadingProgressReported = true
         this.#loadingScreen?.setProgress(percent)
         this.#platformBridge?.setLoadingProgress(percent)
     }

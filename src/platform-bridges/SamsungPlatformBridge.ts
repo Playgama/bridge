@@ -236,7 +236,6 @@ class SamsungPlatformBridge extends PlatformBridgeBase {
 
     sendMessage(message?: unknown, options?: unknown): Promise<unknown> {
         if (message === PLATFORM_MESSAGE.GAME_READY) {
-            this.setLoadingProgress(100)
             this.#removeGracRatingBadge(4000)
             return Promise.resolve()
         }

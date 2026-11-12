@@ -19,6 +19,7 @@ import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import { resolvePlatformOptions, type AnyRecord } from '../../utils'
 import { getGuestUser } from './guestUser'
+import storageModule from '../storage'
 
 export type PlayerAuthorizeOptions = AnyRecord & Partial<Record<PlatformId, AnyRecord>>
 
@@ -73,6 +74,9 @@ class PlayerModule extends ModuleBase<PlayerBridgeContract> {
             return Promise.reject()
         }
 
+        // Unsent storage changes belong to the current player: send them before the player changes.
+        // Not awaited, so the platform auth prompt still opens within the user gesture.
+        storageModule.flush()
         return this._platformBridge.authorizePlayer(resolvedOptions)
     }
 }

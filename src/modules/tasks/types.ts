@@ -122,6 +122,8 @@ export interface TasksPeriodRolledOverPayload {
 
 export interface TasksBridgeContract extends PlatformBridgeLike {
     platformId: PlatformId
+    isPlatformStorageAvailable: boolean
+    playerId: string | null
     options?: AnyRecord
     getServerTime(): Promise<number>
 }

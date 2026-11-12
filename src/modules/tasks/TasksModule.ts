@@ -61,6 +61,9 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
 
     #state: TasksState | null = null
 
+    // Whose data #state was loaded from; the state is reloaded when it changes.
+    #stateOwner: string | null = null
+
     #loadPromise: Promise<TasksState> | null = null
 
     initialize(platformBridge: TasksBridgeContract): this {
@@ -298,7 +301,8 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
     }
 
     #load(): Promise<TasksState> {
-        if (this.#state) {
+        const owner = this.#getStateOwner()
+        if (this.#state && this.#stateOwner === owner) {
             return Promise.resolve(this.#state)
         }
         if (this.#loadPromise) {
@@ -307,22 +311,31 @@ class TasksModule extends ModuleBase<TasksBridgeContract> {
         this.#loadPromise = storageModule.get(TASKS_STORAGE_KEY, true)
             .then((raw) => {
                 this.#state = this.#normalizeState(raw)
+                this.#stateOwner = owner
                 this.#loadPromise = null
                 return this.#state
             })
-            .catch(() => {
-                this.#state = this.#defaultState()
+            .catch((error) => {
+                // No default state on a failed read: saving it would overwrite the stored data.
+                // The call rejects and the next one reads again.
                 this.#loadPromise = null
-                return this.#state
+                throw error
             })
         return this.#loadPromise
     }
 
     #persist(): Promise<void> {
-        if (!this.#state) {
+        // Never save a state loaded for another player (e.g. a guest who has since authorized).
+        if (!this.#state || this.#stateOwner !== this.#getStateOwner()) {
             return Promise.resolve()
         }
         return storageModule.set(TASKS_STORAGE_KEY, this.#state)
+    }
+
+    // Whose data the storage serves: the current player's cloud or local storage.
+    #getStateOwner(): string {
+        const { isPlatformStorageAvailable, playerId } = this._platformBridge
+        return isPlatformStorageAvailable ? `cloud:${playerId ?? ''}` : 'local'
     }
 
     #defaultState(): TasksState {

@@ -34,7 +34,7 @@ class AchievementsModule extends ModuleBase<AchievementsBridgeContract> {
     initialize(platformBridge: AchievementsBridgeContract): this {
         super.initialize(platformBridge)
 
-        this.#local = new LocalAchievements(this.#getAchievementsConfig() ?? [])
+        this.#local = new LocalAchievements(this.#getAchievementsConfig() ?? [], platformBridge)
         return this
     }
 

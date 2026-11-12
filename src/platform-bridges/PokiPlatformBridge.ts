@@ -18,25 +18,46 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, waitFor } from '../utils'
 import { ACTION_NAME } from '../constants'
+import logger from '../lib/logger'
 import {
     PLATFORM_ID,
     PLATFORM_MESSAGE,
     type PlatformId,
 } from '../modules/platform/constants'
+import type { PlatformMessageOptions } from '../modules/platform/PlatformModule'
 import {
     INTERSTITIAL_STATE,
     REWARDED_STATE,
 } from '../modules/advertisement/constants'
 
 const SDK_URL = 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js'
+const MEASURE_CUSTOM_CATEGORY = 'custom'
+const MEASURE_CUSTOM_ACTION = 'trigger'
+// Poki reserves '/' and '^' in measure values
+const MEASURE_RESERVED_CHARS = /[/^]/g
+const MEASURE_RESERVED_CHARS_REPLACEMENT = '-'
+const MEASURE_LEVEL_CATEGORY = 'level'
+const MEASURE_LEVEL_ACTIONS: Record<string, string> = {
+    [PLATFORM_MESSAGE.LEVEL_STARTED]: 'start',
+    [PLATFORM_MESSAGE.LEVEL_COMPLETED]: 'complete',
+    [PLATFORM_MESSAGE.LEVEL_FAILED]: 'fail',
+}
 
 interface PokiSdk {
     init(): Promise<unknown>
+    gameLoadingProgress?(data: { percentageDone: number }): void
     gameLoadingFinished(): void
     gameplayStart(): void
     gameplayStop(): void
     commercialBreak(onStart: () => void): Promise<unknown>
     rewardedBreak(onStart: () => void): Promise<boolean>
+    measure(category: string, what: string, action: string): void
+}
+
+interface PokiMeasureOptions {
+    category?: unknown
+    what?: unknown
+    action?: unknown
 }
 
 declare global {
@@ -74,6 +95,11 @@ class PokiPlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // Last loading progress in whole percent; kept until the SDK is ready to receive it.
+    #loadingProgress: number | null = null
+
+    #isLoadingFinished = false
+
     initialize(): Promise<unknown> {
         if (this._isInitialized) {
             return Promise.resolve()
@@ -83,25 +109,53 @@ class PokiPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            addJavaScript(SDK_URL).then(() => {
-                waitFor('PokiSDK', 'init').then(() => {
-                    this._platformSdk = window.PokiSDK as PokiSdk;
-                    (this._platformSdk as PokiSdk).init().then(() => {
+            addJavaScript(SDK_URL)
+                .then(() => waitFor('PokiSDK', 'init'))
+                .then(() => {
+                    this._platformSdk = window.PokiSDK as PokiSdk
+                    const onReady = () => {
                         this._isInitialized = true
+                        this.#sendLoadingProgress()
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                    };
+                    // init() rejects when an ad blocker is active, but the SDK keeps working,
+                    // so the game starts anyway (as Poki's own guide does).
+                    (this._platformSdk as PokiSdk).init().then(onReady, (error) => {
+                        logger.warn('PokiSDK.init() failed, continuing:', error)
+                        onReady()
                     })
                 })
-            })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
+                })
         }
 
         return promiseDecorator.promise
     }
 
     // platform
-    sendMessage(message?: unknown): Promise<unknown> {
+    // Poki accepts the loading progress only until loading is finished (100 or game ready).
+    setLoadingProgress(percent: number): void {
+        if (this.#isLoadingFinished) {
+            return
+        }
+
+        const progress = Math.max(0, Math.min(100, Math.floor(percent)))
+        if (progress === this.#loadingProgress) {
+            return
+        }
+
+        this.#loadingProgress = progress
+        this.#sendLoadingProgress()
+    }
+
+    sendMessage(message?: unknown, options?: PlatformMessageOptions): Promise<unknown> {
         const sdk = this._platformSdk as PokiSdk
+        this.#measureLevel(message, options)
+
         switch (message) {
             case PLATFORM_MESSAGE.GAME_READY: {
+                this.#isLoadingFinished = true
                 sdk.gameLoadingFinished()
                 return Promise.resolve()
             }
@@ -122,6 +176,16 @@ class PokiPlatformBridge extends PlatformBridgeBase {
                 return super.sendMessage(message)
             }
         }
+    }
+
+    sendCustomMessage(id?: unknown, options?: unknown): Promise<unknown> {
+        const { category, what, action } = (options ?? {}) as PokiMeasureOptions
+        this.#measure(
+            category ?? MEASURE_CUSTOM_CATEGORY,
+            what ?? id,
+            action ?? MEASURE_CUSTOM_ACTION,
+        )
+        return Promise.resolve()
     }
 
     // advertisement
@@ -163,6 +227,41 @@ class PokiPlatformBridge extends PlatformBridgeBase {
             .catch(() => {
                 this._showAdFailurePopup(true)
             })
+    }
+
+    #sendLoadingProgress(): void {
+        const sdk = this._platformSdk as PokiSdk | null
+        if (!this._isInitialized || !sdk || this.#isLoadingFinished || this.#loadingProgress === null) {
+            return
+        }
+
+        // The current SDK keeps this method as a no-op; it is called in case Poki implements it.
+        if (typeof sdk.gameLoadingProgress === 'function') {
+            sdk.gameLoadingProgress({ percentageDone: this.#loadingProgress / 100 })
+        }
+
+        if (this.#loadingProgress === 100) {
+            this.#isLoadingFinished = true
+        }
+    }
+
+    #measureLevel(message: unknown, options?: PlatformMessageOptions): void {
+        const action = MEASURE_LEVEL_ACTIONS[message as string]
+        if (!action || options?.level === undefined) {
+            return
+        }
+
+        const level = String(options.level)
+        const what = options.world === undefined ? level : `${String(options.world)}-${level}`
+        this.#measure(MEASURE_LEVEL_CATEGORY, what, action)
+    }
+
+    #measure(category: unknown, what: unknown, action: unknown): void {
+        const sdk = this._platformSdk as PokiSdk
+        const sanitize = (value: unknown) => String(value)
+            .replace(MEASURE_RESERVED_CHARS, MEASURE_RESERVED_CHARS_REPLACEMENT)
+
+        sdk.measure(sanitize(category), sanitize(what), sanitize(action))
     }
 }
 

@@ -20,6 +20,7 @@ import storageModule from '../storage'
 import { ACHIEVEMENTS_STORAGE_KEY } from './constants'
 import type {
     AchievementMapping,
+    AchievementsBridgeContract,
     LocalAchievementsState,
     NormalizedAchievement,
 } from './types'
@@ -34,12 +35,18 @@ import type {
 class LocalAchievements {
     #achievements: AchievementMapping[]
 
+    #platformBridge: AchievementsBridgeContract
+
     #state: LocalAchievementsState | null = null
+
+    // Whose data #state was loaded from; the state is reloaded when it changes.
+    #stateOwner: string | null = null
 
     #loadPromise: Promise<LocalAchievementsState> | null = null
 
-    constructor(achievements: AchievementMapping[]) {
+    constructor(achievements: AchievementMapping[], platformBridge: AchievementsBridgeContract) {
         this.#achievements = achievements
+        this.#platformBridge = platformBridge
     }
 
     async unlock(id: string): Promise<void> {
@@ -66,7 +73,8 @@ class LocalAchievements {
     }
 
     #load(): Promise<LocalAchievementsState> {
-        if (this.#state) {
+        const owner = this.#getStateOwner()
+        if (this.#state && this.#stateOwner === owner) {
             return Promise.resolve(this.#state)
         }
         if (this.#loadPromise) {
@@ -75,22 +83,31 @@ class LocalAchievements {
         this.#loadPromise = storageModule.get(ACHIEVEMENTS_STORAGE_KEY, true)
             .then((raw) => {
                 this.#state = this.#normalizeState(raw)
+                this.#stateOwner = owner
                 this.#loadPromise = null
                 return this.#state
             })
-            .catch(() => {
-                this.#state = this.#defaultState()
+            .catch((error) => {
+                // No default state on a failed read: saving it would overwrite the stored data.
+                // The call rejects and the next one reads again.
                 this.#loadPromise = null
-                return this.#state
+                throw error
             })
         return this.#loadPromise
     }
 
     #persist(): Promise<void> {
-        if (!this.#state) {
+        // Never save a state loaded for another player (e.g. a guest who has since authorized).
+        if (!this.#state || this.#stateOwner !== this.#getStateOwner()) {
             return Promise.resolve()
         }
         return storageModule.set(ACHIEVEMENTS_STORAGE_KEY, this.#state)
+    }
+
+    // Whose data the storage serves: the current player's cloud or local storage.
+    #getStateOwner(): string {
+        const { isPlatformStorageAvailable, playerId } = this.#platformBridge
+        return isPlatformStorageAvailable ? `cloud:${playerId ?? ''}` : 'local'
     }
 
     #defaultState(): LocalAchievementsState {

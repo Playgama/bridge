@@ -391,7 +391,7 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
         })
     }
 
-    paymentsPurchase(id: string): Promise<unknown> {
+    paymentsPurchase(id: string, options?: { customParameters?: Record<string, unknown> }): Promise<unknown> {
         let product = this._paymentsGetProductPlatformData(id)
         if (!product) {
             product = { id }
@@ -414,6 +414,10 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                                 Authorization: `Bearer ${userToken}`,
                                 'Content-Type': 'application/json',
                             },
+                            body: JSON.stringify({
+                                sandbox: this.options.isSandbox || false,
+                                custom_parameters: options?.customParameters,
+                            }),
                         },
                     )
 

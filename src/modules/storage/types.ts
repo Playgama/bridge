@@ -24,6 +24,9 @@ export interface StorageBridgeContract extends PlatformBridgeLike {
     // Whether the platform can currently persist to its cloud storage (e.g. the player is
     // authorized). Flipping this emits PLATFORM_STORAGE_AVAILABILITY_CHANGED.
     isPlatformStorageAvailable: boolean
+    // Current player. Cached cloud data and unsent changes belong to this player; when it changes
+    // (e.g. a guest authorizes) the module drops them and reads the cloud again.
+    playerId: string | null
     // Loads the given keys. Returns a map of key -> value for the keys that exist; a platform
     // that loads its whole dataset at once may return more keys, which the module also caches.
     // Keys absent in the cloud are omitted.

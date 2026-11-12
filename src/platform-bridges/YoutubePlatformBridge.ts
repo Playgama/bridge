@@ -23,7 +23,6 @@ import { ACTION_NAME } from '../constants'
 import {
     PLATFORM_ID,
     PLATFORM_MESSAGE,
-    VISIBILITY_STATE,
     type PlatformId,
 } from '../modules/platform/constants'
 import { DEVICE_TYPE } from '../modules/device/constants'
@@ -446,6 +445,12 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
         return false
     }
 
+    // YouTube Playables must not use the Page Visibility API; pause and resume
+    // come from ytgame.system.onPause / onResume instead
+    get isPlatformPageVisibilityApiAllowed(): boolean {
+        return false
+    }
+
     get isClipboardSupported(): boolean {
         return false
     }
@@ -489,19 +494,6 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
 
                 this.#syncAudioState()
 
-                // onAudioEnabledChange is not delivered on some Android devices when the toggle
-                // happens while the game iframe is paused or frozen, so re-read the actual state
-                // every time the game comes back to the foreground
-                document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === VISIBILITY_STATE.VISIBLE) {
-                        this.#syncAudioState()
-                    }
-                })
-
-                window.addEventListener('pageshow', () => {
-                    this.#syncAudioState()
-                })
-
                 sdk.system.onPause(() => {
                     this._setPauseState(true)
                     this.#tryShowCrossPromo()
@@ -510,6 +502,9 @@ class YoutubePlatformBridge extends PlatformBridgeBase {
                 sdk.system.onResume(() => {
                     this._setPauseState(false)
                     crossPromoModule.hide()
+                    // onAudioEnabledChange is not delivered on some Android devices when the toggle
+                    // happens while the game iframe is paused or frozen, so re-read the actual state
+                    // on resume. YouTube forbids the Page Visibility API: onResume is the signal.
                     this.#syncAudioState()
                 })
 

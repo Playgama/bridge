@@ -47,6 +47,7 @@ export interface PlatformBridgeContract extends PlatformBridgeLike {
     isPlatformAudioEnabled: boolean
     isPlatformPaused: boolean
     sendMessage(message: string, options?: PlatformMessageOptions): Promise<unknown>
+    setLoadingProgress(percent: number): void
     sendCustomMessage(id: string, options?: unknown): Promise<unknown>
     getServerTime(): Promise<unknown>
 }
@@ -142,6 +143,9 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
             if (overlay) {
                 overlay.remove()
             }
+
+            // The game is loaded: report 100 unless it has already been sent.
+            this._platformBridge.setLoadingProgress(100)
         }
 
         if (options.world !== undefined) {
