@@ -18,6 +18,7 @@
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, waitFor } from '../utils'
 import { ACTION_NAME } from '../constants'
+import logger from '../lib/logger'
 import {
     PLATFORM_ID,
     PLATFORM_MESSAGE,
@@ -102,15 +103,24 @@ class PokiPlatformBridge extends PlatformBridgeBase {
         if (!promiseDecorator) {
             promiseDecorator = this._createPromiseDecorator(ACTION_NAME.INITIALIZE)
 
-            addJavaScript(SDK_URL).then(() => {
-                waitFor('PokiSDK', 'init').then(() => {
-                    this._platformSdk = window.PokiSDK as PokiSdk;
-                    (this._platformSdk as PokiSdk).init().then(() => {
+            addJavaScript(SDK_URL)
+                .then(() => waitFor('PokiSDK', 'init'))
+                .then(() => {
+                    this._platformSdk = window.PokiSDK as PokiSdk
+                    const onReady = () => {
                         this._isInitialized = true
                         this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
+                    };
+                    // init() rejects when an ad blocker is active, but the SDK keeps working,
+                    // so the game starts anyway (as Poki's own guide does).
+                    (this._platformSdk as PokiSdk).init().then(onReady, (error) => {
+                        logger.warn('PokiSDK.init() failed, continuing:', error)
+                        onReady()
                     })
                 })
-            })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
+                })
         }
 
         return promiseDecorator.promise
