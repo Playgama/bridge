@@ -33,6 +33,7 @@ export interface AnalyticsBridgeContract extends PlatformBridgeLike {
     deviceOs: DeviceOs
     options: AnalyticsBridgeOptions
     launchSource: LaunchSource | null
+    publishState?: string | null
     isPlatformExternalCallsSupported: boolean
     isPlatformPaused: boolean
     data?: { clid?: string } & Record<string, unknown>
@@ -66,6 +67,7 @@ export interface AnalyticsMeta {
     device_os: DeviceOs
     clid: string
     launch_source: LaunchSource | null
+    publish_state?: string
     public_token?: string
 }
 

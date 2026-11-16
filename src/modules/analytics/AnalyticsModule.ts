@@ -212,6 +212,11 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             launch_source: this._platformBridge.launchSource,
         }
 
+        const { publishState } = this._platformBridge
+        if (publishState) {
+            meta.publish_state = publishState
+        }
+
         const publicToken = bridgeConfig.getValues().saas?.publicToken
         if (publicToken) {
             meta.public_token = publicToken
