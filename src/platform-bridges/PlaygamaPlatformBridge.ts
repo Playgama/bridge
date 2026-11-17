@@ -17,7 +17,7 @@
 
 import PlatformBridgeBase from './PlatformBridgeBase'
 import { addJavaScript, waitFor, type AnyRecord } from '../utils'
-import { ACTION_NAME, type ActionName } from '../constants'
+import { ACTION_NAME, PUBLISH_STATE_QUERY_PARAM, type ActionName } from '../constants'
 import {
     PLATFORM_ID,
     PLATFORM_MESSAGE,
@@ -282,6 +282,10 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
     get platformPayload(): string | null {
         const platformService = (this._platformSdk as PlaygamaSdk | null)?.platformService as PlaygamaService
         return this.#getValue(platformService, 'getPayload') ?? super.platformPayload
+    }
+
+    get publishState(): string | null {
+        return new URL(window.location.href).searchParams.get(PUBLISH_STATE_QUERY_PARAM)
     }
 
     // device
