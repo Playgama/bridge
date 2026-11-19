@@ -17,12 +17,13 @@
 
 import { internalAnalytics } from '../analytics'
 import type { BridgeError } from '../../constants/errors'
-import type { MultiplayerRoom as RoomHandle } from './transport/types'
+import { MultiplayerError, type MultiplayerRoom as RoomHandle } from './transport/types'
 import {
     MULTIPLAYER_ANALYTICS_EVENT,
     PAGE_CLOSED_LEAVE_REASON,
     RECONNECT_FAILED_ERROR,
     ROOM_ENTER_METHOD,
+    SEAT_EXPIRED_LEAVE_REASON,
     type RoomEnterMethod,
     type RoomLeaveReason,
 } from './constants'
@@ -63,6 +64,7 @@ class MultiplayerAnalytics {
         internalAnalytics.send(MULTIPLAYER_ANALYTICS_EVENT.ROOM_ENTER_FAILED, {
             method,
             error: error.code,
+            reason: this.#getReason(error),
         })
     }
 
@@ -83,7 +85,7 @@ class MultiplayerAnalytics {
         }
     }
 
-    roomLeft(reason: RoomLeaveReason | typeof PAGE_CLOSED_LEAVE_REASON): void {
+    roomLeft(reason: RoomLeaveReason | typeof PAGE_CLOSED_LEAVE_REASON | typeof SEAT_EXPIRED_LEAVE_REASON): void {
         const room = this.#room
         if (!room) {
             return
@@ -138,6 +140,16 @@ class MultiplayerAnalytics {
         if (this.#room) {
             this.#room.pings.push(roundTripMs)
         }
+    }
+
+    // The transport or backend code behind the bridge error, e.g. ROOM_ENDED behind ROOM_NOT_FOUND.
+    #getReason(error: BridgeError): string | null {
+        const { originalError } = error
+        if (originalError instanceof MultiplayerError) {
+            return originalError.code
+        }
+
+        return originalError instanceof Error ? originalError.name : null
     }
 
     // Median is robust to single spikes (tab throttling, GC pauses) that skew the average.

@@ -210,6 +210,9 @@ export const ROOM_FRAME = {
 /** Round-trip time probe interval while connected. */
 export const PING_INTERVAL_MS = 5000
 
+/** How long the server keeps the seat of a dropped player: the return window. */
+export const RETURN_WINDOW_MS = 120000
+
 /** Room server close codes the transport reacts to. */
 export const ROOM_CLOSE_CODE = {
     SERVER_SHUTDOWN: 4001,
