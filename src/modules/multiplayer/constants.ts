@@ -148,6 +148,6 @@ export const ROOM_ENTER_METHOD = {
 } as const
 export type RoomEnterMethod = typeof ROOM_ENTER_METHOD[keyof typeof ROOM_ENTER_METHOD]
 
-// Invite code: 8 chars, the first one is the region of the room.
-export const INVITE_CODE_PATTERN = /^[KRX][0123456789ABCDEFGHJKMNPQRSTVWXYZ]{7}$/
+// Invite code: 8 chars, the first one is the prefix of the room's region.
+export const INVITE_CODE_PATTERN = /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/
 export const ROOM_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

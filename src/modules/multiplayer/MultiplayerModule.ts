@@ -173,6 +173,12 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         return roomId ? String(roomId).trim().toUpperCase() : null
     }
 
+    // Region of the next created or matched room and of getRooms(), e.g. 'eu'. Null until
+    // setRegion(), getRegions() or the first room call: then the backend picks the region.
+    get region(): string | null {
+        return this.#region
+    }
+
     // World of syncState without callbacks: the last one set with setSyncState() or received.
     get syncState(): MultiplayerProperties {
         return { ...this.#syncState }
@@ -181,6 +187,8 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     #state: MultiplayerState = MULTIPLAYER_STATE.DISCONNECTED
 
     #runtime: Promise<MultiplayerRuntime> | null = null
+
+    #region: string | null = null
 
     #handle: RoomHandle | null = null
 
@@ -276,12 +284,13 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         }
 
         try {
-            const runtime = await this.#loadRuntime()
+            const runtime = await this.#getRuntime()
             const { rooms } = await runtime.getRooms({
                 maxPlayers: options.maxPlayers,
                 filter: options.filter,
                 limit: options.limit ?? MULTIPLAYER_DEFAULTS.ROOM_LIST_LIMIT,
             })
+            this.#region ??= runtime.region ?? null
             return rooms
                 .filter((room) => room.isOpen && room.occupiedSeats < room.maxPlayers)
                 .map((room) => ({
@@ -295,6 +304,33 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         } catch (error) {
             throw this.#toBridgeError(error)
         }
+    }
+
+    // Region ids for a region picker; also sets region to the default one if it is still unknown.
+    async getRegions(): Promise<string[]> {
+        if (!this.isSupported) {
+            throw new BridgeError(ERROR_CODE.MULTIPLAYER_NOT_SUPPORTED)
+        }
+
+        try {
+            const runtime = await this.#getRuntime()
+            const { defaultRegion, regions } = await runtime.getRegions()
+            this.#region ??= runtime.region ?? defaultRegion ?? null
+            return regions.map((region) => region.id)
+        } catch (error) {
+            throw this.#toBridgeError(error)
+        }
+    }
+
+    // Region of the next created or matched room and of getRooms(). The current room stays
+    // where it is; joinRoom() by code always enters the region of the code.
+    setRegion(region: string): void {
+        if (typeof region !== 'string' || !region) {
+            logger.warn('[multiplayer] setRegion() needs a region id from getRegions()')
+            return
+        }
+
+        this.#region = region
     }
 
     // Asks the platform to share a link to the current room: whoever opens it
@@ -460,8 +496,9 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
         try {
             await this.#leaving
-            const runtime = await this.#loadRuntime()
+            const runtime = await this.#getRuntime()
             handle = await enter(runtime)
+            this.#region ??= runtime.region ?? null
             handle.syncState(this.#getSyncOptions(syncState))
             await this.#waitForHost(handle)
         } catch (error) {
@@ -722,6 +759,15 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
                 })
         }
         return this.#runtime
+    }
+
+    // The transport with the chosen region applied.
+    async #getRuntime(): Promise<MultiplayerRuntime> {
+        const runtime = await this.#loadRuntime()
+        if (this.#region) {
+            runtime.setRegion(this.#region)
+        }
+        return runtime
     }
 
     #getHeaders(): Record<string, string> {

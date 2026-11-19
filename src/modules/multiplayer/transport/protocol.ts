@@ -79,16 +79,22 @@ export interface Welcome {
 export const uuid = (): string => crypto.randomUUID()
 export const decimal = (value: unknown): value is string => typeof value === 'string' && /^(0|[1-9][0-9]*)$/.test(value)
 
-export function invitation(input: string): { code: string; region: MultiplayerRegion } {
+// Invite code: 8 chars, the first one is the prefix of the room's region.
+export const INVITE_CODE_PATTERN = /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/
+
+// Built-in invite prefixes, so a code of these regions needs no GET /regions.
+export const INVITE_PREFIX_REGIONS: Readonly<Record<string, MultiplayerRegion>> = { K: 'eu', R: 'us', X: 'ap' }
+
+// Normalized invite code; its region comes from the prefix, see HttpClient.regionOf().
+export function invitation(input: string): string {
     if (typeof input !== 'string' || input.length > 64 || [...input].some((char) => char.charCodeAt(0) > 127)) {
         throw new MultiplayerError('INVALID_REQUEST', 'Invalid invitation code')
     }
     const code = input.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, '').toUpperCase()
-    const region = ({ K: 'eu', R: 'us', X: 'ap' } as const)[code[0] as 'K' | 'R' | 'X']
-    if (!region || !/^[KRX][0123456789ABCDEFGHJKMNPQRSTVWXYZ]{7}$/.test(code)) {
+    if (!INVITE_CODE_PATTERN.test(code)) {
         throw new MultiplayerError('INVALID_REQUEST', 'Invalid invitation code')
     }
-    return { code, region }
+    return code
 }
 
 export function validateConfig(config: MultiplayerConfig): void {

@@ -5,7 +5,7 @@ import type { Session } from './protocol'
 import { admit } from './admission'
 import type {
     MultiplayerConfig, MultiplayerCreateOptions, MultiplayerJoinOptions, MultiplayerMatchOptions,
-    MultiplayerRoom, MultiplayerRoomsQuery, MultiplayerRoomSummary, MultiplayerRegion,
+    MultiplayerRoom, MultiplayerRoomsQuery, MultiplayerRoomSummary, MultiplayerRegion, MultiplayerRegionList,
 } from './types'
 
 export default class MultiplayerRuntime {
@@ -17,8 +17,21 @@ export default class MultiplayerRuntime {
 
     private admissions = new Map<Session, Promise<unknown>>()
 
+    get region(): MultiplayerRegion | undefined {
+        return this.http.region
+    }
+
     constructor(config: MultiplayerConfig, headers: () => Record<string, string>) {
         this.http = new HttpClient(config, headers)
+    }
+
+    // Region of the next created or matched room and of the room list.
+    setRegion(region: MultiplayerRegion): void {
+        this.http.selectRegion(region)
+    }
+
+    getRegions(): Promise<MultiplayerRegionList> {
+        return this.http.regions()
     }
 
     createRoom(options: MultiplayerCreateOptions): Promise<MultiplayerRoom> {
@@ -30,15 +43,17 @@ export default class MultiplayerRuntime {
     }
 
     async joinRoom(options: MultiplayerJoinOptions): Promise<MultiplayerRoom> {
-        const parsed = options.code === undefined ? undefined : invitation(options.code)
+        const code = options.code === undefined ? undefined : invitation(options.code)
         const existing = [...this.rooms.values()].find((room) => (
-            parsed ? room.inviteCode === parsed.code : room.id === options.roomId
+            code ? room.inviteCode === code : room.id === options.roomId
         ))
         if (existing) return existing
-        const key = parsed?.code || options.roomId!
+        const key = code || options.roomId!
         let join = this.joins.get(key)
         if (!join) {
-            join = this.enter('/rooms/join', { ...options, ...(parsed ? { code: parsed.code } : {}) }, parsed?.region)
+            // A code enters its room's region; a room id comes from the list of the selected region.
+            join = (code ? this.http.regionOf(code) : Promise.resolve(undefined))
+                .then((region) => this.enter('/rooms/join', { ...options, ...(code ? { code } : {}) }, region))
                 .finally(() => this.joins.delete(key))
             this.joins.set(key, join)
         }

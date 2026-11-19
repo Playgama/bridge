@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop -- Retries must preserve one sequential operation. */
 import { MultiplayerError } from './types'
-import type { MultiplayerConfig, MultiplayerRegion } from './types'
-import { validateConfig } from './protocol'
+import type { MultiplayerConfig, MultiplayerRegion, MultiplayerRegionList } from './types'
+import { INVITE_PREFIX_REGIONS, validateConfig } from './protocol'
 import type { Session } from './protocol'
 
 export const remaining = (deadline: number, signal?: AbortSignal): number => {
@@ -39,6 +39,17 @@ export default class HttpClient {
 
     private refreshTimers = new Map<Session, ReturnType<typeof setTimeout>>()
 
+    // Invite prefix -> region: the built-in ones, then the backend list once it is loaded.
+    private prefixes = new Map<string, MultiplayerRegion>(Object.entries(INVITE_PREFIX_REGIONS))
+
+    // GET /regions, loaded at most once per page (a failed load is retried).
+    private regionList?: Promise<MultiplayerRegionList>
+
+    // Region of new sessions: the chosen one, else the one the backend picked for the first session.
+    get region(): MultiplayerRegion | undefined {
+        return this.selectedRegion
+    }
+
     constructor(config: MultiplayerConfig, headers: () => Record<string, string>) {
         validateConfig(config)
         this.config = { ...config, apiBase: config.apiBase.replace(/\/+$/, '') }
@@ -47,7 +58,7 @@ export default class HttpClient {
         if (!this.selectedRegion) {
             try {
                 const selected = sessionStorage.getItem(this.selectionKey())
-                if (selected && ['eu', 'us', 'ap'].includes(selected)) this.selectedRegion = selected as MultiplayerRegion
+                if (selected) this.selectedRegion = selected
             } catch { /* Storage is optional. */ }
         }
         // Refreshing never replaces a handle's session or returns its old membership under a new identity.
@@ -58,6 +69,42 @@ export default class HttpClient {
                 }
             })
         }
+    }
+
+    selectRegion(region: MultiplayerRegion): void {
+        this.selectedRegion = region
+        try { sessionStorage.setItem(this.selectionKey(), region) } catch { /* Storage is optional. */ }
+    }
+
+    regions(): Promise<MultiplayerRegionList> {
+        this.regionList ??= this.request<MultiplayerRegionList>('/regions')
+            .then((list) => {
+                if (!list || !Array.isArray(list.regions)) {
+                    throw new MultiplayerError('PROTOCOL_VIOLATION', 'Invalid region list response')
+                }
+                list.regions.forEach(({ id, invitePrefix }) => this.prefixes.set(invitePrefix, id))
+                return list
+            })
+            .catch((error) => {
+                this.regionList = undefined
+                throw error
+            })
+        return this.regionList
+    }
+
+    // Region of a known invite prefix, without a request.
+    knownRegionOf(code: string): MultiplayerRegion | undefined {
+        return this.prefixes.get(code[0])
+    }
+
+    // Region of an invite code; an unknown prefix loads the backend list.
+    async regionOf(code: string): Promise<MultiplayerRegion> {
+        const known = this.knownRegionOf(code)
+        if (known) return known
+        await this.regions()
+        const region = this.knownRegionOf(code)
+        if (!region) throw new MultiplayerError('ROOM_NOT_FOUND', 'Unknown invitation code region')
+        return region
     }
 
     async session(region = this.selectedRegion): Promise<Session> {
@@ -205,7 +252,7 @@ export default class HttpClient {
         const endpoint = new URL(session.apiBase)
         const root = new URL(this.config.apiBase)
         if (session.protocolVersion !== 1 || !session.sessionId || !session.sessionToken
-            || !['eu', 'us', 'ap'].includes(session.region) || (region && session.region !== region)
+            || typeof session.region !== 'string' || !session.region || (region && session.region !== region)
             || !Number.isFinite(Date.parse(session.expiresAt))
             || endpoint.origin !== root.origin
             || endpoint.pathname !== `${root.pathname}/regions/${session.region}`
@@ -222,10 +269,7 @@ export default class HttpClient {
         const selected = established && Date.parse(established.expiresAt) > Date.now() ? established : incoming
         selected.refreshedAt ??= Date.now()
         this.sessions.set(selected.region, selected)
-        if (!region) {
-            this.selectedRegion = selected.region
-            try { sessionStorage.setItem(this.selectionKey(), selected.region) } catch { /* Storage is optional. */ }
-        }
+        if (!region) this.selectRegion(selected.region)
         this.persist(selected)
         this.scheduleRefresh(selected)
         return selected

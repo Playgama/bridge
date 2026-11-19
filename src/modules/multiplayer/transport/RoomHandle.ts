@@ -386,8 +386,9 @@ export default class RoomHandle implements MultiplayerRoom {
                 return
             }
             try {
-                const code = invitation(payload.inviteCode)
-                if (code.region !== this.session.region) throw new MultiplayerError('PROTOCOL_VIOLATION')
+                // A prefix of a region missing from the known list is not checked.
+                const region = this.http.knownRegionOf(invitation(payload.inviteCode))
+                if (region && region !== this.session.region) throw new MultiplayerError('PROTOCOL_VIOLATION')
             } catch {
                 this.welcome.reject(new MultiplayerError('PROTOCOL_VIOLATION'))
                 return
