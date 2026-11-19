@@ -19,6 +19,7 @@ import type { PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import type { DeviceOs, DeviceType } from '../device/constants'
 import type { LaunchSource } from '../../constants'
+import type { GAME_ERROR_TYPE } from './constants'
 
 export interface AnalyticsBridgeOptions {
     sendAnalyticsEvents?: boolean
@@ -75,4 +76,28 @@ export interface AnalyticsPayload {
     meta: AnalyticsMeta
     events: AnalyticsEvent[]
     custom_events?: AnalyticsEvent[]
+    errors?: AnalyticsErrorEvent[]
+}
+
+export type GameErrorType = typeof GAME_ERROR_TYPE[keyof typeof GAME_ERROR_TYPE]
+
+export interface GameError {
+    type: GameErrorType
+    message: string
+    stack: string
+    source: string
+    line: number
+    col: number
+    fingerprint: string
+}
+
+export interface CapturedGameError extends GameError {
+    // Local time in milliseconds of the first occurrence among the counted ones
+    timestamp: number
+    count: number
+}
+
+export interface AnalyticsErrorEvent extends GameError {
+    timestamp: string
+    count: number
 }

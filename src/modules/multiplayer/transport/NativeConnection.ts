@@ -60,6 +60,13 @@ export default class NativeConnection {
         return this.socket?.bufferedAmount || 0
     }
 
+    // Wall-clock time of the last frame from the server: it keeps running while the page is frozen.
+    get receivedAt(): number {
+        return this.lastReceivedAt
+    }
+
+    private lastReceivedAt = Date.now()
+
     private socket?: WebSocket
 
     private stopped = false
@@ -132,6 +139,7 @@ export default class NativeConnection {
 
     private receive(data: Uint8Array): void {
         if (this.stopped) return
+        this.lastReceivedAt = Date.now()
         switch (data[0]) {
             case ROOM_FRAME.JOIN_ROOM: {
                 // Reconnection token and serializer id, each prefixed by its byte length

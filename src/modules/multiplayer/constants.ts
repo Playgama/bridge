@@ -85,13 +85,33 @@ export const HOST_SYNC = {
 // Backend error codes -> bridge errors.
 export const BACKEND_ERRORS: Readonly<Record<string, ErrorCode>> = {
     ROOM_NOT_FOUND: ERROR_CODE.MULTIPLAYER_ROOM_NOT_FOUND,
+    // The room closed while the player was entering it.
+    ROOM_ENDED: ERROR_CODE.MULTIPLAYER_ROOM_NOT_FOUND,
     ROOM_FULL: ERROR_CODE.MULTIPLAYER_ROOM_FULL,
     JOIN_CLOSED: ERROR_CODE.MULTIPLAYER_ROOM_CLOSED,
-    INVALID_REQUEST: ERROR_CODE.MULTIPLAYER_ROOM_NOT_FOUND,
+    // Arguments the server refused: the game has to fix the call.
+    INVALID_REQUEST: ERROR_CODE.MULTIPLAYER_INVALID_REQUEST,
+    PAYLOAD_TOO_LARGE: ERROR_CODE.MULTIPLAYER_INVALID_REQUEST,
 }
 
 // Transport errors after which the room is gone, not only the connection.
 export const ROOM_ENDED_ERRORS: readonly string[] = ['ROOM_ENDED']
+
+// Transport error when the page was frozen (a background tab, a sleeping device) longer
+// than the server keeps the seat: the room is left without trying to return.
+export const SEAT_EXPIRED_ERROR = 'SEAT_EXPIRED'
+
+// Repeated joinRoom() to the same room after one of these errors gets the same error
+// without a request until the delay passes; the delay doubles with each failure in a row.
+export const JOIN_RETRY = {
+    ERRORS: [
+        ERROR_CODE.MULTIPLAYER_ROOM_NOT_FOUND,
+        ERROR_CODE.MULTIPLAYER_ROOM_FULL,
+        ERROR_CODE.MULTIPLAYER_ROOM_CLOSED,
+    ] as readonly ErrorCode[],
+    BASE_DELAY: 1000,
+    MAX_DELAY: 30000,
+} as const
 
 // Transport refusal of a frame over the send rate: the frame can be sent again later.
 export const RATE_LIMITED_ERROR = 'RATE_LIMITED'
@@ -110,8 +130,10 @@ export const MULTIPLAYER_ANALYTICS_EVENT = {
     ROOM_LEFT: 'multiplayer_room_left',
 } as const
 
-// Analytics-only leave reason: the page was closed while in a room.
+// Analytics-only leave reasons: the page was closed while in a room; the page was frozen
+// longer than the server keeps the seat (the game gets connection_lost).
 export const PAGE_CLOSED_LEAVE_REASON = 'page_closed'
+export const SEAT_EXPIRED_LEAVE_REASON = 'seat_expired'
 
 // Analytics error of a failed reconnect when the transport gave no error code.
 export const RECONNECT_FAILED_ERROR = 'CONNECTION_LOST'
@@ -126,6 +148,6 @@ export const ROOM_ENTER_METHOD = {
 } as const
 export type RoomEnterMethod = typeof ROOM_ENTER_METHOD[keyof typeof ROOM_ENTER_METHOD]
 
-// Invite code: 8 chars, the first one is the region of the room.
-export const INVITE_CODE_PATTERN = /^[KRX][0123456789ABCDEFGHJKMNPQRSTVWXYZ]{7}$/
+// Invite code: 8 chars, the first one is the prefix of the room's region.
+export const INVITE_CODE_PATTERN = /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{8}$/
 export const ROOM_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

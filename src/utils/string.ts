@@ -55,3 +55,17 @@ export function deformatPrice(priceStr: string): number {
 
     return parseInt(cleaned, 10)
 }
+
+// Fast non-cryptographic 32-bit FNV-1a hash, returned as a hex string
+/* eslint-disable no-bitwise */
+export function hashString(value: string): string {
+    let hash = 0x811c9dc5
+
+    for (let i = 0; i < value.length; i++) {
+        hash ^= value.charCodeAt(i)
+        hash = Math.imul(hash, 0x01000193)
+    }
+
+    return (hash >>> 0).toString(16).padStart(8, '0')
+}
+/* eslint-enable no-bitwise */

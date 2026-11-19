@@ -12,6 +12,7 @@ import type {
 } from './types'
 import {
     uuid, decimal, encodeJson, frame, unframe, SendBudget, invitation, MAX_BUFFERED_BYTES, PING_INTERVAL_MS,
+    RETURN_WINDOW_MS,
 } from './protocol'
 import type {
     Reservation, Session, RoomMetadata, Welcome,
@@ -385,8 +386,9 @@ export default class RoomHandle implements MultiplayerRoom {
                 return
             }
             try {
-                const code = invitation(payload.inviteCode)
-                if (code.region !== this.session.region) throw new MultiplayerError('PROTOCOL_VIOLATION')
+                // A prefix of a region missing from the known list is not checked.
+                const region = this.http.knownRegionOf(invitation(payload.inviteCode))
+                if (region && region !== this.session.region) throw new MultiplayerError('PROTOCOL_VIOLATION')
             } catch {
                 this.welcome.reject(new MultiplayerError('PROTOCOL_VIOLATION'))
                 return
@@ -493,6 +495,11 @@ export default class RoomHandle implements MultiplayerRoom {
 
     private recover(httpOnly = false, retryAfterMs = 0): void {
         if (this.closed || this.recovery || !this.everConnected) return
+        // A page frozen (background tab, sleeping device) past the return window has lost the seat.
+        if (this.native && Date.now() - this.native.receivedAt > RETURN_WINDOW_MS) {
+            this.finish(new MultiplayerError('SEAT_EXPIRED'))
+            return
+        }
         const token = this.native?.token
         const { reservation } = this
         this.native?.stop()

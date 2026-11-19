@@ -1,7 +1,8 @@
 import type { JsonValue, JsonObject } from '../../../utils/json'
 import type { RoomMetadata } from './protocol'
 
-export type MultiplayerRegion = 'eu' | 'us' | 'ap'
+// Region id from the backend, e.g. 'eu'; the list can grow, see GET /regions.
+export type MultiplayerRegion = string
 export type MultiplayerJson = JsonValue
 export type MultiplayerProperties = JsonObject
 export type MultiplayerFilter = Record<string, string | boolean | number>
@@ -61,6 +62,18 @@ export interface MultiplayerRoomSummary {
     occupiedSeats: number
     filter: MultiplayerFilter
     properties: MultiplayerProperties
+}
+
+export interface MultiplayerRegionInfo {
+    id: MultiplayerRegion
+    // First char of the invite codes of the region's rooms.
+    invitePrefix: string
+}
+
+export interface MultiplayerRegionList {
+    // Region the backend picks for this player when none is chosen.
+    defaultRegion: MultiplayerRegion
+    regions: MultiplayerRegionInfo[]
 }
 
 export interface MultiplayerRoomPatch {

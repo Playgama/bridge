@@ -25,6 +25,7 @@ import logger from '../../lib/logger'
 import type { JsonObject, JsonValue } from '../../utils/json'
 import type MultiplayerRuntime from './transport/Runtime'
 import MultiplayerAnalytics from './MultiplayerAnalytics'
+import JoinRetryGuard from './JoinRetryGuard'
 import { MultiplayerError } from './transport/types'
 import type {
     MultiplayerRoom as RoomHandle,
@@ -47,6 +48,8 @@ import {
     ROOM_ENTER_METHOD,
     ROOM_LEAVE_REASON,
     ROOM_UUID_PATTERN,
+    SEAT_EXPIRED_ERROR,
+    SEAT_EXPIRED_LEAVE_REASON,
     type MultiplayerState,
     type RoomEnterMethod,
     type RoomLeaveReason,
@@ -170,6 +173,12 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         return roomId ? String(roomId).trim().toUpperCase() : null
     }
 
+    // Region of the next created or matched room and of getRooms(), e.g. 'eu'. Null until
+    // setRegion(), getRegions() or the first room call: then the backend picks the region.
+    get region(): string | null {
+        return this.#region
+    }
+
     // World of syncState without callbacks: the last one set with setSyncState() or received.
     get syncState(): MultiplayerProperties {
         return { ...this.#syncState }
@@ -178,6 +187,8 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     #state: MultiplayerState = MULTIPLAYER_STATE.DISCONNECTED
 
     #runtime: Promise<MultiplayerRuntime> | null = null
+
+    #region: string | null = null
 
     #handle: RoomHandle | null = null
 
@@ -210,6 +221,8 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
     #analytics = new MultiplayerAnalytics()
 
+    #joinRetryGuard = new JoinRetryGuard()
+
     // Resolves with the invite code. A hidden room (the default) is for friends:
     // only players the code was shared with can join.
     async createRoom<T extends object = object>(options: CreateRoomOptions<T> = {}): Promise<string> {
@@ -230,19 +243,26 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         const code = id.toUpperCase()
         const player = this.#getPlayer(options)
 
+        let enter: (runtime: MultiplayerRuntime) => Promise<RoomHandle>
+        let key: string
         if (INVITE_CODE_PATTERN.test(code)) {
-            await this.#enterRoom(
-                ROOM_ENTER_METHOD.JOIN,
-                (runtime) => runtime.joinRoom({ code, player }),
-                options.syncState,
-            )
+            key = code
+            enter = (runtime) => runtime.joinRoom({ code, player })
         } else if (ROOM_UUID_PATTERN.test(id)) {
-            await this.#enterRoom(ROOM_ENTER_METHOD.JOIN, (runtime) => runtime.joinRoom({
-                roomId: id.toLowerCase(), player,
-            }), options.syncState)
+            key = id.toLowerCase()
+            enter = (runtime) => runtime.joinRoom({ roomId: key, player })
         } else {
             throw new BridgeError(ERROR_CODE.MULTIPLAYER_ROOM_NOT_FOUND)
         }
+
+        this.#joinRetryGuard.check(key)
+        try {
+            await this.#enterRoom(ROOM_ENTER_METHOD.JOIN, enter, options.syncState)
+        } catch (error) {
+            this.#joinRetryGuard.failed(key, error)
+            throw error
+        }
+        this.#joinRetryGuard.succeeded()
     }
 
     // Quick match: enters an open public room of the same size and filter, the
@@ -264,12 +284,13 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         }
 
         try {
-            const runtime = await this.#loadRuntime()
+            const runtime = await this.#getRuntime()
             const { rooms } = await runtime.getRooms({
                 maxPlayers: options.maxPlayers,
                 filter: options.filter,
                 limit: options.limit ?? MULTIPLAYER_DEFAULTS.ROOM_LIST_LIMIT,
             })
+            this.#region ??= runtime.region ?? null
             return rooms
                 .filter((room) => room.isOpen && room.occupiedSeats < room.maxPlayers)
                 .map((room) => ({
@@ -283,6 +304,33 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         } catch (error) {
             throw this.#toBridgeError(error)
         }
+    }
+
+    // Region ids for a region picker; also sets region to the default one if it is still unknown.
+    async getRegions(): Promise<string[]> {
+        if (!this.isSupported) {
+            throw new BridgeError(ERROR_CODE.MULTIPLAYER_NOT_SUPPORTED)
+        }
+
+        try {
+            const runtime = await this.#getRuntime()
+            const { defaultRegion, regions } = await runtime.getRegions()
+            this.#region ??= runtime.region ?? defaultRegion ?? null
+            return regions.map((region) => region.id)
+        } catch (error) {
+            throw this.#toBridgeError(error)
+        }
+    }
+
+    // Region of the next created or matched room and of getRooms(). The current room stays
+    // where it is; joinRoom() by code always enters the region of the code.
+    setRegion(region: string): void {
+        if (typeof region !== 'string' || !region) {
+            logger.warn('[multiplayer] setRegion() needs a region id from getRegions()')
+            return
+        }
+
+        this.#region = region
     }
 
     // Asks the platform to share a link to the current room: whoever opens it
@@ -448,8 +496,9 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
 
         try {
             await this.#leaving
-            const runtime = await this.#loadRuntime()
+            const runtime = await this.#getRuntime()
             handle = await enter(runtime)
+            this.#region ??= runtime.region ?? null
             handle.syncState(this.#getSyncOptions(syncState))
             await this.#waitForHost(handle)
         } catch (error) {
@@ -469,14 +518,16 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
     #waitForHost(handle: RoomHandle): Promise<void> {
         return new Promise((resolve, reject) => {
             let isDone = false
-            let unsubscribe: (() => void) | null = null
+            let unsubscribers: Array<() => void> = []
+            // Transport error that closed the room, for the reason of the failure.
+            let closeError: MultiplayerError | null = null
             const finish = (error?: BridgeError): void => {
                 if (isDone) {
                     return
                 }
                 isDone = true
                 clearTimeout(timer)
-                unsubscribe?.()
+                unsubscribers.forEach((unsubscribe) => unsubscribe())
                 if (error) {
                     reject(error)
                 } else {
@@ -485,15 +536,25 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
             }
             const timer = setTimeout(() => finish(), MULTIPLAYER_DEFAULTS.HOST_TIMEOUT)
 
-            unsubscribe = handle.onStateChange((state) => {
-                if (state.isReady) {
-                    finish()
-                } else if (state.connectionState === CONNECTION_STATE.DISCONNECTED) {
-                    finish(new BridgeError(ERROR_CODE.MULTIPLAYER_CONNECTION_FAILED))
-                }
-            })
+            unsubscribers = [
+                handle.onError((error) => {
+                    if (handle.connectionState === CONNECTION_STATE.DISCONNECTED) {
+                        closeError = error
+                    }
+                }),
+                handle.onStateChange((state) => {
+                    if (state.isReady) {
+                        finish()
+                    } else if (state.connectionState === CONNECTION_STATE.DISCONNECTED) {
+                        // The error with the cause, if any, follows this state: wait for it.
+                        queueMicrotask(() => finish(closeError
+                            ? this.#toBridgeError(closeError)
+                            : new BridgeError(ERROR_CODE.MULTIPLAYER_CONNECTION_FAILED)))
+                    }
+                }),
+            ]
             if (isDone) {
-                unsubscribe()
+                unsubscribers.forEach((unsubscribe) => unsubscribe())
             }
         })
     }
@@ -533,7 +594,7 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
         if (this.#state === MULTIPLAYER_STATE.RECONNECTING && reason !== ROOM_LEAVE_REASON.LEFT) {
             this.#analytics.reconnectFailed(this.#closeError)
         }
-        this.#analytics.roomLeft(reason)
+        this.#analytics.roomLeft(this.#closeError === SEAT_EXPIRED_ERROR ? SEAT_EXPIRED_LEAVE_REASON : reason)
         this.#unsubscribers.forEach((unsubscribe) => unsubscribe())
         this.#unsubscribers = []
         this.#clearOutgoing()
@@ -698,6 +759,15 @@ class MultiplayerModule extends ModuleBase<MultiplayerBridgeContract> {
                 })
         }
         return this.#runtime
+    }
+
+    // The transport with the chosen region applied.
+    async #getRuntime(): Promise<MultiplayerRuntime> {
+        const runtime = await this.#loadRuntime()
+        if (this.#region) {
+            runtime.setRegion(this.#region)
+        }
+        return runtime
     }
 
     #getHeaders(): Record<string, string> {

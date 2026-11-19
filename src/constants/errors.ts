@@ -33,6 +33,7 @@ export const ERROR_CODE = {
     MULTIPLAYER_ROOM_NOT_FOUND: 'MULTIPLAYER_ROOM_NOT_FOUND',
     MULTIPLAYER_ROOM_FULL: 'MULTIPLAYER_ROOM_FULL',
     MULTIPLAYER_ROOM_CLOSED: 'MULTIPLAYER_ROOM_CLOSED',
+    MULTIPLAYER_INVALID_REQUEST: 'MULTIPLAYER_INVALID_REQUEST',
     MULTIPLAYER_CONNECTION_FAILED: 'MULTIPLAYER_CONNECTION_FAILED',
 } as const
 
@@ -56,6 +57,7 @@ const ERROR_MESSAGES: Record<ErrorCode, string> = {
     MULTIPLAYER_ROOM_NOT_FOUND: 'Multiplayer room not found',
     MULTIPLAYER_ROOM_FULL: 'Multiplayer room is full',
     MULTIPLAYER_ROOM_CLOSED: 'Multiplayer room is closed for new players',
+    MULTIPLAYER_INVALID_REQUEST: 'Multiplayer request has invalid parameters',
     MULTIPLAYER_CONNECTION_FAILED: 'Failed to connect to the multiplayer room',
 }
 

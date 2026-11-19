@@ -16,8 +16,10 @@
  */
 
 import PlaygamaBridge from './PlaygamaBridge'
+import { errorTracker } from './modules/analytics'
 
 if (!window.bridge && !window.playgamaBridge) {
+    errorTracker.install()
     window.bridge = new PlaygamaBridge()
     window.playgamaBridge = window.bridge
 }
