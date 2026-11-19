@@ -42,6 +42,9 @@ export const ERROR_TRACKING_MAX_TOTAL = 200
 // Errors kept for a retry when sending fails
 export const ERROR_QUEUE_LIMIT = 100
 
+// Browsers reject keepalive requests and beacons with a body over 64 KB, a margin is left for headers
+export const KEEPALIVE_BODY_LIMIT = 60 * 1024
+
 export const ERROR_MESSAGE_MAX_LENGTH = 500
 export const ERROR_STACK_MAX_LENGTH = 2000
 export const ERROR_STACK_MAX_LINES = 10
