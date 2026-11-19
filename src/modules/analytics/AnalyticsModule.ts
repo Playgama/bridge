@@ -27,15 +27,19 @@ import bridgeConfig from '../../lib/bridge-config'
 import logger from '../../lib/logger'
 import { getApiOrigin } from '../../lib/apiOrigin'
 import GameplayMilestoneTracker from './GameplayMilestoneTracker'
+import errorTracker from './ErrorTracker'
 import {
     ANALYTICS_PATH,
     FLUSH_INTERVAL,
     CUSTOM_EVENTS_QUEUE_LIMIT,
+    ERROR_FLUSH_DELAY,
+    ERROR_QUEUE_LIMIT,
 } from './constants'
 import type {
     AnalyticsBridgeContract,
     InternalAnalytics,
     AnalyticsEvent,
+    AnalyticsErrorEvent,
     AnalyticsMeta,
     AnalyticsPayload,
 } from './types'
@@ -54,7 +58,11 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
     #customEventQueue: AnalyticsEvent[] = []
 
+    #errorQueue: AnalyticsErrorEvent[] = []
+
     #flushTimer: ReturnType<typeof setInterval> | null = null
+
+    #errorFlushTimer: ReturnType<typeof setTimeout> | null = null
 
     #gameId: string | null = null
 
@@ -111,6 +119,8 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
         this.#gameId = this.#extractGameId()
         this.#playerGuestId = getGuestUser().id
+
+        errorTracker.configure(!this.#isDisabled, () => this.#scheduleErrorFlush())
 
         if (this.#isDisabled) {
             return this
@@ -176,12 +186,13 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
 
             this.#applyTimeDiff(this.#eventQueue)
             this.#applyTimeDiff(this.#customEventQueue)
+            this.#applyTimeDiff(this.#errorQueue)
         } catch {
             // Keep timeDiff = 0, use local time as fallback
         }
     }
 
-    #applyTimeDiff(events: AnalyticsEvent[]): void {
+    #applyTimeDiff(events: { timestamp: string }[]): void {
         for (let i = 0; i < events.length; i++) {
             const event = events[i]
             const localTime = new Date(event.timestamp).getTime()
@@ -236,7 +247,11 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
         return `${getApiOrigin()}${ANALYTICS_PATH}`
     }
 
-    #createPayload(events: AnalyticsEvent[], customEvents: AnalyticsEvent[]): AnalyticsPayload {
+    #createPayload(
+        events: AnalyticsEvent[],
+        customEvents: AnalyticsEvent[],
+        errors: AnalyticsErrorEvent[],
+    ): AnalyticsPayload {
         const payload: AnalyticsPayload = {
             meta: this.#createMeta(),
             events,
@@ -246,24 +261,68 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
             payload.custom_events = customEvents
         }
 
+        if (errors.length > 0) {
+            payload.errors = errors
+        }
+
         return payload
     }
 
     async #flush(): Promise<void> {
-        if (this.#isDisabled || (this.#eventQueue.length === 0 && this.#customEventQueue.length === 0)) {
+        if (this.#isDisabled) {
+            return
+        }
+
+        this.#collectErrors()
+
+        if (this.#isQueueEmpty()) {
             return
         }
 
         const events = [...this.#eventQueue]
         const customEvents = [...this.#customEventQueue]
+        const errors = [...this.#errorQueue]
         this.#eventQueue = []
         this.#customEventQueue = []
+        this.#errorQueue = []
 
-        const success = await this.#sendRequest(this.#createPayload(events, customEvents))
+        const success = await this.#sendRequest(this.#createPayload(events, customEvents, errors))
         if (!success && !this.#isDisabled) {
             this.#eventQueue = [...events, ...this.#eventQueue]
             this.#customEventQueue = [...customEvents, ...this.#customEventQueue].slice(-CUSTOM_EVENTS_QUEUE_LIMIT)
+            this.#errorQueue = [...errors, ...this.#errorQueue].slice(-ERROR_QUEUE_LIMIT)
         }
+    }
+
+    #collectErrors(): void {
+        errorTracker.drain().forEach((error) => {
+            this.#errorQueue.push({
+                ...error,
+                timestamp: new Date(error.timestamp + this.#timeDiff).toISOString(),
+            })
+        })
+
+        if (this.#errorQueue.length > ERROR_QUEUE_LIMIT) {
+            this.#errorQueue.splice(0, this.#errorQueue.length - ERROR_QUEUE_LIMIT)
+        }
+    }
+
+    #isQueueEmpty(): boolean {
+        return this.#eventQueue.length === 0
+            && this.#customEventQueue.length === 0
+            && this.#errorQueue.length === 0
+    }
+
+    // The game often freezes right after an error, so the new ones are sent without waiting for the interval
+    #scheduleErrorFlush(): void {
+        if (this.#isDisabled || this.#errorFlushTimer) {
+            return
+        }
+
+        this.#errorFlushTimer = setTimeout(() => {
+            this.#errorFlushTimer = null
+            this.#flush()
+        }, ERROR_FLUSH_DELAY)
     }
 
     async #sendRequest(payload: AnalyticsPayload): Promise<boolean> {
@@ -301,17 +360,25 @@ class AnalyticsModule extends ModuleBase<AnalyticsBridgeContract> {
     }
 
     #flushSync(): void {
-        if (this.#isDisabled || (this.#eventQueue.length === 0 && this.#customEventQueue.length === 0)) {
+        if (this.#isDisabled) {
+            return
+        }
+
+        this.#collectErrors()
+
+        if (this.#isQueueEmpty()) {
             return
         }
 
         const events = [...this.#eventQueue]
         const customEvents = [...this.#customEventQueue]
+        const errors = [...this.#errorQueue]
         this.#eventQueue = []
         this.#customEventQueue = []
+        this.#errorQueue = []
 
         const url = this.#getApiUrl()
-        const payload = this.#createPayload(events, customEvents)
+        const payload = this.#createPayload(events, customEvents, errors)
         const body = JSON.stringify(payload)
 
         if (navigator.sendBeacon) {

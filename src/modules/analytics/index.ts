@@ -18,6 +18,7 @@
 import AnalyticsModule from './AnalyticsModule'
 
 export { internalAnalytics } from './AnalyticsModule'
+export { default as errorTracker } from './ErrorTracker'
 export * from './types'
 export * from './constants'
 export default AnalyticsModule
