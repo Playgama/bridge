@@ -54,7 +54,34 @@ export const ERROR_ARGUMENT_MAX_LENGTH = 200
 export const ERROR_IGNORED_MESSAGES: readonly RegExp[] = [
     /^Script error\.?$/i,
     /ResizeObserver loop/i,
+    // Empty rejections and a known Chromium IndexedDB bug
+    /^Unhandled rejection: (undefined|null|\{\}|)$/,
+    /If you see this error we have a bug/,
+    // Styled console logs of SDKs and ad scripts, not errors
+    /^%c/,
+    /^SYNC\.JS:/,
+    /\(ox_esp\)/,
+    /^\[LoadScript\]/,
+    /^\[loadScript\] GAM/,
+    // Emscripten notices, the actual error is reported separately
+    /^falling back to ArrayBuffer instantiation/,
+    /^Applying workaround to Firefox bug/,
+    /FS\.syncfs operations in flight/,
+    /^Uncaught exception from main loop:?$/,
+    /^Halting program\.?$/,
+    // Repeats of a wasm load failure, its reason is reported by a separate message
+    /^wasm streaming compile failed/,
+    /^failed to asynchronously prepare wasm/,
+    /^abort\("both async and sync fetching of the wasm failed"\)/,
+    // Pointer and orientation lock refusals of the browser
+    /pointer ?lock/i,
+    /^Cursor locking is not supported/,
+    /^(InUseAttributeError|WrongDocumentError):/,
+    /allow-orientation-lock/,
 ]
+
+// Errors are not tracked for these clients: crawlers, ad bots and headless browsers
+export const ERROR_TRACKING_IGNORED_USER_AGENT = /Mediapartners-Google|HeadlessChrome|Lighthouse|[a-z]bot\/|\bbot\b|crawler|spider/i
 
 export const ERROR_IGNORED_SOURCES: readonly RegExp[] = [
     /(chrome|moz|safari|safari-web)-extension:\/\//i,

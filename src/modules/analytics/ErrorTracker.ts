@@ -28,6 +28,7 @@ import {
     ERROR_ARGUMENT_MAX_LENGTH,
     ERROR_IGNORED_MESSAGES,
     ERROR_IGNORED_SOURCES,
+    ERROR_TRACKING_IGNORED_USER_AGENT,
 } from './constants'
 import type { CapturedGameError, GameError, GameErrorType } from './types'
 
@@ -81,12 +82,41 @@ function getStack(value: unknown): string {
     return value instanceof Error && typeof value.stack === 'string' ? value.stack : ''
 }
 
+function isBot(): boolean {
+    return typeof navigator !== 'undefined'
+        && (navigator.webdriver === true || ERROR_TRACKING_IGNORED_USER_AGENT.test(navigator.userAgent || ''))
+}
+
+// Failed loads of ads, fonts and other third-party resources are not caused by the game
+function isSameOrigin(url: string): boolean {
+    try {
+        return new URL(url, window.location.href).origin === window.location.origin
+    } catch {
+        return false
+    }
+}
+
+// Unity puts the stack trace into the message: the first line stays the message, the rest goes to the stack
+function splitMessage(message: string, stack: string): { message: string, stack: string } {
+    const text = message.trim()
+    const lineEnd = text.indexOf('\n')
+    if (lineEnd === -1) {
+        return { message: text, stack }
+    }
+
+    return {
+        message: text.slice(0, lineEnd).trim(),
+        stack: stack || text.slice(lineEnd + 1).trim(),
+    }
+}
+
 function buildDetails(
     type: GameErrorType,
-    message: string,
-    stack: string,
+    rawMessage: string,
+    rawStack: string,
     location?: { source: string, line: number, col: number },
 ): GameErrorDetails {
+    const { message, stack } = splitMessage(rawMessage, rawStack)
     const frame = location?.source ? null : stack.match(STACK_FRAME_PATTERN)
 
     return {
@@ -139,7 +169,7 @@ class ErrorTracker {
     }
 
     configure(isEnabled: boolean, onNewError: () => void): void {
-        if (!isEnabled || Math.random() >= ERROR_TRACKING_SAMPLE_RATE) {
+        if (!isEnabled || isBot() || Math.random() >= ERROR_TRACKING_SAMPLE_RATE) {
             this.#uninstall()
             this.#records.clear()
             return
@@ -216,7 +246,7 @@ class ErrorTracker {
 
         if (target instanceof Element) {
             const url = (target as Partial<HTMLScriptElement>).src || (target as Partial<HTMLLinkElement>).href
-            if (typeof url === 'string' && url) {
+            if (typeof url === 'string' && url && isSameOrigin(url)) {
                 const message = `Failed to load ${target.tagName.toLowerCase()}: ${url}`
                 this.#capture(buildDetails(GAME_ERROR_TYPE.RESOURCE, message, '', { source: url, line: 0, col: 0 }))
             }
