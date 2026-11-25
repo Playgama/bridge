@@ -15,5 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-export { default as LoadingScreen, type LoadingScreenOptions } from './LoadingScreen'
+import LoadingScreen from './LoadingScreen'
+
+export type { LoadingScreenOptions } from './LoadingScreen'
+export const loadingScreen = new LoadingScreen()
 export * from './constants'

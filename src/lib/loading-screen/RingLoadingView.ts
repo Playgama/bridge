@@ -78,27 +78,32 @@ class RingLoadingView implements LoadingScreenView {
         }
     }
 
-    hide(): void {
+    hide(): Promise<void> {
         const overlay = this.#overlay
         if (!overlay) {
-            return
+            return Promise.resolve()
         }
 
-        const start = performance.now()
-        const tick = (now: number): void => {
-            const t = Math.min((now - start) / LOADING_SCREEN_RING_CLOSE_DURATION, 1)
-            this.#build(easeInOut(t))
+        return new Promise((resolve) => {
+            const start = performance.now()
+            const tick = (now: number): void => {
+                const t = Math.min((now - start) / LOADING_SCREEN_RING_CLOSE_DURATION, 1)
+                this.#build(easeInOut(t))
 
-            if (t < 1) {
-                requestAnimationFrame(tick)
-                return
+                if (t < 1) {
+                    requestAnimationFrame(tick)
+                    return
+                }
+
+                overlay.classList.add('ring-loading-fade-out')
+                setTimeout(() => {
+                    overlay.remove()
+                    resolve()
+                }, LOADING_SCREEN_RING_FADE_OUT_DURATION)
             }
 
-            overlay.classList.add('ring-loading-fade-out')
-            setTimeout(() => overlay.remove(), LOADING_SCREEN_RING_FADE_OUT_DURATION)
-        }
-
-        requestAnimationFrame(tick)
+            requestAnimationFrame(tick)
+        })
     }
 
     // Rebuilds the snake path. `close` goes from 0 (snake) to 1 (closed ring): the tail

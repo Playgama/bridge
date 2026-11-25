@@ -43,6 +43,9 @@ class LoadingScreen {
 
     #hideGate: Promise<unknown> | null = null
 
+    // Settles once the view is gone after reaching 100%.
+    #hidden: Promise<void> = Promise.resolve()
+
     // Delays hiding the screen until the given promise settles. Used to keep the
     // logo at 100% while the branded loading sound is still playing.
     setHideGate(gate: Promise<unknown>): void {
@@ -75,16 +78,25 @@ class LoadingScreen {
 
         if (progress === 100) {
             this.#completed = true
-
-            if (this.#hideGate) {
-                const timeout = new Promise((resolve) => {
-                    setTimeout(resolve, LOADING_SCREEN_HIDE_GATE_TIMEOUT)
-                })
-                Promise.race([this.#hideGate.catch(() => {}), timeout]).then(() => view.hide())
-            } else {
-                view.hide()
-            }
+            this.#hidden = this.#waitForHideGate().then(() => view.hide())
         }
+    }
+
+    // Sends the screen to 100% and resolves once it is gone, at once when nothing is shown.
+    complete(): Promise<void> {
+        this.setProgress(100)
+        return this.#hidden
+    }
+
+    #waitForHideGate(): Promise<unknown> {
+        if (!this.#hideGate) {
+            return Promise.resolve()
+        }
+
+        const timeout = new Promise((resolve) => {
+            setTimeout(resolve, LOADING_SCREEN_HIDE_GATE_TIMEOUT)
+        })
+        return Promise.race([this.#hideGate.catch(() => {}), timeout])
     }
 
     #createView(type: LoadingScreenType, logo: LoadingLogoType, showLoadingText: boolean): LoadingScreenView {

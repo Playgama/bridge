@@ -120,16 +120,21 @@ class PlaygamaLoadingView implements LoadingScreenView {
         loader.dataset.state = STATE.DONE
     }
 
-    hide(): void {
+    hide(): Promise<void> {
         const overlay = this.#overlay
         if (!overlay) {
-            return
+            return Promise.resolve()
         }
 
-        setTimeout(() => {
-            overlay.classList.add('pg-loader-fade-out')
-            setTimeout(() => overlay.remove(), LOADING_SCREEN_PLAYGAMA_FADE_OUT_DURATION)
-        }, Math.max(0, this.#finishedAt - performance.now()))
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                overlay.classList.add('pg-loader-fade-out')
+                setTimeout(() => {
+                    overlay.remove()
+                    resolve()
+                }, LOADING_SCREEN_PLAYGAMA_FADE_OUT_DURATION)
+            }, Math.max(0, this.#finishedAt - performance.now()))
+        })
     }
 
     #injectStyles(): void {

@@ -20,5 +20,6 @@
 export interface LoadingScreenView {
     show(): void
     setProgress(progress: number): void
-    hide(): void
+    // Plays the outro and resolves once the screen is removed.
+    hide(): Promise<void>
 }

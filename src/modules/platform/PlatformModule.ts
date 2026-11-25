@@ -25,6 +25,7 @@ import {
 } from './constants'
 import type { AnyRecord } from '../../utils'
 import { internalAnalytics } from '../analytics'
+import { loadingScreen } from '../../lib/loading-screen'
 import type { EventEmitter } from '../../lib/EventBus'
 
 export interface PlatformMessageOptions {
@@ -105,6 +106,9 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
 
     #isGameReadyMessageSent = false
 
+    // Set while game_ready waits for the loading screen to finish.
+    #loadingScreenHidden: Promise<void> | null = null
+
     #startTime = 0
 
     #messagesExcludedFromAnalytics = new Set<string>([
@@ -127,8 +131,6 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
         // Engine integrations (e.g. Godot) can pass an explicit null instead of omitting the argument
         const options = rawOptions ?? {}
 
-        const analyticsData: Record<string, unknown> = {}
-
         if (message === PLATFORM_MESSAGE.GAME_READY) {
             if (this.#isGameReadyMessageSent) {
                 return Promise.reject()
@@ -137,16 +139,50 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
             this.#isGameReadyMessageSent = true
 
             const endTime = performance.now()
-            analyticsData.time_s = ((endTime - this.#startTime) / 1000).toFixed(2)
+            const loadingTime = ((endTime - this.#startTime) / 1000).toFixed(2)
 
-            const overlay = document.getElementById('loading-overlay')
-            if (overlay) {
-                overlay.remove()
-            }
+            // game_ready goes out only once the loading screen has played its finale and is gone.
+            const loadingScreenHidden = loadingScreen.complete()
+            this.#loadingScreenHidden = loadingScreenHidden
 
-            // The game is loaded: report 100 unless it has already been sent.
-            this._platformBridge.setLoadingProgress(100)
+            return loadingScreenHidden.then(() => {
+                this.#loadingScreenHidden = null
+
+                // The game is loaded: report 100 unless it has already been sent.
+                this._platformBridge.setLoadingProgress(100)
+                return this.#dispatchMessage(message, options, { time_s: loadingTime })
+            })
         }
+
+        // Messages sent while game_ready waits for the loading screen follow it, in order.
+        if (this.#loadingScreenHidden) {
+            return this.#loadingScreenHidden.then(() => this.#dispatchMessage(message, options))
+        }
+
+        return this.#dispatchMessage(message, options)
+    }
+
+    sendCustomMessage(id: string, options?: unknown): Promise<unknown> {
+        internalAnalytics.send(
+            `${MODULE_NAME.PLATFORM}_custom_message`,
+            { id },
+        )
+
+        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, id)
+
+        return this._platformBridge.sendCustomMessage(id, options)
+    }
+
+    getServerTime(): Promise<unknown> {
+        return this._platformBridge.getServerTime()
+    }
+
+    #dispatchMessage(
+        message: PlatformMessage | string,
+        options: PlatformMessageOptions,
+        extraAnalyticsData: Record<string, unknown> = {},
+    ): Promise<unknown> {
+        const analyticsData: Record<string, unknown> = { ...extraAnalyticsData }
 
         if (options.world !== undefined) {
             analyticsData.world = String(options.world)
@@ -166,21 +202,6 @@ class PlatformModule extends ModuleBase<PlatformBridgeContract> {
         eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, message)
 
         return this._platformBridge.sendMessage(message, options)
-    }
-
-    sendCustomMessage(id: string, options?: unknown): Promise<unknown> {
-        internalAnalytics.send(
-            `${MODULE_NAME.PLATFORM}_custom_message`,
-            { id },
-        )
-
-        eventBus.emit(EVENT_NAME.PLATFORM_MESSAGE_SENT, id)
-
-        return this._platformBridge.sendCustomMessage(id, options)
-    }
-
-    getServerTime(): Promise<unknown> {
-        return this._platformBridge.getServerTime()
     }
 }
 

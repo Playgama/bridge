@@ -37,7 +37,7 @@ import {
 
 import { applyEventBusMixin } from './lib/EventBus'
 import Deferred from './lib/Deferred'
-import { LoadingScreen, LOADING_SCREEN_TYPE, LOADING_LOGO_TYPE } from './lib/loading-screen'
+import { loadingScreen, LOADING_SCREEN_TYPE, LOADING_LOGO_TYPE } from './lib/loading-screen'
 import { LoadingSound } from './lib/loading-sound'
 import { SafeArea } from './lib/safe-area'
 import bridgeConfig from './lib/bridge-config'
@@ -195,8 +195,6 @@ class PlaygamaBridge {
 
     #modules: Record<string, unknown> = {}
 
-    #loadingScreen: LoadingScreen | null = null
-
     #loadingSound: LoadingSound | null = null
 
     // Whether the game reports its own loading progress; then the fallback 100 is not sent.
@@ -315,7 +313,7 @@ class PlaygamaBridge {
                 })
                 .finally(() => {
                     setTimeout(() => {
-                        this.#loadingScreen?.setProgress(100, true)
+                        loadingScreen.setProgress(100, true)
                         if (!this.#isGameLoadingProgressReported) {
                             this.#platformBridge?.setLoadingProgress(100)
                         }
@@ -328,7 +326,7 @@ class PlaygamaBridge {
 
     setGameLoadingProgress(percent: number): void {
         this.#isGameLoadingProgressReported = true
-        this.#loadingScreen?.setProgress(percent)
+        loadingScreen.setProgress(percent)
         this.#platformBridge?.setLoadingProgress(percent)
     }
 
@@ -364,12 +362,11 @@ class PlaygamaBridge {
                 : configLogo
             const showLoadingText = bridge.platformId === PLATFORM_ID.XIAOMI
                 || options.showLoadingText === true
-            this.#loadingScreen = new LoadingScreen()
-            this.#loadingScreen.show({ type, logo, showLoadingText })
+            loadingScreen.show({ type, logo, showLoadingText })
 
             if (options.loadingSound?.url) {
                 this.#loadingSound = new LoadingSound(options.loadingSound)
-                this.#loadingScreen.setHideGate(this.#loadingSound.finished)
+                loadingScreen.setHideGate(this.#loadingSound.finished)
             }
         }
 

@@ -62,13 +62,13 @@ class LogoLoadingView implements LoadingScreenView {
         }
     }
 
-    hide(): void {
+    hide(): Promise<void> {
         const fill = this.#fill
         const gradientMover = this.#gradientMover
         const logo = this.#logo
         const overlay = this.#overlay
         if (!fill || !gradientMover || !logo || !overlay) {
-            return
+            return Promise.resolve()
         }
 
         setTimeout(() => {
@@ -77,7 +77,13 @@ class LogoLoadingView implements LoadingScreenView {
             gradientMover.classList.add('gradient-mover')
         }, 400)
         setTimeout(() => logo.classList.add('logo-fade-out'), 900)
-        setTimeout(() => overlay.remove(), 1400)
+
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                overlay.remove()
+                resolve()
+            }, 1400)
+        })
     }
 
     #injectStyles(): void {
