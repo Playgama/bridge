@@ -342,14 +342,20 @@ class PlaygamaBridge {
     #setupLoadingVisuals(bridge: PlatformBridgeBase): void {
         const options = bridgeConfig.getValues()
 
+        const isBrandingRestricted = bridge.platformId === PLATFORM_ID.YANDEX
+            || bridge.platformId === PLATFORM_ID.Y8
+
         // disableLoadingLogo and showFullLoadingLogo are legacy options, used only
         // when the new ones are not set.
-        const type = options.loadingScreenType
-            ?? (options.disableLoadingLogo ? LOADING_SCREEN_TYPE.NONE : LOADING_SCREEN_TYPE.LOGO)
+        const configType = options.loadingScreenType
+            ?? (options.disableLoadingLogo ? LOADING_SCREEN_TYPE.NONE : LOADING_SCREEN_TYPE.PLAYGAMA)
+        // The Playgama loader is the "playgama" lettering itself, so the platforms
+        // that restrict third-party branding get the logo loader instead.
+        const type = isBrandingRestricted && configType === LOADING_SCREEN_TYPE.PLAYGAMA
+            ? LOADING_SCREEN_TYPE.LOGO
+            : configType
 
         if (type !== LOADING_SCREEN_TYPE.NONE) {
-            const isBrandingRestricted = bridge.platformId === PLATFORM_ID.YANDEX
-                || bridge.platformId === PLATFORM_ID.Y8
             const configLogo = options.loadingLogoType
                 ?? (options.showFullLoadingLogo === false ? LOADING_LOGO_TYPE.MEDIUM : LOADING_LOGO_TYPE.FULL)
             // No "playgama" lettering where the platform restricts third-party branding.

@@ -26,6 +26,7 @@ import {
 import type { LoadingScreenView } from './types'
 import LogoLoadingView from './LogoLoadingView'
 import RingLoadingView from './RingLoadingView'
+import PlaygamaLoadingView from './PlaygamaLoadingView'
 
 export interface LoadingScreenOptions {
     type?: LoadingScreenType
@@ -49,14 +50,11 @@ class LoadingScreen {
     }
 
     show({
-        type = LOADING_SCREEN_TYPE.LOGO,
+        type = LOADING_SCREEN_TYPE.PLAYGAMA,
         logo = LOADING_LOGO_TYPE.FULL,
         showLoadingText = false,
     }: LoadingScreenOptions = {}): void {
-        const preset = LOADING_SCREEN_LOGO_PRESETS[logo] ?? LOADING_SCREEN_LOGO_PRESETS[LOADING_LOGO_TYPE.FULL]
-        this.#view = type === LOADING_SCREEN_TYPE.RING
-            ? new RingLoadingView()
-            : new LogoLoadingView(preset, showLoadingText)
+        this.#view = this.#createView(type, logo, showLoadingText)
         this.#view.show()
     }
 
@@ -86,6 +84,19 @@ class LoadingScreen {
             } else {
                 view.hide()
             }
+        }
+    }
+
+    #createView(type: LoadingScreenType, logo: LoadingLogoType, showLoadingText: boolean): LoadingScreenView {
+        switch (type) {
+            case LOADING_SCREEN_TYPE.RING:
+                return new RingLoadingView()
+            case LOADING_SCREEN_TYPE.LOGO: {
+                const preset = LOADING_SCREEN_LOGO_PRESETS[logo] ?? LOADING_SCREEN_LOGO_PRESETS[LOADING_LOGO_TYPE.FULL]
+                return new LogoLoadingView(preset, showLoadingText)
+            }
+            default:
+                return new PlaygamaLoadingView()
         }
     }
 }
