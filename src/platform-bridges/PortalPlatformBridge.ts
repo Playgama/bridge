@@ -98,6 +98,8 @@ class PortalPlatformBridge extends PlatformBridgeBase {
                             this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, e)
                         })
                 })
+            }).catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
             })
         }
 

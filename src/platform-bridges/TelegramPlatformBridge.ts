@@ -197,12 +197,17 @@ class TelegramPlatformBridge extends PlatformBridgeBase {
                                 blockId: this._options.adsgramBlockId as string,
                             })
                         })
+                        .catch(() => {
+                            // The game starts without ads when the Adsgram script fails to load
+                        })
                         .finally(() => {
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                 } else {
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                 }
+            }).catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
             })
         }
 

@@ -309,6 +309,9 @@ class YandexPlatformBridge extends PlatformBridgeBase {
                                 })
                         })
                 })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
+                })
         }
 
         return promiseDecorator.promise

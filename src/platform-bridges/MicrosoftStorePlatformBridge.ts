@@ -125,6 +125,9 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
                 )
             }
 
+            // The failure is handled once the platform answers the initialization
+            this.#playgamaAdsPromise.catch(() => {})
+
             const playgamaAdsId = this._options.playgamaAdsId as string
             addJavaScript(PLAYGAMA_ADS_SDK_URL)
                 .then(() => waitFor('pgAds'))
@@ -454,6 +457,8 @@ class MicrosoftStorePlatformBridge extends PlatformBridgeBase {
 
         this.#playgamaAdsPromise.then(() => {
             this.showInterstitial()
+        }).catch(() => {
+            // The game starts without the Playgama ads when they fail to load
         }).finally(() => {
             this._isInitialized = true
             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE, data)

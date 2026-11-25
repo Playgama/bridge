@@ -103,6 +103,8 @@ class XiaomiPlatformBridge extends PlatformBridgeBase {
                     testMode: !!this._options.testMode,
                 }).then((showAd) => {
                     this.#showAd = showAd as ShowAdFn
+                }).catch(() => {
+                    // The game starts without ads when the AdSense script fails to load
                 }).finally(() => {
                     this._isInitialized = true
                     this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)

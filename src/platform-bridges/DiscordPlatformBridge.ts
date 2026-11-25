@@ -121,6 +121,8 @@ class DiscordPlatformBridge extends PlatformBridgeBase {
                             this._isInitialized = true
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
+                }).catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
                 })
             }
         }

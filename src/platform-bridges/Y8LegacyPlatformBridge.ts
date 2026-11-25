@@ -174,6 +174,8 @@ class Y8LegacyPlatformBridge extends PlatformBridgeBase {
                                 hostId: `ca-host-pub-${ADS_ID}`,
                             }).then((showAd) => {
                                 this.#showAd = showAd as Y8AdShowFn
+                            }).catch(() => {
+                                // The game runs without ads when the AdSense script fails to load
                             });
                             (this._platformSdk as Y8Sdk).getLoginStatus((data) => {
                                 this.#updatePlayerInfo(data)
@@ -185,6 +187,8 @@ class Y8LegacyPlatformBridge extends PlatformBridgeBase {
                             appId: sdkAppId,
                         })
                     })
+                }).catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
                 })
             }
         }

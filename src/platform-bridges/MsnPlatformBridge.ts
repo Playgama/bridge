@@ -288,6 +288,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                 })
+                .catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
+                })
 
             const advertisementOptions = this._options?.advertisement as AnyRecord | undefined
             const advertisementBackfillId = advertisementOptions?.backfillId as string | undefined
@@ -297,14 +300,17 @@ class MsnPlatformBridge extends PlatformBridgeBase {
                     .then(() => {
                         const { pgAds } = (window as unknown as { pgAds?: PgAdsSdk })
                         if (!pgAds) {
-                            return
+                            return undefined
                         }
-                        pgAds.init(advertisementBackfillId)
+                        return pgAds.init(advertisementBackfillId)
                             .then(() => {
                                 this.#playgamaAds = pgAds
                                 const gameId = this._options.gameId as string
                                 this.#playgamaAds.updateTargeting({ gameId })
                             })
+                    })
+                    .catch(() => {
+                        // The game runs without the backfill ads when they fail to load
                     })
             }
         }
@@ -455,7 +461,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     hideBanner(): void {
+        // Rejects when no ad is visible, the banner is hidden either way
         (this._platformSdk as MsnSdk).hideDisplayAdsAsync()
+            .catch(() => {})
             .then(() => {
                 this._setBannerState(BANNER_STATE.HIDDEN)
             })
@@ -486,7 +494,9 @@ class MsnPlatformBridge extends PlatformBridgeBase {
     }
 
     hideAdvancedBanners(): void {
+        // Rejects when no ad is visible, the banners are hidden either way
         (this._platformSdk as MsnSdk).hideDisplayAdsAsync()
+            .catch(() => {})
             .then(() => {
                 this._setAdvancedBannersState(BANNER_STATE.HIDDEN)
             })

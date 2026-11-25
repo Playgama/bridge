@@ -131,7 +131,9 @@ class GameDistributionPlatformBridge extends PlatformBridgeBase {
 
                 this._setPlatformStorageAvailable(false)
                 this._isBannerSupported = true
-                addJavaScript(SDK_URL)
+                addJavaScript(SDK_URL).catch((error) => {
+                    this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
+                })
             }
         }
 

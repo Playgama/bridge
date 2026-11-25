@@ -195,6 +195,8 @@ class VkPlatformBridge extends PlatformBridgeBase {
                                 })
                         })
                 })
+            }).catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
             })
         }
 

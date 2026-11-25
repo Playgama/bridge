@@ -215,7 +215,8 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                         this._setAudioState(!(this._platformSdk as CrazyGamesSdk).game.settings.muteAudio)
 
                         if (this.options.xsollaProjectId) {
-                            this.#ensurePaystationLoaded()
+                            // Loaded again on purchase when it fails here
+                            this.#ensurePaystationLoaded().catch(() => {})
                         }
 
                         Promise
@@ -226,6 +227,8 @@ class CrazyGamesPlatformBridge extends PlatformBridgeBase {
                             })
                     })
                 })
+            }).catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
             })
         }
 

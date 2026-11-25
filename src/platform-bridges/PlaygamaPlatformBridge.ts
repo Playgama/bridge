@@ -419,6 +419,8 @@ class PlaygamaPlatformBridge extends PlatformBridgeBase {
                             this._resolvePromiseDecorator(ACTION_NAME.INITIALIZE)
                         })
                 })
+            }).catch((error) => {
+                this._rejectPromiseDecorator(ACTION_NAME.INITIALIZE, error)
             })
         }
 
