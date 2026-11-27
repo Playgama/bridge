@@ -18,23 +18,10 @@
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import { MODULE_NAME } from '../../constants'
-import {
-    LEADERBOARD_TYPE,
-    LEADERBOARD_PERIOD,
-    LEADERBOARD_SCORE_MODE,
-    type LeaderboardType,
-    type LeaderboardPeriod,
-    type LeaderboardScoreMode,
-} from './constants'
-import type { LeaderboardEntriesOptions, LeaderboardEntry, LeaderboardInfo } from './types'
+import { LEADERBOARD_TYPE, LEADERBOARD_PERIOD, type LeaderboardType } from './constants'
+import type { LeaderboardEntriesOptions, LeaderboardEntry } from './types'
 import bridgeConfig from '../../lib/bridge-config'
 import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
-
-// Shape of GET leaderboards/{id}/info on the SaaS backend.
-interface SaasLeaderboardInfo {
-    scoreMode?: unknown
-    periods?: Record<string, { timeLeft?: unknown } | undefined>
-}
 
 export interface LeaderboardMapping {
     id: string
@@ -118,49 +105,6 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
         const modifiedId = this._getPlatformLeaderboardId(id)
 
         return this._platformBridge.leaderboardsGetEntries(modifiedId) as Promise<LeaderboardEntry[]>
-    }
-
-    // Score mode, readable periods and seconds until each resetting period
-    // starts over. Platform leaderboards keep the best score and have only the
-    // permanent standing.
-    getInfo(id: string): Promise<LeaderboardInfo> {
-        if (this.type === LEADERBOARD_TYPE.NOT_AVAILABLE) {
-            return Promise.reject()
-        }
-
-        if (!this.#saas) {
-            return Promise.resolve({
-                id,
-                scoreMode: LEADERBOARD_SCORE_MODE.BEST,
-                periods: [LEADERBOARD_PERIOD.PERMANENT],
-                timeLeft: {},
-            })
-        }
-
-        return this.#saas.get<SaasLeaderboardInfo>(`leaderboards/${id}/info`)
-            .then((info) => {
-                const scoreMode = info?.scoreMode as LeaderboardScoreMode
-                if (!Object.values(LEADERBOARD_SCORE_MODE).includes(scoreMode)) {
-                    return Promise.reject()
-                }
-
-                const periods: LeaderboardPeriod[] = [LEADERBOARD_PERIOD.PERMANENT]
-                const timeLeft: LeaderboardInfo['timeLeft'] = {}
-                Object.values(LEADERBOARD_PERIOD).forEach((period) => {
-                    const seconds = info.periods?.[period]?.timeLeft
-                    if (typeof seconds === 'number') {
-                        periods.push(period)
-                        timeLeft[period] = Math.max(0, Math.ceil(seconds))
-                    }
-                })
-
-                return {
-                    id,
-                    scoreMode,
-                    periods,
-                    timeLeft,
-                }
-            })
     }
 
     showNativePopup(id: string): Promise<unknown> {

@@ -25,7 +25,8 @@ export type LeaderboardType = typeof LEADERBOARD_TYPE[keyof typeof LEADERBOARD_T
 
 // Standing a leaderboard read returns. Every Playgama SaaS leaderboard keeps all
 // of them from the same scores; daily/weekly/monthly reset at 00:00 UTC (weekly
-// on Monday, monthly on the 1st). Platform leaderboards only have permanent.
+// on Monday, monthly on the 1st), so a game computes the time left until a reset
+// from the UTC clock. Platform leaderboards only have permanent.
 export const LEADERBOARD_PERIOD = {
     PERMANENT: 'permanent',
     DAILY: 'daily',
@@ -33,11 +34,3 @@ export const LEADERBOARD_PERIOD = {
     MONTHLY: 'monthly',
 } as const
 export type LeaderboardPeriod = typeof LEADERBOARD_PERIOD[keyof typeof LEADERBOARD_PERIOD]
-
-// How a leaderboard combines submitted scores: 'best' keeps the best one,
-// 'sum' adds each submitted score (the game sends what was earned).
-export const LEADERBOARD_SCORE_MODE = {
-    BEST: 'best',
-    SUM: 'sum',
-} as const
-export type LeaderboardScoreMode = typeof LEADERBOARD_SCORE_MODE[keyof typeof LEADERBOARD_SCORE_MODE]

@@ -15,7 +15,7 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { LeaderboardPeriod, LeaderboardScoreMode } from './constants'
+import type { LeaderboardPeriod } from './constants'
 
 // Unified leaderboard entry shape. Platforms that expose entries (Yandex, Y8,
 // in-game/SaaS) normalize to these fields; `photo` may be null when the
@@ -30,14 +30,4 @@ export interface LeaderboardEntry {
 
 export interface LeaderboardEntriesOptions {
     period?: LeaderboardPeriod
-}
-
-// What the game needs to build leaderboard tabs. `periods` lists the
-// standings getEntries can return; `timeLeft` holds the whole seconds until
-// each resetting period starts over (empty for platform leaderboards).
-export interface LeaderboardInfo {
-    id: string
-    scoreMode: LeaderboardScoreMode
-    periods: LeaderboardPeriod[]
-    timeLeft: Partial<Record<LeaderboardPeriod, number>>
 }
