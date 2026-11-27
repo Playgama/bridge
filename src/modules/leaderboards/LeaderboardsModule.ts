@@ -18,8 +18,8 @@
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import { MODULE_NAME } from '../../constants'
-import { LEADERBOARD_TYPE, type LeaderboardType } from './constants'
-import type { LeaderboardEntry } from './types'
+import { LEADERBOARD_TYPE, LEADERBOARD_PERIOD, type LeaderboardType } from './constants'
+import type { LeaderboardEntriesOptions, LeaderboardEntry } from './types'
 import bridgeConfig from '../../lib/bridge-config'
 import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
 
@@ -81,13 +81,25 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
         return this._platformBridge.leaderboardsSetScore(modifiedId, score, isMain)
     }
 
-    getEntries(id: string): Promise<LeaderboardEntry[]> {
+    // `options.period` picks the standing to read; only SaaS leaderboards have
+    // periods other than permanent.
+    getEntries(id: string, options?: LeaderboardEntriesOptions): Promise<LeaderboardEntry[]> {
         if (this.type !== LEADERBOARD_TYPE.IN_GAME) {
             return Promise.reject()
         }
 
+        const period = options?.period ?? LEADERBOARD_PERIOD.PERMANENT
+        if (!Object.values(LEADERBOARD_PERIOD).includes(period)) {
+            return Promise.reject()
+        }
+
         if (this.#saas) {
-            return this.#saas.get<LeaderboardEntry[]>(`leaderboards/${id}`)
+            const query = period === LEADERBOARD_PERIOD.PERMANENT ? '' : `?period=${period}`
+            return this.#saas.get<LeaderboardEntry[]>(`leaderboards/${id}${query}`)
+        }
+
+        if (period !== LEADERBOARD_PERIOD.PERMANENT) {
+            return Promise.reject()
         }
 
         const modifiedId = this._getPlatformLeaderboardId(id)

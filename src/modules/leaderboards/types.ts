@@ -15,6 +15,8 @@
  * along with Playgama Bridge. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import type { LeaderboardPeriod } from './constants'
+
 // Unified leaderboard entry shape. Platforms that expose entries (Yandex, Y8,
 // in-game/SaaS) normalize to these fields; `photo` may be null when the
 // platform provides no avatar.
@@ -24,4 +26,8 @@ export interface LeaderboardEntry {
     score: number
     rank: number
     photo: string | null
+}
+
+export interface LeaderboardEntriesOptions {
+    period?: LeaderboardPeriod
 }

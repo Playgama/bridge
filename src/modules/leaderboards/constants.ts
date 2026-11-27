@@ -22,3 +22,14 @@ export const LEADERBOARD_TYPE = {
     NATIVE_POPUP: 'native_popup',
 } as const
 export type LeaderboardType = typeof LEADERBOARD_TYPE[keyof typeof LEADERBOARD_TYPE]
+
+// Standing a leaderboard read returns. Every Playgama SaaS leaderboard keeps all
+// of them from the same scores; daily/weekly/monthly reset at 00:00 UTC (weekly
+// on Monday, monthly on the 1st). Platform leaderboards only have permanent.
+export const LEADERBOARD_PERIOD = {
+    PERMANENT: 'permanent',
+    DAILY: 'daily',
+    WEEKLY: 'weekly',
+    MONTHLY: 'monthly',
+} as const
+export type LeaderboardPeriod = typeof LEADERBOARD_PERIOD[keyof typeof LEADERBOARD_PERIOD]
