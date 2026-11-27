@@ -91,6 +91,9 @@ export type LEADERBOARD_TYPE = leaderboardsConstants.LeaderboardType
 export const LEADERBOARD_PERIOD = leaderboardsConstants.LEADERBOARD_PERIOD
 export type LEADERBOARD_PERIOD = leaderboardsConstants.LeaderboardPeriod
 
+export const LEADERBOARD_SCORE_MODE = leaderboardsConstants.LEADERBOARD_SCORE_MODE
+export type LEADERBOARD_SCORE_MODE = leaderboardsConstants.LeaderboardScoreMode
+
 export const TASK_TYPE = tasksConstants.TASK_TYPE
 export type TASK_TYPE = tasksTypes.TaskType
 
@@ -136,7 +139,11 @@ export type {
     InterstitialState,
     RewardedState,
 } from './modules/advertisement/constants'
-export type { LeaderboardType, LeaderboardPeriod } from './modules/leaderboards/constants'
+export type {
+    LeaderboardType,
+    LeaderboardPeriod,
+    LeaderboardScoreMode,
+} from './modules/leaderboards/constants'
 export type { TaskType } from './modules/tasks/types'
 export type { CrossPromoSource } from './modules/cross-promo/constants'
 export type { PostRewardType } from './modules/social/constants'
@@ -148,7 +155,11 @@ export type {
 } from './modules/multiplayer/constants'
 
 // Public data shapes returned by SDK modules.
-export type { LeaderboardEntry, LeaderboardInfo } from './modules/leaderboards/types'
+export type {
+    LeaderboardEntry,
+    LeaderboardEntriesOptions,
+    LeaderboardInfo,
+} from './modules/leaderboards/types'
 export type { CatalogProduct, Purchase } from './modules/payments/types'
 export type { NormalizedAchievement } from './modules/achievements/types'
 export type { Game } from './modules/cross-promo/types'

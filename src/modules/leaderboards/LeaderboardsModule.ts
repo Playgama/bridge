@@ -21,12 +21,20 @@ import { MODULE_NAME } from '../../constants'
 import {
     LEADERBOARD_TYPE,
     LEADERBOARD_PERIOD,
+    LEADERBOARD_SCORE_MODE,
     type LeaderboardType,
     type LeaderboardPeriod,
+    type LeaderboardScoreMode,
 } from './constants'
-import type { LeaderboardEntry, LeaderboardInfo } from './types'
+import type { LeaderboardEntriesOptions, LeaderboardEntry, LeaderboardInfo } from './types'
 import bridgeConfig from '../../lib/bridge-config'
 import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
+
+// Shape of GET leaderboards/{id}/info on the SaaS backend.
+interface SaasLeaderboardInfo {
+    scoreMode?: unknown
+    periods?: Record<string, { timeLeft?: unknown } | undefined>
+}
 
 export interface LeaderboardMapping {
     id: string
@@ -86,13 +94,25 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
         return this._platformBridge.leaderboardsSetScore(modifiedId, score, isMain)
     }
 
-    getEntries(id: string): Promise<LeaderboardEntry[]> {
+    // `options.period` picks the standing to read; only SaaS leaderboards have
+    // periods other than permanent.
+    getEntries(id: string, options?: LeaderboardEntriesOptions): Promise<LeaderboardEntry[]> {
         if (this.type !== LEADERBOARD_TYPE.IN_GAME) {
             return Promise.reject()
         }
 
+        const period = options?.period ?? LEADERBOARD_PERIOD.PERMANENT
+        if (!Object.values(LEADERBOARD_PERIOD).includes(period)) {
+            return Promise.reject()
+        }
+
         if (this.#saas) {
-            return this.#saas.get<LeaderboardEntry[]>(`leaderboards/${id}`)
+            const query = period === LEADERBOARD_PERIOD.PERMANENT ? '' : `?period=${period}`
+            return this.#saas.get<LeaderboardEntry[]>(`leaderboards/${id}${query}`)
+        }
+
+        if (period !== LEADERBOARD_PERIOD.PERMANENT) {
+            return Promise.reject()
         }
 
         const modifiedId = this._getPlatformLeaderboardId(id)
@@ -100,29 +120,46 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
         return this._platformBridge.leaderboardsGetEntries(modifiedId) as Promise<LeaderboardEntry[]>
     }
 
-    // Period and time left until the reset. Periods exist only on SaaS
-    // leaderboards; platform leaderboards are always permanent.
+    // Score mode, readable periods and seconds until each resetting period
+    // starts over. Platform leaderboards keep the best score and have only the
+    // permanent standing.
     getInfo(id: string): Promise<LeaderboardInfo> {
         if (this.type === LEADERBOARD_TYPE.NOT_AVAILABLE) {
             return Promise.reject()
         }
 
         if (!this.#saas) {
-            return Promise.resolve({ id, period: LEADERBOARD_PERIOD.PERMANENT, timeLeft: null })
+            return Promise.resolve({
+                id,
+                scoreMode: LEADERBOARD_SCORE_MODE.BEST,
+                periods: [LEADERBOARD_PERIOD.PERMANENT],
+                timeLeft: {},
+            })
         }
 
-        return this.#saas.get<{ period?: unknown, timeLeft?: unknown }>(`leaderboards/${id}/info`)
+        return this.#saas.get<SaasLeaderboardInfo>(`leaderboards/${id}/info`)
             .then((info) => {
-                const period = info?.period as LeaderboardPeriod
-                if (!Object.values(LEADERBOARD_PERIOD).includes(period)) {
+                const scoreMode = info?.scoreMode as LeaderboardScoreMode
+                if (!Object.values(LEADERBOARD_SCORE_MODE).includes(scoreMode)) {
                     return Promise.reject()
                 }
 
-                const timeLeft = typeof info.timeLeft === 'number' && period !== LEADERBOARD_PERIOD.PERMANENT
-                    ? Math.max(0, Math.ceil(info.timeLeft))
-                    : null
+                const periods: LeaderboardPeriod[] = [LEADERBOARD_PERIOD.PERMANENT]
+                const timeLeft: LeaderboardInfo['timeLeft'] = {}
+                Object.values(LEADERBOARD_PERIOD).forEach((period) => {
+                    const seconds = info.periods?.[period]?.timeLeft
+                    if (typeof seconds === 'number') {
+                        periods.push(period)
+                        timeLeft[period] = Math.max(0, Math.ceil(seconds))
+                    }
+                })
 
-                return { id, period, timeLeft }
+                return {
+                    id,
+                    scoreMode,
+                    periods,
+                    timeLeft,
+                }
             })
     }
 
