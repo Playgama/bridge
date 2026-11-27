@@ -18,8 +18,13 @@
 import ModuleBase, { type PlatformBridgeLike } from '../ModuleBase'
 import type { PlatformId } from '../platform/constants'
 import { MODULE_NAME } from '../../constants'
-import { LEADERBOARD_TYPE, type LeaderboardType } from './constants'
-import type { LeaderboardEntry } from './types'
+import {
+    LEADERBOARD_TYPE,
+    LEADERBOARD_PERIOD,
+    type LeaderboardType,
+    type LeaderboardPeriod,
+} from './constants'
+import type { LeaderboardEntry, LeaderboardInfo } from './types'
 import bridgeConfig from '../../lib/bridge-config'
 import SaasRequest, { type SaasBridgeLike } from '../../lib/SaasRequest'
 
@@ -93,6 +98,32 @@ class LeaderboardsModule extends ModuleBase<LeaderboardsBridgeContract> {
         const modifiedId = this._getPlatformLeaderboardId(id)
 
         return this._platformBridge.leaderboardsGetEntries(modifiedId) as Promise<LeaderboardEntry[]>
+    }
+
+    // Period and time left until the reset. Periods exist only on SaaS
+    // leaderboards; platform leaderboards are always permanent.
+    getInfo(id: string): Promise<LeaderboardInfo> {
+        if (this.type === LEADERBOARD_TYPE.NOT_AVAILABLE) {
+            return Promise.reject()
+        }
+
+        if (!this.#saas) {
+            return Promise.resolve({ id, period: LEADERBOARD_PERIOD.PERMANENT, timeLeft: null })
+        }
+
+        return this.#saas.get<{ period?: unknown, timeLeft?: unknown }>(`leaderboards/${id}/info`)
+            .then((info) => {
+                const period = info?.period as LeaderboardPeriod
+                if (!Object.values(LEADERBOARD_PERIOD).includes(period)) {
+                    return Promise.reject()
+                }
+
+                const timeLeft = typeof info.timeLeft === 'number' && period !== LEADERBOARD_PERIOD.PERMANENT
+                    ? Math.max(0, Math.ceil(info.timeLeft))
+                    : null
+
+                return { id, period, timeLeft }
+            })
     }
 
     showNativePopup(id: string): Promise<unknown> {

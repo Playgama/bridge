@@ -22,3 +22,14 @@ export const LEADERBOARD_TYPE = {
     NATIVE_POPUP: 'native_popup',
 } as const
 export type LeaderboardType = typeof LEADERBOARD_TYPE[keyof typeof LEADERBOARD_TYPE]
+
+// Reset period of a leaderboard. Periodic (daily/weekly/monthly) leaderboards are
+// supported only by Playgama SaaS leaderboards and reset at 00:00 UTC (weekly on
+// Monday, monthly on the 1st); every other leaderboard is permanent.
+export const LEADERBOARD_PERIOD = {
+    PERMANENT: 'permanent',
+    DAILY: 'daily',
+    WEEKLY: 'weekly',
+    MONTHLY: 'monthly',
+} as const
+export type LeaderboardPeriod = typeof LEADERBOARD_PERIOD[keyof typeof LEADERBOARD_PERIOD]
